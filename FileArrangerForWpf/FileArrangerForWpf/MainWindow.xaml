@@ -1,0 +1,446 @@
+﻿<Window x:Class="FileArrangerForWpf.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:stc="clr-namespace:StandardTemplate.Wpf"
+        Title="FileArranger" Icon="FileArranger.ico"
+        Width="685" Height="675" MinWidth="516" MinHeight="388"
+        PreviewKeyDown="Window_PreviewKeyDown">
+    <Window.Resources>
+        <Style TargetType="Label">
+            <Setter Property="Padding" Value="2,0,2,0" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+        </Style>
+        <Style x:Key="HeaderText" TargetType="TextBlock">
+            <Setter Property="FontWeight" Value="Bold" />
+            <Setter Property="Margin" Value="0,0,0,6" />
+        </Style>
+        <Style TargetType="Button">
+            <Setter Property="Height" Value="23" />
+            <Setter Property="MinWidth" Value="70" />
+            <Setter Property="Padding" Value="6,0" />
+        </Style>
+        <Style TargetType="stc:TextBoxEx">
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+            <Setter Property="Height" Value="22" />
+            <Setter Property="Margin" Value="0,2" />
+        </Style>
+        <Style TargetType="stc:ComboBoxEx">
+            <Setter Property="Height" Value="22" />
+            <Setter Property="Margin" Value="0,2" />
+        </Style>
+        <!-- WinForms版ListView(GridLines=true, FullRowSelect=true)の見た目に寄せる -->
+        <Style x:Key="GridLineItem" TargetType="ListViewItem">
+            <Setter Property="BorderBrush" Value="#FFE0E0E0" />
+            <Setter Property="BorderThickness" Value="0,0,0,1" />
+        </Style>
+    </Window.Resources>
+
+    <Grid Margin="12,11,12,4">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <TabControl Grid.Row="0" x:Name="tabControl" SelectedIndex="0">
+
+            <!-- ===================== Common ===================== -->
+            <TabItem Header="Common" x:Name="tab_Common">
+                <Grid Margin="12,8,12,8">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="110" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+                    <TextBlock Grid.Row="0" Grid.ColumnSpan="3" Text="共通設定" Style="{StaticResource HeaderText}" />
+
+                    <Label Grid.Row="1" Grid.Column="0" Content="リファレンスフォルダ：" HorizontalAlignment="Right" />
+                    <stc:TextBoxEx Grid.Row="1" Grid.Column="1" x:Name="cmn_textBox_Reference"
+                                   TextChanged="cmn_textBox_Reference_TextChanged" />
+                    <Button Grid.Row="1" Grid.Column="2" x:Name="cmn_button_Listup" Content="リストアップ" Margin="6,0,0,0"
+                            Click="cmn_button_Listup_Click" />
+
+                    <Label Grid.Row="2" Grid.Column="0" Content="新規追加リスト：" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,4,0,0" />
+                    <stc:TextBoxEx Grid.Row="2" Grid.Column="1" Grid.ColumnSpan="2" x:Name="cmn_textBox_AddList"
+                                   Height="Auto" Margin="0,4,0,4" VerticalContentAlignment="Top"
+                                   AcceptsReturn="True" TextWrapping="NoWrap"
+                                   VerticalScrollBarVisibility="Visible" HorizontalScrollBarVisibility="Auto"
+                                   KeyDown="cmn_textBox_AddList_KeyDown" />
+
+                    <Label Grid.Row="3" Grid.Column="0" Content="新規追加Suffix：" HorizontalAlignment="Right" />
+                    <stc:TextBoxEx Grid.Row="3" Grid.Column="1" Grid.ColumnSpan="2" x:Name="cmn_textBox_AddListSuffix" />
+                </Grid>
+            </TabItem>
+
+            <!-- ===================== MoveDir ===================== -->
+            <TabItem Header="MoveDir" x:Name="tab_MoveDir">
+                <Grid Margin="12,8,12,8">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="98" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+                    <TextBlock Grid.Row="0" Grid.ColumnSpan="3" Text="ファイルが存在するフォルダを表示" Style="{StaticResource HeaderText}" />
+
+                    <Label Grid.Row="1" Grid.Column="0" Content="フォルダ格納元：" />
+                    <stc:TextBoxEx Grid.Row="1" Grid.Column="1" x:Name="md_textBox_SourceDir"
+                                   KeyDown="md_textBox_SourceDir_KeyDown" />
+                    <Button Grid.Row="1" Grid.Column="2" x:Name="md_button_Listup" Content="リストアップ" Margin="6,0,0,0"
+                            Click="md_button_Listup_Click" />
+
+                    <Label Grid.Row="2" Grid.Column="0" Content="フォルダ格納先：" />
+                    <stc:ComboBoxEx Grid.Row="2" Grid.Column="1" Grid.ColumnSpan="2" x:Name="md_comboBox_TargetDir"
+                                    KeyDown="md_comboBox_TargetDir_KeyDown" />
+
+                    <ListBox Grid.Row="3" Grid.ColumnSpan="3" x:Name="md_listBox_Listup" Margin="0,4,0,4"
+                             SelectionMode="Extended"
+                             ScrollViewer.HorizontalScrollBarVisibility="Auto"
+                             SelectionChanged="mf_listBox_Listup_SelectedIndexChanged"
+                             KeyDown="mf_listBox_Listup_KeyDown"
+                             MouseDoubleClick="mf_listBox_Listup_MouseDoubleClick" />
+
+                    <Grid Grid.Row="4" Grid.ColumnSpan="3">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                            <TextBlock x:Name="md_label_TotalNum" Text="フォルダ数：" />
+                            <TextBlock x:Name="md_label_SelectNum" Text="選択数：" />
+                        </StackPanel>
+                        <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Bottom">
+                            <Button x:Name="md_button_MoveTopDir" Content="トップディレクトリを移動" Width="137"
+                                    Click="md_button_MoveTopDir_Click" />
+                            <Button x:Name="md_button_MoveSubDir" Content="サブディレクトリを移動" Width="137" Margin="6,0,0,0"
+                                    Click="mf_button_Move_SubDir_Click" />
+                            <Button x:Name="md_button_Delete" Content="削除" Width="100" Margin="6,0,0,0"
+                                    Click="mf_button_Delete_Click" />
+                        </StackPanel>
+                    </Grid>
+                </Grid>
+            </TabItem>
+
+            <!-- ===================== RenameDir ===================== -->
+            <TabItem Header="RenameDir" x:Name="tab_RenameDir">
+                <Grid Margin="12,8,12,8">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="98" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+                    <TextBlock Grid.Row="0" Grid.ColumnSpan="3" Text="リファレンスを元にフォルダ名をリネーム" Style="{StaticResource HeaderText}" />
+
+                    <Label Grid.Row="1" Grid.Column="0" Content="フォルダ格納元：" />
+                    <stc:ComboBoxEx Grid.Row="1" Grid.Column="1" x:Name="rd_comboBox_RenameDir"
+                                    KeyDown="rd_comboBox_RenameDir_KeyDown" />
+                    <Button Grid.Row="1" Grid.Column="2" x:Name="rd_button_Listup_Target" Content="リストアップ" Margin="6,0,0,0"
+                            Click="rd_button_Listup_Target_Click" />
+
+                    <Label Grid.Row="2" Grid.Column="0" x:Name="rd_label_ExistItemDir" Content="フォルダ格納先："
+                           MouseDoubleClick="rd_label_ExistItemDir_DoubleClick" />
+                    <stc:TextBoxEx Grid.Row="2" Grid.Column="1" x:Name="rd_textBox_ExistItemDir" IsReadOnly="True"
+                                   KeyDown="rd_textBox_ExistItemDir_KeyDown" />
+                    <Button Grid.Row="2" Grid.Column="2" x:Name="rd_button_Listup_Item" Content="リストアップ" Margin="6,0,0,0"
+                            Click="cmn_button_Listup_Click" />
+
+                    <Grid Grid.Row="3" Grid.ColumnSpan="3" Margin="0,4,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="98" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="70" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="36" />
+                        </Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+                        <StackPanel Grid.Row="0" Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right">
+                            <Label Content="区切り文字：" />
+                            <stc:TextBoxEx x:Name="rd_textBox_SplitWord3" Width="62"
+                                           TextChanged="rd_textBox_TextChanged" KeyDown="rd_comboBox_MergeWord_KeyDown" />
+                        </StackPanel>
+                        <Label Grid.Row="0" Grid.Column="2" Content="番号前に追加：" Margin="8,0,0,0" />
+                        <stc:TextBoxEx Grid.Row="0" Grid.Column="3" x:Name="rd_textBox_AddTitlePreWord"
+                                       TextChanged="rd_textBox_TextChanged" KeyDown="rd_comboBox_MergeWord_KeyDown" />
+                        <Label Grid.Row="0" Grid.Column="4" Content="番号検索の後部：" Margin="8,0,0,0" HorizontalAlignment="Right" />
+                        <stc:TextBoxEx Grid.Row="0" Grid.Column="5" x:Name="rd_textBox_SearchTitleLine"
+                                       TextChanged="rd_textBox_TextChanged" KeyDown="rd_comboBox_MergeWord_KeyDown" />
+
+                        <Label Grid.Row="1" Grid.Column="0" Content="結合文字：" HorizontalAlignment="Right" />
+                        <stc:ComboBoxEx Grid.Row="1" Grid.Column="1" x:Name="rd_comboBox_MergeWord"
+                                        DropDownOpened="rd_comboBox_MergeWord_DropDown" KeyDown="rd_comboBox_MergeWord_KeyDown" />
+                        <Label Grid.Row="1" Grid.Column="2" Content="番号後に追加：" Margin="8,0,0,0" />
+                        <stc:ComboBoxEx Grid.Row="1" Grid.Column="3" x:Name="rd_comboBox_AddTitlePostWord"
+                                        KeyDown="rd_comboBox_MergeWord_KeyDown" />
+                        <Label Grid.Row="1" Grid.Column="4" Content="番号の検索長：" Margin="8,0,0,0" HorizontalAlignment="Right" />
+                        <stc:TextBoxEx Grid.Row="1" Grid.Column="5" x:Name="rd_textBox_SearchTitleLength"
+                                       TextChanged="rd_textBox_TextChanged" KeyDown="rd_comboBox_MergeWord_KeyDown" />
+                    </Grid>
+
+                    <CheckBox Grid.Row="4" Grid.ColumnSpan="3" x:Name="rd_checkBox_FileOpen" Content="フォルダ内の先頭ファイルを開く"
+                              Margin="2,6,0,4" HorizontalAlignment="Left" />
+
+                    <ListView Grid.Row="5" Grid.ColumnSpan="3" x:Name="rd_listView_Target" Margin="0,0,0,4"
+                              SelectionMode="Extended"
+                              SelectionChanged="rd_listView_Rename_SelectedIndexChanged"
+                              KeyDown="rd_listView_Target_KeyDown"
+                              SizeChanged="rd_listView_Target_SizeChanged">
+                        <ListView.Resources>
+                            <Style TargetType="ListViewItem" BasedOn="{StaticResource GridLineItem}">
+                                <EventSetter Event="MouseDoubleClick" Handler="rd_listView_Rename_DoubleClick" />
+                            </Style>
+                        </ListView.Resources>
+                        <ListView.View>
+                            <GridView>
+                                <GridViewColumn x:Name="rd_column_Source" Header="変更前" DisplayMemberBinding="{Binding [0]}" />
+                                <GridViewColumn x:Name="rd_column_Dest" Header="変更後" DisplayMemberBinding="{Binding [1]}" />
+                            </GridView>
+                        </ListView.View>
+                    </ListView>
+
+                    <Grid Grid.Row="6" Grid.ColumnSpan="3">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                            <TextBlock x:Name="rd_label_TotalNum" Text="フォルダ数：" />
+                            <TextBlock x:Name="rd_label_SelectNum" Text="選択数：" />
+                        </StackPanel>
+                        <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Bottom">
+                            <Button x:Name="rd_button_RenameDirRestore" Content="復元" Width="100"
+                                    Click="rd_button_RenameFolderRestore_Click" />
+                            <Button x:Name="rd_button_RenameDir" Content="リネーム実行" Width="100" Margin="6,0,0,0"
+                                    Click="rd_button_Execute_Rename_Click" />
+                        </StackPanel>
+                    </Grid>
+                </Grid>
+            </TabItem>
+
+            <!-- ===================== SortFileName ===================== -->
+            <TabItem Header="SortFileName" x:Name="tab_SortFileRename">
+                <Grid Margin="12,8,12,8">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="98" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+                    <TextBlock Grid.Row="0" Grid.ColumnSpan="3" Text="指定フォルダ以下のファイル名をリネーム（ソート）" Style="{StaticResource HeaderText}" />
+
+                    <Label Grid.Row="1" Grid.Column="0" Content="ファイル格納元：" />
+                    <stc:TextBoxEx Grid.Row="1" Grid.Column="1" x:Name="sf_textBox_TargetFile"
+                                   KeyDown="sf_textBox_TargetFile_KeyDown" />
+                    <Button Grid.Row="1" Grid.Column="2" x:Name="sf_button_Listup" Content="リストアップ" Margin="6,0,0,0"
+                            Click="sf_button_Listup_TargetFile_Click" />
+
+                    <ListBox Grid.Row="2" Grid.ColumnSpan="3" x:Name="sf_listBox_Target" Margin="0,4,0,4"
+                             SelectionMode="Extended"
+                             ScrollViewer.HorizontalScrollBarVisibility="Auto"
+                             SelectionChanged="sf_listBox_Target_SelectedIndexChanged"
+                             KeyDown="sf_listBox_Target_KeyDown" />
+
+                    <Grid Grid.Row="3" Grid.ColumnSpan="3">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                            <TextBlock x:Name="sf_label_TotalNum" Text="フォルダ数：" />
+                            <TextBlock x:Name="sf_label_SelectNum" Text="選択数：" />
+                        </StackPanel>
+                        <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Bottom">
+                            <Button x:Name="sf_button_SortRestore" Content="復元" Width="100"
+                                    Click="sf_button_Sort_Restore_Click" />
+                            <Button x:Name="sf_button_Sort" Content="ソート" Width="100" Margin="6,0,0,0"
+                                    Click="sf_button_SortFileRename_Click" />
+                        </StackPanel>
+                    </Grid>
+                </Grid>
+            </TabItem>
+
+            <!-- ===================== MoveFile ===================== -->
+            <TabItem Header="MoveFile" x:Name="tab_MoveFile">
+                <Grid Margin="12,8,12,8">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="98" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+                    <TextBlock Grid.Row="0" Grid.ColumnSpan="3" Text="ファイル移動" Style="{StaticResource HeaderText}" />
+
+                    <Label Grid.Row="1" Grid.Column="0" Content="ファイル移動元：" />
+                    <stc:TextBoxEx Grid.Row="1" Grid.Column="1" x:Name="mf_textBox_SourceDir"
+                                   KeyDown="mf_textBox_SourceDir_KeyDown" />
+                    <Button Grid.Row="1" Grid.Column="2" x:Name="mf_button_Listup" Content="リストアップ" Margin="6,0,0,0"
+                            Click="mf_button_Listup_Click" />
+
+                    <Label Grid.Row="2" Grid.Column="0" Content="ファイル移動先：" />
+                    <stc:TextBoxEx Grid.Row="2" Grid.Column="1" Grid.ColumnSpan="2" x:Name="mf_textBox_TargetDir"
+                                   KeyDown="mf_textBox_TargetDir_KeyDown" />
+
+                    <ListBox Grid.Row="3" Grid.ColumnSpan="3" x:Name="mf_listBox_Target" Margin="0,4,0,4"
+                             SelectionMode="Extended"
+                             ScrollViewer.HorizontalScrollBarVisibility="Auto"
+                             SelectionChanged="mf_listBox_Target_SelectedIndexChanged"
+                             KeyDown="mf_listBox_Target_KeyDown" />
+
+                    <Grid Grid.Row="4" Grid.ColumnSpan="3">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                            <TextBlock x:Name="mf_label_TotalNum" Text="フォルダ数：" />
+                            <TextBlock x:Name="mf_label_SelectNum" Text="選択数：" />
+                        </StackPanel>
+                        <Button Grid.Column="1" x:Name="mf_button_MoveFile" Content="ファイル移動" Width="100" VerticalAlignment="Bottom"
+                                Click="mf_button_MoveFile_Click" />
+                    </Grid>
+                </Grid>
+            </TabItem>
+
+            <!-- ===================== PartitionFile ===================== -->
+            <TabItem Header="PartitionFile" x:Name="tab_PartitionFile">
+                <Grid Margin="12,8,12,8">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="98" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="46" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+                    <TextBlock Grid.Row="0" Grid.ColumnSpan="5" Text="ファイル振り分け" Style="{StaticResource HeaderText}" />
+
+                    <Label Grid.Row="1" Grid.Column="0" Content="ファイル格納元：" />
+                    <stc:TextBoxEx Grid.Row="1" Grid.Column="1" x:Name="pf_textBox_TargetFile"
+                                   KeyDown="pf_textBox_TargetFile_KeyDown" />
+                    <Label Grid.Row="1" Grid.Column="2" Content="区切り文字：" Margin="8,0,0,0" HorizontalAlignment="Right" />
+                    <stc:TextBoxEx Grid.Row="1" Grid.Column="3" x:Name="pf_textBox_TargetSeparator" />
+                    <Button Grid.Row="1" Grid.Column="4" x:Name="pf_button_Listup_Target" Content="リストアップ" Margin="6,0,0,0"
+                            Click="pf_button_Listup_Target_Click" />
+
+                    <Label Grid.Row="2" Grid.Column="0" x:Name="pf_label_ReferenceFile" Content="ファイル格納先："
+                           MouseDoubleClick="pf_label_ReferenceFile_DoubleClick" />
+                    <stc:TextBoxEx Grid.Row="2" Grid.Column="1" Grid.ColumnSpan="3" x:Name="pf_textBox_ReferenceFile" IsReadOnly="True"
+                                   KeyDown="pf_textBox_ReferenceFile_KeyDown" />
+                    <Button Grid.Row="2" Grid.Column="4" x:Name="pf_button_Listup_Reference" Content="リストアップ" Margin="6,0,0,0"
+                            Click="cmn_button_Listup_Click" />
+
+                    <Label Grid.Row="3" Grid.Column="0" Content="フォルダ格納先：" />
+                    <stc:ComboBoxEx Grid.Row="3" Grid.Column="1" x:Name="pf_comboBox_MoveDestDirName"
+                                    DropDownOpened="pf_comboBox_MoveDestDirName_DropDown"
+                                    KeyUp="pf_comboBox_MoveDestDirName_KeyUp" />
+                    <StackPanel Grid.Row="3" Grid.Column="2" Grid.ColumnSpan="3" Orientation="Horizontal" HorizontalAlignment="Right">
+                        <Label Content="番号検索の後部：" />
+                        <stc:TextBoxEx x:Name="pf_textBox_SearchTitleLine" Width="46"
+                                       KeyDown="pf_textBox_SearchTitleLine_KeyDown" />
+                    </StackPanel>
+
+                    <CheckBox Grid.Row="4" Grid.Column="1" x:Name="pf_checkBox_CreateNewDir" Content="フォルダを新規作成"
+                              VerticalAlignment="Center"
+                              Checked="pf_checkBox_CreateNewDir_CheckedChanged" Unchecked="pf_checkBox_CreateNewDir_CheckedChanged" />
+                    <StackPanel Grid.Row="4" Grid.Column="2" Grid.ColumnSpan="3" Orientation="Horizontal" HorizontalAlignment="Right">
+                        <Label Content="番号の検索長：" />
+                        <stc:TextBoxEx x:Name="pf_textBox_SearchTitleLength" Width="46"
+                                       KeyDown="pf_textBox_SearchTitleLine_KeyDown" />
+                    </StackPanel>
+
+                    <ListView Grid.Row="5" Grid.ColumnSpan="5" x:Name="pf_listView_Target" Margin="0,4,0,4"
+                              SelectionMode="Extended"
+                              SelectionChanged="pf_listView_Target_SelectedIndexChanged"
+                              KeyDown="pf_listView_Target_KeyDown"
+                              SizeChanged="pf_listView_Target_SizeChanged">
+                        <ListView.Resources>
+                            <Style TargetType="ListViewItem" BasedOn="{StaticResource GridLineItem}">
+                                <EventSetter Event="MouseDoubleClick" Handler="pf_listView_Target_DoubleClick" />
+                            </Style>
+                        </ListView.Resources>
+                        <ListView.View>
+                            <GridView>
+                                <GridViewColumn x:Name="pf_column_Target" Header="対象" DisplayMemberBinding="{Binding [0]}" />
+                                <GridViewColumn x:Name="pf_column_MoveSrc" Header="移動前名称" DisplayMemberBinding="{Binding [1]}" />
+                                <GridViewColumn x:Name="pf_column_MoveDest" Header="移動後名称" DisplayMemberBinding="{Binding [2]}" />
+                            </GridView>
+                        </ListView.View>
+                    </ListView>
+
+                    <Grid Grid.Row="6" Grid.ColumnSpan="5">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                            <TextBlock x:Name="pf_label_TotalNum" Text="ファイル数：" />
+                            <TextBlock x:Name="pf_label_SelectNum" Text="選択数：" />
+                        </StackPanel>
+                        <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Bottom">
+                            <Button x:Name="pf_button_ClearSelect" Content="選択クリア" Width="100"
+                                    Click="pf_button_ClearSelect_Click" />
+                            <Button x:Name="pf_button_CreateFolderAndMoveFile" Content="ファイル移動" Width="100" Margin="6,0,0,0"
+                                    Click="pf_button_CreateFolderExecute_Click" />
+                        </StackPanel>
+                    </Grid>
+                </Grid>
+            </TabItem>
+        </TabControl>
+
+        <Grid Grid.Row="1" Margin="0,6,0,4">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="104" />
+                <ColumnDefinition Width="162" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <stc:TextBoxEx Grid.Column="0" x:Name="progressText" IsReadOnly="True" Margin="0" />
+            <ProgressBar Grid.Column="1" x:Name="progressBar" Height="20" Margin="6,0,0,0" />
+            <ComboBox Grid.Column="2" x:Name="comboBox_LoadSetting" Margin="12,0,6,0" VerticalAlignment="Center"
+                      SelectionChanged="comboBox_LoadSetting_SelectionChanged" />
+            <Button Grid.Column="3" x:Name="SaveSetting" Content="設定値保存" Width="85" Click="SaveSetting_Click" />
+        </Grid>
+    </Grid>
+</Window>

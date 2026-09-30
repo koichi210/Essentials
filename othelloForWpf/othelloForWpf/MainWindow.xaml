@@ -1,0 +1,74 @@
+﻿<Window x:Class="othelloForWpf.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="othello"
+        SizeToContent="WidthAndHeight" UseLayoutRounding="True">
+    <DockPanel x:Name="rootPanel">
+        <!-- WPFのMenuは横幅が足りないと折り返す(WinForms版MenuStripははみ出た項目が隠れる)。
+             Menuの幅がウィンドウの初期幅(盤面200+余白24)を押し広げないよう、初期幅を224に固定する(Loaded後に解除) -->
+        <Menu x:Name="menuStrip1" DockPanel.Dock="Top" Width="224">
+            <MenuItem x:Name="menuItem_Game" Header="ゲーム(_G)">
+                <MenuItem x:Name="menuItem_Start" Header="開始(_S)" Click="menuItem_Start_Click" />
+                <MenuItem x:Name="menuItem_Undo" Header="一手戻す(_U)" Click="menuItem_Undo_Click" />
+                <MenuItem x:Name="menuItem_Redo" Header="一手進める(_R)" Click="menuItem_Redo_Click" />
+                <Separator x:Name="toolStripSeparator1" />
+                <MenuItem x:Name="menuItem_Exit" Header="終了(_X)" Click="menuItem_Exit_Click" />
+                <Separator x:Name="toolStripSeparator2" />
+                <MenuItem x:Name="menuItem_HowToPlay" Header="遊び方(_H)" Click="menuItem_HowToPlay_Click" />
+                <MenuItem x:Name="menuItem_Version" Header="バージョン情報(_A)" Click="menuItem_Version_Click" />
+            </MenuItem>
+            <MenuItem x:Name="menuItem_PlayMode" Header="対戦モード(_P)">
+                <MenuItem x:Name="menuItem_PP" Header="人 vs 人" IsCheckable="True" IsChecked="True" Click="menuItem_PlayMode_Click" />
+                <MenuItem x:Name="menuItem_PC" Header="人 vs COM" IsCheckable="True" Click="menuItem_PlayMode_Click" />
+                <MenuItem x:Name="menuItem_CP" Header="COM vs 人" IsCheckable="True" Click="menuItem_PlayMode_Click" />
+                <MenuItem x:Name="menuItem_CC" Header="COM vs COM" IsCheckable="True" Click="menuItem_PlayMode_Click" />
+            </MenuItem>
+            <MenuItem x:Name="menuItem_ComLevel" Header="COMレベル(_L)">
+                <MenuItem x:Name="menuItem_ComLevel1" Header="レベル1" IsCheckable="True" IsChecked="True" Click="menuItem_ComLevel_Click" />
+                <MenuItem x:Name="menuItem_ComLevel2" Header="レベル2" IsCheckable="True" Click="menuItem_ComLevel_Click" />
+                <MenuItem x:Name="menuItem_ComLevel3" Header="レベル3" IsCheckable="True" Click="menuItem_ComLevel_Click" />
+            </MenuItem>
+            <MenuItem x:Name="menuItem_TimeLimit" Header="持ち時間(_T)">
+                <MenuItem x:Name="menuItem_TimeNone" Header="なし" IsCheckable="True" IsChecked="True" Click="menuItem_TimeLimit_Click" />
+                <MenuItem x:Name="menuItem_Time30s" Header="30秒" IsCheckable="True" Click="menuItem_TimeLimit_Click" />
+                <MenuItem x:Name="menuItem_Time1m" Header="1分" IsCheckable="True" Click="menuItem_TimeLimit_Click" />
+                <MenuItem x:Name="menuItem_Time2m" Header="2分" IsCheckable="True" Click="menuItem_TimeLimit_Click" />
+                <MenuItem x:Name="menuItem_Time3m" Header="3分" IsCheckable="True" Click="menuItem_TimeLimit_Click" />
+                <MenuItem x:Name="menuItem_Time5m" Header="5分" IsCheckable="True" Click="menuItem_TimeLimit_Click" />
+                <MenuItem x:Name="menuItem_Time10m" Header="10分" IsCheckable="True" Click="menuItem_TimeLimit_Click" />
+                <MenuItem x:Name="menuItem_Time15m" Header="15分" IsCheckable="True" Click="menuItem_TimeLimit_Click" />
+            </MenuItem>
+            <MenuItem x:Name="menuItem_Kihu" Header="棋譜(_K)">
+                <MenuItem x:Name="menuItem_KihuShow" Header="表示(_V)" Click="menuItem_KihuShow_Click" />
+                <MenuItem x:Name="menuItem_KihuSave" Header="保存(_S)..." Click="menuItem_KihuSave_Click" />
+                <MenuItem x:Name="menuItem_KihuLoad" Header="読込(_L)..." Click="menuItem_KihuLoad_Click" />
+            </MenuItem>
+        </Menu>
+
+        <!-- WinForms版の配置(ClientSize 224x322、盤面は余白12で200x200、ラベル・ボタンは左下固定)を再現 -->
+        <Border x:Name="clientArea" Padding="12,12,12,17">
+            <Grid x:Name="clientGrid">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="*" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+
+                <!-- 盤面。初期サイズ200x200(Loaded後に固定サイズを外してウィンドウに追従させる) -->
+                <Border x:Name="boardHost" Grid.Row="0" Width="200" Height="200" Background="Transparent"
+                        MouseDown="boardHost_MouseDown" MouseUp="boardHost_MouseUp" SizeChanged="boardHost_SizeChanged">
+                    <Image x:Name="pictureBoxField" Stretch="Fill" RenderOptions.BitmapScalingMode="NearestNeighbor" />
+                </Border>
+
+                <TextBlock x:Name="label_Status" Grid.Row="1" Width="200" Height="18" Margin="0,4,0,0"
+                           HorizontalAlignment="Left" Text="label_Status" />
+                <!-- 持ち時間「なし」の間は非表示(WinForms版と同じく場所は空けたまま) -->
+                <TextBlock x:Name="label_Time" Grid.Row="2" Width="200" Height="18"
+                           HorizontalAlignment="Left" Text="" Visibility="Hidden" />
+                <Button x:Name="button_ReStart" Grid.Row="3" Content="ReStart" Width="75" Height="23" Margin="125,6,0,0"
+                        HorizontalAlignment="Left" Click="button_ReStart_Click" />
+            </Grid>
+        </Border>
+    </DockPanel>
+</Window>
