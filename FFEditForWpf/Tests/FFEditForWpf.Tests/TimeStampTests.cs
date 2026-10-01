@@ -48,7 +48,7 @@ namespace FFEditForWpf.Tests
             DateTime originalCreate = before.CreationTime;
 
             var target = new DateTime(2020, 1, 2, 3, 4, 5);
-            var stump = new TimeStamp
+            var stamp = new TimeStamp
             {
                 BaseDir = tempDirectory,
                 FileList = new List<string> { "a.txt" },
@@ -57,7 +57,7 @@ namespace FFEditForWpf.Tests
                 UpdateLastWriteTime = true,
             };
 
-            stump.Execute();
+            stamp.Execute();
 
             var after = new FileInfo(path);
             Assert.AreEqual(target, after.LastWriteTime);
@@ -70,7 +70,7 @@ namespace FFEditForWpf.Tests
             string path = CreateFile("a.txt");
 
             var target = new DateTime(2019, 5, 6, 7, 8, 9);
-            var stump = new TimeStamp
+            var stamp = new TimeStamp
             {
                 BaseDir = tempDirectory,
                 FileList = new List<string> { "a.txt" },
@@ -80,7 +80,7 @@ namespace FFEditForWpf.Tests
                 UpdateLastAccessTime = true,
             };
 
-            stump.Execute();
+            stamp.Execute();
 
             var after = new FileInfo(path);
             Assert.AreEqual(target, after.CreationTime);
@@ -98,7 +98,7 @@ namespace FFEditForWpf.Tests
             var baseTime = new DateTime(2021, 1, 1);
             var oneDay = TimeSpan.FromDays(1).Ticks;
 
-            var stump = new TimeStamp
+            var stamp = new TimeStamp
             {
                 BaseDir = tempDirectory,
                 FileList = new List<string> { "a.txt", "b.txt", "c.txt" },
@@ -107,7 +107,7 @@ namespace FFEditForWpf.Tests
                 UpdateLastWriteTime = true,
             };
 
-            stump.Execute();
+            stamp.Execute();
 
             Assert.AreEqual(baseTime, new FileInfo(Path.Combine(tempDirectory, "a.txt")).LastWriteTime);
             Assert.AreEqual(baseTime.AddDays(1), new FileInfo(Path.Combine(tempDirectory, "b.txt")).LastWriteTime);
@@ -121,14 +121,14 @@ namespace FFEditForWpf.Tests
             var before = new FileInfo(path);
             DateTime originalWrite = before.LastWriteTime;
 
-            var stump = new TimeStamp
+            var stamp = new TimeStamp
             {
                 BaseDir = tempDirectory,
                 FileList = new List<string> { "a.txt" },
                 BaseTicks = new DateTime(2020, 1, 1).Ticks,
             };
 
-            stump.Execute();
+            stamp.Execute();
 
             Assert.AreEqual(originalWrite, new FileInfo(path).LastWriteTime);
         }

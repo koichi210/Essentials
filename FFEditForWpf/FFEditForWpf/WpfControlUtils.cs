@@ -15,7 +15,7 @@ namespace FFEditForWpf
     internal static class WpfControlUtils
     {
         // ComboBoxのTextをプルダウン(履歴)に追加し、重複を取り除く。Textが空なら何もしない。
-        // (StcUtils.ModifyCombBoxListと同じ。Items.Clearで入力中の文字列が消えないよう、Textは退避して戻す)
+        // (StcUtils.AddComboBoxTextToItemsと同じ。Items.Clearで入力中の文字列が消えないよう、Textは退避して戻す)
         public static void AddComboBoxTextToItems(ComboBox comboBox)
         {
             String text = comboBox.Text;
