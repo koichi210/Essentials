@@ -28,53 +28,54 @@ namespace FileArrangerForWpf
 
         private void rd_button_RenameFolderRestore_Click(object sender, RoutedEventArgs e)
         {
-            if (!pmd.DecrementRegistNumber())
+            if (!renameDirMemory.DecrementRegistNumber())
             {
                 MessageBox.Show("これ以上復元できません");
                 return;
             }
 
-            while (pmd.IsExistRestoreList())
+            while (renameDirMemory.IsExistRestoreList())
             {
-                String SrcName = "";
-                String DestName = "";
-                pmd.GetRestoreList(ref SrcName, ref DestName);
-                Directory.Move(DestName, SrcName);
+                String srcName = "";
+                String destName = "";
+                renameDirMemory.GetRestoreList(ref srcName, ref destName);
+                Directory.Move(destName, srcName);
             }
             ListupRenameTargetDirectory();
         }
 
         private void RenameFolderExecute()
         {
-            List<int> SelectedIndices = WpfControlHelper.GetSelectedIndices(rd_listView_Target);
-            if (SelectedIndices.Count == 0)
+            List<int> selectedIndices = WpfControlHelper.GetSelectedIndices(rd_listView_Target);
+            if (selectedIndices.Count == 0)
             {
                 MessageBox.Show("項目が選択されていません。");
                 return;
             }
 
             int idx = 0;
-            for (int i = 0; i < SelectedIndices.Count; i++)
+            for (int i = 0; i < selectedIndices.Count; i++)
             {
                 // 参照しているListViewのIdx
-                idx = SelectedIndices[i];
+                idx = selectedIndices[i];
                 ListViewRow row = (ListViewRow)rd_listView_Target.Items[idx];
 
                 // 変更するファイル名
-                String SrcName = rd_comboBox_RenameDir.Text + @"\" + row[RenameSrcIdx];
-                String DestName = rd_comboBox_RenameDir.Text + @"\" + row[RenameDestIdx];
+                String srcName = rd_comboBox_RenameDir.Text + @"\" + row[RenameSrcIdx];
+                String destName = rd_comboBox_RenameDir.Text + @"\" + row[RenameDestIdx];
 
                 // ファイル名の重複回避
-                util.CreateFileNameOverLapShirk(ref DestName, i);
-                fio.MoveDirectory(SrcName, DestName);
-                pmd.SetRestoreList(SrcName, DestName);
+                util.AvoidFileNameOverlap(ref destName, i);
+                fio.MoveDirectory(srcName, destName);
+                renameDirMemory.SetRestoreList(srcName, destName);
             }
-            pmd.IncrementRegistNumber();
+            renameDirMemory.IncrementRegistNumber();
 
             ListupRenameTargetDirectory(idx);
         }
 
-        private void ListupRenameTargetDirectory(int ScrollbarPos = 0)
+        // scrollToIdx: リストアップ後に表示位置を合わせる項目のインデックス
+        private void ListupRenameTargetDirectory(int scrollToIdx = 0)
         {
             if (!IsValidFolderPath(rd_comboBox_RenameDir.Text))
             {
@@ -84,28 +85,28 @@ namespace FileArrangerForWpf
             rd_listView_Target.Items.Clear();
 
             // フォルダをリストアップ
-            String[] Folders = Directory.GetDirectories(rd_comboBox_RenameDir.Text);
-            List<String> Names = new List<String>();
-            for (int i = 0; i < Folders.Length; i++)
+            String[] folders = Directory.GetDirectories(rd_comboBox_RenameDir.Text);
+            List<String> names = new List<String>();
+            foreach (String folder in folders)
             {
-                Names.Add(GetDisplayName(Folders[i], rd_comboBox_RenameDir.Text));
+                names.Add(GetDisplayName(folder, rd_comboBox_RenameDir.Text));
             }
-            foreach (String FileName in SortedByName(Names))
+            foreach (String folderName in SortedByName(names))
             {
-                rd_listView_Target.Items.Add(new ListViewRow(FileName, ""));
-            }
-
-            if (ScrollbarPos > Folders.Length)
-            {
-                ScrollbarPos = Folders.Length - 1;
+                rd_listView_Target.Items.Add(new ListViewRow(folderName, ""));
             }
 
-            if (ScrollbarPos > 0 && ScrollbarPos < rd_listView_Target.Items.Count)
+            if (scrollToIdx > folders.Length)
             {
-                rd_listView_Target.ScrollIntoView(rd_listView_Target.Items[ScrollbarPos]);
+                scrollToIdx = folders.Length - 1;
             }
 
-            rd_label_TotalNum.Text = "フォルダ数：" + Folders.Length.ToString();
+            if (scrollToIdx > 0 && scrollToIdx < rd_listView_Target.Items.Count)
+            {
+                rd_listView_Target.ScrollIntoView(rd_listView_Target.Items[scrollToIdx]);
+            }
+
+            rd_label_TotalNum.Text = "フォルダ数：" + folders.Length.ToString();
             AutoResizeRenameColumns();
         }
 
@@ -128,69 +129,70 @@ namespace FileArrangerForWpf
                 row[RenameDestIdx] = "";
             }
 
-            rd_listView_Rename_UpdateListBox();
+            UpdateRenameDestNames();
         }
 
         // rd_comboBox_MergeWord/rd_comboBox_AddTitlePostWordのText変更(InitializeControlsで監視している)
-        private void rd_comboBox_MergeWord_TextChanged(object sender, EventArgs e)
+        private void rd_comboBox_TextChanged(object sender, EventArgs e)
         {
-            rd_listView_Rename_UpdateListBox();
+            UpdateRenameDestNames();
         }
 
         // 区切り文字・番号前に追加・番号検索の後部/検索長のTextBox(WinForms版はrd_comboBox_MergeWord_TextChangedを共用していた)
         private void rd_textBox_TextChanged(object sender, TextChangedEventArgs e)
         {
-            rd_listView_Rename_UpdateListBox();
+            UpdateRenameDestNames();
         }
 
-        private void rd_listView_Rename_UpdateListBox()
+        // 選択数の表示を更新し、選択項目の「変更後」列を作り直す(WinForms版rd_listView_Rename_UpdateListBox)
+        private void UpdateRenameDestNames()
         {
-            List<int> SelectedIndices = WpfControlHelper.GetSelectedIndices(rd_listView_Target);
-            rd_label_SelectNum.Text = "選択数：" + SelectedIndices.Count.ToString();
-            foreach (int idx in SelectedIndices)
+            List<int> selectedIndices = WpfControlHelper.GetSelectedIndices(rd_listView_Target);
+            rd_label_SelectNum.Text = "選択数：" + selectedIndices.Count.ToString();
+            foreach (int idx in selectedIndices)
             {
                 ListViewRow row = (ListViewRow)rd_listView_Target.Items[idx];
 
                 //文字列から数値を取得
-                String SrcString = Logic.ChangeWide2Narrow(row[RenameSrcIdx]);
-                long DestNumber = util.GetNumberFromRear(SrcString,
+                String srcString = Logic.ChangeWide2Narrow(row[RenameSrcIdx]);
+                long destNumber = util.GetNumberFromRear(srcString,
                     rd_textBox_SearchTitleLine.Text,
                     rd_textBox_SearchTitleLength.Text);
 
-                String Number = Logic.GetNumber(DestNumber);
+                String number = Logic.GetNumber(destNumber);
 
                 // 変更後ファイル名を生成
-                String DestName = rd_comboBox_MergeWord.Text + rd_textBox_AddTitlePreWord.Text + Number + rd_comboBox_AddTitlePostWord.Text;
-                row[RenameDestIdx] = DestName;
+                row[RenameDestIdx] = rd_comboBox_MergeWord.Text + rd_textBox_AddTitlePreWord.Text + number + rd_comboBox_AddTitlePostWord.Text;
             }
         }
 
         // 項目のダブルクリック(WinForms版ListView.DoubleClickは項目上でだけ発生していたため、項目側で受ける)
         private void rd_listView_Rename_DoubleClick(object sender, MouseButtonEventArgs e)
         {
-            List<Object> SelectedItems = WpfControlHelper.GetSelectedItemsInIndexOrder(rd_listView_Target);
-            if (SelectedItems.Count == 0)
+            List<Object> selectedItems = WpfControlHelper.GetSelectedItemsInIndexOrder(rd_listView_Target);
+            if (selectedItems.Count == 0)
             {
                 return;
             }
 
-            String FilePath = rd_comboBox_RenameDir.Text + @"\" + ((ListViewRow)SelectedItems[SortFileRenameTargetIdx])[RenameSrcIdx];
-            if (Directory.Exists(FilePath))
+            // 先頭の選択項目を開く
+            String filePath = rd_comboBox_RenameDir.Text + @"\" + ((ListViewRow)selectedItems[0])[RenameSrcIdx];
+            if (Directory.Exists(filePath))
             {
                 if (rd_checkBox_FileOpen.IsChecked == true)
                 {
-                    String[] files = Directory.GetFiles(FilePath, "*", SearchOption.AllDirectories);
+                    String[] files = Directory.GetFiles(filePath, "*", SearchOption.AllDirectories);
                     if (files.Length > 0)
                     {
-                        FilePath = files[0];
+                        filePath = files[0];
                     }
                 }
-                System.Diagnostics.Process.Start(FilePath);
+                System.Diagnostics.Process.Start(filePath);
                 rd_comboBox_MergeWord.Focus();
             }
         }
 
-        private void rd_listView_Target_Update()
+        private void ResizeRenameColumnsEvenly()
         {
             // 列(変更前/変更後)はXAMLで定義済み。幅はListViewの幅を等分する
             double width = rd_listView_Target.ActualWidth;
@@ -220,7 +222,7 @@ namespace FileArrangerForWpf
             // WinForms版はウィンドウのResizeEndでAutoResizeColumnsしていた
             if (rd_listView_Target.Items.Count == 0)
             {
-                rd_listView_Target_Update();
+                ResizeRenameColumnsEvenly();
             }
             else
             {

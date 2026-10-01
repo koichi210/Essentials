@@ -19,15 +19,15 @@ namespace FileArrangerForWpf
         private readonly StcProcessMemory pm = new StcProcessMemory();
 
         /// <summary>指定フォルダの中のファイルを連番にリネームする。</summary>
-        public void SortFolder(String FilePath)
+        public void SortFolder(String folderPath)
         {
-            String[] Files = Directory.GetFiles(FilePath);
-            for (int i = 0; i < Files.Length; i++)
+            String[] files = Directory.GetFiles(folderPath);
+            for (int i = 0; i < files.Length; i++)
             {
-                String Ext = Path.GetExtension(Files[i]);
-                String DestName = FilePath + @"\" + String.Format("{0:D3}", i) + Ext;
-                File.Move(Files[i], DestName);
-                pm.SetRestoreList(Files[i], DestName);
+                String ext = Path.GetExtension(files[i]);
+                String destName = folderPath + @"\" + String.Format("{0:D3}", i) + ext;
+                File.Move(files[i], destName);
+                pm.SetRestoreList(files[i], destName);
             }
         }
 
@@ -50,10 +50,10 @@ namespace FileArrangerForWpf
 
             while (pm.IsExistRestoreList())
             {
-                String SrcName = "";
-                String DestName = "";
-                pm.GetRestoreList(ref SrcName, ref DestName);
-                File.Move(DestName, SrcName);
+                String srcName = "";
+                String destName = "";
+                pm.GetRestoreList(ref srcName, ref destName);
+                File.Move(destName, srcName);
             }
 
             return true;

@@ -1,7 +1,7 @@
 // StcUtils([[_Common/StandardTemplateClass.cs]])のうち、WinFormsのコントロールを引数に取るもの
 // (SetComboBoxFromArray/SetComboBoxFromArraySubString/FindStringFromComboBox/ModifyCombBoxList/
 //  CopyToClipboard/SelectAll)を、WPFのコントロールで使えるようにしたプロジェクト内ヘルパー。
-// 中身はWinForms版と同じ処理にしてある。
+// 中身はWinForms版と同じ処理にしてある(ModifyCombBoxListはスペルを直してModifyComboBoxListにした)。
 //
 // ※他のWPF移植でも使えそうなので、_Common/Wpf へ移す候補
 using System;
@@ -24,18 +24,18 @@ namespace FileArrangerForWpf
 
         // 選択項目を「画面の並び順(インデックス順)」で返す。
         // WPFのSelectedItemsは選択した順に並ぶが、WinFormsのSelectedItemsはインデックス順だったため、それに合わせる
-        public static List<Object> GetSelectedItemsInIndexOrder(ListBox ListCtrl)
+        public static List<Object> GetSelectedItemsInIndexOrder(ListBox listCtrl)
         {
-            return GetSelectedIndices(ListCtrl).Select(index => ListCtrl.Items[index]).ToList();
+            return GetSelectedIndices(listCtrl).Select(index => listCtrl.Items[index]).ToList();
         }
 
         // 選択項目のインデックスを昇順で返す(WinFormsのSelectedItems[i].Index相当)
-        public static List<int> GetSelectedIndices(ListBox ListCtrl)
+        public static List<int> GetSelectedIndices(ListBox listCtrl)
         {
             List<int> indices = new List<int>();
-            foreach (Object item in ListCtrl.SelectedItems)
+            foreach (Object item in listCtrl.SelectedItems)
             {
-                int index = ListCtrl.Items.IndexOf(item);
+                int index = listCtrl.Items.IndexOf(item);
                 if (index >= 0)
                 {
                     indices.Add(index);
@@ -46,50 +46,50 @@ namespace FileArrangerForWpf
         }
 
         // Ctrl+Aで全選択(WinForms版StcUtils.SelectAll(KeyEventArgs)はSendKeysで{HOME}+{END}を送っていた)
-        public static void SelectAll(ListBox ListCtrl, KeyEventArgs e)
+        public static void SelectAll(ListBox listCtrl, KeyEventArgs e)
         {
             if (e.Key == Key.A && Keyboard.Modifiers == ModifierKeys.Control)
             {
-                ListCtrl.SelectAll();
+                listCtrl.SelectAll();
                 e.Handled = true;
             }
         }
 
         // 選択項目を「RootPath\項目名」の形で改行区切りに連結する(StcUtils.GetSelectListName相当)
-        public static String GetSelectListName(ListBox ListCtrl, Func<Object, String> GetItemText, String RootPath = "")
+        public static String GetSelectListName(ListBox listCtrl, Func<Object, String> getItemText, String rootPath = "")
         {
-            StringBuilder TargetName = new StringBuilder();
-            foreach (Object item in GetSelectedItemsInIndexOrder(ListCtrl))
+            StringBuilder targetName = new StringBuilder();
+            foreach (Object item in GetSelectedItemsInIndexOrder(listCtrl))
             {
-                if (RootPath != String.Empty)
+                if (rootPath != String.Empty)
                 {
-                    TargetName.Append(RootPath).Append(@"\");
+                    targetName.Append(rootPath).Append(@"\");
                 }
-                TargetName.Append(GetItemText(item)).Append(Environment.NewLine);
+                targetName.Append(getItemText(item)).Append(Environment.NewLine);
             }
-            return TargetName.ToString();
+            return targetName.ToString();
         }
 
         // Ctrl+Cで選択項目をコピー(StcUtils.CopyToClipboard(KeyEventArgs, ListView, RootPath, index)相当)
-        public static Boolean CopyToClipboard(KeyEventArgs e, ListBox ListCtrl, Func<Object, String> GetItemText, String RootPath = "")
+        public static Boolean CopyToClipboard(KeyEventArgs e, ListBox listCtrl, Func<Object, String> getItemText, String rootPath = "")
         {
             if (e.Key != Key.C || Keyboard.Modifiers != ModifierKeys.Control)
             {
                 return false;
             }
 
-            String TargetName = GetSelectListName(ListCtrl, GetItemText, RootPath);
-            if (TargetName.Equals(String.Empty))
+            String targetName = GetSelectListName(listCtrl, getItemText, rootPath);
+            if (targetName.Equals(String.Empty))
             {
                 return false;
             }
             e.Handled = true;
-            return SetClipboardText(TargetName);
+            return SetClipboardText(targetName);
         }
 
         // クリップボードは他のアプリが掴んでいる間は開けず例外になるため、少し待って数回やり直す
         // (StcUtils.SetClipboardTextと同じ考え方。こちらはWPFのClipboardを使う)
-        public static Boolean SetClipboardText(String Text)
+        public static Boolean SetClipboardText(String text)
         {
             const int RetryCount = 5;
             const int RetryWaitMsec = 100;
@@ -98,13 +98,13 @@ namespace FileArrangerForWpf
             {
                 try
                 {
-                    if (String.IsNullOrEmpty(Text))
+                    if (String.IsNullOrEmpty(text))
                     {
                         Clipboard.Clear();
                     }
                     else
                     {
-                        Clipboard.SetText(Text);
+                        Clipboard.SetText(text);
                     }
                     return true;
                 }
@@ -125,155 +125,127 @@ namespace FileArrangerForWpf
         public static readonly DependencyProperty SortedProperty =
             DependencyProperty.RegisterAttached("Sorted", typeof(Boolean), typeof(WpfControlHelper), new PropertyMetadata(false));
 
-        public static void SetSorted(ItemsControl Ctrl, Boolean Value)
+        public static void SetSorted(ItemsControl ctrl, Boolean value)
         {
-            Ctrl.SetValue(SortedProperty, Value);
+            ctrl.SetValue(SortedProperty, value);
         }
 
-        public static Boolean GetSorted(ItemsControl Ctrl)
+        public static Boolean GetSorted(ItemsControl ctrl)
         {
-            return (Boolean)Ctrl.GetValue(SortedProperty);
+            return (Boolean)ctrl.GetValue(SortedProperty);
         }
 
         // 項目一覧を入れ替える。入力可能なComboBoxはItems.Clearで入力欄の文字が消えることがあるため、
         // 入力欄の文字(Text)は入れ替え前のまま残す(WinForms版ComboBox(DropDown)と同じ見え方にする)。
         // Sortedの目印が付いていれば昇順(WinForms版と同じくカルチャ依存の文字列比較)に並べる
-        public static void SetItemsKeepText(ComboBox ComboCtrl, IEnumerable<String> Items)
+        public static void SetItemsKeepText(ComboBox comboCtrl, IEnumerable<String> items)
         {
-            String text = ComboCtrl.Text;
-            List<String> list = Items.ToList();
-            if (GetSorted(ComboCtrl))
+            String text = comboCtrl.Text;
+            List<String> list = items.ToList();
+            if (GetSorted(comboCtrl))
             {
                 list.Sort(StringComparer.CurrentCulture);
             }
-            ComboCtrl.Items.Clear();
+            comboCtrl.Items.Clear();
             foreach (String item in list)
             {
-                ComboCtrl.Items.Add(item);
+                comboCtrl.Items.Add(item);
             }
-            if (ComboCtrl.IsEditable && ComboCtrl.Text != text)
+            if (comboCtrl.IsEditable && comboCtrl.Text != text)
             {
-                ComboCtrl.Text = text;
+                comboCtrl.Text = text;
             }
         }
 
-        public static List<String> GetItems(ComboBox ComboCtrl)
+        public static List<String> GetItems(ComboBox comboCtrl)
         {
-            return ComboCtrl.Items.Cast<Object>().Select(item => item.ToString()).ToList();
+            return comboCtrl.Items.Cast<Object>().Select(item => item.ToString()).ToList();
         }
 
-        // 文字配列をコンボボックスにセット(StcUtils.SetComboBoxFromArray相当)
-        public static void SetComboBoxFromArray(ComboBox ComboCtrl, String[] Array, String RemoveString = "", String LimitString = "")
+        // 文字配列をコンボボックスにセット(StcUtils.SetComboBoxFromArray相当)。
+        // removeStringは各要素の先頭から取り除く部分(長さ+区切り1文字分だけ読み飛ばす)
+        public static void SetComboBoxFromArray(ComboBox comboCtrl, String[] values, String removeString = "", String limitString = "")
         {
-            int StartIdx = 0;
-            if (RemoveString != String.Empty)
+            int startIdx = 0;
+            if (removeString != String.Empty)
             {
-                StartIdx = RemoveString.Length + 1;
+                startIdx = removeString.Length + 1;
             }
-            SetComboBoxFromArraySubString(ComboCtrl, Array, StartIdx, "", LimitString);
+            SetComboBoxFromArraySubString(comboCtrl, values, startIdx, "", limitString);
         }
 
         // 文字配列(SubString)をコンボボックスにセット(StcUtils.SetComboBoxFromArraySubString相当)。
-        // Arrayがnull(プロファイル未読込・リストアップ前)なら項目を空にするだけ
-        public static void SetComboBoxFromArraySubString(ComboBox ComboCtrl, String[] Array, int StartIdx, String EndDelimiter = "", String LimitString = "", Boolean IsReverse = false)
+        // valuesがnull(プロファイル未読込・リストアップ前)なら項目を空にするだけ
+        public static void SetComboBoxFromArraySubString(ComboBox comboCtrl, String[] values, int startIdx, String endDelimiter = "", String limitString = "", Boolean isReverse = false)
         {
-            List<String> Items = new List<String>();
-            String CurrentText = ComboCtrl.Text;
-            foreach (String Value in Array ?? new String[0])
+            List<String> items = new List<String>();
+            String currentText = comboCtrl.Text;
+            foreach (String value in values ?? new String[0])
             {
-                String ValueName = Value;
-
                 // カラ文字
-                if (String.IsNullOrEmpty(ValueName))
+                if (String.IsNullOrEmpty(value))
                 {
                     continue;
                 }
 
                 // 文字列生成
-                int Length;
-                if (!IsReverse)
+                int endIdx = isReverse ? value.LastIndexOf(endDelimiter) : value.IndexOf(endDelimiter);
+
+                String valueName;
+                if (endIdx >= 0 && endIdx > startIdx)
                 {
-                    Length = ValueName.IndexOf(EndDelimiter);
+                    valueName = value.Substring(startIdx, endIdx - startIdx);
                 }
                 else
                 {
-                    Length = ValueName.LastIndexOf(EndDelimiter);
+                    valueName = value.Substring(startIdx);
                 }
 
-                if (Length >= 0 && Length > StartIdx)
-                {
-                    ValueName = ValueName.Substring(StartIdx, Length - StartIdx);
-                }
-                else
-                {
-                    ValueName = ValueName.Substring(StartIdx);
-                }
-
-                // 文字の絞り込み
-                if (LimitString != String.Empty)
+                // 文字の絞り込み(limitStringは絞り込むかどうかの目印。実際の絞り込みには入力中のTextを使う)
+                if (limitString != String.Empty)
                 {
                     // 大文字小文字を区別せずに部分一致で検索
-                    if (ValueName.IndexOf(CurrentText, StringComparison.OrdinalIgnoreCase) < 0)
+                    if (valueName.IndexOf(currentText, StringComparison.OrdinalIgnoreCase) < 0)
                     {
                         continue;
                     }
                 }
 
                 // 登録済みだったらスキップ
-                if (Items.Contains(ValueName))
+                if (items.Contains(valueName))
                 {
                     continue;
                 }
 
-                Items.Add(ValueName);
+                items.Add(valueName);
             }
 
-            SetItemsKeepText(ComboCtrl, Items);
+            SetItemsKeepText(comboCtrl, items);
         }
 
         // コンボボックスの中から目的の文字列を探す(StcUtils.FindStringFromComboBox相当)
-        public static String FindStringFromComboBox(ComboBox CmbCtrl, String SrcName, String TrimName = "", Boolean IsReverse = false)
+        public static String FindStringFromComboBox(ComboBox comboCtrl, String srcName, String trimName = "", Boolean isReverse = false)
         {
-            String SearchName = SrcName;
-            String DestName = "";
-
-            // SrcTrimNameが設定されていたら、特定の文字列で区切る
-            if (TrimName != String.Empty)
+            // trimNameが設定されていたら、特定の文字列で区切る
+            String searchName = Logic.CutBeforeDelimiter(srcName, trimName, isReverse);
+            if (searchName.Length == 0)
             {
-                int FileNameidx;
-                if (!IsReverse)
-                {
-                    FileNameidx = SrcName.IndexOf(TrimName);
-                }
-                else
-                {
-                    FileNameidx = SrcName.LastIndexOf(TrimName);
-                }
-
-                if (0 <= FileNameidx)
-                {
-                    SearchName = SrcName.Substring(0, FileNameidx);
-                }
+                return "";
             }
-
-            if (SearchName.Length != 0)
-            {
-                DestName = GetItems(CmbCtrl).FirstOrDefault(Item => Item.IndexOf(SearchName) != -1) ?? "";
-            }
-            return DestName;
+            return GetItems(comboCtrl).FirstOrDefault(item => item.IndexOf(searchName) != -1) ?? "";
         }
 
         // ComboBoxのTextをプルダウンに追加する(重複は除く。StcUtils.ModifyCombBoxList相当)
-        public static void ModifyCombBoxList(ComboBox ComboCtrl)
+        public static void ModifyComboBoxList(ComboBox comboCtrl)
         {
-            if (ComboCtrl.Text == String.Empty)
+            if (comboCtrl.Text == String.Empty)
             {
                 return;
             }
 
-            List<String> Items = GetItems(ComboCtrl);
-            Items.Add(ComboCtrl.Text);
-            SetItemsKeepText(ComboCtrl, Items.Distinct().ToList());
+            List<String> items = GetItems(comboCtrl);
+            items.Add(comboCtrl.Text);
+            SetItemsKeepText(comboCtrl, items.Distinct().ToList());
         }
     }
 }

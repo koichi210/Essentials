@@ -16,7 +16,7 @@ namespace FileArrangerForWpf
         {
             if (e.Key == Key.Enter)
             {
-                Move_Directory(false);
+                MoveSelectedDirectories(false);
             }
             else
             {
@@ -31,17 +31,17 @@ namespace FileArrangerForWpf
 
         private void mf_listBox_Listup_MouseDoubleClick(object sender, MouseButtonEventArgs e)
         {
-            List<Object> SelectedItems = WpfControlHelper.GetSelectedItemsInIndexOrder(md_listBox_Listup);
-            if (SelectedItems.Count > 0)
+            List<Object> selectedItems = WpfControlHelper.GetSelectedItemsInIndexOrder(md_listBox_Listup);
+            if (selectedItems.Count > 0)
             {
-                String TargetPath = md_textBox_SourceDir.Text + @"\" + SelectedItems[0].ToString();
-                util.ExecutePath(TargetPath);
+                String targetPath = md_textBox_SourceDir.Text + @"\" + selectedItems[0].ToString();
+                util.ExecutePath(targetPath);
             }
         }
 
         private void mf_button_Move_SubDir_Click(object sender, RoutedEventArgs e)
         {
-            Move_Directory(false);
+            MoveSelectedDirectories(false);
         }
 
         private void mf_button_Delete_Click(object sender, RoutedEventArgs e)
@@ -51,18 +51,17 @@ namespace FileArrangerForWpf
                 return;
             }
 
-            List<Object> SelectedItems = WpfControlHelper.GetSelectedItemsInIndexOrder(md_listBox_Listup);
-            if (SelectedItems.Count == 0)
+            List<Object> selectedItems = WpfControlHelper.GetSelectedItemsInIndexOrder(md_listBox_Listup);
+            if (selectedItems.Count == 0)
             {
                 MessageBox.Show("項目が選択されていません。");
                 return;
             }
 
-            for (int i = 0; i < SelectedItems.Count; i++)
+            foreach (Object item in selectedItems)
             {
-                String DelPath = md_textBox_SourceDir.Text + @"\" + SelectedItems[i].ToString();
-                DirectoryInfo DelDir = new DirectoryInfo(DelPath);
-                DelDir.Delete(true);
+                String delPath = md_textBox_SourceDir.Text + @"\" + item.ToString();
+                new DirectoryInfo(delPath).Delete(true);
             }
 
             // リストを更新
@@ -76,10 +75,10 @@ namespace FileArrangerForWpf
 
         private void mf_button_Listup_Click(object sender, RoutedEventArgs e)
         {
-            MoveFileListup();
+            ListupMoveFile();
         }
 
-        private void MoveFileListup()
+        private void ListupMoveFile()
         {
             if (!IsValidFolderPath(mf_textBox_SourceDir.Text))
             {
@@ -87,18 +86,18 @@ namespace FileArrangerForWpf
             }
 
             // 移動元フォルダをリストアップ
-            String[] Files = Directory.GetFiles(mf_textBox_SourceDir.Text);
+            String[] files = Directory.GetFiles(mf_textBox_SourceDir.Text);
             mf_listBox_Target.Items.Clear();
-            List<String> Names = new List<String>();
-            for (int i = 0; i < Files.Length; i++)
+            List<String> names = new List<String>();
+            foreach (String file in files)
             {
-                Names.Add(GetDisplayName(Files[i], mf_textBox_SourceDir.Text));
+                names.Add(GetDisplayName(file, mf_textBox_SourceDir.Text));
             }
-            foreach (String FileName in SortedByName(Names))
+            foreach (String fileName in SortedByName(names))
             {
-                mf_listBox_Target.Items.Add(FileName);
+                mf_listBox_Target.Items.Add(fileName);
             }
-            mf_label_TotalNum.Text = "ファイル数：" + Files.Length.ToString();
+            mf_label_TotalNum.Text = "ファイル数：" + files.Length.ToString();
         }
 
         private void mf_listBox_Target_KeyDown(object sender, KeyEventArgs e)
@@ -118,8 +117,8 @@ namespace FileArrangerForWpf
                 return;
             }
 
-            List<Object> SelectedItems = WpfControlHelper.GetSelectedItemsInIndexOrder(mf_listBox_Target);
-            if (SelectedItems.Count == 0)
+            List<Object> selectedItems = WpfControlHelper.GetSelectedItemsInIndexOrder(mf_listBox_Target);
+            if (selectedItems.Count == 0)
             {
                 MessageBox.Show("項目が選択されていません。");
                 return;
@@ -132,7 +131,7 @@ namespace FileArrangerForWpf
                 return;
             }
 
-            progressBar.Maximum = SelectedItems.Count;
+            progressBar.Maximum = selectedItems.Count;
             progressBar.Minimum = 0;
             progressBar.Value = 0;
 
@@ -142,12 +141,12 @@ namespace FileArrangerForWpf
                 SourceDir = mf_textBox_SourceDir.Text,
                 TargetDir = mf_textBox_TargetDir.Text,
             };
-            foreach (Object item in SelectedItems)
+            foreach (Object item in selectedItems)
             {
                 param.TargetNames.Add(item.ToString());
             }
 
-            bgWorkerMove.RunWorkerAsync(param);   // ⇒bgWorker_DoWork()
+            bgWorkerMove.RunWorkerAsync(param);   // ⇒bgWorkerMove_DoWork()
         }
 
         private void mf_textBox_SourceDir_KeyDown(object sender, KeyEventArgs e)
@@ -162,18 +161,16 @@ namespace FileArrangerForWpf
 
             // このメソッドへのパラメータ
             MoveFileWorkerParam param = (MoveFileWorkerParam)e.Argument;
-            String Sourcedir = param.SourceDir;
-            String TargetDir = param.TargetDir;
 
             for (int i = 0; i < param.TargetNames.Count; i++)
             {
-                String TargetName = param.TargetNames[i];
-                String SourcePath = Sourcedir + @"\" + TargetName;
-                String TargetPath = TargetDir + @"\" + fio.GetLastPathName(TargetName);
+                String targetName = param.TargetNames[i];
+                String sourcePath = param.SourceDir + @"\" + targetName;
+                String targetPath = param.TargetDir + @"\" + fio.GetLastPathName(targetName);
 
                 // 移動先にすでにフォルダがある場合は重複回避
-                util.CreateFolderNameOverLapShirk(ref TargetPath, i);
-                fio.MoveDirectory(SourcePath, TargetPath);
+                util.AvoidFolderNameOverlap(ref targetPath, i);
+                fio.MoveDirectory(sourcePath, targetPath);
 
                 worker.ReportProgress(i);      // ⇒ProgressChanged()
             }
@@ -205,7 +202,7 @@ namespace FileArrangerForWpf
             }
 
             // リストを更新
-            MoveFileListup();
+            ListupMoveFile();
         }
     }
 }

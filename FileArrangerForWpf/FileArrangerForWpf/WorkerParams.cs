@@ -11,9 +11,9 @@ namespace FileArrangerForWpf
     // ファイル移動(mfタブ)
     class MoveFileWorkerParam
     {
-        public String SourceDir;
-        public String TargetDir;
-        public List<String> TargetNames = new List<String>();
+        public String SourceDir { get; set; }
+        public String TargetDir { get; set; }
+        public List<String> TargetNames { get; } = new List<String>();
     }
 
     // フォルダ振り分け(pfタブ)
@@ -22,13 +22,13 @@ namespace FileArrangerForWpf
         // 1件分の移動情報(対象ファイル名 / 移動前のフォルダ名 / 移動後のフォルダ名)
         public class Item
         {
-            public String TargetName;
-            public String MoveSrc;
-            public String MoveDest;
+            public String TargetName { get; set; }
+            public String MoveSrc { get; set; }
+            public String MoveDest { get; set; }
         }
 
-        public String TargetFilePath;
-        public String TargetDir;
-        public List<Item> Items = new List<Item>();
+        public String TargetFilePath { get; set; }
+        public String TargetDir { get; set; }
+        public List<Item> Items { get; } = new List<Item>();
     }
 }

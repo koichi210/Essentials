@@ -63,10 +63,10 @@ namespace FileArrangerForWpf.Tests
                 writer.cmn_textBox_AddListSuffix.Text = "_suffix";
 
                 string path = PathFor("common");
-                Assert.IsTrue(writer.sr.Save(path));
+                Assert.IsTrue(writer.SaveRestore.Save(path));
 
                 MainWindow reader = NewWindow();
-                Assert.IsTrue(reader.sr.Load(path));
+                Assert.IsTrue(reader.SaveRestore.Load(path));
 
                 Assert.AreEqual(@"D:\source", reader.cmn_textBox_Reference.Text);
                 Assert.AreEqual("add1\r\nadd2", reader.cmn_textBox_AddList.Text);
@@ -84,10 +84,10 @@ namespace FileArrangerForWpf.Tests
                 writer.md_comboBox_TargetDir.Text = @"D:\move_dst";
 
                 string path = PathFor("movedir");
-                writer.sr.Save(path);
+                writer.SaveRestore.Save(path);
 
                 MainWindow reader = NewWindow();
-                reader.sr.Load(path);
+                reader.SaveRestore.Load(path);
 
                 Assert.AreEqual(@"D:\move_src", reader.md_textBox_SourceDir.Text);
                 Assert.AreEqual(@"D:\move_dst", reader.md_comboBox_TargetDir.Text);
@@ -110,10 +110,10 @@ namespace FileArrangerForWpf.Tests
                 writer.rd_comboBox_AddTitlePostWord.Text = "_post";
 
                 string path = PathFor("rename");
-                writer.sr.Save(path);
+                writer.SaveRestore.Save(path);
 
                 MainWindow reader = NewWindow();
-                reader.sr.Load(path);
+                reader.SaveRestore.Load(path);
 
                 Assert.AreEqual(@"D:\rename", reader.rd_textBox_ExistItemDir.Text);
                 Assert.AreEqual("merge", reader.rd_comboBox_MergeWord.Text);
@@ -140,10 +140,10 @@ namespace FileArrangerForWpf.Tests
                 writer.pf_checkBox_CreateNewDir.IsChecked = true;
 
                 string path = PathFor("partition");
-                writer.sr.Save(path);
+                writer.SaveRestore.Save(path);
 
                 MainWindow reader = NewWindow();
-                reader.sr.Load(path);
+                reader.SaveRestore.Load(path);
 
                 Assert.AreEqual(@"D:\pf_target", reader.pf_textBox_TargetFile.Text);
                 Assert.AreEqual(@"D:\pf_reference", reader.pf_textBox_ReferenceFile.Text);
@@ -165,10 +165,10 @@ namespace FileArrangerForWpf.Tests
                 writer.mf_textBox_TargetDir.Text = @"D:\mf_dst";
 
                 string path = PathFor("sort_move");
-                writer.sr.Save(path);
+                writer.SaveRestore.Save(path);
 
                 MainWindow reader = NewWindow();
-                reader.sr.Load(path);
+                reader.SaveRestore.Load(path);
 
                 Assert.AreEqual(@"D:\sf_target", reader.sf_textBox_TargetFile.Text);
                 Assert.AreEqual(@"D:\mf_src", reader.mf_textBox_SourceDir.Text);
@@ -188,10 +188,10 @@ namespace FileArrangerForWpf.Tests
                 writer.rd_comboBox_AddTitlePostWord.Items.Add("post1");
 
                 string path = PathFor("history");
-                writer.sr.Save(path);
+                writer.SaveRestore.Save(path);
 
                 MainWindow reader = NewWindow();
-                reader.sr.Load(path);
+                reader.SaveRestore.Load(path);
 
                 Assert.AreEqual(2, reader.md_comboBox_TargetDir.Items.Count);
                 Assert.AreEqual(@"D:\a", reader.md_comboBox_TargetDir.Items[0]);
@@ -213,10 +213,10 @@ namespace FileArrangerForWpf.Tests
                 writer.md_comboBox_TargetDir.Text = @"D:\b";
 
                 string path = PathFor("history_and_text");
-                writer.sr.Save(path);
+                writer.SaveRestore.Save(path);
 
                 MainWindow reader = NewWindow();
-                reader.sr.Load(path);
+                reader.SaveRestore.Load(path);
 
                 Assert.AreEqual(2, reader.md_comboBox_TargetDir.Items.Count);
                 Assert.AreEqual(@"D:\b", reader.md_comboBox_TargetDir.Text);
@@ -324,7 +324,7 @@ namespace FileArrangerForWpf.Tests
                 MainWindow window = NewWindow();
                 window.md_textBox_SourceDir.Text = "そのまま";
 
-                Assert.IsFalse(window.sr.Load(PathFor("nothing")));
+                Assert.IsFalse(window.SaveRestore.Load(PathFor("nothing")));
                 Assert.AreEqual("そのまま", window.md_textBox_SourceDir.Text);
             });
         }

@@ -14,9 +14,9 @@ namespace FileArrangerForWpf
 
         public event PropertyChangedEventHandler PropertyChanged;
 
-        public ListViewRow(params String[] Columns)
+        public ListViewRow(params String[] values)
         {
-            columns = (String[])Columns.Clone();
+            columns = (String[])values.Clone();
         }
 
         public int ColumnCount

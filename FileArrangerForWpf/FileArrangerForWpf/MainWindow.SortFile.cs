@@ -23,19 +23,19 @@ namespace FileArrangerForWpf
             }
 
             // フォルダをリストアップ
-            String[] Folders = Directory.GetDirectories(sf_textBox_TargetFile.Text);
+            String[] folders = Directory.GetDirectories(sf_textBox_TargetFile.Text);
             sf_listBox_Target.Items.Clear();
-            List<String> Names = new List<String>();
-            for (int i = 0; i < Folders.Length; i++)
+            List<String> names = new List<String>();
+            foreach (String folder in folders)
             {
-                Names.Add(GetDisplayName(Folders[i], sf_textBox_TargetFile.Text));
+                names.Add(GetDisplayName(folder, sf_textBox_TargetFile.Text));
             }
-            foreach (String FolderName in SortedByName(Names))
+            foreach (String folderName in SortedByName(names))
             {
-                sf_listBox_Target.Items.Add(FolderName);
+                sf_listBox_Target.Items.Add(folderName);
             }
 
-            sf_label_TotalNum.Text = "フォルダ数：" + Folders.Length.ToString();
+            sf_label_TotalNum.Text = "フォルダ数：" + folders.Length.ToString();
         }
 
         private void sf_button_SortFileRename_Click(object sender, RoutedEventArgs e)
@@ -45,17 +45,17 @@ namespace FileArrangerForWpf
 
         private void SortFileRename()
         {
-            List<Object> SelectedItems = WpfControlHelper.GetSelectedItemsInIndexOrder(sf_listBox_Target);
-            if (SelectedItems.Count == 0)
+            List<Object> selectedItems = WpfControlHelper.GetSelectedItemsInIndexOrder(sf_listBox_Target);
+            if (selectedItems.Count == 0)
             {
                 MessageBox.Show("項目が選択されていません。");
                 return;
             }
 
-            for (int i = 0; i < SelectedItems.Count; i++)
+            foreach (Object item in selectedItems)
             {
-                String FilePath = sf_textBox_TargetFile.Text + @"\" + SelectedItems[i].ToString();
-                sorter.SortFolder(FilePath);
+                String folderPath = sf_textBox_TargetFile.Text + @"\" + item.ToString();
+                sorter.SortFolder(folderPath);
             }
             sorter.CommitBatch();
         }

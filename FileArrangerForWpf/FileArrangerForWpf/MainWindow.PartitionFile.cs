@@ -26,7 +26,7 @@ namespace FileArrangerForWpf
             ListupTargetMoveDirectory();
         }
 
-        private void pf_listView_Target_Update()
+        private void ResizePartitionColumnsEvenly()
         {
             // 列(対象/移動前名称/移動後名称)はXAMLで定義済み。幅はListViewの幅を等分する
             double width = pf_listView_Target.ActualWidth;
@@ -44,109 +44,97 @@ namespace FileArrangerForWpf
         private void pf_listView_Target_SizeChanged(object sender, SizeChangedEventArgs e)
         {
             // WinForms版はウィンドウのResizeEndで列幅を等分し直していた
-            pf_listView_Target_Update();
+            ResizePartitionColumnsEvenly();
         }
 
-        private void ListupTargetMoveDirectory(bool IsErrorPopup = true)
+        private void ListupTargetMoveDirectory(bool isErrorPopup = true)
         {
-            if (!IsValidFolderPath(pf_textBox_TargetFile.Text, IsErrorPopup))
+            if (!IsValidFolderPath(pf_textBox_TargetFile.Text, isErrorPopup))
             {
                 return;
             }
 
             // 移動元フォルダをリストアップ
-            String[] Files = Directory.GetFiles(pf_textBox_TargetFile.Text);
+            String[] files = Directory.GetFiles(pf_textBox_TargetFile.Text);
             pf_listView_Target.Items.Clear();
-            List<String> Names = new List<String>();
-            for (int i = 0; i < Files.Length; i++)
+            List<String> names = new List<String>();
+            foreach (String file in files)
             {
-                Names.Add(GetDisplayName(Files[i], pf_textBox_TargetFile.Text));
+                names.Add(GetDisplayName(file, pf_textBox_TargetFile.Text));
             }
-            foreach (String FileName in SortedByName(Names))
+            foreach (String fileName in SortedByName(names))
             {
-                pf_listView_Target.Items.Add(new ListViewRow(FileName, "", ""));
+                pf_listView_Target.Items.Add(new ListViewRow(fileName, "", ""));
             }
-            pf_label_TotalNum.Text = "ファイル数：" + Files.Length.ToString();
+            pf_label_TotalNum.Text = "ファイル数：" + files.Length.ToString();
 
-            pf_listView_Target_Update();
+            ResizePartitionColumnsEvenly();
         }
 
         private void pf_listView_Target_SelectedIndexChanged(object sender, SelectionChangedEventArgs e)
         {
             ClearPartitionSelect();
-            List<int> SelectedIndices = WpfControlHelper.GetSelectedIndices(pf_listView_Target);
-            pf_label_SelectNum.Text = "選択数：" + SelectedIndices.Count.ToString();
+            List<int> selectedIndices = WpfControlHelper.GetSelectedIndices(pf_listView_Target);
+            pf_label_SelectNum.Text = "選択数：" + selectedIndices.Count.ToString();
 
             UpdatePartitionFileList();
 
             // 単独ファイル選択時はコンボボックスに表示する
-            if (SelectedIndices.Count != 0)
+            if (selectedIndices.Count != 0)
             {
-                int Idx = SelectedIndices[0];
-                pf_comboBox_MoveDestDirName.Text = ((ListViewRow)pf_listView_Target.Items[Idx])[CreateFolderMoveDestIdx];
+                int idx = selectedIndices[0];
+                pf_comboBox_MoveDestDirName.Text = ((ListViewRow)pf_listView_Target.Items[idx])[CreateFolderMoveDestIdx];
             }
         }
 
-        private Boolean GetPartitionNameFromListView(ref String SrcFolderName, ref String TargetFolderName, String SrcFileName)
+        private Boolean GetPartitionNameFromListView(ref String srcFolderName, ref String targetFolderName, String srcFileName)
         {
-            Boolean IsSuccess = true;
-
-            int SameIdx = util.GetStringFromListViewInSelect(pf_listView_Target, CreateFolderTargetIdx, SrcFileName, pf_textBox_TargetSeparator.Text, true);
-            if (0 <= SameIdx)
+            int sameIdx = util.FindSelectedRowIndex(pf_listView_Target, CreateFolderTargetIdx, srcFileName, pf_textBox_TargetSeparator.Text, true);
+            if (0 <= sameIdx)
             {
-                ListViewRow row = (ListViewRow)pf_listView_Target.Items[SameIdx];
-                SrcFolderName = row[CreateFolderMoveSrcIdx];
-                TargetFolderName = row[CreateFolderMoveDestIdx];
+                ListViewRow row = (ListViewRow)pf_listView_Target.Items[sameIdx];
+                srcFolderName = row[CreateFolderMoveSrcIdx];
+                targetFolderName = row[CreateFolderMoveDestIdx];
             }
 
-            if (TargetFolderName == String.Empty)
-            {
-                IsSuccess = false;
-            }
-            return IsSuccess;
+            return targetFolderName != String.Empty;
         }
 
-        private Boolean GetPartitionNameFromComboBox(ref String SrcFolderName, ref String TargetFolderName, String SrcFileName)
+        private Boolean GetPartitionNameFromComboBox(ref String srcFolderName, ref String targetFolderName, String srcFileName)
         {
-            Boolean IsSuccess = true;
-
-            TargetFolderName = WpfControlHelper.FindStringFromComboBox(pf_comboBox_MoveDestDirName, SrcFileName, pf_textBox_TargetSeparator.Text, true);
-            if (TargetFolderName != String.Empty)
+            targetFolderName = WpfControlHelper.FindStringFromComboBox(pf_comboBox_MoveDestDirName, srcFileName, pf_textBox_TargetSeparator.Text, true);
+            if (targetFolderName != String.Empty)
             {
                 // 期待するフォルダ名が見つかった
-                SrcFolderName = TargetFolderName;
+                srcFolderName = targetFolderName;
 
                 // 数値をインクリした文字列
-                TargetFolderName = GetPartitionTargetNameWithNumber(SrcFolderName, SrcFileName, "0");
+                targetFolderName = GetPartitionTargetNameWithNumber(srcFolderName, srcFileName, "0");
             }
 
-            if (TargetFolderName == String.Empty)
-            {
-                IsSuccess = false;
-            }
-            return IsSuccess;
+            return targetFolderName != String.Empty;
         }
 
-        private void CreatePartitionName(ref String SrcFolderName, ref String TargetFolderName, String SrcFileName)
+        private void CreatePartitionName(ref String srcFolderName, ref String targetFolderName, String srcFileName)
         {
             // 期待するフォルダ名が見つからなかった
-            SrcFolderName = "";
-            String SampleSrcFolderName = util.CreateNewFolderName(SrcFileName, pf_textBox_TargetSeparator.Text, true);
-            SampleSrcFolderName += cmn_textBox_AddListSuffix.Text;
+            srcFolderName = "";
+            String sampleSrcFolderName = util.CreateNewFolderName(srcFileName, pf_textBox_TargetSeparator.Text, true);
+            sampleSrcFolderName += cmn_textBox_AddListSuffix.Text;
 
             // 数値を考慮した文字列
-            TargetFolderName = GetPartitionTargetNameWithNumber(SampleSrcFolderName, SrcFileName, "0");    // 複数ファイル選択時にインクリしてくれる
+            targetFolderName = GetPartitionTargetNameWithNumber(sampleSrcFolderName, srcFileName, "0");    // 複数ファイル選択時にインクリしてくれる
         }
 
-        private String GetPartitionTargetNameWithNumber(String SrcFolderName, String SrcFileName, String DefaultNumber)
+        private String GetPartitionTargetNameWithNumber(String srcFolderName, String srcFileName, String defaultNumber)
         {
-            long SrcNumber = util.GetNumberFromRear(SrcFolderName, pf_textBox_SearchTitleLine.Text, pf_textBox_SearchTitleLength.Text, DefaultNumber);
-            int AddCount = Logic.GetAddCount(pf_listView_Target, SrcFileName, pf_textBox_TargetSeparator.Text, true);
+            long srcNumber = util.GetNumberFromRear(srcFolderName, pf_textBox_SearchTitleLine.Text, pf_textBox_SearchTitleLength.Text, defaultNumber);
+            int addCount = Logic.GetAddCount(pf_listView_Target, srcFileName, pf_textBox_TargetSeparator.Text, true);
 
-            String Number = Logic.GetNumber(SrcNumber, AddCount);
-            int SrcNumberDigit = Logic.GetPadding(SrcNumber);
+            String number = Logic.GetNumber(srcNumber, addCount);
+            int srcNumberDigit = Logic.GetPadding(srcNumber);
 
-            return SrcFolderName.Substring(0, SrcFolderName.Length - SrcNumberDigit) + Number;
+            return srcFolderName.Substring(0, srcFolderName.Length - srcNumberDigit) + number;
         }
 
         private void UpdatePartitionFileList()
@@ -156,31 +144,27 @@ namespace FileArrangerForWpf
                 // 参照しているListViewのIdx
                 ListViewRow row = (ListViewRow)pf_listView_Target.Items[idx];
 
-                String SrcFileName = row[CreateFolderTargetIdx];
-                String SrcFolderName = "";
-                String TargetFolderName = "";
+                String srcFileName = row[CreateFolderTargetIdx];
+                String srcFolderName = "";
+                String targetFolderName = "";
 
-                Boolean IsSuccess = false;
-                // ListViewに既出であれば流量
-                IsSuccess = GetPartitionNameFromListView(ref SrcFolderName, ref TargetFolderName, SrcFileName);
+                // ListViewに既出であれば流用
+                Boolean isSuccess = GetPartitionNameFromListView(ref srcFolderName, ref targetFolderName, srcFileName);
 
-                if (!IsSuccess)
+                if (!isSuccess)
                 {
-                    // ListViewに無ければCombBoxから検索
-                    IsSuccess = GetPartitionNameFromComboBox(ref SrcFolderName, ref TargetFolderName, SrcFileName);
+                    // ListViewに無ければComboBoxから検索
+                    isSuccess = GetPartitionNameFromComboBox(ref srcFolderName, ref targetFolderName, srcFileName);
                 }
 
-                if (!IsSuccess)
+                if (!isSuccess && pf_checkBox_CreateNewDir.IsChecked == true)
                 {
-                    if (pf_checkBox_CreateNewDir.IsChecked == true)
-                    {
-                        // CombBoxにもなかったら新規作成
-                        CreatePartitionName(ref SrcFolderName, ref TargetFolderName, SrcFileName);
-                    }
+                    // ComboBoxにもなかったら新規作成
+                    CreatePartitionName(ref srcFolderName, ref targetFolderName, srcFileName);
                 }
 
-                row[CreateFolderMoveSrcIdx] = SrcFolderName;
-                row[CreateFolderMoveDestIdx] = TargetFolderName;
+                row[CreateFolderMoveSrcIdx] = srcFolderName;
+                row[CreateFolderMoveDestIdx] = targetFolderName;
             }
         }
 
@@ -206,8 +190,8 @@ namespace FileArrangerForWpf
 
         private void MovePartitionFile()
         {
-            List<int> SelectedIndices = WpfControlHelper.GetSelectedIndices(pf_listView_Target);
-            if (SelectedIndices.Count == 0)
+            List<int> selectedIndices = WpfControlHelper.GetSelectedIndices(pf_listView_Target);
+            if (selectedIndices.Count == 0)
             {
                 MessageBox.Show("項目が選択されていません。");
                 return;
@@ -220,7 +204,7 @@ namespace FileArrangerForWpf
                 return;
             }
 
-            progressBar.Maximum = SelectedIndices.Count;
+            progressBar.Maximum = selectedIndices.Count;
             progressBar.Minimum = 0;
             progressBar.Value = 0;
 
@@ -231,7 +215,7 @@ namespace FileArrangerForWpf
                 TargetDir = pf_textBox_ReferenceFile.Text,
             };
 
-            foreach (int idx in SelectedIndices)
+            foreach (int idx in selectedIndices)
             {
                 ListViewRow row = (ListViewRow)pf_listView_Target.Items[idx];
                 param.Items.Add(new PartitionWorkerParam.Item
@@ -247,17 +231,17 @@ namespace FileArrangerForWpf
         // 項目のダブルクリック(WinForms版ListView.DoubleClickは項目上でだけ発生していたため、項目側で受ける)
         private void pf_listView_Target_DoubleClick(object sender, MouseButtonEventArgs e)
         {
-            List<int> SelectedIndices = WpfControlHelper.GetSelectedIndices(pf_listView_Target);
-            if (SelectedIndices.Count == 0)
+            List<int> selectedIndices = WpfControlHelper.GetSelectedIndices(pf_listView_Target);
+            if (selectedIndices.Count == 0)
             {
                 return;
             }
 
-            int idx = SelectedIndices[0];
-            String DirPath = pf_textBox_ReferenceFile.Text + @"\" + ((ListViewRow)pf_listView_Target.Items[idx])[CreateFolderMoveSrcIdx];
-            if (Directory.Exists(DirPath))
+            int idx = selectedIndices[0];
+            String dirPath = pf_textBox_ReferenceFile.Text + @"\" + ((ListViewRow)pf_listView_Target.Items[idx])[CreateFolderMoveSrcIdx];
+            if (Directory.Exists(dirPath))
             {
-                util.ExecutePath(DirPath);
+                util.ExecutePath(dirPath);
             }
         }
 
@@ -304,74 +288,70 @@ namespace FileArrangerForWpf
 
             // このメソッドへのパラメータ
             PartitionWorkerParam param = (PartitionWorkerParam)e.Argument;
-            String TargetFilePath = param.TargetFilePath;
-            String TargetDir = param.TargetDir;
-            int ItemCount = param.Items.Count;
+            int itemCount = param.Items.Count;
 
             // このスレッドから直接MessageBoxを出さず、完了時にUIスレッドへまとめて渡す
-            List<String> Messages = new List<String>();
-            for (int i = 0; i < ItemCount; i++)
+            List<String> messages = new List<String>();
+            for (int i = 0; i < itemCount; i++)
             {
-                String TargetName = param.Items[i].TargetName;
-                String MoveSrc = param.Items[i].MoveSrc;
-                String MoveDest = param.Items[i].MoveDest;
+                String fileName = param.Items[i].TargetName;
+                String moveSrc = param.Items[i].MoveSrc;
+                String moveDest = param.Items[i].MoveDest;
 
-                if (MoveDest == String.Empty)
+                if (moveDest == String.Empty)
                 {
                     // [移動後名称]が無い項目は処理対象外
                     continue;
                 }
 
-                String SrcDirName = TargetFilePath;
-                String DestPreDirName = TargetDir + @"\" + MoveSrc;
-                String DestPostDirName = TargetDir + @"\" + MoveDest;
+                String destPreDirName = param.TargetDir + @"\" + moveSrc;
+                String destPostDirName = param.TargetDir + @"\" + moveDest;
 
-                String FileName = TargetName;
-                String SrcFileName = SrcDirName + @"\" + FileName;
-                String DestFileName = DestPostDirName + @"\" + FileName;
+                String srcFileName = param.TargetFilePath + @"\" + fileName;
+                String destFileName = destPostDirName + @"\" + fileName;
 
                 try
                 {
                     // 移動先フォルダを生成
-                    if (MoveSrc != String.Empty && // 移動元がカラじゃない
-                         System.IO.Directory.Exists(DestPreDirName)     // フォルダが存在する
-                         )
+                    if (moveSrc != String.Empty &&          // 移動元がカラじゃない
+                        Directory.Exists(destPreDirName)    // フォルダが存在する
+                        )
                     {
                         // 元フォルダと先フォルダが違うときだけ移動
-                        if (DestPreDirName != DestPostDirName)
+                        if (destPreDirName != destPostDirName)
                         {
                             // フォルダ名が変わるのであればリネーム
-                            System.IO.Directory.Move(DestPreDirName, DestPostDirName);
+                            Directory.Move(destPreDirName, destPostDirName);
                         }
                     }
                     else
                     {
                         // 元フォルダが無かったら新規フォルダなので、先フォルダを作成
-                        System.IO.Directory.CreateDirectory(DestPostDirName);
+                        Directory.CreateDirectory(destPostDirName);
                     }
 
                     // ファイル名の重複回避
-                    if (!util.CreateFileNameOverLapShirk(ref DestFileName, i))
+                    if (!util.AvoidFileNameOverlap(ref destFileName, i))
                     {
-                        Messages.Add("ファイル名が重複したので処理をスキップしました：" + FileName);
+                        messages.Add("ファイル名が重複したので処理をスキップしました：" + fileName);
                         continue;
                     }
-                    File.Move(SrcFileName, DestFileName);
+                    File.Move(srcFileName, destFileName);
                 }
                 catch (Exception)
                 {
-                    Messages.Add("エラーが発生したので処理を中断しました。" + Environment.NewLine +
-                                 "移動元：" + SrcFileName + Environment.NewLine +
-                                 "移動先：" + DestFileName);
+                    messages.Add("エラーが発生したので処理を中断しました。" + Environment.NewLine +
+                                 "移動元：" + srcFileName + Environment.NewLine +
+                                 "移動先：" + destFileName);
                     break;
                 }
 
                 worker.ReportProgress(i);      // ⇒ProgressChanged()
             }
-            worker.ReportProgress(ItemCount);
+            worker.ReportProgress(itemCount);
 
             // このメソッドからの戻り値
-            e.Result = Messages;
+            e.Result = messages;
 
             // ⇒RunWorkerCompleted()
         }
@@ -397,10 +377,10 @@ namespace FileArrangerForWpf
             else
             {
                 // 別スレッド側で溜めたメッセージを、UIスレッドであるここでまとめて出す
-                List<String> Messages = e.Result as List<String>;
-                if (Messages != null && Messages.Count > 0)
+                List<String> messages = e.Result as List<String>;
+                if (messages != null && messages.Count > 0)
                 {
-                    MessageBox.Show(String.Join(Environment.NewLine, Messages.ToArray()),
+                    MessageBox.Show(String.Join(Environment.NewLine, messages.ToArray()),
                                     "Warning",
                                     MessageBoxButton.OK,
                                     MessageBoxImage.Warning);

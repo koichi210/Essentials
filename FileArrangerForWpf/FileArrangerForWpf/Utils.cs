@@ -5,94 +5,61 @@ using StandardTemplate;
 
 namespace FileArrangerForWpf
 {
-    // WinForms版FileArrangerのUtils.csと同じ。GetStringFromListViewInSelectだけWPFのListView(項目はListViewRow)を受け取る
+    // WinForms版FileArrangerのUtils.csと同じ。FindSelectedRowIndex(WinForms版GetStringFromListViewInSelect)だけWPFのListView(項目はListViewRow)を受け取る
     class Utils : StcUtils
     {
-        // フォルダ名の重複回避
-        public void CreateFolderNameOverLapShirk(ref String TargetPath, int LoopIdx)
+        // フォルダ名の重複回避(WinForms版CreateFolderNameOverLapShirk)。
+        // フォルダが既に存在すれば、targetPathの末尾に連番と日時を付けた名前に書き換える
+        public void AvoidFolderNameOverlap(ref String targetPath, int loopIdx)
         {
             // フォルダが存在しなければ何もしない
-            if (!Directory.Exists(TargetPath))
+            if (!Directory.Exists(targetPath))
             {
                 return;
             }
-            TargetPath = TargetPath + "_Cnt" + LoopIdx.ToString() + "_" + System.DateTime.Now.ToString("yyyy_MM_dd_HH_mm_ss");
+            targetPath = targetPath + CreateOverlapSuffix(loopIdx);
         }
 
-        // ファイル名の重複回避
-        public Boolean CreateFileNameOverLapShirk(ref String TargetPath, int LoopIdx)
+        // ファイル名の重複回避(WinForms版CreateFileNameOverLapShirk)。
+        // 同名のファイル/フォルダが無ければtrue。あればtargetPathの末尾に連番と日時を付けてfalseを返す
+        public Boolean AvoidFileNameOverlap(ref String targetPath, int loopIdx)
         {
-            if (!File.Exists(TargetPath) && !Directory.Exists(TargetPath))
+            if (!File.Exists(targetPath) && !Directory.Exists(targetPath))
             {
                 return true;
             }
-            TargetPath = TargetPath + "_Cnt" + LoopIdx.ToString() + "_" + System.DateTime.Now.ToString("yyyy_MM_dd_HH_mm_ss");
+            targetPath = targetPath + CreateOverlapSuffix(loopIdx);
             return false;
         }
 
-        public String CreateNewFolderName(String SrcName, String TrimName = "", Boolean IsReverse = false)
+        private static String CreateOverlapSuffix(int loopIdx)
         {
-            String NewFolderName = SrcName;
+            return "_Cnt" + loopIdx.ToString() + "_" + DateTime.Now.ToString("yyyy_MM_dd_HH_mm_ss");
+        }
 
-            // SrcTrimNameが設定されていたら、特定の文字列で区切る
-            if (TrimName != String.Empty)
-            {
-                int FileNameidx;
-                if (!IsReverse)
-                {
-                    FileNameidx = SrcName.IndexOf(TrimName);
-                }
-                else
-                {
-                    FileNameidx = SrcName.LastIndexOf(TrimName);
-                }
-
-                if (0 <= FileNameidx)
-                {
-                    NewFolderName = SrcName.Substring(0, FileNameidx);
-                }
-            }
-
-            return NewFolderName;
+        public String CreateNewFolderName(String srcName, String trimName = "", Boolean isReverse = false)
+        {
+            // trimNameが設定されていたら、特定の文字列で区切る
+            return Logic.CutBeforeDelimiter(srcName, trimName, isReverse);
         }
 
         // 選択されているリストビューの中から目的の文字列を探す(戻り値はItems上のインデックス。無ければ-1)
-        public int GetStringFromListViewInSelect(ListView LvCtrl, int SrcSubItemIdx, String SrcName, String SrcTrimName = "", Boolean IsReverse = false)
+        public int FindSelectedRowIndex(ListView lvCtrl, int srcSubItemIdx, String srcName, String srcTrimName = "", Boolean isReverse = false)
         {
-            String SearchName = SrcName;
-            int SameIdx = -1;
+            // srcTrimNameが設定されていたら、特定の文字列で区切る
+            String searchName = Logic.CutBeforeDelimiter(srcName, srcTrimName, isReverse);
 
-            // SrcTrimNameが設定されていたら、特定の文字列で区切る
-            if (SrcTrimName != String.Empty)
+            foreach (int idx in WpfControlHelper.GetSelectedIndices(lvCtrl))
             {
-                int FileNameidx;
-                if (!IsReverse)
-                {
-                    FileNameidx = SrcName.IndexOf(SrcTrimName);
-                }
-                else
-                {
-                    FileNameidx = SrcName.LastIndexOf(SrcTrimName);
-                }
+                String lvString = ((ListViewRow)lvCtrl.Items[idx])[srcSubItemIdx];
 
-                if (0 <= FileNameidx)
+                if (lvString.IndexOf(searchName) != -1)
                 {
-                    SearchName = SrcName.Substring(0, FileNameidx);
+                    return idx;
                 }
             }
 
-            foreach (int idx in WpfControlHelper.GetSelectedIndices(LvCtrl))
-            {
-                String LvString = ((ListViewRow)LvCtrl.Items[idx])[SrcSubItemIdx];
-
-                if (LvString.IndexOf(SearchName) != -1)
-                {
-                    SameIdx = idx;
-                    break;
-                }
-            }
-
-            return SameIdx;
+            return -1;
         }
     }
 }

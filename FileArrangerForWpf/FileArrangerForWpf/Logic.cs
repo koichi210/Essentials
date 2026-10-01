@@ -17,87 +17,99 @@ namespace FileArrangerForWpf
         /// ファイル名の連番部分にゼロ埋めが必要な桁数を返す。
         /// 例えば連番が1桁・2桁のときは2桁（"01","02"..."09"）にそろえる。
         /// </summary>
-        public static int GetPadding(long Number, Boolean ThroughNumberZero = false)
+        public static int GetPadding(long number, Boolean throughNumberZero = false)
         {
             const int PaddingMinNum = 2;
-            int PaddingDigit = 0;
+            int paddingDigit = 0;
 
-            if (ThroughNumberZero && Number == 0)
+            if (throughNumberZero && number == 0)
             {
                 // 数値が「0」のときは、桁数も「0」とする
             }
-            else if (Number.ToString().Length <= PaddingMinNum)
+            else if (number.ToString().Length <= PaddingMinNum)
             {
-                PaddingDigit = PaddingMinNum;
+                paddingDigit = PaddingMinNum;
             }
-            return PaddingDigit;
+            return paddingDigit;
         }
 
         /// <summary>連番に加算数を足し、必要な桁数までゼロ埋めした文字列にする。</summary>
-        public static String GetNumber(long SrcNumber, int AddCount = 0)
+        public static String GetNumber(long srcNumber, int addCount = 0)
         {
-            long DestNumber = SrcNumber + AddCount;
+            long destNumber = srcNumber + addCount;
 
-            int PaddingDigit = GetPadding(DestNumber);
-            return DestNumber.ToString().PadLeft(PaddingDigit, '0');
+            int paddingDigit = GetPadding(destNumber);
+            return destNumber.ToString().PadLeft(paddingDigit, '0');
         }
 
         /// <summary>全角の数字・英字・スペースを半角に変換する。</summary>
-        public static String ChangeWide2Narrow(String SrcString)
+        public static String ChangeWide2Narrow(String srcString)
         {
-            String RegesStr = "[０-９Ａ-Ｚａ-ｚ　]";
-            Regex re = new Regex(RegesStr);
-            return re.Replace(SrcString, myReplacer);
+            const String WidePattern = "[０-９Ａ-Ｚａ-ｚ　]";
+            Regex re = new Regex(WidePattern);
+            return re.Replace(srcString, ToNarrow);
         }
 
-        private static String myReplacer(Match m)
+        private static String ToNarrow(Match m)
         {
             // Memo: 参照設定に「Microsoft.VisualBasic」が必要
             return Strings.StrConv(m.Value, VbStrConv.Narrow);
         }
 
         /// <summary>
+        /// 区切り文字(trimName)が設定されていれば、その位置より前の部分を返す
+        /// (isReverse=true なら最後に現れた区切り文字で区切る)。
+        /// 区切り文字が空、または見つからなければ srcName をそのまま返す。
+        /// </summary>
+        public static String CutBeforeDelimiter(String srcName, String trimName, Boolean isReverse)
+        {
+            if (trimName == String.Empty)
+            {
+                return srcName;
+            }
+
+            int delimiterIdx = isReverse ? srcName.LastIndexOf(trimName) : srcName.IndexOf(trimName);
+            if (0 <= delimiterIdx)
+            {
+                return srcName.Substring(0, delimiterIdx);
+            }
+            return srcName;
+        }
+
+        /// <summary>
         /// リストの選択項目の中から、区切り文字より前の部分が一致するものを数える。
         /// 一致が無ければ、新規追加時の初期値として 1 を返す。
         /// </summary>
-        public static int GetAddCount(ListView lv, String FileName, String TrimName, Boolean IsReverse = false)
+        public static int GetAddCount(ListView lv, String fileName, String trimName, Boolean isReverse = false)
         {
             const int TargetSubItemIdx = 0;
 
-            int Count = 0;
-            String SearchName = "";
+            int count = 0;
+            String searchName = "";
 
-            int FileNameidx;
-            if (!IsReverse)
+            // CutBeforeDelimiterとは違い、区切り文字が見つからなければ空文字で探す(=全件一致)
+            int delimiterIdx = isReverse ? fileName.LastIndexOf(trimName) : fileName.IndexOf(trimName);
+            if (0 <= delimiterIdx)
             {
-                FileNameidx = FileName.IndexOf(TrimName);
-            }
-            else
-            {
-                FileNameidx = FileName.LastIndexOf(TrimName);
-            }
-
-            if (0 <= FileNameidx)
-            {
-                SearchName = FileName.Substring(0, FileNameidx);
+                searchName = fileName.Substring(0, delimiterIdx);
             }
 
             foreach (Object item in WpfControlHelper.GetSelectedItemsInIndexOrder(lv))
             {
-                String SrcFileName = ((ListViewRow)item)[TargetSubItemIdx];
+                String srcFileName = ((ListViewRow)item)[TargetSubItemIdx];
 
-                if (SrcFileName.IndexOf(SearchName) != -1)
+                if (srcFileName.IndexOf(searchName) != -1)
                 {
-                    Count++;
+                    count++;
                 }
             }
 
-            if (Count == 0)
+            if (count == 0)
             {
                 // 今回新規追加時の初期値
-                Count = 1;
+                count = 1;
             }
-            return Count;
+            return count;
         }
 
         /// <summary>
@@ -106,28 +118,28 @@ namespace FileArrangerForWpf
         /// ⚠️ Delimiter 引数は元の実装から使われていなかった（呼び出し側は値を渡しているが
         /// 中では参照されていない）。挙動を変えないため、そのまま残してある。
         /// </summary>
-        public static void DeleteDuplicate(String[] LegacyArray, ref String[] NewArray, String Delimiter)
+        public static void DeleteDuplicate(String[] legacyArray, ref String[] newArray, String delimiter)
         {
-            var Result = new List<String>();
-            foreach (String NewItem in NewArray)
+            var result = new List<String>();
+            foreach (String newItem in newArray)
             {
-                Boolean IsDuplicate = false;
-                foreach (String LegacyItem in LegacyArray)
+                Boolean isDuplicate = false;
+                foreach (String legacyItem in legacyArray)
                 {
-                    if (LegacyItem.IndexOf(NewItem) != -1)
+                    if (legacyItem.IndexOf(newItem) != -1)
                     {
-                        IsDuplicate = true;
+                        isDuplicate = true;
                         break;
                     }
                 }
 
-                if (!IsDuplicate)
+                if (!isDuplicate)
                 {
-                    Result.Add(NewItem);
+                    result.Add(newItem);
                 }
             }
 
-            NewArray = Result.ToArray();
+            newArray = result.ToArray();
         }
     }
 }

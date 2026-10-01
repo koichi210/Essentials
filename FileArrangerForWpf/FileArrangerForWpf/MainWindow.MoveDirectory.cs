@@ -29,107 +29,107 @@ namespace FileArrangerForWpf
 
         private void md_button_MoveTopDir_Click(object sender, RoutedEventArgs e)
         {
-            Move_Directory(true);
+            MoveSelectedDirectories(true);
         }
 
-        private void Move_Directory(Boolean IsMoveTopDir)
+        // 選択したフォルダを移動先へ移動する(WinForms版Move_Directory)。
+        // isMoveTopDir=trueなら最上位のフォルダごと、falseなら末端のフォルダだけを移動する
+        private void MoveSelectedDirectories(Boolean isMoveTopDir)
         {
             if (!fio.EnsureDirectory(md_comboBox_TargetDir.Text))
             {
                 return;
             }
 
-            List<Object> SelectedItems = WpfControlHelper.GetSelectedItemsInIndexOrder(md_listBox_Listup);
-            if (SelectedItems.Count == 0)
+            List<Object> selectedItems = WpfControlHelper.GetSelectedItemsInIndexOrder(md_listBox_Listup);
+            if (selectedItems.Count == 0)
             {
                 MessageBox.Show("項目が選択されていません。");
                 return;
             }
 
-            for (int i = 0; i < SelectedItems.Count; i++)
+            for (int i = 0; i < selectedItems.Count; i++)
             {
-                String SourceTargetName;
-                String DestTargetName;
-                if (IsMoveTopDir)
+                String sourceTargetName;
+                String destTargetName;
+                if (isMoveTopDir)
                 {
-                    SourceTargetName = fio.GetFirstPathName(SelectedItems[i].ToString());
-                    DestTargetName = SourceTargetName;
+                    sourceTargetName = fio.GetFirstPathName(selectedItems[i].ToString());
+                    destTargetName = sourceTargetName;
                 }
                 else
                 {
-                    SourceTargetName = SelectedItems[i].ToString();
-                    DestTargetName = fio.GetLastPathName(SelectedItems[i].ToString());
+                    sourceTargetName = selectedItems[i].ToString();
+                    destTargetName = fio.GetLastPathName(selectedItems[i].ToString());
                 }
 
-                String SourcePath = md_textBox_SourceDir.Text + @"\" + SourceTargetName;
-                String DestPath = md_comboBox_TargetDir.Text + @"\" + DestTargetName;
+                String sourcePath = md_textBox_SourceDir.Text + @"\" + sourceTargetName;
+                String destPath = md_comboBox_TargetDir.Text + @"\" + destTargetName;
 
                 // Top階層ごと移動した場合などで、すでにDirectoryが存在しないケースをcare
-                if (!Directory.Exists(SourcePath))
+                if (!Directory.Exists(sourcePath))
                 {
                     continue;
                 }
 
                 // 移動先にすでにフォルダがある場合は重複回避
-                util.CreateFolderNameOverLapShirk(ref DestPath, i);
+                util.AvoidFolderNameOverlap(ref destPath, i);
 
-                fio.MoveDirectory(SourcePath, DestPath);
+                fio.MoveDirectory(sourcePath, destPath);
             }
 
             // リストを更新
             ListupMoveDirectory(true);
         }
 
-        private void ListupMoveDirectory(Boolean IsRestoreScrollBarPos = false)
+        private void ListupMoveDirectory(Boolean isRestoreScrollBarPos = false)
         {
             if (!IsValidFolderPath(md_textBox_SourceDir.Text))
             {
                 return;
             }
 
-            int RegistNum = 0;
             // フォルダパスの末尾に'\\'があったら削除
-            char[] chTrims = { '\\', '/' };
-            md_textBox_SourceDir.Text = md_textBox_SourceDir.Text.TrimEnd(chTrims);
+            char[] trimChars = { '\\', '/' };
+            md_textBox_SourceDir.Text = md_textBox_SourceDir.Text.TrimEnd(trimChars);
 
-            ScrollViewer Scroller = FindScrollViewer(md_listBox_Listup);
-            double ScrollBarPos = 0;
-            if (IsRestoreScrollBarPos && Scroller != null)
+            ScrollViewer scroller = FindScrollViewer(md_listBox_Listup);
+            double scrollBarPos = 0;
+            if (isRestoreScrollBarPos && scroller != null)
             {
-                ScrollBarPos = Scroller.VerticalOffset;
+                scrollBarPos = scroller.VerticalOffset;
             }
             md_listBox_Listup.Items.Clear();
-            String[] files = Directory.GetDirectories(md_textBox_SourceDir.Text, "*", SearchOption.AllDirectories);
-            List<String> Names = new List<String>();
-            for (int i = 0; i < files.Length; i++)
+            String[] dirs = Directory.GetDirectories(md_textBox_SourceDir.Text, "*", SearchOption.AllDirectories);
+            List<String> names = new List<String>();
+            foreach (String dir in dirs)
             {
                 // フォルダ直下にファイルが1つでもあればリストアップ
-                if (Directory.EnumerateFiles(files[i]).Any())
+                if (Directory.EnumerateFiles(dir).Any())
                 {
-                    Names.Add(GetDisplayName(files[i], md_textBox_SourceDir.Text));
-                    RegistNum++;
+                    names.Add(GetDisplayName(dir, md_textBox_SourceDir.Text));
                 }
             }
-            foreach (String FileName in SortedByName(Names))
+            foreach (String name in SortedByName(names))
             {
-                md_listBox_Listup.Items.Add(FileName);
+                md_listBox_Listup.Items.Add(name);
             }
 
             // スクロール位置を戻す(WinForms版のTopIndex相当)
-            if (Scroller != null)
+            if (scroller != null)
             {
                 md_listBox_Listup.UpdateLayout();
-                Scroller.ScrollToVerticalOffset(ScrollBarPos);
+                scroller.ScrollToVerticalOffset(scrollBarPos);
             }
-            md_label_TotalNum.Text = "フォルダ数：" + RegistNum.ToString();
+            md_label_TotalNum.Text = "フォルダ数：" + names.Count.ToString();
         }
 
         // ListBox内部のScrollViewerを探す(テンプレート適用前はnull)
-        private static ScrollViewer FindScrollViewer(DependencyObject Parent)
+        private static ScrollViewer FindScrollViewer(DependencyObject parent)
         {
-            for (int i = 0; i < VisualTreeHelper.GetChildrenCount(Parent); i++)
+            for (int i = 0; i < VisualTreeHelper.GetChildrenCount(parent); i++)
             {
-                DependencyObject child = VisualTreeHelper.GetChild(Parent, i);
+                DependencyObject child = VisualTreeHelper.GetChild(parent, i);
                 ScrollViewer viewer = child as ScrollViewer ?? FindScrollViewer(child);
                 if (viewer != null)
                 {
