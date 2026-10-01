@@ -8,11 +8,6 @@ namespace CheetosForWpf.Tests
     /// <summary>
     /// PictMerge（PictMerge.cs のフォーム部分とは別に定義されている、画像合成ロジック。
     /// public class、Form非依存）のテスト。
-    ///
-    /// ⚠️ 絶対に踏んではいけない分岐がある: MergeExecute() は TrimHeightRanges の要素が
-    /// "開始,終了" の2値カンマ区切りになっていないと、確認用の MessageBox.Show
-    /// (Yes/Noボタン付き)を呼ぶ。自動テストでこれを踏むと誰もクリックできないダイアログで
-    /// ハングする。そのため TrimHeightRanges には必ず空文字列か正しい2値のカンマ区切りだけを渡す。
     /// </summary>
     [TestClass]
     public class PictMergeTests
@@ -229,6 +224,38 @@ namespace CheetosForWpf.Tests
             bool result = pm.MergeExecute();
 
             Assert.IsTrue(result);
+        }
+
+        [TestMethod]
+        public void MergeExecuteは不正な行をダイアログを出さずに飛ばす()
+        {
+            CreateImage("left.jpg", 8, 8, Color.Green);
+            CreateImage("right.jpg", 8, 8, Color.Yellow);
+
+            var pm = new PictMerge
+            {
+                SourceFolderPath = tempDirectory,
+                BackUpDirPath = Path.Combine(tempDirectory, "backup"),
+                SourceFile1Prefix = "left",
+                SourceFile2Prefix = "right",
+                TrimHeightRanges = new[] { "abc", "-,-", "1,2,3" },
+            };
+            pm.SetTargetFileName("left.jpg");
+            pm.IsProcTarget();
+            pm.CreateMergeSourceFile();
+            pm.CreateMergeTargetFile();
+
+            bool result = pm.MergeExecute();
+
+            Assert.IsTrue(result);
+        }
+
+        [TestMethod]
+        public void FindInvalidTrimHeightsは開始終了の形でない行だけを返す()
+        {
+            String[] invalid = PictMerge.FindInvalidTrimHeights(new[] { "", "-,-", "0,100", "abc", "1,2,3", "a,5" });
+
+            CollectionAssert.AreEqual(new[] { "abc", "1,2,3", "a,5" }, invalid);
         }
     }
 }

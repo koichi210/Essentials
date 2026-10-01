@@ -1,6 +1,7 @@
 using System;
 using System.ComponentModel;
 using System.IO;
+using System.Linq;
 using System.Windows;
 using Picture;
 using Drawing = System.Drawing;
@@ -88,6 +89,21 @@ namespace CheetosForWpf
             return int.Parse(heightStr);
         }
 
+        // 「開始,終了」(各値は数値か"-")の形になっていない行を返す。空行は対象外。
+        // 確認ダイアログはバックグラウンドから出せないため、結合開始前にUIスレッドで使う
+        public static String[] FindInvalidTrimHeights(String[] trimHeights)
+        {
+            return trimHeights.Where(line => line != String.Empty && !IsValidTrimHeight(line)).ToArray();
+        }
+
+        private static bool IsValidTrimHeight(String line)
+        {
+            string[] range = line.Split(new[] { "," }, StringSplitOptions.None);
+            int height;
+            return range.Length == 2
+                && range.All(text => text == "-" || int.TryParse(text, out height));
+        }
+
         public bool MergeExecute()
         {
             // キャンバス作成
@@ -98,30 +114,13 @@ namespace CheetosForWpf
 
             for (int i = 0; i < TrimHeightRanges.Length; i++)
             {
-                if (TrimHeightRanges[i] == String.Empty)
+                // 不正な行は開始前にUIスレッドで確認済み(FindInvalidTrimHeights)なので、ここでは飛ばすだけ
+                if (TrimHeightRanges[i] == String.Empty || !IsValidTrimHeight(TrimHeightRanges[i]))
                 {
                     continue;
                 }
 
                 string[] range = TrimHeightRanges[i].Split(new[] { "," }, StringSplitOptions.None);
-                if (range.Length != 2)
-                {
-                    // 想定外の値
-                    MessageBoxResult dr = MessageBox.Show("フォーマットが不正です。[" + TrimHeightRanges[i] + "]" +
-                        Environment.NewLine + "処理を中断しますか？",
-                        "Error",
-                        MessageBoxButton.YesNo,
-                        MessageBoxImage.Error);
-                    if (dr == MessageBoxResult.Yes)
-                    {
-                        break;
-                    }
-                    else
-                    {
-                        continue;
-                    }
-                }
-
                 int startHeight = GetHeight(range[0], 0);
                 int endHeight = GetHeight(range[1], sz.Height);
                 if (sz.Height < startHeight)
@@ -172,6 +171,23 @@ namespace CheetosForWpf
                 return;
             }
 
+            // 切断基準となる高さ。書式の確認はバックグラウンドでは聞けないため、開始前にここで1回だけ行う
+            String[] trimHeightRanges = pm_TrimingHeight.Text.Split(new[] { Environment.NewLine }, StringSplitOptions.None);
+            String[] invalidTrimHeights = global::CheetosForWpf.PictMerge.FindInvalidTrimHeights(trimHeightRanges);
+            if (invalidTrimHeights.Length > 0)
+            {
+                MessageBoxResult dr = MessageBox.Show("フォーマットが不正な行があります。" + Environment.NewLine
+                    + "[" + String.Join("] [", invalidTrimHeights) + "]" + Environment.NewLine
+                    + "不正な行を飛ばして結合しますか？",
+                    "Error",
+                    MessageBoxButton.YesNo,
+                    MessageBoxImage.Error);
+                if (dr != MessageBoxResult.Yes)
+                {
+                    return;
+                }
+            }
+
             InitProgressBar(pm_ListBox_ListUp.SelectedItems.Count);
 
             // 別スレッドを非同期実行
@@ -188,8 +204,7 @@ namespace CheetosForWpf
             debug.WriteData("Prefix1 = " + pm_SourceFile1Prefix.Text);
             debug.WriteData("Prefix2 = " + pm_SourceFile2Prefix.Text);
 
-            // 切断基準となる高さ
-            param.TrimHeightRanges = pm_TrimingHeight.Text.Split(new[] { Environment.NewLine }, StringSplitOptions.None);
+            param.TrimHeightRanges = trimHeightRanges;
 
             // ListBoxの値を配列で取得
             param.TargetFileNames = WpfUtils.GetSelectedStrArray(pm_ListBox_ListUp);
