@@ -49,10 +49,10 @@ namespace MailerForWpf.Tests
                 writer.textBox_MailBcc.Text = "bcc@example.com";
                 writer.textBox_MailSubject.Text = "件名 %%today%%";
                 writer.textBox_MailBody.Text = "本文です\r\n2行目";
-                Assert.IsTrue(writer.sr.Save(path));
+                Assert.IsTrue(writer.SaveRestore.Save(path));
 
                 var reader = new MainWindow();
-                Assert.IsTrue(reader.sr.Load(path));
+                Assert.IsTrue(reader.SaveRestore.Load(path));
 
                 Assert.AreEqual(@"C:\chrome.exe", reader.textBox_BrowserPath.Text);
                 Assert.AreEqual("to@example.com", reader.textBox_MailTo.Text);
@@ -83,7 +83,7 @@ namespace MailerForWpf.Tests
             {
                 var window = new MainWindow();
                 window.textBox_MailCc.Text = "消える値";
-                Assert.IsTrue(window.sr.Load(path));
+                Assert.IsTrue(window.SaveRestore.Load(path));
 
                 Assert.AreEqual(@"C:\chrome.exe", window.textBox_BrowserPath.Text);
                 Assert.AreEqual("to@example.com", window.textBox_MailTo.Text);
@@ -101,7 +101,7 @@ namespace MailerForWpf.Tests
                 var window = new MainWindow();
                 window.textBox_MailTo.Text = "そのまま";
 
-                Assert.IsFalse(window.sr.Load(Path.Combine(tempDirectory, "nothing.json")));
+                Assert.IsFalse(window.SaveRestore.Load(Path.Combine(tempDirectory, "nothing.json")));
                 Assert.AreEqual("そのまま", window.textBox_MailTo.Text);
             });
         }
@@ -114,7 +114,7 @@ namespace MailerForWpf.Tests
                 var window = new MainWindow();
                 window.textBox_MailTo.Text = "消える値";
 
-                window.sr.LoadOrDefault(Path.Combine(tempDirectory, "nothing.json"));
+                window.SaveRestore.LoadOrDefault(Path.Combine(tempDirectory, "nothing.json"));
                 Assert.AreEqual("", window.textBox_MailTo.Text);
             });
         }

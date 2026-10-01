@@ -54,21 +54,21 @@ namespace MailerForWpf.Tests
         // ハードコードせず、同じ書式指定子で計算した値と突き合わせて検証する。
 
         [TestMethod]
-        public void GetDayOfWeek_小文字は3文字略称になる()
+        public void ReplaceDayOfWeek_小文字は3文字略称になる()
         {
             var monday = new DateTime(2024, 1, 1); // 2024/1/1は月曜日
 
-            string result = Logic.GetDayOfWeek("%%dayofweek%%", monday);
+            string result = Logic.ReplaceDayOfWeek("%%dayofweek%%", monday);
 
             Assert.AreEqual(monday.ToString("ddd"), result);
         }
 
         [TestMethod]
-        public void GetDayOfWeek_大文字は完全な曜日名になる()
+        public void ReplaceDayOfWeek_大文字は完全な曜日名になる()
         {
             var monday = new DateTime(2024, 1, 1);
 
-            string result = Logic.GetDayOfWeek("%%DAYOFWEEK%%", monday);
+            string result = Logic.ReplaceDayOfWeek("%%DAYOFWEEK%%", monday);
 
             Assert.AreEqual(monday.ToString("dddd"), result);
         }
@@ -78,11 +78,11 @@ namespace MailerForWpf.Tests
         // ------------------------------------------------------------------
 
         [TestMethod]
-        public void GetUsersDay_大文字小文字それぞれ置換される()
+        public void ReplaceUsersDay_大文字小文字それぞれ置換される()
         {
             var dt = new DateTime(2024, 3, 10);
 
-            string result = Logic.GetUsersDay("%%USERSDAY%% / %%usersday%%", dt);
+            string result = Logic.ReplaceUsersDay("%%USERSDAY%% / %%usersday%%", dt);
 
             Assert.AreEqual("2024/3/10 / 3/10", result);
         }
@@ -92,10 +92,10 @@ namespace MailerForWpf.Tests
         // ------------------------------------------------------------------
 
         [TestMethod]
-        public void GetDateText_todayとTODAYが現在日付に置換される()
+        public void ReplaceRelativeDays_todayとTODAYが現在日付に置換される()
         {
             DateTime before = DateTime.Now;
-            string result = Logic.GetDateText("%%today%% / %%TODAY%%");
+            string result = Logic.ReplaceRelativeDays("%%today%% / %%TODAY%%");
             DateTime after = DateTime.Now;
 
             string expectedShort = string.Format("{0}/{1}", before.Month, before.Day);
@@ -109,20 +109,20 @@ namespace MailerForWpf.Tests
         }
 
         [TestMethod]
-        public void GetDateText_tomorrowは翌日になる()
+        public void ReplaceRelativeDays_tomorrowは翌日になる()
         {
             DateTime tomorrow = DateTime.Now.AddDays(1);
             string expected = string.Format("{0}/{1}", tomorrow.Month, tomorrow.Day);
 
-            string result = Logic.GetDateText("%%tomorrow%%");
+            string result = Logic.ReplaceRelativeDays("%%tomorrow%%");
 
             Assert.AreEqual(expected, result);
         }
 
         [TestMethod]
-        public void GetDateText_置換対象が無ければそのまま()
+        public void ReplaceRelativeDays_置換対象が無ければそのまま()
         {
-            string result = Logic.GetDateText("no placeholder here");
+            string result = Logic.ReplaceRelativeDays("no placeholder here");
 
             Assert.AreEqual("no placeholder here", result);
         }
@@ -132,11 +132,11 @@ namespace MailerForWpf.Tests
         // ------------------------------------------------------------------
 
         [TestMethod]
-        public void GetReplaceDay_ユーザー日付とtodayとdayofweekを同時に置換できる()
+        public void ReplaceDatePlaceholders_ユーザー日付とtodayとdayofweekを同時に置換できる()
         {
             var userDate = new DateTime(2024, 6, 15); // 2024/6/15は土曜日
 
-            string result = Logic.GetReplaceDay("%%usersday%% (%%dayofweek%%)", userDate);
+            string result = Logic.ReplaceDatePlaceholders("%%usersday%% (%%dayofweek%%)", userDate);
 
             Assert.AreEqual("6/15 (" + userDate.ToString("ddd") + ")", result);
         }
@@ -146,25 +146,25 @@ namespace MailerForWpf.Tests
         // ------------------------------------------------------------------
 
         [TestMethod]
-        public void GetLoopList_件数分の連番リストを作る()
+        public void GetDayOffsetList_件数分の連番リストを作る()
         {
-            List<int> result = Logic.GetLoopList(3, false);
+            List<int> result = Logic.GetDayOffsetList(3, false);
 
             CollectionAssert.AreEqual(new[] { 0, 1, 2 }, result);
         }
 
         [TestMethod]
-        public void GetLoopList_reverse指定で降順になる()
+        public void GetDayOffsetList_reverse指定で降順になる()
         {
-            List<int> result = Logic.GetLoopList(3, true);
+            List<int> result = Logic.GetDayOffsetList(3, true);
 
             CollectionAssert.AreEqual(new[] { 2, 1, 0 }, result);
         }
 
         [TestMethod]
-        public void GetLoopList_0件なら空リスト()
+        public void GetDayOffsetList_0件なら空リスト()
         {
-            List<int> result = Logic.GetLoopList(0, false);
+            List<int> result = Logic.GetDayOffsetList(0, false);
 
             Assert.AreEqual(0, result.Count);
         }

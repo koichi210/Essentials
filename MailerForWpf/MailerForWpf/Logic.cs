@@ -12,73 +12,71 @@ namespace MailerForWpf
     internal static class Logic
     {
         /// <summary>件名・本文の中の %%usersday%% / %%today%% / %%dayofweek%% 等をすべて置換する。</summary>
-        public static String GetReplaceDay(String SrcText, DateTime UserDate)
+        public static String ReplaceDatePlaceholders(String srcText, DateTime userDate)
         {
-            var NewText = GetUsersDay(SrcText, UserDate);
-            NewText = GetDateText(NewText);
-            NewText = GetDayOfWeek(NewText, UserDate);
-            return NewText;
+            var newText = ReplaceUsersDay(srcText, userDate);
+            newText = ReplaceRelativeDays(newText);
+            newText = ReplaceDayOfWeek(newText, userDate);
+            return newText;
         }
 
-        public static String GetDayOfWeek(String SrcText, DateTime dt)
+        public static String ReplaceDayOfWeek(String srcText, DateTime dt)
         {
-            String DestText = SrcText.Replace("%%dayofweek%%", dt.ToString("ddd"));
-            DestText = DestText.Replace("%%DAYOFWEEK%%", dt.ToString("dddd"));
-            return DestText;
+            String destText = srcText.Replace("%%dayofweek%%", dt.ToString("ddd"));
+            destText = destText.Replace("%%DAYOFWEEK%%", dt.ToString("dddd"));
+            return destText;
         }
 
-        public static String GetUsersDay(String SrcText, DateTime UserDate)
+        public static String ReplaceUsersDay(String srcText, DateTime userDate)
         {
-            String DestText = "";
-            DestText = ReplaceDay(UserDate, SrcText, "%%USERSDAY%%");
-            DestText = ReplaceDay(UserDate, DestText, "%%usersday%%", false);
-            return DestText;
+            String destText = ReplaceDay(userDate, srcText, "%%USERSDAY%%");
+            destText = ReplaceDay(userDate, destText, "%%usersday%%", false);
+            return destText;
         }
 
         /// <summary>DateTime.Now を基準に %%today%% / %%tomorrow%% / %%weekend%% を置換する。</summary>
-        public static String GetDateText(String SrcText)
+        public static String ReplaceRelativeDays(String srcText)
         {
             DateTime today = DateTime.Now;
-            String DestText = "";
-            DestText = ReplaceDay(today, SrcText, "%%TODAY%%");
-            DestText = ReplaceDay(today, DestText, "%%today%%", false);
+            String destText = ReplaceDay(today, srcText, "%%TODAY%%");
+            destText = ReplaceDay(today, destText, "%%today%%", false);
 
             var tomorrow = today.AddDays(1);
-            DestText = ReplaceDay(tomorrow, DestText, "%%TOMORROW%%");
-            DestText = ReplaceDay(tomorrow, DestText, "%%tomorrow%%", false);
+            destText = ReplaceDay(tomorrow, destText, "%%TOMORROW%%");
+            destText = ReplaceDay(tomorrow, destText, "%%tomorrow%%", false);
 
             DateTime friday = today.AddDays(today.DayOfWeek == DayOfWeek.Friday ? 0 : 5 - (int)today.DayOfWeek);
-            DestText = ReplaceDay(friday, DestText, "%%WEEKEND%%");
-            DestText = ReplaceDay(friday, DestText, "%%weekend%%", false);
-            return DestText;
+            destText = ReplaceDay(friday, destText, "%%WEEKEND%%");
+            destText = ReplaceDay(friday, destText, "%%weekend%%", false);
+            return destText;
         }
 
-        public static String ReplaceDay(DateTime dt, String SrcText, String KeyName, bool IsYear = true)
+        public static String ReplaceDay(DateTime dt, String srcText, String keyName, bool withYear = true)
         {
-            String DateString = "";
-            if (IsYear)
+            String dateString = "";
+            if (withYear)
             {
-                DateString += dt.Year.ToString() + "/";
+                dateString += dt.Year.ToString() + "/";
             }
-            DateString += dt.Month.ToString() + "/";
-            DateString += dt.Day.ToString();
+            dateString += dt.Month.ToString() + "/";
+            dateString += dt.Day.ToString();
 
-            return SrcText.Replace(KeyName, DateString);
+            return srcText.Replace(keyName, dateString);
         }
 
         /// <summary>メール作成する日数分のオフセット一覧を作る。reverse指定で降順にする。</summary>
-        public static List<int> GetLoopList(int createNum, bool reverse)
+        public static List<int> GetDayOffsetList(int createNum, bool reverse)
         {
-            var offsetDay = new List<int>();
+            var offsets = new List<int>();
             for (var i = 0; i < createNum; i++)
             {
-                offsetDay.Add(i);
+                offsets.Add(i);
             }
             if (reverse)
             {
-                offsetDay.Sort((x, y) => y - x);
+                offsets.Sort((x, y) => y - x);
             }
-            return offsetDay;
+            return offsets;
         }
     }
 }
