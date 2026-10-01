@@ -10,7 +10,7 @@ namespace othelloForWpf
     /// 描画内容(色・線幅・マス目の計算式)はWinForms版と同じ。
     /// 画面への表示はMainWindowがCanvasをBitmapSourceに変換して行う(BoardImage.ToBitmapSource)。
     /// </summary>
-    class Draw
+    class BoardRenderer
     {
         private const int CellMax = 8;
         private const int EdgeOffset = 0;
@@ -31,11 +31,11 @@ namespace othelloForWpf
         public int Width => areaWidth;
         public int Height => areaHeight;
 
-        public Draw()
+        public BoardRenderer()
         {
         }
 
-        public Draw(int width, int height)
+        public BoardRenderer(int width, int height)
         {
             SetDrawArea(width, height);
         }

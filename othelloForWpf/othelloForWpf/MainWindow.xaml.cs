@@ -25,7 +25,7 @@ namespace othelloForWpf
 
         private const int CountdownIntervalMs = 100;
 
-        internal Draw Draw { get; } = new Draw();
+        internal BoardRenderer BoardRenderer { get; } = new BoardRenderer();
         internal GameMaster GameMaster { get; } = new GameMaster();
         private PlayMode playMode = PlayMode.PlayerPlayer;
         private int comLevel = 1;
@@ -61,7 +61,7 @@ namespace othelloForWpf
 
             // 表示前はDPIが分からないので、まずはデザインサイズ(200x200)で描いておく。
             // 表示後はboardHost_SizeChangedで実際のピクセルサイズに作り直す。
-            Draw.SetDrawArea((int)boardHost.Width, (int)boardHost.Height);
+            BoardRenderer.SetDrawArea((int)boardHost.Width, (int)boardHost.Height);
             RedrawBoard();
 
             Loaded += MainWindow_Loaded;
@@ -631,17 +631,17 @@ namespace othelloForWpf
 
             double boardWidth = boardHost.ActualWidth;
             double boardHeight = boardHost.ActualHeight;
-            if (boardWidth <= 0 || boardHeight <= 0 || Draw.Width <= 0 || Draw.Height <= 0)
+            if (boardWidth <= 0 || boardHeight <= 0 || BoardRenderer.Width <= 0 || BoardRenderer.Height <= 0)
             {
                 return false;
             }
 
-            // 盤面の画像(Draw.Canvas)はboardHost全体に引き伸ばして表示しているので、
-            // DIP座標を画像のピクセル座標に直してから、Draw側の罫線と同じ計算式でマス目を求める
+            // 盤面の画像(BoardRenderer.Canvas)はboardHost全体に引き伸ばして表示しているので、
+            // DIP座標を画像のピクセル座標に直してから、BoardRenderer側の罫線と同じ計算式でマス目を求める
             // (DPI倍率はここでの比率に含まれる)。
-            int pixelX = (int)Math.Floor(position.X * Draw.Width / boardWidth);
-            int pixelY = (int)Math.Floor(position.Y * Draw.Height / boardHeight);
-            if (!Draw.TryGetCell(pixelX, pixelY, Draw.Width, Draw.Height, out int x, out int y))
+            int pixelX = (int)Math.Floor(position.X * BoardRenderer.Width / boardWidth);
+            int pixelY = (int)Math.Floor(position.Y * BoardRenderer.Height / boardHeight);
+            if (!BoardRenderer.TryGetCell(pixelX, pixelY, BoardRenderer.Width, BoardRenderer.Height, out int x, out int y))
             {
                 return false;
             }
@@ -670,9 +670,9 @@ namespace othelloForWpf
                 return;
             }
 
-            if (pixelWidth != Draw.Width || pixelHeight != Draw.Height || Draw.Canvas == null)
+            if (pixelWidth != BoardRenderer.Width || pixelHeight != BoardRenderer.Height || BoardRenderer.Canvas == null)
             {
-                Draw.SetDrawArea(pixelWidth, pixelHeight);
+                BoardRenderer.SetDrawArea(pixelWidth, pixelHeight);
                 RedrawBoard();
             }
         }
@@ -686,9 +686,9 @@ namespace othelloForWpf
         {
             bool showNotice = !isTimedOut && !GameMaster.IsGameEnd && !IsComTurn(GameMaster.CurrentTurn);
             bool[,] validMoves = showNotice ? GameMaster.GetValidMoves(GameMaster.CurrentTurn) : null;
-            Draw.DrawField(GameMaster.Table, validMoves);
+            BoardRenderer.DrawField(GameMaster.Table, validMoves);
             GetDpiScale(out double scaleX, out double scaleY);
-            pictureBoxField.Source = BoardImage.ToBitmapSource(Draw.Canvas, 96.0 * scaleX, 96.0 * scaleY);
+            pictureBoxField.Source = BoardImage.ToBitmapSource(BoardRenderer.Canvas, 96.0 * scaleX, 96.0 * scaleY);
             UpdateStatusLabel();
             UpdateTimeLabel();
 

@@ -59,7 +59,7 @@ namespace othelloForWpf.Tests
             {
                 var window = new MainWindow();
                 Assert.IsNotNull(window);
-                Assert.IsNotNull(window.Draw.Canvas);
+                Assert.IsNotNull(window.BoardRenderer.Canvas);
                 Assert.IsNotNull(window.pictureBoxField.Source);
                 Assert.AreEqual("黒の番 (黒:2 白:2)", window.label_Status.Text);
                 Assert.IsFalse(window.menuItem_Undo.IsEnabled);
@@ -85,7 +85,7 @@ namespace othelloForWpf.Tests
 
                     var source = PresentationSource.FromVisual(window);
                     double scale = source.CompositionTarget.TransformToDevice.M11;
-                    Assert.AreEqual((int)Math.Round(window.boardHost.ActualWidth * scale), window.Draw.Width);
+                    Assert.AreEqual((int)Math.Round(window.boardHost.ActualWidth * scale), window.BoardRenderer.Width);
 
                     Assert.AreEqual(window.ActualWidth, window.MinWidth, 0.5);
                     Assert.AreEqual(window.ActualHeight, window.MinHeight, 0.5);
@@ -127,7 +127,7 @@ namespace othelloForWpf.Tests
                 {
                     IntPtr hwnd = new WindowInteropHelper(window).Handle;
                     Assert.IsTrue(GetWindowRect(hwnd, out RECT rect));
-                    int oldBitmapWidth = window.Draw.Width;
+                    int oldBitmapWidth = window.BoardRenderer.Width;
 
                     // 右下(WMSZ_BOTTOMRIGHT=8)を掴んで幅を150px広げた時、高さはOSの提案のままにしておく
                     rect.Right += 150;
@@ -137,8 +137,8 @@ namespace othelloForWpf.Tests
 
                     Assert.IsTrue(window.boardHost.ActualWidth > 250, "盤面が広がっていない: " + window.boardHost.ActualWidth);
                     Assert.AreEqual(window.boardHost.ActualWidth, window.boardHost.ActualHeight, 2.0);
-                    Assert.IsTrue(window.Draw.Width > oldBitmapWidth);
-                    Assert.AreEqual(window.Draw.Width, ((BitmapSource)window.pictureBoxField.Source).PixelWidth);
+                    Assert.IsTrue(window.BoardRenderer.Width > oldBitmapWidth);
+                    Assert.AreEqual(window.BoardRenderer.Width, ((BitmapSource)window.pictureBoxField.Source).PixelWidth);
 
                     // 広げた後も、クリック位置とマス目の対応がずれない
                     Assert.IsTrue(window.HandleBoardClick(CellCenter(window, 5, 4)));
@@ -160,7 +160,7 @@ namespace othelloForWpf.Tests
                 try
                 {
                     var bmp = (BitmapSource)window.pictureBoxField.Source;
-                    Assert.AreEqual(window.Draw.Width, bmp.PixelWidth);
+                    Assert.AreEqual(window.BoardRenderer.Width, bmp.PixelWidth);
 
                     // Table[y,x]: (3,3)=白, (4,3)=黒
                     Assert.AreEqual(0xFFFFFFFFu, PixelAt(bmp, 3.5, 3.5));

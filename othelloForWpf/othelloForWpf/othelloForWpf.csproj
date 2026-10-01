@@ -43,7 +43,7 @@
     <Reference Include="WindowsBase" />
     <Reference Include="PresentationCore" />
     <Reference Include="PresentationFramework" />
-    <!-- 盤面の描画(Draw.cs)と、GameMaster/ComPlayerのPointがSystem.Drawingを使うため。System.Windows.Formsは不要 -->
+    <!-- 盤面の描画(BoardRenderer.cs)と、GameMaster/ComPlayerのPointがSystem.Drawingを使うため。System.Windows.Formsは不要 -->
     <Reference Include="System.Drawing" />
   </ItemGroup>
   <ItemGroup>
@@ -65,7 +65,7 @@
     </Compile>
     <Compile Include="BoardImage.cs" />
     <Compile Include="ComPlayer.cs" />
-    <Compile Include="Draw.cs" />
+    <Compile Include="BoardRenderer.cs" />
     <Compile Include="GameMaster.cs" />
     <Compile Include="Kihu.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

@@ -5,7 +5,7 @@ using System.Windows.Media.Imaging;
 namespace othelloForWpf
 {
     /// <summary>
-    /// Draw.Canvas(System.Drawing.Bitmap)をWPFのImageに表示できるBitmapSourceへ変換する。
+    /// BoardRenderer.Canvas(System.Drawing.Bitmap)をWPFのImageに表示できるBitmapSourceへ変換する。
     /// GetHbitmap+CreateBitmapSourceFromHBitmapだとGDIハンドルの解放忘れが起きやすいので、
     /// LockBitsでピクセルを直接コピーする方式にしている。
     /// </summary>

@@ -54,7 +54,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="ComPlayerTests.cs" />
-    <Compile Include="DrawTests.cs" />
+    <Compile Include="BoardRendererTests.cs" />
     <Compile Include="GameMasterTests.cs" />
     <Compile Include="KihuTests.cs" />
     <Compile Include="MainWindowTests.cs" />

@@ -14,7 +14,7 @@ using System.Windows;
 
 [assembly: ComVisible(false)]
 
-// テストプロジェクトから internal クラス（Draw / GameMaster / MainWindowのコントロール など）を
+// テストプロジェクトから internal クラス（BoardRenderer / GameMaster / MainWindowのコントロール など）を
 // 直接参照できるようにする
 [assembly: InternalsVisibleTo("othelloForWpf.Tests")]
 
