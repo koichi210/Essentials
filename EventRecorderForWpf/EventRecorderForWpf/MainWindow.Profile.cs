@@ -166,7 +166,8 @@ namespace EventRecorderForWpf
             return profile;
         }
 
-        internal Boolean SaveProfile(String filePath)
+        // 失敗時はダイアログを出さず理由だけ返す(エラー表示はSaveProfileWithErrorDialogで1回だけ行う)
+        internal Boolean SaveProfile(String filePath, out String errorMessage)
         {
             // 編集途中のセルがあれば確定させてから保存する
             dataGrid_Events.CommitEdit(DataGridEditingUnit.Row, true);
@@ -175,18 +176,27 @@ namespace EventRecorderForWpf
             try
             {
                 JsonFileStorage.Save(filePath, BuildProfileFromGrids());
+                errorMessage = "";
                 return true;
             }
             catch (Exception ex)
             {
-                MessageBox.Show(
-                    this,
-                    "保存に失敗したよ: " + ex.Message,
-                    "EventRecorder - 保存エラー",
-                    MessageBoxButton.OK,
-                    MessageBoxImage.Error);
+                errorMessage = ex.Message;
                 return false;
             }
+        }
+
+        private Boolean SaveProfileWithErrorDialog(String filePath)
+        {
+            String errorMessage;
+            if (SaveProfile(filePath, out errorMessage))
+            {
+                return true;
+            }
+
+            MessageBox.Show(this, "設定の保存に失敗したよ" + Environment.NewLine + filePath + Environment.NewLine + errorMessage,
+                AppName + " - 保存エラー", MessageBoxButton.OK, MessageBoxImage.Error);
+            return false;
         }
 
         // comboBox_Profile(プレイリストの設定ファイル列も含む)へ、userDataFolder配下(サブフォルダ含む)の*.jsonを、
@@ -288,10 +298,8 @@ namespace EventRecorderForWpf
                 if (overwriteResult == MessageBoxResult.Yes)
                 {
                     String overwriteFilePath = Path.Combine(userDataFolder, currentName);
-                    if (!SaveProfile(overwriteFilePath))
+                    if (!SaveProfileWithErrorDialog(overwriteFilePath))
                     {
-                        MessageBox.Show(this, "設定の保存に失敗したよ" + Environment.NewLine + overwriteFilePath,
-                            AppName + " - エラー", MessageBoxButton.OK, MessageBoxImage.Warning);
                         return;
                     }
 
@@ -321,10 +329,8 @@ namespace EventRecorderForWpf
                 saveFilePath += ".json";
             }
 
-            if (!SaveProfile(saveFilePath))
+            if (!SaveProfileWithErrorDialog(saveFilePath))
             {
-                MessageBox.Show(this, "設定の保存に失敗したよ" + Environment.NewLine + saveFilePath,
-                    AppName + " - エラー", MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
 

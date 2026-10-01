@@ -96,7 +96,8 @@ namespace EventRecorderForWpf.Tests
                     writer.playlistRows[1].Enabled = true;
                     writer.textBox_Loop.Text = "9";
                     writer.radioButton_Record.IsChecked = true;
-                    Assert.IsTrue(writer.SaveProfile(savedPath));
+                    String errorMessage;
+                    Assert.IsTrue(writer.SaveProfile(savedPath, out errorMessage), errorMessage);
 
                     String expected = Newtonsoft.Json.JsonConvert.SerializeObject(writer.BuildProfileFromGrids());
 
