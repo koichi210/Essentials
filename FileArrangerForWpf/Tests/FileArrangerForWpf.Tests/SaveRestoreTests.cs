@@ -226,7 +226,7 @@ namespace FileArrangerForWpf.Tests
         [TestMethod]
         public void 保存時にコンボボックスの入力値が履歴へ追加される()
         {
-            // WinForms版SaveJsonFileのModifyCombBoxList(入力値をプルダウンに追加・重複は除く)と同じ
+            // WinForms版SaveJsonFileのModifyComboBoxLists(入力値をプルダウンに追加・重複は除く)と同じ
             StaRunner.Run(() =>
             {
                 MainWindow writer = NewWindow();

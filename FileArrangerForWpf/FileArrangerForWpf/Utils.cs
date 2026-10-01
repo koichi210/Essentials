@@ -8,7 +8,7 @@ namespace FileArrangerForWpf
     // WinForms版FileArrangerのUtils.csと同じ。FindSelectedRowIndex(WinForms版GetStringFromListViewInSelect)だけWPFのListView(項目はListViewRow)を受け取る
     class Utils : StcUtils
     {
-        // フォルダ名の重複回避(WinForms版CreateFolderNameOverLapShirk)。
+        // フォルダ名の重複回避(WinForms版AvoidFolderNameConflict)。
         // フォルダが既に存在すれば、targetPathの末尾に連番と日時を付けた名前に書き換える
         public void AvoidFolderNameOverlap(ref String targetPath, int loopIdx)
         {
@@ -20,7 +20,7 @@ namespace FileArrangerForWpf
             targetPath = targetPath + CreateOverlapSuffix(loopIdx);
         }
 
-        // ファイル名の重複回避(WinForms版CreateFileNameOverLapShirk)。
+        // ファイル名の重複回避(WinForms版AvoidFileNameConflict)。
         // 同名のファイル/フォルダが無ければtrue。あればtargetPathの末尾に連番と日時を付けてfalseを返す
         public Boolean AvoidFileNameOverlap(ref String targetPath, int loopIdx)
         {

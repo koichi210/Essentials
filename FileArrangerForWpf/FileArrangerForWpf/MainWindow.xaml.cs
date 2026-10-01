@@ -21,7 +21,7 @@ namespace FileArrangerForWpf
         private const String SettingFileName = "FileArranger.json";
         private static readonly String[] ProfileExtensions = { "*.json" };
 
-        // ReferenceCandidateFolders(RegistCtrlを介さない専用の配列)の保存キー。WinForms版と同じ"ReferenceCandidate|Value_"
+        // ReferenceCandidateFolders(RegisterCtrlを介さない専用の配列)の保存キー。WinForms版と同じ"ReferenceCandidate|Value_"
         private const String ReferenceCandidateAttrName = "ReferenceCandidate";
         private const String ReferenceCandidateAttrValue = "Value_";
 
@@ -145,8 +145,8 @@ namespace FileArrangerForWpf
                 items => ReferenceCandidateFolders = items.ToArray());
         }
 
-        // ComboBoxの項目一覧(履歴)を保存する(WinForms版のRegistCtrlList相当)。
-        // WpfSaveRestore.RegistCtrlListは値(Text)を戻した後にItems.Clearするため、入力可能なComboBoxでは
+        // ComboBoxの項目一覧(履歴)を保存する(WinForms版のRegisterCtrlList相当)。
+        // WpfSaveRestore.RegisterCtrlListは値(Text)を戻した後にItems.Clearするため、入力可能なComboBoxでは
         // 戻したTextが消えてしまうことがある。入れ替え時にTextを残すよう、ここで登録している
         private void RegisterComboHistory(String attrName, String attrValue, ComboBox ctrl)
         {
