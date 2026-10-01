@@ -1,0 +1,31 @@
+
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 16
+VisualStudioVersion = 16.0.30114.105
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EventRecorder", "EventRecorder\EventRecorder.csproj", "{8019A974-AF8A-4752-BC87-6EFAF28B1651}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EventRecorder.Tests", "Tests\EventRecorder.Tests\EventRecorder.Tests.csproj", "{1D3165D3-32EA-4798-BBBC-B60D3264A915}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|x64 = Debug|x64
+		Release|x64 = Release|x64
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{8019A974-AF8A-4752-BC87-6EFAF28B1651}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{8019A974-AF8A-4752-BC87-6EFAF28B1651}.Debug|x64.Build.0 = Debug|Any CPU
+		{8019A974-AF8A-4752-BC87-6EFAF28B1651}.Release|x64.ActiveCfg = Release|Any CPU
+		{8019A974-AF8A-4752-BC87-6EFAF28B1651}.Release|x64.Build.0 = Release|Any CPU
+		{1D3165D3-32EA-4798-BBBC-B60D3264A915}.Debug|x64.ActiveCfg = Debug|x64
+		{1D3165D3-32EA-4798-BBBC-B60D3264A915}.Debug|x64.Build.0 = Debug|x64
+		{1D3165D3-32EA-4798-BBBC-B60D3264A915}.Release|x64.ActiveCfg = Release|x64
+		{1D3165D3-32EA-4798-BBBC-B60D3264A915}.Release|x64.Build.0 = Release|x64
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {FDF16B82-D2CC-41BD-828D-81756C7939C0}
+	EndGlobalSection
+EndGlobal

@@ -1,0 +1,238 @@
+﻿<Window x:Class="EventRecorder.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:stc="clr-namespace:StandardTemplate.Wpf"
+        Title="EventRecorder" Icon="EventRecorder.ico"
+        Width="603" Height="428" MinWidth="427" MinHeight="257"
+        Background="{DynamicResource {x:Static SystemColors.ControlBrushKey}}"
+        PreviewKeyDown="Window_PreviewKeyDown">
+    <Window.Resources>
+        <BooleanToVisibilityConverter x:Key="BoolToVisibility" />
+
+        <!-- 行ヘッダーに行番号(0始まり)を表示する(WinForms版のRowPostPaint相当)。両グリッド共通 -->
+        <Style x:Key="RowNumberHeaderStyle" TargetType="{x:Type DataGridRowHeader}" BasedOn="{StaticResource {x:Type DataGridRowHeader}}">
+            <Setter Property="Content" Value="{Binding RowNumber}" />
+            <Setter Property="HorizontalContentAlignment" Value="Center" />
+        </Style>
+
+        <!-- 記録中の最新行・再生中の実行中行のハイライト(薄い黄色) -->
+        <Style x:Key="EventRowStyle" TargetType="{x:Type DataGridRow}" BasedOn="{StaticResource {x:Type DataGridRow}}">
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding IsHighlighted}" Value="True">
+                    <Setter Property="Background" Value="LightYellow" />
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+
+        <!-- プレイリストの行: 実行中ハイライト+「チェックONのみ表示」での非表示 -->
+        <Style x:Key="PlaylistRowStyle" TargetType="{x:Type DataGridRow}" BasedOn="{StaticResource {x:Type DataGridRow}}">
+            <Setter Property="Visibility" Value="{Binding IsVisible, Converter={StaticResource BoolToVisibility}}" />
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding IsHighlighted}" Value="True">
+                    <Setter Property="Background" Value="LightYellow" />
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+
+        <!-- Detail列: 再生できない値・無視されるKeyがある行はピンク+ツールチップ(WinForms版のCellFormatting+ErrorText相当)。
+             選択中のセルは選択色を優先する -->
+        <Style x:Key="DetailCellStyle" TargetType="{x:Type DataGridCell}" BasedOn="{StaticResource {x:Type DataGridCell}}">
+            <Setter Property="ToolTip" Value="{Binding DetailProblemText}" />
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding HasDetailProblem}" Value="True">
+                    <Setter Property="Background" Value="MistyRose" />
+                </DataTrigger>
+                <Trigger Property="IsSelected" Value="True">
+                    <Setter Property="Background" Value="{DynamicResource {x:Static SystemColors.HighlightBrushKey}}" />
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <!-- プレイリストの設定ファイル列: ファイルが見つからない行はピンク+ツールチップ。1クリックで編集(プルダウン)を始める -->
+        <Style x:Key="PlaylistFileCellStyle" TargetType="{x:Type DataGridCell}" BasedOn="{StaticResource {x:Type DataGridCell}}">
+            <Setter Property="ToolTip" Value="{Binding MissingFileText}" />
+            <EventSetter Event="PreviewMouseLeftButtonUp" Handler="PlaylistFileCell_PreviewMouseLeftButtonUp" />
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding IsFileMissing}" Value="True">
+                    <Setter Property="Background" Value="MistyRose" />
+                </DataTrigger>
+                <Trigger Property="IsSelected" Value="True">
+                    <Setter Property="Background" Value="{DynamicResource {x:Static SystemColors.HighlightBrushKey}}" />
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+    </Window.Resources>
+
+    <Grid Margin="5,0,5,5">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="28" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <!-- 上段: モード切替ラジオボタン+マウス座標 -->
+        <StackPanel Grid.Row="0" Orientation="Horizontal" VerticalAlignment="Center" Margin="11,0,0,0">
+            <RadioButton x:Name="radioButton_Record" Content="レコード" GroupName="Mode" TabIndex="0"
+                         Checked="radioButton_Mode_CheckedChanged" Unchecked="radioButton_Mode_CheckedChanged" />
+            <RadioButton x:Name="radioButton_Playback" Content="プレイバック" GroupName="Mode" Margin="36,0,0,0" TabIndex="1"
+                         Checked="radioButton_Mode_CheckedChanged" Unchecked="radioButton_Mode_CheckedChanged" />
+        </StackPanel>
+        <TextBlock Grid.Row="0" x:Name="label_MousePos" Text="Mouse: -1234, -1234"
+                   HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,2,0" />
+
+        <!-- 中段: 左右分割(WinForms版のSplitContainer)。境界線は4pxのSteelBlue -->
+        <Grid Grid.Row="1" x:Name="grid_Split">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition x:Name="column_SplitLeft" Width="330*" MinWidth="120" />
+                <ColumnDefinition Width="4" />
+                <ColumnDefinition x:Name="column_SplitRight" Width="243*" MinWidth="120" />
+            </Grid.ColumnDefinitions>
+
+            <Border Grid.Column="0" x:Name="panel_Record" PreviewMouseDown="panel_Record_PreviewMouseDown">
+                <GroupBox x:Name="groupBox_Record" Header="レコード" Padding="2">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="*" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+                        <DataGrid Grid.Row="0" x:Name="dataGrid_Events" TabIndex="0"
+                                  AutoGenerateColumns="False" CanUserAddRows="False" CanUserDeleteRows="False"
+                                  CanUserResizeRows="False" CanUserSortColumns="False" CanUserReorderColumns="False"
+                                  SelectionUnit="CellOrRowHeader" SelectionMode="Extended"
+                                  HeadersVisibility="All" RowHeaderWidth="30"
+                                  HorizontalGridLinesBrush="#FFD0D0D0" VerticalGridLinesBrush="#FFD0D0D0"
+                                  EnableRowVirtualization="True" VirtualizingPanel.VirtualizationMode="Recycling"
+                                  RowHeaderStyle="{StaticResource RowNumberHeaderStyle}"
+                                  RowStyle="{StaticResource EventRowStyle}"
+                                  PreviewKeyDown="dataGrid_Events_PreviewKeyDown"
+                                  PreviewMouseRightButtonDown="dataGrid_Events_PreviewMouseRightButtonDown"
+                                  PreviewMouseWheel="DataGrid_PreviewMouseWheel"
+                                  ContextMenuOpening="dataGrid_Events_ContextMenuOpening">
+                            <DataGrid.Columns>
+                                <DataGridTextColumn x:Name="col_Type" Header="Event" Width="87" SortMemberPath="Type"
+                                                    Binding="{Binding Type}" />
+                                <DataGridTextColumn x:Name="col_Detail" Header="Detail" Width="72" SortMemberPath="Detail"
+                                                    Binding="{Binding Detail}" CellStyle="{StaticResource DetailCellStyle}" />
+                                <DataGridTextColumn x:Name="col_Remarks" Header="備考" Width="*" SortMemberPath="Remarks"
+                                                    Binding="{Binding Remarks}" />
+                            </DataGrid.Columns>
+                            <DataGrid.ContextMenu>
+                                <ContextMenu>
+                                    <MenuItem x:Name="menuItem_AddRow" Header="行の追加(_A)" Click="menuItem_AddRow_Click" />
+                                    <MenuItem x:Name="menuItem_DeleteRow" Header="行の削除(_D)" Click="menuItem_DeleteRow_Click" />
+                                    <Separator />
+                                    <MenuItem x:Name="menuItem_BulkChangeMouseUpWait" Header="MOUSE_UP時間を一括変更(_W)..."
+                                              Click="menuItem_BulkChangeMouseUpWait_Click" />
+                                </ContextMenu>
+                            </DataGrid.ContextMenu>
+                        </DataGrid>
+                        <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,8,0,4">
+                            <Button x:Name="button_Record" Content="記録" Width="80" Height="27" TabIndex="1" Click="button_Record_Click" />
+                            <Button x:Name="button_Clear" Content="クリア" Width="80" Height="27" Margin="6,0,0,0" TabIndex="2" Click="button_Clear_Click" />
+                        </StackPanel>
+                    </Grid>
+                </GroupBox>
+            </Border>
+
+            <GridSplitter Grid.Column="1" Width="4" HorizontalAlignment="Stretch" VerticalAlignment="Stretch"
+                          ResizeBehavior="PreviousAndNext" ResizeDirection="Columns" Background="SteelBlue" Focusable="False" />
+
+            <Border Grid.Column="2" x:Name="panel_Playback" PreviewMouseDown="panel_Playback_PreviewMouseDown">
+                <GroupBox x:Name="groupBox_Playback" Header="プレイバック" Padding="2">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="*" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+                        <DataGrid Grid.Row="0" x:Name="dataGrid_Playlist" TabIndex="0" AllowDrop="True"
+                                  AutoGenerateColumns="False" CanUserAddRows="False" CanUserDeleteRows="False"
+                                  CanUserResizeRows="False" CanUserSortColumns="False" CanUserReorderColumns="False"
+                                  SelectionUnit="CellOrRowHeader" SelectionMode="Extended"
+                                  HeadersVisibility="All" RowHeaderWidth="30"
+                                  HorizontalGridLinesBrush="#FFD0D0D0" VerticalGridLinesBrush="#FFD0D0D0"
+                                  RowHeaderStyle="{StaticResource RowNumberHeaderStyle}"
+                                  RowStyle="{StaticResource PlaylistRowStyle}"
+                                  PreviewKeyDown="dataGrid_Playlist_PreviewKeyDown"
+                                  PreviewMouseRightButtonDown="dataGrid_Playlist_PreviewMouseRightButtonDown"
+                                  PreviewMouseLeftButtonDown="dataGrid_Playlist_PreviewMouseLeftButtonDown"
+                                  PreviewMouseMove="dataGrid_Playlist_PreviewMouseMove"
+                                  PreviewMouseWheel="DataGrid_PreviewMouseWheel"
+                                  DragOver="dataGrid_Playlist_DragOver" Drop="dataGrid_Playlist_Drop"
+                                  ContextMenuOpening="dataGrid_Playlist_ContextMenuOpening">
+                            <DataGrid.Columns>
+                                <DataGridTemplateColumn x:Name="col_PlaylistEnabled" Header="実行" Width="40" SortMemberPath="Enabled">
+                                    <DataGridTemplateColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <CheckBox IsChecked="{Binding Enabled, UpdateSourceTrigger=PropertyChanged}"
+                                                      HorizontalAlignment="Center" VerticalAlignment="Center" Focusable="False" />
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn.CellTemplate>
+                                </DataGridTemplateColumn>
+                                <DataGridTemplateColumn x:Name="col_PlaylistFile" Header="プレイリスト" Width="*" SortMemberPath="FileName"
+                                                        CellStyle="{StaticResource PlaylistFileCellStyle}">
+                                    <DataGridTemplateColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <DockPanel LastChildFill="True">
+                                                <TextBlock DockPanel.Dock="Right" Text="▼" FontSize="8" Foreground="Gray"
+                                                           VerticalAlignment="Center" Margin="2,0,2,0" />
+                                                <TextBlock Text="{Binding FileName}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" Margin="2,0,0,0" />
+                                            </DockPanel>
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn.CellTemplate>
+                                    <DataGridTemplateColumn.CellEditingTemplate>
+                                        <DataTemplate>
+                                            <ComboBox ItemsSource="{DynamicResource PlaylistFileItems}"
+                                                      SelectedItem="{Binding FileName, UpdateSourceTrigger=PropertyChanged}"
+                                                      Loaded="PlaylistFileEditor_Loaded" DropDownClosed="PlaylistFileEditor_DropDownClosed" />
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn.CellEditingTemplate>
+                                </DataGridTemplateColumn>
+                                <DataGridTextColumn x:Name="col_PlaylistLoopCount" Header="ループ数" Width="56" SortMemberPath="LoopCount"
+                                                    Binding="{Binding LoopCount}" />
+                            </DataGrid.Columns>
+                            <DataGrid.ContextMenu>
+                                <ContextMenu>
+                                    <MenuItem x:Name="menuItem_PlaylistOpenFile" Header="ファイルを開く" Click="menuItem_PlaylistOpenFile_Click" />
+                                    <Separator />
+                                    <MenuItem x:Name="menuItem_PlaylistRefresh" Header="プレイリストを更新" Click="menuItem_PlaylistRefresh_Click" />
+                                    <MenuItem x:Name="menuItem_PlaylistAddRow" Header="行の追加" Click="menuItem_PlaylistAddRow_Click" />
+                                    <MenuItem x:Name="menuItem_PlaylistDeleteRow" Header="行の削除" Click="menuItem_PlaylistDeleteRow_Click" />
+                                    <Separator />
+                                    <MenuItem x:Name="menuItem_PlaylistCheckAll" Header="全チェックON" Click="menuItem_PlaylistCheckAll_Click" />
+                                    <MenuItem x:Name="menuItem_PlaylistUncheckAll" Header="全チェックOFF" Click="menuItem_PlaylistUncheckAll_Click" />
+                                    <Separator />
+                                    <MenuItem x:Name="menuItem_PlaylistShowAll" Header="チェックON・OFFともに表示" Click="menuItem_PlaylistShowAll_Click" />
+                                    <MenuItem x:Name="menuItem_PlaylistShowCheckedOnly" Header="チェックONのみ表示" Click="menuItem_PlaylistShowCheckedOnly_Click" />
+                                </ContextMenu>
+                            </DataGrid.ContextMenu>
+                        </DataGrid>
+                        <TextBlock Grid.Row="1" x:Name="label_PlaylistStatus" Margin="2,4,0,2" TextTrimming="CharacterEllipsis" />
+                    </Grid>
+                </GroupBox>
+            </Border>
+        </Grid>
+
+        <!-- 下段1: ループ数・再生・最小化(単発再生とプレイリスト実行の共通項目) -->
+        <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="7,7,0,0">
+            <TextBlock x:Name="label_Loop" Text="ループ数" VerticalAlignment="Center" />
+            <stc:TextBoxEx x:Name="textBox_Loop" Text="1" Width="48" Margin="16,0,0,0" VerticalAlignment="Center"
+                           EnableUpDownIncrement="True" TabIndex="5" />
+            <Button x:Name="button_Play" Content="再生" Width="80" Height="27" Margin="8,0,0,0" TabIndex="6" Click="button_Play_Click" />
+            <CheckBox x:Name="checkBox_MinimizeOnPlay" Content="実行時にウィンドウを最小化する" Margin="10,0,0,0" VerticalAlignment="Center"
+                      TabIndex="7" Checked="checkBox_MinimizeOnPlay_CheckedChanged" Unchecked="checkBox_MinimizeOnPlay_CheckedChanged" />
+        </StackPanel>
+
+        <!-- 下段2: プロファイル選択+保存 -->
+        <Grid Grid.Row="3" Margin="7,4,0,0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <stc:ComboBoxEx Grid.Column="0" x:Name="comboBox_Profile" IsEditable="False" Margin="0,0,6,0" VerticalAlignment="Center"
+                            TabIndex="8" SelectionChanged="comboBox_Profile_SelectionChanged" />
+            <Button Grid.Column="1" x:Name="button_ProfileSave" Content="プロファイル保存" Width="108" Height="23" TabIndex="9"
+                    Click="button_ProfileSave_Click" />
+        </Grid>
+    </Grid>
+</Window>

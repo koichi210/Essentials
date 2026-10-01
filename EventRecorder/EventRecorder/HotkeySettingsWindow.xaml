@@ -1,0 +1,24 @@
+﻿<local:DialogWindowBase x:Class="EventRecorder.HotkeySettingsWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:local="clr-namespace:EventRecorder"
+        xmlns:stc="clr-namespace:StandardTemplate.Wpf"
+        Title="EventRecorder - キーバインド設定"
+        ResizeMode="NoResize" SizeToContent="WidthAndHeight">
+    <Grid Width="282" Height="145">
+        <Label Content="レコード" Margin="8,10,0,0" HorizontalAlignment="Left" VerticalAlignment="Top" Padding="4,2" />
+        <stc:TextBoxEx x:Name="textBox_Record" Margin="90,11,0,0" Width="180" HorizontalAlignment="Left" VerticalAlignment="Top"
+                       IsReadOnly="True" IsReadOnlyCaretVisible="True" TabIndex="1" InputMethod.IsInputMethodEnabled="False"
+                       PreviewKeyDown="textBox_Record_PreviewKeyDown" />
+        <Label Content="再生" Margin="8,39,0,0" HorizontalAlignment="Left" VerticalAlignment="Top" Padding="4,2" />
+        <stc:TextBoxEx x:Name="textBox_Play" Margin="90,40,0,0" Width="180" HorizontalAlignment="Left" VerticalAlignment="Top"
+                       IsReadOnly="True" IsReadOnlyCaretVisible="True" TabIndex="3" InputMethod.IsInputMethodEnabled="False"
+                       PreviewKeyDown="textBox_Play_PreviewKeyDown" />
+        <TextBlock Margin="12,72,0,0" HorizontalAlignment="Left" VerticalAlignment="Top"
+                   Text="テキストボックスにフォーカスして、&#x0a;割り当てたいキーを押してね" />
+        <Button x:Name="button_Reset" Content="初期値に戻す" Margin="12,106,0,0" Width="100" Height="27"
+                HorizontalAlignment="Left" VerticalAlignment="Top" TabIndex="5" Click="button_Reset_Click" />
+        <Button x:Name="button_Save" Content="保存" Margin="198,106,0,0" Width="72" Height="27"
+                HorizontalAlignment="Left" VerticalAlignment="Top" TabIndex="6" IsDefault="True" Click="button_Save_Click" />
+    </Grid>
+</local:DialogWindowBase>

@@ -1,0 +1,418 @@
+<Window x:Class="Cheetos.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:stc="clr-namespace:StandardTemplate.Wpf"
+        Title="Cheetos" Icon="Cheetos.ico"
+        Width="483" Height="470" MinWidth="400" MinHeight="445"
+        PreviewKeyDown="Window_PreviewKeyDown">
+    <Window.Resources>
+        <Style x:Key="NumberBox" TargetType="{x:Type stc:TextBoxEx}">
+            <Setter Property="TextAlignment" Value="Right" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+        </Style>
+        <Style x:Key="RowLabel" TargetType="{x:Type Label}">
+            <Setter Property="HorizontalAlignment" Value="Right" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="Padding" Value="2,0" />
+        </Style>
+        <Style x:Key="ListUp" TargetType="{x:Type ListBox}">
+            <Setter Property="SelectionMode" Value="Extended" />
+            <Setter Property="ScrollViewer.VerticalScrollBarVisibility" Value="Visible" />
+        </Style>
+        <!-- DataGridのドロップダウン列: 編集開始と同時にプルダウンを開く(WinForms版のCellClickでDroppedDown=trueしていた動作) -->
+        <Style x:Key="DropDownEditing" TargetType="{x:Type ComboBox}">
+            <Setter Property="IsDropDownOpen" Value="True" />
+        </Style>
+    </Window.Resources>
+    <Grid Margin="3,6,3,3">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <TabControl Grid.Row="0" x:Name="TabPage">
+            <!-- ************************ CaptureWindow ************************ -->
+            <TabItem Header="CaptureWindow" x:Name="CaptureWindow">
+                <Grid Margin="5,6,8,5" Background="Transparent" MouseMove="tabPageCaptureWindow_MouseMove">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="150" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+
+                    <Label Grid.Row="0" Grid.Column="0" Content="フォルダパス：" Style="{StaticResource RowLabel}" />
+                    <stc:TextBoxEx Grid.Row="0" Grid.Column="1" x:Name="cw_TextBox_SavePath" VerticalAlignment="Center" Margin="0,2"
+                                   KeyDown="cw_TextBox_SavePath_KeyDown" KeyUp="cw_TextBox_SavePath_KeyUp" />
+                    <Label Grid.Row="1" Grid.Column="0" Content="ファイル名プリフィックス：" Style="{StaticResource RowLabel}" />
+                    <stc:TextBoxEx Grid.Row="1" Grid.Column="1" x:Name="cw_TextBox_SaveFilePrefix" VerticalAlignment="Center" Margin="0,2" />
+                    <CheckBox Grid.Row="2" Grid.Column="1" x:Name="cw_checkBox_AddTimeStamp" Content="ファイル名にタイムスタンプを使用する"
+                              Margin="8,3" VerticalAlignment="Center" />
+
+                    <GroupBox Grid.Row="3" Grid.Column="0" x:Name="cw_GroupBox_CaptureTarget" Header="Capture対象"
+                              Margin="8,4,6,4" Padding="4,2">
+                        <StackPanel>
+                            <RadioButton x:Name="cw_Radio_FullScreen" Content="FullScreen" IsChecked="True" Margin="0,2" />
+                            <RadioButton x:Name="cw_Radio_CurrentScreen" Content="CurrentScreen" Margin="0,2" />
+                            <RadioButton x:Name="cw_Radio_CurrentWindow" Content="CurrentWindow" Margin="0,2" />
+                        </StackPanel>
+                    </GroupBox>
+
+                    <DataGrid Grid.Row="3" Grid.RowSpan="4" Grid.Column="1" x:Name="cw_dataGridView" Margin="0,4,0,2"
+                              AutoGenerateColumns="False" CanUserAddRows="False" CanUserDeleteRows="False"
+                              CanUserSortColumns="False" CanUserReorderColumns="False"
+                              HeadersVisibility="Column" SelectionMode="Single" SelectionUnit="Cell">
+                        <DataGrid.CellStyle>
+                            <Style TargetType="{x:Type DataGridCell}">
+                                <EventSetter Event="PreviewMouseLeftButtonDown" Handler="cw_dataGridView_CellClick" />
+                            </Style>
+                        </DataGrid.CellStyle>
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Width="*" Binding="{Binding Sleep, UpdateSourceTrigger=PropertyChanged}" />
+                            <DataGridTextColumn Width="*" Binding="{Binding MouseX, UpdateSourceTrigger=PropertyChanged}" />
+                            <DataGridTextColumn Width="*" Binding="{Binding MouseY, UpdateSourceTrigger=PropertyChanged}" />
+                            <DataGridComboBoxColumn Width="*"
+                                                    SelectedItemBinding="{Binding MouseAction, UpdateSourceTrigger=PropertyChanged}"
+                                                    EditingElementStyle="{StaticResource DropDownEditing}" />
+                            <DataGridComboBoxColumn Width="*"
+                                                    SelectedItemBinding="{Binding Capture, UpdateSourceTrigger=PropertyChanged}"
+                                                    EditingElementStyle="{StaticResource DropDownEditing}" />
+                        </DataGrid.Columns>
+                    </DataGrid>
+
+                    <Label Grid.Row="4" Grid.Column="0" Content="Sleep（msec）：" HorizontalAlignment="Left" Margin="4,0,0,0" Padding="2,0" VerticalAlignment="Center" />
+                    <stc:TextBoxEx Grid.Row="4" Grid.Column="0" x:Name="cw_TextBox_Sleep" Style="{StaticResource NumberBox}"
+                                   Width="50" HorizontalAlignment="Right" Margin="0,2,6,2" />
+                    <Label Grid.Row="5" Grid.Column="0" Content="繰り返し数：" HorizontalAlignment="Left" Margin="18,0,0,0" Padding="2,0" VerticalAlignment="Center" />
+                    <stc:TextBoxEx Grid.Row="5" Grid.Column="0" x:Name="cw_TextBox_Loop" Style="{StaticResource NumberBox}"
+                                   Width="50" HorizontalAlignment="Right" Margin="0,2,6,2" EnableUpDownIncrement="True" />
+
+                    <stc:TextBoxEx Grid.Row="7" Grid.Column="0" x:Name="cw_TextBox_Status" IsReadOnly="True" TextAlignment="Right"
+                                   Margin="35,0,6,0" VerticalAlignment="Center" />
+                    <DockPanel Grid.Row="7" Grid.Column="1" LastChildFill="False">
+                        <Button DockPanel.Dock="Left" x:Name="cw_Button_AddLine" Content="一行追加" Width="65" Height="23" Margin="0,0,2,0"
+                                Click="cw_Button_AddLine_Click" />
+                        <Button DockPanel.Dock="Left" x:Name="cw_Button_DelLine" Content="一行削除" Width="65" Height="23"
+                                Click="cw_Button_DelLine_Click" />
+                        <Button DockPanel.Dock="Right" x:Name="cw_Button_Capture" Content="Capture" Width="60" Height="23"
+                                Click="Button_Capture_Click" />
+                    </DockPanel>
+                </Grid>
+            </TabItem>
+
+            <!-- ************************ PictTrim ************************ -->
+            <TabItem Header="PictTrim" x:Name="PictTrim">
+                <Grid Margin="5,6,8,5">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="144" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+
+                    <DockPanel Grid.Row="0" Grid.ColumnSpan="2" Margin="0,0,0,4">
+                        <Label DockPanel.Dock="Left" x:Name="pt_Label_SourceFolderPath" Content="フォルダパス：" Width="74"
+                               Padding="2,0" VerticalAlignment="Center" MouseDoubleClick="UpdateReadOnly" />
+                        <Button DockPanel.Dock="Right" x:Name="pt_Button_Listup" Content="リストアップ" Width="84" Height="23" Margin="6,0,0,0"
+                                Click="Button_TrimListup_Click" />
+                        <stc:TextBoxEx x:Name="pt_SourceFolderPath" IsReadOnly="True" VerticalAlignment="Center" KeyDown="ExecutePath" />
+                    </DockPanel>
+
+                    <Grid Grid.Row="1" Grid.Column="0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="74" />
+                            <ColumnDefinition Width="50" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="*" />
+                        </Grid.RowDefinitions>
+                        <Label Grid.Row="0" Content="原点(X)：" Style="{StaticResource RowLabel}" />
+                        <stc:TextBoxEx Grid.Row="0" Grid.Column="1" x:Name="pt_BaseX" Style="{StaticResource NumberBox}" Margin="0,2" />
+                        <Label Grid.Row="1" Content="原点(Y)：" Style="{StaticResource RowLabel}" />
+                        <stc:TextBoxEx Grid.Row="1" Grid.Column="1" x:Name="pt_BaseY" Style="{StaticResource NumberBox}" Margin="0,2" />
+                        <RadioButton Grid.Row="2" Grid.ColumnSpan="3" x:Name="pt_Radio_SelectPointOfEnd" Content="終点を座標で指定"
+                                     IsChecked="True" Margin="18,14,0,2" Click="pt_Radio_SelectPointOfEnd_Click" />
+                        <RadioButton Grid.Row="3" Grid.ColumnSpan="3" x:Name="pt_Radio_SelectSizeOfEnd" Content="終点をサイズで指定"
+                                     Margin="18,2,0,2" Click="pt_Radio_SelectSizeOfEnd_Click" />
+                        <Label Grid.Row="4" Content="X：" Style="{StaticResource RowLabel}" />
+                        <stc:TextBoxEx Grid.Row="4" Grid.Column="1" x:Name="pt_TargetX" Style="{StaticResource NumberBox}" Margin="0,2" />
+                        <Label Grid.Row="5" Content="Y：" Style="{StaticResource RowLabel}" />
+                        <stc:TextBoxEx Grid.Row="5" Grid.Column="1" x:Name="pt_TargetY" Style="{StaticResource NumberBox}" Margin="0,2" />
+                    </Grid>
+
+                    <ListBox Grid.Row="1" Grid.Column="1" x:Name="pt_ListBox_ListUp" Style="{StaticResource ListUp}"
+                             SelectionChanged="pt_ListBox_ListUp_SelectedIndexChanged" MouseDoubleClick="pt_ListBox_ListUp_DoubleClick" />
+
+                    <DockPanel Grid.Row="2" Grid.Column="1" Margin="0,4,0,0">
+                        <Button DockPanel.Dock="Right" x:Name="pt_Button_Trim" Content="切り取り" Width="60" Height="23" Margin="6,0,0,0"
+                                Click="Button_Trim_Click" />
+                        <stc:TextBoxEx x:Name="pt_TextBox_Status" IsReadOnly="True" TextAlignment="Right" VerticalAlignment="Center" />
+                    </DockPanel>
+                </Grid>
+            </TabItem>
+
+            <!-- ************************ Rotation ************************ -->
+            <TabItem Header="Rotation" x:Name="Rotation">
+                <Grid Margin="5,6,8,5">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="144" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+
+                    <DockPanel Grid.Row="0" Grid.ColumnSpan="2" Margin="0,0,0,4">
+                        <Label DockPanel.Dock="Left" x:Name="pr_Label_SourceFolderPath" Content="フォルダパス：" Width="74"
+                               Padding="2,0" VerticalAlignment="Center" MouseDoubleClick="UpdateReadOnly" />
+                        <Button DockPanel.Dock="Right" x:Name="pr_Button_Listup" Content="リストアップ" Width="84" Height="23" Margin="6,0,0,0"
+                                Click="pr_Button_Listup_Click" />
+                        <stc:TextBoxEx x:Name="pr_SourceFolderPath" IsReadOnly="True" VerticalAlignment="Center" KeyDown="ExecutePath" />
+                    </DockPanel>
+
+                    <Grid Grid.Row="1" Grid.Column="0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="74" />
+                            <ColumnDefinition Width="50" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="*" />
+                        </Grid.RowDefinitions>
+                        <Label Grid.Row="0" Content="原点(X)：" Style="{StaticResource RowLabel}" />
+                        <stc:TextBoxEx Grid.Row="0" Grid.Column="1" x:Name="pr_BaseX" Style="{StaticResource NumberBox}" Margin="0,2" />
+                        <Label Grid.Row="1" Content="原点(Y)：" Style="{StaticResource RowLabel}" />
+                        <stc:TextBoxEx Grid.Row="1" Grid.Column="1" x:Name="pr_BaseY" Style="{StaticResource NumberBox}" Margin="0,2" />
+                        <Label Grid.Row="2" Content="角度：" Style="{StaticResource RowLabel}" />
+                        <stc:TextBoxEx Grid.Row="2" Grid.Column="1" x:Name="pr_Angle" Style="{StaticResource NumberBox}" Margin="0,2" />
+                        <Button Grid.Row="3" Grid.ColumnSpan="2" x:Name="pr_Button_RotationPreview" Content="プレビュー" Width="84" Height="23"
+                                HorizontalAlignment="Right" Margin="0,4,0,0" Click="pr_Button_RotationPreview_Click" />
+                    </Grid>
+
+                    <ListBox Grid.Row="1" Grid.Column="1" x:Name="pr_ListBox_ListUp" Style="{StaticResource ListUp}" />
+
+                    <DockPanel Grid.Row="2" Grid.Column="1" Margin="0,4,0,0">
+                        <Button DockPanel.Dock="Right" x:Name="pr_Button_Rotation" Content="回転実行" Width="61" Height="23" Margin="6,0,0,0"
+                                Click="pr_Button_Rotation_Click" />
+                        <stc:TextBoxEx x:Name="pr_TextBox_Status" IsReadOnly="True" TextAlignment="Right" VerticalAlignment="Center" />
+                    </DockPanel>
+                </Grid>
+            </TabItem>
+
+            <!-- ************************ DistOrient ************************ -->
+            <TabItem Header="DistOrient" x:Name="DistOrient">
+                <Grid Margin="5,6,8,5">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="94" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+
+                    <Label Grid.Row="0" x:Name="do_Label_SourceFolderPath" Content="移動元：" Style="{StaticResource RowLabel}"
+                           MouseDoubleClick="UpdateReadOnly" />
+                    <stc:TextBoxEx Grid.Row="0" Grid.Column="1" x:Name="do_SourceFolderPath" IsReadOnly="True" VerticalAlignment="Center"
+                                   Margin="0,2" KeyDown="ExecutePath" />
+                    <Label Grid.Row="1" x:Name="do_Label_DestPortFolderPath" Content="移動先[縦]：" Style="{StaticResource RowLabel}"
+                           MouseDoubleClick="UpdateReadOnly" />
+                    <stc:TextBoxEx Grid.Row="1" Grid.Column="1" x:Name="do_DestPortFolderPath" IsReadOnly="True" VerticalAlignment="Center"
+                                   Margin="0,2" KeyDown="ExecutePath" />
+                    <Label Grid.Row="2" x:Name="do_Label_DestLandFolderPath" Content="移動先[横]：" Style="{StaticResource RowLabel}"
+                           MouseDoubleClick="UpdateReadOnly" />
+                    <stc:TextBoxEx Grid.Row="2" Grid.Column="1" x:Name="do_DestLandFolderPath" IsReadOnly="True" VerticalAlignment="Center"
+                                   Margin="0,2" KeyDown="ExecutePath" />
+                    <Label Grid.Row="3" Content="対象ファイル：" Style="{StaticResource RowLabel}" />
+                    <stc:TextBoxEx Grid.Row="3" Grid.Column="1" x:Name="do_TargetFileName" FolderPathOnly="False" VerticalAlignment="Center"
+                                   Margin="0,2" />
+                    <Label Grid.Row="4" Content="白判定の長さ：" Style="{StaticResource RowLabel}" />
+                    <Grid Grid.Row="4" Grid.Column="1">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="80" />
+                            <ColumnDefinition Width="*" MaxWidth="97" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" MinWidth="60" />
+                        </Grid.ColumnDefinitions>
+                        <stc:TextBoxEx Grid.Column="0" x:Name="do_WhiteLength" Style="{StaticResource NumberBox}" Margin="0,2" />
+                        <Label Grid.Column="2" Content="白判定の係数：" Style="{StaticResource RowLabel}" />
+                        <stc:TextBoxEx Grid.Column="3" x:Name="do_WhiteCoef" Style="{StaticResource NumberBox}" Margin="0,2" />
+                    </Grid>
+                    <Button Grid.Row="5" Grid.Column="1" x:Name="do_Distribute" Content="振り分け" Width="60" Height="23"
+                            HorizontalAlignment="Right" Margin="0,4" Click="do_Distribute_Click" />
+
+                    <GroupBox Grid.Row="6" Grid.ColumnSpan="2" Header="Sample" Margin="14,0,0,0" Padding="4">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                            </Grid.RowDefinitions>
+                            <Label Grid.Row="0" Content="ファイル名：" Style="{StaticResource RowLabel}" />
+                            <stc:TextBoxEx Grid.Row="0" Grid.Column="1" x:Name="do_SampleFilePath" FolderPathOnly="False"
+                                           VerticalAlignment="Center" Margin="0,2" />
+                            <Button Grid.Row="1" Grid.Column="1" x:Name="do_GetSampleParam" Content="取得" Width="60" Height="23"
+                                    HorizontalAlignment="Right" Margin="0,4,0,0" Click="do_GetSampleParam_Click" />
+                        </Grid>
+                    </GroupBox>
+                </Grid>
+            </TabItem>
+
+            <!-- ************************ PictMerge ************************ -->
+            <TabItem Header="PictMerge" x:Name="PictMerge">
+                <Grid Margin="5,6,8,5">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="215" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+
+                    <DockPanel Grid.Row="0" Grid.ColumnSpan="2" Margin="0,0,0,4">
+                        <Label DockPanel.Dock="Left" x:Name="pm_Label_SourceFolderPath" Content="フォルダパス：" Width="74"
+                               Padding="2,0" VerticalAlignment="Center" MouseDoubleClick="UpdateReadOnly" />
+                        <Button DockPanel.Dock="Right" x:Name="pm_Button_Listup" Content="リストアップ" Width="84" Height="23" Margin="6,0,0,0"
+                                Click="Button_MergeListup_Click" />
+                        <stc:TextBoxEx x:Name="pm_SourceFolderPath" IsReadOnly="True" VerticalAlignment="Center" KeyDown="ExecutePath" />
+                    </DockPanel>
+
+                    <Grid Grid.Row="1" Grid.RowSpan="2" Grid.Column="0" Margin="0,0,6,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="100" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="*" />
+                        </Grid.RowDefinitions>
+                        <Label Grid.Row="0" Content="マージ先の識別子：" Style="{StaticResource RowLabel}" />
+                        <stc:TextBoxEx Grid.Row="0" Grid.Column="1" x:Name="pm_SourceFile1Prefix" Style="{StaticResource NumberBox}" Margin="0,2" />
+                        <Label Grid.Row="1" Content="マージ元の識別子：" Style="{StaticResource RowLabel}" />
+                        <stc:TextBoxEx Grid.Row="1" Grid.Column="1" x:Name="pm_SourceFile2Prefix" Style="{StaticResource NumberBox}" Margin="0,2" />
+                        <Label Grid.Row="2" Content="切取る高さの範囲：" Style="{StaticResource RowLabel}" VerticalAlignment="Top" Margin="0,4,0,0" />
+                        <stc:TextBoxEx Grid.Row="2" Grid.Column="1" x:Name="pm_TrimmingHeight" TextAlignment="Right" Margin="0,2,0,0"
+                                       AcceptsReturn="True" TextWrapping="NoWrap"
+                                       VerticalScrollBarVisibility="Visible" HorizontalScrollBarVisibility="Visible" />
+                    </Grid>
+
+                    <ListBox Grid.Row="1" Grid.Column="1" x:Name="pm_ListBox_ListUp" Style="{StaticResource ListUp}"
+                             SelectionChanged="pm_ListBox_ListUp_SelectedIndexChanged" MouseDoubleClick="pm_ListBox_ListUp_DoubleClick" />
+
+                    <DockPanel Grid.Row="2" Grid.Column="1" Margin="0,4,0,0">
+                        <Button DockPanel.Dock="Right" x:Name="pm_Button_Merge" Content="結合" Width="60" Height="23" Margin="6,0,0,0"
+                                Click="MergeExec_Click" />
+                        <stc:TextBoxEx x:Name="pm_TextBox_Status" IsReadOnly="True" TextAlignment="Right" VerticalAlignment="Center" />
+                    </DockPanel>
+                </Grid>
+            </TabItem>
+
+            <!-- ************************ FileCollect ************************ -->
+            <TabItem Header="FileCollect" x:Name="FileCollect">
+                <Grid Margin="5,6,8,5">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="78" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+                    <Label Grid.Row="0" x:Name="fc_Label_SourceFolderPath" Content="移動元：" Style="{StaticResource RowLabel}"
+                           MouseDoubleClick="UpdateReadOnly" />
+                    <stc:TextBoxEx Grid.Row="0" Grid.Column="1" x:Name="fc_SourceFolderPath" IsReadOnly="True" VerticalAlignment="Center"
+                                   Margin="0,2" KeyDown="ExecutePath" />
+                    <Label Grid.Row="1" Content="移動先：" Style="{StaticResource RowLabel}" />
+                    <stc:TextBoxEx Grid.Row="1" Grid.Column="1" x:Name="fc_DestFolderPath" VerticalAlignment="Center"
+                                   Margin="0,2" KeyDown="ExecutePath" />
+                    <Label Grid.Row="2" Content="対象ファイル：" Style="{StaticResource RowLabel}" />
+                    <stc:TextBoxEx Grid.Row="2" Grid.Column="1" x:Name="fc_TargetFileName" FolderPathOnly="False" VerticalAlignment="Center"
+                                   Margin="0,2" />
+                    <Button Grid.Row="3" Grid.Column="1" x:Name="fc_MoveFile" Content="移動" Width="141" Height="23"
+                            HorizontalAlignment="Right" Margin="0,4" Click="fc_Button_Collect_Click" />
+                </Grid>
+            </TabItem>
+        </TabControl>
+
+        <!-- ************************ 処理状況 ************************ -->
+        <GroupBox Grid.Row="1" x:Name="groupBox2" Header="処理状況" Margin="0,6,0,0" Padding="4,2">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="64" />
+                    <ColumnDefinition Width="115" />
+                    <ColumnDefinition Width="19" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+                <Label Grid.Row="0" Grid.Column="0" Content="開始：" Style="{StaticResource RowLabel}" />
+                <stc:TextBoxEx Grid.Row="0" Grid.Column="1" x:Name="textBox_StartTime" IsReadOnly="True" TextAlignment="Right"
+                               VerticalAlignment="Center" Margin="0,2" />
+                <ProgressBar Grid.Row="0" Grid.Column="3" x:Name="ProgressBar_Status" Height="19" Margin="0,2" />
+                <Label Grid.Row="1" Grid.Column="0" Content="終了予想：" Style="{StaticResource RowLabel}" />
+                <stc:TextBoxEx Grid.Row="1" Grid.Column="1" x:Name="textBox_ExpectEndTime" IsReadOnly="True" TextAlignment="Right"
+                               VerticalAlignment="Center" Margin="0,2" />
+                <stc:TextBoxEx Grid.Row="1" Grid.Column="3" x:Name="TextBox_Status" IsReadOnly="True" TextAlignment="Right"
+                               Width="95" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,2" />
+            </Grid>
+        </GroupBox>
+
+        <!-- ダブルクリックでデバッグモードを切り替える隠しエリア(WinForms版のlabel_DebugModeと同じ) -->
+        <Border Grid.Row="2" x:Name="label_DebugMode" Height="10" Background="Transparent" Margin="2,0,157,0"
+                MouseLeftButtonDown="label_DebugMode_DoubleClick" />
+
+        <Grid Grid.Row="3">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <stc:ComboBoxEx Grid.Column="0" x:Name="Profile" IsEditable="False" Margin="0,0,9,0" VerticalAlignment="Center"
+                            SelectionChanged="Profile_SelectedIndexChanged" />
+            <Button Grid.Column="1" x:Name="Button_ProfileSave" Content="設定値保存" Width="75" Height="23" Click="ProfileSave_Click" />
+        </Grid>
+    </Grid>
+</Window>
