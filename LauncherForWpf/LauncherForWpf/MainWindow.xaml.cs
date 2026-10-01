@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.ObjectModel;
-using System.Diagnostics;
 using System.Linq;
 using System.Windows;
 using LauncherForWpf.Dialogs;
@@ -23,9 +22,7 @@ namespace LauncherForWpf
         {
             InitializeComponent();
 
-            _config = _configService.Load();
-            SectionsItemsControl.ItemsSource = Sections;
-            UpdateDataFolderText();
+            LoadConfig();
         }
 
         // ランチャー項目を起動
@@ -166,11 +163,7 @@ namespace LauncherForWpf
 
             try
             {
-                Process.Start(new ProcessStartInfo
-                {
-                    FileName = _configService.ConfigFilePath,
-                    UseShellExecute = true,
-                });
+                LaunchService.Launch(_configService.ConfigFilePath);
             }
             catch (Exception ex)
             {
@@ -181,9 +174,7 @@ namespace LauncherForWpf
         // 設定ファイルを再読み込み（他で編集した場合用）
         private void ReloadButton_Click(object sender, RoutedEventArgs e)
         {
-            _config = _configService.Load();
-            SectionsItemsControl.ItemsSource = Sections;
-            UpdateDataFolderText();
+            LoadConfig();
         }
 
         // 保存先フォルダを選び直す
@@ -207,11 +198,17 @@ namespace LauncherForWpf
             }
 
             // 新しい保存先の内容を読み込み直す（既存のconfig.jsonがあればそちらを使う）
+            LoadConfig();
+
+            MessageBox.Show(message, "保存先フォルダの変更", MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+
+        /// <summary>設定を読み込み直し、画面(セクション一覧・保存先表示)に反映する</summary>
+        private void LoadConfig()
+        {
             _config = _configService.Load();
             SectionsItemsControl.ItemsSource = Sections;
             UpdateDataFolderText();
-
-            MessageBox.Show(message, "保存先フォルダの変更", MessageBoxButton.OK, MessageBoxImage.Information);
         }
 
         private void UpdateDataFolderText()
