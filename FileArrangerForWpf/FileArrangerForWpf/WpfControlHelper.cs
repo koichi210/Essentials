@@ -201,11 +201,11 @@ namespace FileArrangerForWpf
                     valueName = value.Substring(startIdx);
                 }
 
-                // 文字の絞り込み(limitStringは絞り込むかどうかの目印。実際の絞り込みには入力中のTextを使う)
+                // 文字の絞り込み(limitStringを含む項目だけ残す)
                 if (limitString != String.Empty)
                 {
                     // 大文字小文字を区別せずに部分一致で検索
-                    if (valueName.IndexOf(currentText, StringComparison.OrdinalIgnoreCase) < 0)
+                    if (valueName.IndexOf(limitString, StringComparison.OrdinalIgnoreCase) < 0)
                     {
                         continue;
                     }
