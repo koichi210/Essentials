@@ -4,7 +4,7 @@ using System.IO;
 
 namespace Picture
 {
-    class PicEdit
+    class PicEdit : IDisposable
     {
         // 描画先
         protected Bitmap m_Canvas;
@@ -22,6 +22,8 @@ namespace Picture
             m_Canvas = new Bitmap(destWidth, destHeight);
         }
 
+        // IDisposable。ReleaseImg が解放後に null を入れるので、二重に呼んでも
+        // (SaveCanvas の後に呼んでも) 何も起きず安全。
         public void Dispose()
         {
             // リソース解放

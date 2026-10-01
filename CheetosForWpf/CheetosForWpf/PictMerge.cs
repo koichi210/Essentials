@@ -51,7 +51,7 @@ namespace CheetosForWpf
             return true;
         }
 
-        public bool CreateMergeSourceFile()
+        public bool BackUpSourceFile()
         {
             SourceFileFullName = SourceFolderPath + @"\" + TargetFileName;
             SourceBackUpFullName = BackUpDirPath + @"\" + TargetFileName;
@@ -65,7 +65,7 @@ namespace CheetosForWpf
             return true;
         }
 
-        public bool CreateMergeTargetFile()
+        public bool ResolveMergeFilePath()
         {
             String MergeFileName = TargetFileName.Replace(Prefix1, Prefix2);
             MergeFileFullName = SourceFolderPath + @"\" + MergeFileName;
@@ -107,40 +107,39 @@ namespace CheetosForWpf
         public bool MergeExecute()
         {
             // キャンバス作成
-            PicEdit mrg = new PicEdit(SourceBackUpFullName);
-
-            mrg.CreateSourceImg(MergeFileFullName);
-            Drawing.Size sz = mrg.GetCanvasSize();
-
-            for (int i = 0; i < TrimHeightRanges.Length; i++)
+            using (PicEdit mrg = new PicEdit(SourceBackUpFullName))
             {
-                // 不正な行は開始前にUIスレッドで確認済み(FindInvalidTrimHeights)なので、ここでは飛ばすだけ
-                if (TrimHeightRanges[i] == String.Empty || !IsValidTrimHeight(TrimHeightRanges[i]))
+                mrg.CreateSourceImg(MergeFileFullName);
+                Drawing.Size sz = mrg.GetCanvasSize();
+
+                for (int i = 0; i < TrimHeightRanges.Length; i++)
                 {
-                    continue;
+                    // 不正な行は開始前にUIスレッドで確認済み(FindInvalidTrimHeights)なので、ここでは飛ばすだけ
+                    if (TrimHeightRanges[i] == String.Empty || !IsValidTrimHeight(TrimHeightRanges[i]))
+                    {
+                        continue;
+                    }
+
+                    string[] range = TrimHeightRanges[i].Split(new[] { "," }, StringSplitOptions.None);
+                    int startHeight = GetHeight(range[0], 0);
+                    int endHeight = GetHeight(range[1], sz.Height);
+                    if (sz.Height < startHeight)
+                    {
+                        // 画像サイズよりも指定されたサイズが大きい
+                        break;
+                    }
+                    Drawing.Rectangle cutParam = new Drawing.Rectangle(0, startHeight, sz.Width, endHeight - startHeight);
+                    mrg.MergeExec(cutParam);
                 }
 
-                string[] range = TrimHeightRanges[i].Split(new[] { "," }, StringSplitOptions.None);
-                int startHeight = GetHeight(range[0], 0);
-                int endHeight = GetHeight(range[1], sz.Height);
-                if (sz.Height < startHeight)
-                {
-                    // 画像サイズよりも指定されたサイズが大きい
-                    break;
-                }
-                Drawing.Rectangle cutParam = new Drawing.Rectangle(0, startHeight, sz.Width, endHeight - startHeight);
-                mrg.MergeExec(cutParam);
+                mrg.ReleaseSourceImg();
+
+                // キャンバス保存
+                mrg.SaveCanvas(SourceFileFullName);
+
+                // マージ元ファイルをバックアップへ移動
+                File.Move(MergeFileFullName, MergeBackUpFullName);
             }
-
-            mrg.ReleaseSourceImg();
-
-            // キャンバス保存
-            mrg.SaveCanvas(SourceFileFullName);
-
-            // マージ元ファイルをバックアップへ移動
-            File.Move(MergeFileFullName, MergeBackUpFullName);
-
-            mrg.Dispose();
             return true;
         }
 
@@ -210,7 +209,7 @@ namespace CheetosForWpf
             param.TargetFileNames = WpfUtils.GetSelectedStrArray(pm_ListBox_ListUp);
 
             SetStartTime();
-            pm_MergeExec_Click.Content = "中断";
+            pm_Button_Merge.Content = "中断";
             bkgWorkerMerge.RunWorkerAsync(param);   // ⇒DoWork()
         }
 
@@ -251,12 +250,12 @@ namespace CheetosForWpf
                     continue;
                 }
 
-                if (!pm.CreateMergeSourceFile())
+                if (!pm.BackUpSourceFile())
                 {
                     continue;
                 }
 
-                if (!pm.CreateMergeTargetFile())
+                if (!pm.ResolveMergeFilePath())
                 {
                     continue;
                 }
@@ -296,7 +295,7 @@ namespace CheetosForWpf
                 }
             }
             TextBox_Status.Text += " 完了";
-            pm_MergeExec_Click.Content = "結合";
+            pm_Button_Merge.Content = "結合";
 
             // リスト更新
             ListupPictMerge();

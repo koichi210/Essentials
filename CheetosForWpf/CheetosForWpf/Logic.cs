@@ -12,7 +12,7 @@ namespace CheetosForWpf
     ///
     /// WPF版での変更点は2つだけ:
     /// ・IsPortrait の結果表示を WPF の MessageBox にした
-    /// ・UpdateValue の引数を WinForms の KeyEventArgs から WPF の Key にした
+    /// ・StepValueByArrowKey の引数を WinForms の KeyEventArgs から WPF の Key にした
     ///   (WPFのKeyEventArgsはPresentationSource無しでは作れず、テストしづらいため)
     /// </summary>
     internal static class Logic
@@ -38,7 +38,7 @@ namespace CheetosForWpf
 
                 // 左端
                 Rectangle leftCutParam = new Rectangle(0, 0, width, pictSize.Height);
-                long leftPictSize = GetBinSize(sourceImg, leftCutParam);
+                long leftPictSize = GetTrimmedPngByteLength(sourceImg, leftCutParam);
                 if (baseSize < leftPictSize)
                 {
                     isPortrait = false;
@@ -49,7 +49,7 @@ namespace CheetosForWpf
                 if (isPortrait)
                 {
                     Rectangle rightCutParam = new Rectangle(pictSize.Width - width, 0, width, pictSize.Height);
-                    rightPictSize = GetBinSize(sourceImg, rightCutParam);
+                    rightPictSize = GetTrimmedPngByteLength(sourceImg, rightCutParam);
                     if (baseSize < rightPictSize)
                     {
                         isPortrait = false;
@@ -70,51 +70,49 @@ namespace CheetosForWpf
         }
 
         /// <summary>画像の指定範囲を切り出して、PNGエンコードした場合のバイト数を返す。</summary>
-        public static long GetBinSize(String fileName, Rectangle cutParam)
+        public static long GetTrimmedPngByteLength(String fileName, Rectangle cutParam)
         {
             using (Bitmap sourceImg = new Bitmap(fileName))
             {
-                return GetBinSize(sourceImg, cutParam);
+                return GetTrimmedPngByteLength(sourceImg, cutParam);
             }
         }
 
         /// <summary>既にデコード済みのBitmapから指定範囲を切り出し、PNGエンコードした場合のバイト数を返す。</summary>
-        private static long GetBinSize(Bitmap sourceImg, Rectangle cutParam)
+        private static long GetTrimmedPngByteLength(Bitmap sourceImg, Rectangle cutParam)
         {
-            PicEdit trm = new PicEdit(cutParam.Width, cutParam.Height);
+            using (PicEdit trm = new PicEdit(cutParam.Width, cutParam.Height))
+            {
+                // 切り取り
+                trm.TrimExec(sourceImg, cutParam, new Point(0, 0));
 
-            // 切り取り
-            trm.TrimExec(sourceImg, cutParam, new Point(0, 0));
-
-            // メモリ上でPNGエンコードしてそのバイト数を見る
-            long length = trm.GetCanvasPngByteLength();
-
-            trm.Dispose();
-            return length;
+                // メモリ上でPNGエンコードしてそのバイト数を見る
+                return trm.GetCanvasPngByteLength();
+            }
         }
 
         /// <summary>
         /// キャプチャ画像のファイル名の先頭部分（保存先＋接頭辞＋任意でタイムスタンプ）を組み立てる。
         /// </summary>
-        public static String GetFileBaseFormat(String directoryPath, String prefix, Boolean addTimeStamp)
+        public static String BuildFilePathPrefix(String directoryPath, String prefix, Boolean addTimeStamp)
         {
-            String fileBaseFormat = directoryPath + @"\";
+            String filePathPrefix = directoryPath + @"\";
             if (prefix != String.Empty)
             {
-                fileBaseFormat += prefix + "_";
+                filePathPrefix += prefix + "_";
             }
             if (addTimeStamp)
             {
-                fileBaseFormat += System.DateTime.Now.ToString("yyyy_MM_dd_HH_mm_ss_");
+                filePathPrefix += System.DateTime.Now.ToString("yyyy_MM_dd_HH_mm_ss_");
             }
 
-            return fileBaseFormat;
+            return filePathPrefix;
         }
 
         /// <summary>
         /// テキストボックスの数値を、上下キーで+1/-1する。数値でなければ変更しない。
         /// </summary>
-        public static String UpdateValue(String baseValue, Key key)
+        public static String StepValueByArrowKey(String baseValue, Key key)
         {
             int addValue = 0;
             switch (key)

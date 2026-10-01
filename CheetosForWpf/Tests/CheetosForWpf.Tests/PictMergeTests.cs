@@ -106,11 +106,11 @@ namespace CheetosForWpf.Tests
         }
 
         // ------------------------------------------------------------------
-        // CreateMergeSourceFile / CreateMergeTargetFile
+        // BackUpSourceFile / ResolveMergeFilePath
         // ------------------------------------------------------------------
 
         [TestMethod]
-        public void CreateMergeSourceFileは元ファイルが無ければ失敗しエラーを記録する()
+        public void BackUpSourceFileは元ファイルが無ければ失敗しエラーを記録する()
         {
             var pm = new PictMerge
             {
@@ -121,14 +121,14 @@ namespace CheetosForWpf.Tests
             };
             pm.SetTargetFileName("no_such_file.jpg");
 
-            bool result = pm.CreateMergeSourceFile();
+            bool result = pm.BackUpSourceFile();
 
             Assert.IsFalse(result);
             StringAssert.Contains(pm.GetErrorMessage(), "no_such_file.jpg");
         }
 
         [TestMethod]
-        public void CreateMergeSourceFileは元ファイルがあればバックアップにコピーする()
+        public void BackUpSourceFileは元ファイルがあればバックアップにコピーする()
         {
             CreateImage("left.jpg", 10, 10, Color.Red);
 
@@ -139,14 +139,14 @@ namespace CheetosForWpf.Tests
             };
             pm.SetTargetFileName("left.jpg");
 
-            bool result = pm.CreateMergeSourceFile();
+            bool result = pm.BackUpSourceFile();
 
             Assert.IsTrue(result);
             Assert.IsTrue(File.Exists(Path.Combine(tempDirectory, "backup", "left.jpg")));
         }
 
         [TestMethod]
-        public void CreateMergeTargetFileは対となるファイルが無ければ失敗する()
+        public void ResolveMergeFilePathは対となるファイルが無ければ失敗する()
         {
             CreateImage("left.jpg", 10, 10, Color.Red);
 
@@ -159,9 +159,9 @@ namespace CheetosForWpf.Tests
             };
             pm.SetTargetFileName("left.jpg");
             pm.IsProcTarget(); // Prefix1/Prefix2 を内部に確定させる
-            pm.CreateMergeSourceFile();
+            pm.BackUpSourceFile();
 
-            bool result = pm.CreateMergeTargetFile();
+            bool result = pm.ResolveMergeFilePath();
 
             Assert.IsFalse(result, "right.jpg が存在しないので失敗するはず");
         }
@@ -188,8 +188,8 @@ namespace CheetosForWpf.Tests
             };
             pm.SetTargetFileName("left.jpg");
             Assert.IsTrue(pm.IsProcTarget());
-            Assert.IsTrue(pm.CreateMergeSourceFile());
-            Assert.IsTrue(pm.CreateMergeTargetFile());
+            Assert.IsTrue(pm.BackUpSourceFile());
+            Assert.IsTrue(pm.ResolveMergeFilePath());
 
             bool result = pm.MergeExecute();
 
@@ -218,8 +218,8 @@ namespace CheetosForWpf.Tests
             };
             pm.SetTargetFileName("left.jpg");
             pm.IsProcTarget();
-            pm.CreateMergeSourceFile();
-            pm.CreateMergeTargetFile();
+            pm.BackUpSourceFile();
+            pm.ResolveMergeFilePath();
 
             bool result = pm.MergeExecute();
 
@@ -242,8 +242,8 @@ namespace CheetosForWpf.Tests
             };
             pm.SetTargetFileName("left.jpg");
             pm.IsProcTarget();
-            pm.CreateMergeSourceFile();
-            pm.CreateMergeTargetFile();
+            pm.BackUpSourceFile();
+            pm.ResolveMergeFilePath();
 
             bool result = pm.MergeExecute();
 

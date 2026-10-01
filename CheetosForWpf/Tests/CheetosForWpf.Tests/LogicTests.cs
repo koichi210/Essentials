@@ -49,32 +49,32 @@ namespace CheetosForWpf.Tests
         }
 
         // ------------------------------------------------------------------
-        // GetBinSize
+        // GetTrimmedPngByteLength
         // ------------------------------------------------------------------
 
         [TestMethod]
-        public void GetBinSize_単色画像は範囲が広いほど圧縮でファイルサイズが小さくなりやすい()
+        public void GetTrimmedPngByteLength_単色画像は範囲が広いほど圧縮でファイルサイズが小さくなりやすい()
         {
             // PNG は単色の塗りつぶし領域を高圧縮できるため、真っ白画像の切り出しサイズは
             // 小さくなる。厳密な値ではなく「0バイトではない」ことだけを確認する
             // （圧縮アルゴリズムの詳細に依存しすぎないため）。
             string path = CreateImage("white.bmp", 100, 100, Color.White);
 
-            long size = Logic.GetBinSize(path, new Rectangle(0, 0, 50, 50));
+            long size = Logic.GetTrimmedPngByteLength(path, new Rectangle(0, 0, 50, 50));
 
             Assert.IsTrue(size > 0, "PNGとして保存されるので0バイトにはならない");
         }
 
         [TestMethod]
-        public void GetBinSize_呼び出し後に一時ファイルが残らない()
+        public void GetTrimmedPngByteLength_呼び出し後に一時ファイルが残らない()
         {
             string path = CreateImage("temp_check.bmp", 20, 20, Color.Black);
             int before = Directory.GetFiles(Path.GetTempPath(), "*.png").Length;
 
-            Logic.GetBinSize(path, new Rectangle(0, 0, 10, 10));
+            Logic.GetTrimmedPngByteLength(path, new Rectangle(0, 0, 10, 10));
 
             int after = Directory.GetFiles(Path.GetTempPath(), "*.png").Length;
-            Assert.AreEqual(before, after, "GetBinSize内で作った一時PNGは自分で削除するはず");
+            Assert.AreEqual(before, after, "GetTrimmedPngByteLength内で作った一時PNGは自分で削除するはず");
         }
 
         // ------------------------------------------------------------------
@@ -104,30 +104,30 @@ namespace CheetosForWpf.Tests
         }
 
         // ------------------------------------------------------------------
-        // GetFileBaseFormat
+        // BuildFilePathPrefix
         // ------------------------------------------------------------------
 
         [TestMethod]
-        public void GetFileBaseFormat_接頭辞とタイムスタンプ無しなら保存先とパスの区切りだけ()
+        public void BuildFilePathPrefix_接頭辞とタイムスタンプ無しなら保存先とパスの区切りだけ()
         {
-            string result = Logic.GetFileBaseFormat(@"D:\capture", "", false);
+            string result = Logic.BuildFilePathPrefix(@"D:\capture", "", false);
 
             Assert.AreEqual(@"D:\capture\", result);
         }
 
         [TestMethod]
-        public void GetFileBaseFormat_接頭辞を付けると末尾にアンダースコア付きで入る()
+        public void BuildFilePathPrefix_接頭辞を付けると末尾にアンダースコア付きで入る()
         {
-            string result = Logic.GetFileBaseFormat(@"D:\capture", "shot", false);
+            string result = Logic.BuildFilePathPrefix(@"D:\capture", "shot", false);
 
             Assert.AreEqual(@"D:\capture\shot_", result);
         }
 
         [TestMethod]
-        public void GetFileBaseFormat_タイムスタンプは指定した書式になる()
+        public void BuildFilePathPrefix_タイムスタンプは指定した書式になる()
         {
             DateTime before = DateTime.Now;
-            string result = Logic.GetFileBaseFormat(@"D:\capture", "", true);
+            string result = Logic.BuildFilePathPrefix(@"D:\capture", "", true);
             DateTime after = DateTime.Now;
 
             string stamp = result.Substring(@"D:\capture\".Length).TrimEnd('_');
@@ -138,45 +138,45 @@ namespace CheetosForWpf.Tests
         }
 
         // ------------------------------------------------------------------
-        // UpdateValue
+        // StepValueByArrowKey
         // ------------------------------------------------------------------
 
         [TestMethod]
-        public void UpdateValue_上キーで1増える()
+        public void StepValueByArrowKey_上キーで1増える()
         {
-            string result = Logic.UpdateValue("5", Key.Up);
+            string result = Logic.StepValueByArrowKey("5", Key.Up);
 
             Assert.AreEqual("6", result);
         }
 
         [TestMethod]
-        public void UpdateValue_下キーで1減る()
+        public void StepValueByArrowKey_下キーで1減る()
         {
-            string result = Logic.UpdateValue("5", Key.Down);
+            string result = Logic.StepValueByArrowKey("5", Key.Down);
 
             Assert.AreEqual("4", result);
         }
 
         [TestMethod]
-        public void UpdateValue_Enterキーでは変化しない()
+        public void StepValueByArrowKey_Enterキーでは変化しない()
         {
-            string result = Logic.UpdateValue("5", Key.Enter);
+            string result = Logic.StepValueByArrowKey("5", Key.Enter);
 
             Assert.AreEqual("5", result);
         }
 
         [TestMethod]
-        public void UpdateValue_数値以外ならそのまま返す()
+        public void StepValueByArrowKey_数値以外ならそのまま返す()
         {
-            string result = Logic.UpdateValue("abc", Key.Up);
+            string result = Logic.StepValueByArrowKey("abc", Key.Up);
 
             Assert.AreEqual("abc", result);
         }
 
         [TestMethod]
-        public void UpdateValue_マイナスの値でも計算できる()
+        public void StepValueByArrowKey_マイナスの値でも計算できる()
         {
-            string result = Logic.UpdateValue("-1", Key.Down);
+            string result = Logic.StepValueByArrowKey("-1", Key.Down);
 
             Assert.AreEqual("-2", result);
         }

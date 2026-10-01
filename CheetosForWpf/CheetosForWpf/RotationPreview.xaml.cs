@@ -54,20 +54,20 @@ namespace CheetosForWpf
         // ↑/↓キーで数値を増減する(TextBoxが↑/↓をキャレット移動に使ってしまう前に拾うためPreviewKeyDown)
         private void textBox_OriginX_KeyDown(object sender, KeyEventArgs e)
         {
-            UpdateValue(textBox_OriginX, e);
+            StepTextBoxValueByArrowKey(textBox_OriginX, e);
         }
 
         private void textBox_OriginY_KeyDown(object sender, KeyEventArgs e)
         {
-            UpdateValue(textBox_OriginY, e);
+            StepTextBoxValueByArrowKey(textBox_OriginY, e);
         }
 
         private void textBox_Angle_KeyDown(object sender, KeyEventArgs e)
         {
-            UpdateValue(textBox_angle, e);
+            StepTextBoxValueByArrowKey(textBox_angle, e);
         }
 
-        private void UpdateValue(TextBox ctrl, KeyEventArgs e)
+        private void StepTextBoxValueByArrowKey(TextBox ctrl, KeyEventArgs e)
         {
             if (e.Key != Key.Up && e.Key != Key.Down)
             {
@@ -75,7 +75,7 @@ namespace CheetosForWpf
             }
 
             // 値が変わればTextChangedで再描画される
-            ctrl.Text = Logic.UpdateValue(ctrl.Text, e.Key);
+            ctrl.Text = Logic.StepValueByArrowKey(ctrl.Text, e.Key);
             ctrl.CaretIndex = ctrl.Text.Length;
             e.Handled = true;
         }

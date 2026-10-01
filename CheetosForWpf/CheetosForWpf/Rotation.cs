@@ -29,7 +29,7 @@ namespace CheetosForWpf
             return true;
         }
 
-        public bool CreateRotateFile()
+        public bool BackUpTargetFile()
         {
             FilePath = SourceFolderPath + @"\" + TargetFileName;
             BackUpFilePath = BackUpDirPath + @"\" + TargetFileName;
@@ -196,7 +196,7 @@ namespace CheetosForWpf
                     continue;
                 }
 
-                rt.CreateRotateFile();
+                rt.BackUpTargetFile();
                 rt.RotateExecute();
 
                 // 進捗率

@@ -339,7 +339,7 @@
                              SelectionChanged="pm_ListBox_ListUp_SelectedIndexChanged" MouseDoubleClick="pm_ListBox_ListUp_DoubleClick" />
 
                     <DockPanel Grid.Row="2" Grid.Column="1" Margin="0,4,0,0">
-                        <Button DockPanel.Dock="Right" x:Name="pm_MergeExec_Click" Content="結合" Width="60" Height="23" Margin="6,0,0,0"
+                        <Button DockPanel.Dock="Right" x:Name="pm_Button_Merge" Content="結合" Width="60" Height="23" Margin="6,0,0,0"
                                 Click="MergeExec_Click" />
                         <stc:TextBoxEx x:Name="pm_TextBox_Status" IsReadOnly="True" TextAlignment="Right" VerticalAlignment="Center" />
                     </DockPanel>

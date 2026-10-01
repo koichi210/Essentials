@@ -64,7 +64,7 @@ namespace CheetosForWpf.Tests
         }
 
         [TestMethod]
-        public void CreateRotateFileは元ファイルをバックアップ先へコピーする()
+        public void BackUpTargetFileは元ファイルをバックアップ先へコピーする()
         {
             string fileName = "photo.bmp";
             CreateImage(fileName, 10, 10);
@@ -76,7 +76,7 @@ namespace CheetosForWpf.Tests
             };
             rotation.SetTargetFileName(fileName);
 
-            bool result = rotation.CreateRotateFile();
+            bool result = rotation.BackUpTargetFile();
 
             Assert.IsTrue(result);
             Assert.IsTrue(File.Exists(Path.Combine(backupDirectory, fileName)), "バックアップ先にコピーされるはず");
@@ -98,7 +98,7 @@ namespace CheetosForWpf.Tests
                 Angle = 0,
             };
             rotation.SetTargetFileName(fileName);
-            rotation.CreateRotateFile();
+            rotation.BackUpTargetFile();
 
             rotation.RotateExecute();
 
@@ -125,7 +125,7 @@ namespace CheetosForWpf.Tests
                 Angle = 90,
             };
             rotation.SetTargetFileName(fileName);
-            rotation.CreateRotateFile();
+            rotation.BackUpTargetFile();
 
             rotation.RotateExecute();
 

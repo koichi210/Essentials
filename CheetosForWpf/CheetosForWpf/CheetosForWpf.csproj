@@ -87,7 +87,7 @@
     <Compile Include="PictTrim.cs" />
     <Compile Include="PictMerge.cs" />
     <Compile Include="Rotation.cs" />
-    <Compile Include="PictEdit.cs" />
+    <Compile Include="PicEdit.cs" />
     <Compile Include="Logic.cs" />
     <Compile Include="WorkerParams.cs" />
     <Compile Include="CaptureGridRow.cs" />

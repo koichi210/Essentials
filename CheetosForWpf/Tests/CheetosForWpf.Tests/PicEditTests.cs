@@ -10,7 +10,7 @@ namespace CheetosForWpf.Tests
     /// PicEdit（画像の切り貼りをする薄い GDI+ ラッパー）のテスト。
     ///
     /// Cheetos と PictMerge / PictTrim プロジェクトで実質同じクラスがコピーされている
-    /// （名前空間は同じ Picture、クラス名は PicEdit/Trim で微妙に違う）。まずは Cheetos 版から
+    /// （名前空間 Picture・クラス名 PicEdit にそろえてある）。まずは Cheetos 版から
     /// 実際に画像を生成・保存して検証する形で固める。
     ///
     /// internal クラスなので、Cheetos の AssemblyInfo.cs に足した
@@ -185,6 +185,52 @@ namespace CheetosForWpf.Tests
             string path = Path.Combine(tempDirectory, "snapshot_" + Guid.NewGuid().ToString("N") + ".bmp");
             alreadyEdited.SaveCanvas(path);
             return new Bitmap(path);
+        }
+
+        // ---- IDisposable ----
+
+        [TestMethod]
+        public void IDisposableを実装していてusingで使える()
+        {
+            using (var edit = new PicEdit(4, 4))
+            {
+                Assert.IsInstanceOfType(edit, typeof(IDisposable));
+            }
+        }
+
+        [TestMethod]
+        public void Disposeを2回呼んでも例外にならない()
+        {
+            string sourcePath = CreateQuadrantImage("dispose_twice.png", 4);
+            var edit = new PicEdit(8, 8);
+            edit.CreateSourceImg(sourcePath);
+
+            edit.Dispose();
+            edit.Dispose();
+        }
+
+        [TestMethod]
+        public void SaveCanvasの後にDisposeしても例外にならない()
+        {
+            // SaveCanvas は内部でキャンバスを解放済みなので、その後の Dispose は二重解放になる
+            var edit = new PicEdit(4, 4);
+            edit.SaveCanvas(Path.Combine(tempDirectory, "save_then_dispose.bmp"));
+
+            edit.Dispose();
+        }
+
+        [TestMethod]
+        public void usingを抜けると画像ファイルのロックが外れる()
+        {
+            string basePath = CreateQuadrantImage("lock.png", 4);
+            using (var edit = new PicEdit(basePath))
+            {
+                edit.CreateSourceImg(basePath);
+            }
+
+            // Bitmap が解放されずにロックが残っていれば IOException になる
+            File.Delete(basePath);
+            Assert.IsFalse(File.Exists(basePath));
         }
     }
 }
