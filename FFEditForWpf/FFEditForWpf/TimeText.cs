@@ -12,31 +12,31 @@ namespace FFEditForWpf
 
         private static readonly String[] ParseFormats = { "H:mm:ss", "H:m:s", "H:mm", "H:m" };
 
-        public static String Format(TimeSpan Time)
+        public static String Format(TimeSpan time)
         {
-            return new DateTime(Time.Ticks).ToString(DisplayFormat, CultureInfo.InvariantCulture);
+            return new DateTime(time.Ticks).ToString(DisplayFormat, CultureInfo.InvariantCulture);
         }
 
         // 時刻文字列を時刻(0:00:00～23:59:59)にする。形式が不正ならfalse
-        public static Boolean TryParse(String Text, out TimeSpan Time)
+        public static Boolean TryParse(String text, out TimeSpan time)
         {
             DateTime parsed;
-            if (DateTime.TryParseExact((Text ?? "").Trim(), ParseFormats, CultureInfo.InvariantCulture, DateTimeStyles.None, out parsed))
+            if (DateTime.TryParseExact((text ?? "").Trim(), ParseFormats, CultureInfo.InvariantCulture, DateTimeStyles.None, out parsed))
             {
-                Time = parsed.TimeOfDay;
+                time = parsed.TimeOfDay;
                 return true;
             }
-            Time = TimeSpan.Zero;
+            time = TimeSpan.Zero;
             return false;
         }
 
-        // カーソル位置(CaretIndex)より前にある':'の数で、どの欄か(0=時, 1=分, 2=秒)を決める
-        public static int GetFieldIndex(String Text, int CaretIndex)
+        // カーソル位置(caretIndex)より前にある':'の数で、どの欄か(0=時, 1=分, 2=秒)を決める
+        public static int GetFieldIndex(String text, int caretIndex)
         {
             int field = 0;
-            for (int i = 0; i < CaretIndex && i < Text.Length; i++)
+            for (int i = 0; i < caretIndex && i < text.Length; i++)
             {
-                if (Text[i] == ':')
+                if (text[i] == ':')
                 {
                     field++;
                 }
@@ -44,30 +44,30 @@ namespace FFEditForWpf
             return Math.Min(field, 2);
         }
 
-        // 指定した欄だけをDelta分増減する(桁上がりせず、その欄の中で一周する)
-        public static TimeSpan Increment(TimeSpan Time, int FieldIndex, int Delta)
+        // 指定した欄だけをdelta分増減する(桁上がりせず、その欄の中で一周する)
+        public static TimeSpan Increment(TimeSpan time, int fieldIndex, int delta)
         {
-            int hours = Time.Hours;
-            int minutes = Time.Minutes;
-            int seconds = Time.Seconds;
-            switch (FieldIndex)
+            int hours = time.Hours;
+            int minutes = time.Minutes;
+            int seconds = time.Seconds;
+            switch (fieldIndex)
             {
                 case 0:
-                    hours = Wrap(hours + Delta, 24);
+                    hours = Wrap(hours + delta, 24);
                     break;
                 case 1:
-                    minutes = Wrap(minutes + Delta, 60);
+                    minutes = Wrap(minutes + delta, 60);
                     break;
                 default:
-                    seconds = Wrap(seconds + Delta, 60);
+                    seconds = Wrap(seconds + delta, 60);
                     break;
             }
             return new TimeSpan(hours, minutes, seconds);
         }
 
-        private static int Wrap(int Value, int Range)
+        private static int Wrap(int value, int range)
         {
-            return ((Value % Range) + Range) % Range;
+            return ((value % range) + range) % range;
         }
     }
 }

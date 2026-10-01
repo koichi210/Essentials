@@ -11,13 +11,13 @@ namespace FFEditForWpf.Tests
     /// 間接的に踏んでいるが、ここでは FileMng 単体として直接確認する。
     ///
     /// ⚠️ 絶対に踏んではいけない分岐がある: Copy() はコピー元がフォルダだった場合、
-    /// IsErrorPopup の値に関わらず必ず MessageBox.Show を呼ぶ（呼び出し元が失敗を
+    /// showErrorPopup の値に関わらず必ず MessageBox.Show を呼ぶ（呼び出し元が失敗を
     /// 拾って処理を続けられるようにする仕組みが無い）。自動テストでこれを踏むと、
     /// 誰もクリックできないダイアログでテスト実行がハングする。そのため
     /// 「コピー元がフォルダのケース」は絶対にテストしない。
     ///
-    /// IsErrorPopup=true を指定した状態で例外を起こすケースも同様に MessageBox が出るため、
-    /// すべてのテストで IsErrorPopup は既定値(false)のまま使う。
+    /// showErrorPopup=true を指定した状態で例外を起こすケースも同様に MessageBox が出るため、
+    /// すべてのテストで showErrorPopup は既定値(false)のまま使う。
     /// </summary>
     [TestClass]
     public class FileMngTests
@@ -98,7 +98,7 @@ namespace FFEditForWpf.Tests
         [TestMethod]
         public void Move_移動先が既に存在すると例外を吸収してfalseを返す()
         {
-            // IsErrorPopup は既定値(false)のまま。ポップアップを出さずに失敗させる。
+            // showErrorPopup は既定値(false)のまま。ポップアップを出さずに失敗させる。
             string src = PathFor("src.txt");
             string dest = PathFor("dest.txt");
             File.WriteAllText(src, "dummy");

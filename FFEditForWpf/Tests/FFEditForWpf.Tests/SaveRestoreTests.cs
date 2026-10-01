@@ -50,10 +50,10 @@ namespace FFEditForWpf.Tests
                 writer.textBox_Target_Extension.Text = "*.png";
 
                 string path = PathFor("ext");
-                Assert.IsTrue(writer.sr.Save(path));
+                Assert.IsTrue(writer.SaveRestore.Save(path));
 
                 var reader = new MainWindow();
-                Assert.IsTrue(reader.sr.Load(path));
+                Assert.IsTrue(reader.SaveRestore.Load(path));
                 Assert.AreEqual("*.png", reader.textBox_Target_Extension.Text);
             });
         }
@@ -71,10 +71,10 @@ namespace FFEditForWpf.Tests
                 writer.comboBox_String2.Items.Add("bar");
 
                 string path = PathFor("history");
-                Assert.IsTrue(writer.sr.Save(path));
+                Assert.IsTrue(writer.SaveRestore.Save(path));
 
                 var reader = new MainWindow();
-                Assert.IsTrue(reader.sr.Load(path));
+                Assert.IsTrue(reader.SaveRestore.Load(path));
 
                 Assert.AreEqual(2, reader.comboBox_TargetDir.Items.Count);
                 Assert.AreEqual(@"C:\work", reader.comboBox_TargetDir.Items[0]);
@@ -92,7 +92,7 @@ namespace FFEditForWpf.Tests
                 // 既定値は "*"。何も設定せず保存・読み込みしても既定値のまま
                 var writer = new MainWindow();
                 string path = PathFor("default_ext");
-                Assert.IsTrue(writer.sr.Save(path));
+                Assert.IsTrue(writer.SaveRestore.Save(path));
 
                 var reader = new MainWindow();
                 reader.textBox_Target_Extension.Text = "書き換え";
@@ -147,7 +147,7 @@ namespace FFEditForWpf.Tests
                 Assert.AreEqual("dup", writer.comboBox_String1.Text, "履歴を整理しても入力中の文字列は消えない");
 
                 var reader = new MainWindow();
-                Assert.IsTrue(reader.sr.Load(path));
+                Assert.IsTrue(reader.SaveRestore.Load(path));
                 Assert.AreEqual(1, reader.comboBox_String1.Items.Count, "Text分と重複するので1件に整理される");
             });
         }
@@ -166,7 +166,7 @@ namespace FFEditForWpf.Tests
                 Assert.IsTrue(writer.SaveSetting(path));
 
                 var reader = new MainWindow();
-                Assert.IsTrue(reader.sr.Load(path));
+                Assert.IsTrue(reader.SaveRestore.Load(path));
                 Assert.AreEqual(2, reader.comboBox_TargetDir.Items.Count);
                 Assert.AreEqual(@"C:\old", reader.comboBox_TargetDir.Items[0]);
                 Assert.AreEqual(@"C:\new", reader.comboBox_TargetDir.Items[1]);
@@ -187,7 +187,7 @@ namespace FFEditForWpf.Tests
                 Assert.IsTrue(writer.SaveSetting(path));
 
                 var reader = new MainWindow();
-                Assert.IsTrue(reader.sr.Load(path));
+                Assert.IsTrue(reader.SaveRestore.Load(path));
                 Assert.AreEqual(2, reader.comboBox_String1.Items.Count,
                     "Text が空だと ModifyCombBoxList は即 return するので重複はそのまま残る");
             });
@@ -253,7 +253,7 @@ namespace FFEditForWpf.Tests
                 window.comboBox_TargetDir.Items.Add(@"C:\work");
 
                 string path = PathFor("keys");
-                Assert.IsTrue(window.sr.Save(path));
+                Assert.IsTrue(window.SaveRestore.Save(path));
 
                 string json = File.ReadAllText(path, Encoding.UTF8);
                 StringAssert.Contains(json, "\"textBox_Target_Extension|Value\"");

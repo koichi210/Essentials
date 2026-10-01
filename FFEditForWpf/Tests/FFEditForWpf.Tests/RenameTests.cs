@@ -56,12 +56,12 @@ namespace FFEditForWpf.Tests
 
             var rename = new Rename
             {
-                _base_dir = tempDirectory,
-                _file_list = new List<string> { "a.txt", "b.txt" },
-                _change_type = Rename.ChangeType.Number,
-                _first_number = 1,
-                _pad_number = 3,
-                _keep_org_name = true,
+                BaseDir = tempDirectory,
+                FileList = new List<string> { "a.txt", "b.txt" },
+                Type = Rename.ChangeType.Number,
+                FirstNumber = 1,
+                PaddingDigits = 3,
+                KeepOriginalName = true,
             };
 
             string errors = rename.Execute();
@@ -80,12 +80,12 @@ namespace FFEditForWpf.Tests
 
             var rename = new Rename
             {
-                _base_dir = tempDirectory,
-                _file_list = new List<string> { "photo.jpg" },
-                _change_type = Rename.ChangeType.Number,
-                _first_number = 10,
-                _pad_number = 2,
-                _keep_org_name = false,
+                BaseDir = tempDirectory,
+                FileList = new List<string> { "photo.jpg" },
+                Type = Rename.ChangeType.Number,
+                FirstNumber = 10,
+                PaddingDigits = 2,
+                KeepOriginalName = false,
             };
 
             rename.Execute();
@@ -100,11 +100,11 @@ namespace FFEditForWpf.Tests
 
             var rename = new Rename
             {
-                _base_dir = tempDirectory,
-                _file_list = new List<string> { "abcdefgh.txt" },
-                _change_type = Rename.ChangeType.DelNum,
-                _param1 = "2", // 先頭2文字(ab)を削る
-                _param2 = "4", // (拡張子を除いた)末尾4文字(efgh)を削る
+                BaseDir = tempDirectory,
+                FileList = new List<string> { "abcdefgh.txt" },
+                Type = Rename.ChangeType.DelNum,
+                Param1 = "2", // 先頭2文字(ab)を削る
+                Param2 = "4", // (拡張子を除いた)末尾4文字(efgh)を削る
             };
 
             rename.Execute();
@@ -120,11 +120,11 @@ namespace FFEditForWpf.Tests
 
             var rename = new Rename
             {
-                _base_dir = tempDirectory,
-                _file_list = new List<string> { "name.txt" },
-                _change_type = Rename.ChangeType.Add,
-                _param1 = "PRE_",
-                _param2 = "_SUF",
+                BaseDir = tempDirectory,
+                FileList = new List<string> { "name.txt" },
+                Type = Rename.ChangeType.Add,
+                Param1 = "PRE_",
+                Param2 = "_SUF",
             };
 
             rename.Execute();
@@ -139,10 +139,10 @@ namespace FFEditForWpf.Tests
 
             var rename = new Rename
             {
-                _base_dir = tempDirectory,
-                _file_list = new List<string> { "fooBar_foo.txt" },
-                _change_type = Rename.ChangeType.Delete,
-                _param1 = "foo",
+                BaseDir = tempDirectory,
+                FileList = new List<string> { "fooBar_foo.txt" },
+                Type = Rename.ChangeType.Delete,
+                Param1 = "foo",
             };
 
             rename.Execute();
@@ -158,11 +158,11 @@ namespace FFEditForWpf.Tests
 
             var rename = new Rename
             {
-                _base_dir = tempDirectory,
-                _file_list = new List<string> { "fooBar.txt" },
-                _change_type = Rename.ChangeType.Replace,
-                _param1 = "foo",
-                _param2 = "baz",
+                BaseDir = tempDirectory,
+                FileList = new List<string> { "fooBar.txt" },
+                Type = Rename.ChangeType.Replace,
+                Param1 = "foo",
+                Param2 = "baz",
             };
 
             rename.Execute();
@@ -177,10 +177,10 @@ namespace FFEditForWpf.Tests
 
             var rename = new Rename
             {
-                _base_dir = tempDirectory,
-                _file_list = new List<string> { "photo.jpg" },
-                _change_type = Rename.ChangeType.OnlyExt,
-                _param1 = "png",
+                BaseDir = tempDirectory,
+                FileList = new List<string> { "photo.jpg" },
+                Type = Rename.ChangeType.OnlyExt,
+                Param1 = "png",
             };
 
             rename.Execute();
@@ -195,10 +195,10 @@ namespace FFEditForWpf.Tests
 
             var rename = new Rename
             {
-                _base_dir = tempDirectory,
-                _file_list = new List<string> { "same.txt" },
-                _change_type = Rename.ChangeType.Delete,
-                _param1 = "見つからない文字列",
+                BaseDir = tempDirectory,
+                FileList = new List<string> { "same.txt" },
+                Type = Rename.ChangeType.Delete,
+                Param1 = "見つからない文字列",
             };
 
             string errors = rename.Execute();
@@ -214,10 +214,10 @@ namespace FFEditForWpf.Tests
 
             var rename = new Rename
             {
-                _base_dir = tempDirectory,
-                _file_list = new List<string> { "original.txt" },
-                _change_type = Rename.ChangeType.Add,
-                _param1 = "renamed_",
+                BaseDir = tempDirectory,
+                FileList = new List<string> { "original.txt" },
+                Type = Rename.ChangeType.Add,
+                Param1 = "renamed_",
             };
 
             rename.Execute();
@@ -243,10 +243,10 @@ namespace FFEditForWpf.Tests
         {
             var rename = new Rename
             {
-                _base_dir = tempDirectory,
-                _file_list = new List<string> { "no_such_file.txt" },
-                _change_type = Rename.ChangeType.Add,
-                _param1 = "x_",
+                BaseDir = tempDirectory,
+                FileList = new List<string> { "no_such_file.txt" },
+                Type = Rename.ChangeType.Add,
+                Param1 = "x_",
             };
 
             string errors = rename.Execute();
@@ -258,16 +258,16 @@ namespace FFEditForWpf.Tests
         public void AddDirName_フラットなファイル名だけを指定すると変化しない()
         {
             // GetChangedName の AddDirName ケースは "\" を "_" に置換するが、
-            // _file_list の要素が "a.txt" のようにサブフォルダを含まない場合、
+            // FileList の要素が "a.txt" のようにサブフォルダを含まない場合、
             // 置換対象の "\" が無いので名前は変わらない。結果、変更前後で名前が同じになり、
             // Execute() の「同一だったら処理しない」ロジックでスキップされる。
             CreateFile("a.txt");
 
             var rename = new Rename
             {
-                _base_dir = tempDirectory,
-                _file_list = new List<string> { "a.txt" },
-                _change_type = Rename.ChangeType.AddDirName,
+                BaseDir = tempDirectory,
+                FileList = new List<string> { "a.txt" },
+                Type = Rename.ChangeType.AddDirName,
             };
 
             string errors = rename.Execute();
@@ -279,7 +279,7 @@ namespace FFEditForWpf.Tests
         [TestMethod]
         public void AddDirName_サブフォルダ付きの指定だとフォルダ名がファイル名に埋め込まれる()
         {
-            // _file_list の要素が "sub\a.txt" のようにサブフォルダを含む場合、
+            // FileList の要素が "sub\a.txt" のようにサブフォルダを含む場合、
             // "\" が "_" に置換された文字列がそのサブフォルダ内に新しいファイル名として
             // 書き戻される。結果、同じサブフォルダの中で "sub_a.txt" にリネームされる
             // （フォルダ名をファイル名の一部に埋め込む、という機能として成立している）。
@@ -288,9 +288,9 @@ namespace FFEditForWpf.Tests
 
             var rename = new Rename
             {
-                _base_dir = tempDirectory,
-                _file_list = new List<string> { @"sub\a.txt" },
-                _change_type = Rename.ChangeType.AddDirName,
+                BaseDir = tempDirectory,
+                FileList = new List<string> { @"sub\a.txt" },
+                Type = Rename.ChangeType.AddDirName,
             };
 
             string errors = rename.Execute();

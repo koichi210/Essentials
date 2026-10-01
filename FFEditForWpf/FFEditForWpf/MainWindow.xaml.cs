@@ -20,14 +20,14 @@ namespace FFEditForWpf
         private readonly String[] DigitArray = { "自動", "1桁", "2桁", "3桁", "4桁", "5桁", "6桁" };
         private const int TabIdxChangeName = 0;
         private const int TabIdxTimeStamp = 1;
-        private const int TabIdxFuntion = 2;
+        private const int TabIdxFunction = 2;
 
         private readonly String userDataFolder = UserDataLocation.GetUserDataFolder(AppName);
         private readonly StcUtils util = new StcUtils();
-        internal readonly WpfSaveRestore sr = new WpfSaveRestore();
+        internal WpfSaveRestore SaveRestore { get; } = new WpfSaveRestore();
 
         private readonly Rename rename = new Rename();
-        private readonly Function fs = new Function();
+        private readonly Function function = new Function();
 
         // 時刻入力欄(textBox_Time)で最後に正しく入力された時刻。不正な入力はこの値に戻す
         private TimeSpan currentTime;
@@ -41,7 +41,7 @@ namespace FFEditForWpf
             InitializeComponent();
             util.SetCurrentDirectory();
 
-            RegistLoadItem();
+            RegisterSettingItems();
             LoadProc(Path.Combine(userDataFolder, SettingFileName));
 
             // 桁の選択肢を生成
@@ -71,20 +71,20 @@ namespace FFEditForWpf
         // *******************************************************************************
         // 設定の保存/読み込み(WinForms版のSaveRestore.cs)
 
-        internal void RegistLoadItem()
+        internal void RegisterSettingItems()
         {
             // キーはWinForms版(SaveRestore.RegistItem)と同じにすること
-            sr.RegistCtrlList("comboBox_TargetDir", "Value_", comboBox_TargetDir);
-            sr.RegistCtrlList("comboBox_String1", "Value_", comboBox_String1);
-            sr.RegistCtrlList("comboBox_String2", "Value_", comboBox_String2);
-            sr.RegistCtrl("textBox_Target_Extension", "Value", textBox_Target_Extension, "*");
+            SaveRestore.RegistCtrlList("comboBox_TargetDir", "Value_", comboBox_TargetDir);
+            SaveRestore.RegistCtrlList("comboBox_String1", "Value_", comboBox_String1);
+            SaveRestore.RegistCtrlList("comboBox_String2", "Value_", comboBox_String2);
+            SaveRestore.RegistCtrl("textBox_Target_Extension", "Value", textBox_Target_Extension, "*");
         }
 
         // WinForms版のSaveRestore.LoadProcと同じ。ファイル名が空なら何もせず失敗を返す。
         // 読む前にフィルターを既定値("*")にしておく。ファイルが無い・壊れている場合は既定値のままにしてfalseを返す
-        internal Boolean LoadProc(String LoadFileName)
+        internal Boolean LoadProc(String loadFileName)
         {
-            if (LoadFileName == String.Empty)
+            if (loadFileName == String.Empty)
             {
                 return false;
             }
@@ -92,15 +92,15 @@ namespace FFEditForWpf
             // Default設定
             textBox_Target_Extension.Text = "*";
 
-            GenericProfile profile = JsonFileStorage.Load<GenericProfile>(LoadFileName);
-            sr.ApplyGenericProfile(profile);
+            GenericProfile profile = JsonFileStorage.Load<GenericProfile>(loadFileName);
+            SaveRestore.ApplyGenericProfile(profile);
             return profile != null;
         }
 
         // WinForms版のSaveRestore.SaveSettingと同じ。保存前に、入力中の文字列を各コンボボックスの履歴に追加する
-        internal Boolean SaveSetting(String SaveFileName)
+        internal Boolean SaveSetting(String saveFileName)
         {
-            if (SaveFileName == String.Empty)
+            if (saveFileName == String.Empty)
             {
                 return false;
             }
@@ -110,7 +110,7 @@ namespace FFEditForWpf
             WpfControlUtils.ModifyCombBoxList(comboBox_String1);
             WpfControlUtils.ModifyCombBoxList(comboBox_String2);
 
-            return sr.Save(SaveFileName);
+            return SaveRestore.Save(saveFileName);
         }
 
         private void button_SaveSetting_Click(object sender, RoutedEventArgs e)
@@ -211,22 +211,22 @@ namespace FFEditForWpf
             else if (e.Key == Key.Delete)
             {
                 e.Handled = true;
-                MessageBoxResult DlgResult = MessageBox.Show(
+                MessageBoxResult dlgResult = MessageBox.Show(
                     "削除しますか？",
                     "情報",
                     MessageBoxButton.YesNo);
-                if (DlgResult == MessageBoxResult.No)
+                if (dlgResult == MessageBoxResult.No)
                 {
                     return;
                 }
 
-                String TargetName = WpfControlUtils.GetSelectName(listBox, comboBox_TargetDir.Text);
+                String targetNames = WpfControlUtils.GetSelectName(listBox, comboBox_TargetDir.Text);
 
                 StcFileInputOutput fio = new StcFileInputOutput();
-                String[] TargetArray = TargetName.Split(new[] { Environment.NewLine }, StringSplitOptions.RemoveEmptyEntries);
-                for (int i = 0; i < TargetArray.Length; i++)
+                String[] targetArray = targetNames.Split(new[] { Environment.NewLine }, StringSplitOptions.RemoveEmptyEntries);
+                for (int i = 0; i < targetArray.Length; i++)
                 {
-                    fio.DeleteDirectoryAndFile(TargetArray[i]);
+                    fio.DeleteDirectoryAndFile(targetArray[i]);
                 }
                 UpdateListBox();
             }
@@ -274,14 +274,14 @@ namespace FFEditForWpf
                 return;
             }
 
-            int TrimLength; // ファイルリストを生成するときに、基準となるディレクトリパスは削除する
+            int trimLength; // ファイルリストを生成するときに、基準となるディレクトリパスは削除する
             if (comboBox_TargetDir.Text.Length > 3)
             {
                 // C:\ よりも長い場合は、終端の\を削除。ドライブレターの次の\は残す
                 comboBox_TargetDir.Text = comboBox_TargetDir.Text.TrimEnd('\\');
 
                 // 「+1」はフォルダ区切り文字
-                TrimLength = comboBox_TargetDir.Text.Length + 1;
+                trimLength = comboBox_TargetDir.Text.Length + 1;
             }
             else
             {
@@ -293,7 +293,7 @@ namespace FFEditForWpf
                 {
                     comboBox_TargetDir.Text += @"\";
                 }
-                TrimLength = comboBox_TargetDir.Text.Length;
+                trimLength = comboBox_TargetDir.Text.Length;
             }
 
             if (!Directory.Exists(comboBox_TargetDir.Text))
@@ -308,20 +308,20 @@ namespace FFEditForWpf
                 opt = SearchOption.AllDirectories;
             }
 
-            String SearchPattern = "*";
+            String searchPattern = "*";
             if (textBox_Target_Extension.Text != String.Empty)
             {
-                SearchPattern = textBox_Target_Extension.Text;
+                searchPattern = textBox_Target_Extension.Text;
             }
 
             String[] elements;
             if (radioButton_Target_File.IsChecked == true)
             {
-                elements = Directory.GetFiles(comboBox_TargetDir.Text, SearchPattern, opt);
+                elements = Directory.GetFiles(comboBox_TargetDir.Text, searchPattern, opt);
             }
             else
             {
-                elements = Directory.GetDirectories(comboBox_TargetDir.Text, SearchPattern, opt);
+                elements = Directory.GetDirectories(comboBox_TargetDir.Text, searchPattern, opt);
             }
 
             // 標準のstring比較だと"HOGE_2"より"HOGE_10"が先に来てしまうため、
@@ -331,7 +331,7 @@ namespace FFEditForWpf
             listBox.Items.Clear();
             for (int i = 0; i < elements.Length; i++)
             {
-                listBox.Items.Add(elements[i].Substring(TrimLength));
+                listBox.Items.Add(elements[i].Substring(trimLength));
             }
             UpdateStatusBar();
         }
@@ -344,12 +344,12 @@ namespace FFEditForWpf
                 return WpfControlUtils.GetSelectedItemsInOrder(listBox);
             }
 
-            var FileList = new List<String>();
+            var fileList = new List<String>();
             foreach (Object item in listBox.Items)
             {
-                FileList.Add(item.ToString());
+                fileList.Add(item.ToString());
             }
-            return FileList;
+            return fileList;
         }
 
         // *******************************************************************************
@@ -357,25 +357,25 @@ namespace FFEditForWpf
 
         private void button_Execute_Click(object sender, RoutedEventArgs e)
         {
-            String ErrorList = "";
+            String errorList = "";
             switch (tabControl.SelectedIndex)
             {
                 case TabIdxChangeName:
-                    ErrorList = ChangeName();
+                    errorList = ChangeName();
                     break;
 
                 case TabIdxTimeStamp:
                     ChangeTimeStamp();
                     break;
 
-                case TabIdxFuntion:
-                    ErrorList = ChangeOtherFunction();
+                case TabIdxFunction:
+                    errorList = ChangeOtherFunction();
                     break;
             }
 
-            if (ErrorList != String.Empty)
+            if (errorList != String.Empty)
             {
-                ErrorMsg dlg = new ErrorMsg(ErrorList) { Owner = this };
+                ErrorMsg dlg = new ErrorMsg(errorList) { Owner = this };
                 dlg.ShowDialog();
             }
             UpdateListBox();
@@ -383,18 +383,18 @@ namespace FFEditForWpf
 
         private void button_Restore_Click(object sender, RoutedEventArgs e)
         {
-            Boolean IsSuccess = true;
+            Boolean isSuccess = true;
             switch (tabControl.SelectedIndex)
             {
                 case TabIdxChangeName:
-                    IsSuccess = rename.Restore();
+                    isSuccess = rename.Restore();
                     break;
-                case TabIdxFuntion:
-                    IsSuccess = fs.Restore();
+                case TabIdxFunction:
+                    isSuccess = function.Restore();
                     break;
             }
 
-            if (!IsSuccess)
+            if (!isSuccess)
             {
                 MessageBox.Show("これ以上復元できません");
                 return;
@@ -404,16 +404,16 @@ namespace FFEditForWpf
 
         private String ChangeName()
         {
-            rename._base_dir = comboBox_TargetDir.Text.TrimEnd('\\');
-            rename._file_list = GetFileList();
-            rename._change_type = GetChangedNameType();
+            rename.BaseDir = comboBox_TargetDir.Text.TrimEnd('\\');
+            rename.FileList = GetFileList();
+            rename.Type = GetChangedNameType();
 
-            rename._param1 = comboBox_String1.Text;
-            rename._param2 = comboBox_String2.Text;
+            rename.Param1 = comboBox_String1.Text;
+            rename.Param2 = comboBox_String2.Text;
 
-            rename._first_number = int.Parse(textBox_ChangeNumber_FirstVal.Text);
-            rename._keep_org_name = checkBox_ChangeNumber_OrgName.IsChecked == true;
-            rename._pad_number = GetPaddingNum();
+            rename.FirstNumber = int.Parse(textBox_ChangeNumber_FirstVal.Text);
+            rename.KeepOriginalName = checkBox_ChangeNumber_OrgName.IsChecked == true;
+            rename.PaddingDigits = GetPaddingDigits();
 
             return rename.Execute();
         }
@@ -427,50 +427,42 @@ namespace FFEditForWpf
             DateTime day = dateTimePicker_Days.SelectedDate ?? DateTime.Today;
             DateTime dt = new DateTime(day.Year, day.Month, day.Day,
                 currentTime.Hours, currentTime.Minutes, currentTime.Seconds, 0);
-            ts._base_tick_time = dt.Ticks;
-            ts._update_tick_time = GetTickTime(comboBox_TimeSpan.SelectedIndex);
+            ts.BaseTicks = dt.Ticks;
+            ts.IntervalTicks = GetTickTime(comboBox_TimeSpan.SelectedIndex);
 
-            ts._base_dir = comboBox_TargetDir.Text.TrimEnd('\\');
-            ts._file_list = GetFileList();
+            ts.BaseDir = comboBox_TargetDir.Text.TrimEnd('\\');
+            ts.FileList = GetFileList();
 
-            ts._target_time_create = checkBox_CreationTime.IsChecked == true;
-            ts._target_time_last_write = checkBox_LastWriteTime.IsChecked == true;
-            ts._target_time_access = checkBox_LastAccessTime.IsChecked == true;
+            ts.UpdateCreationTime = checkBox_CreationTime.IsChecked == true;
+            ts.UpdateLastWriteTime = checkBox_LastWriteTime.IsChecked == true;
+            ts.UpdateLastAccessTime = checkBox_LastAccessTime.IsChecked == true;
 
             ts.Execute();
         }
 
-        private int GetPaddingNum()
+        // 連番の0埋め桁数
+        private int GetPaddingDigits()
         {
-            int Padding = 0;
-
             if (comboBox_ChangeNumber_Digit.SelectedIndex > 0)
             {
                 // 自動桁数じゃない場合
-                Padding = comboBox_ChangeNumber_Digit.SelectedIndex;
-            }
-            else
-            {
-                // [自動桁数]の場合
-                if (checkBox_Target_SelectFile.IsChecked == true)
-                {
-                    Padding = listBox.SelectedItems.Count.ToString().Length;
-                }
-                else
-                {
-                    Padding = listBox.Items.Count.ToString().Length;
-                }
+                return comboBox_ChangeNumber_Digit.SelectedIndex;
             }
 
-            return Padding;
+            // [自動桁数]の場合
+            if (checkBox_Target_SelectFile.IsChecked == true)
+            {
+                return listBox.SelectedItems.Count.ToString().Length;
+            }
+            return listBox.Items.Count.ToString().Length;
         }
 
-        internal static long GetTickTime(int TimeSpanIdx)
+        internal static long GetTickTime(int timeSpanIndex)
         {
             long tick = 0;
 
             // 加算時間
-            switch (TimeSpanIdx)
+            switch (timeSpanIndex)
             {
                 case 0:     // [無し]
                 default:
@@ -522,16 +514,15 @@ namespace FFEditForWpf
             {
                 return Rename.ChangeType.OnlyExt;
             }
-            //else if (radioButton_ChangeAddDirName.IsChecked == true)
-            {
-                return Rename.ChangeType.AddDirName;
-            }
+
+            // radioButton_ChangeAddDirName
+            return Rename.ChangeType.AddDirName;
         }
 
         private void SetNameChangeControlLabel()
         {
-            String TextVal1 = "";
-            String TextVal2 = "";
+            String labelText1 = "";
+            String labelText2 = "";
 
             // 状態取得
             if (radioButton_ChangeNumber.IsChecked == true)
@@ -539,34 +530,34 @@ namespace FFEditForWpf
             }
             else if (radioButton_ChangeDelNum.IsChecked == true)
             {
-                TextVal1 = "先頭から";
-                TextVal2 = "後方から";
+                labelText1 = "先頭から";
+                labelText2 = "後方から";
             }
             else if (radioButton_ChangeAdd.IsChecked == true)
             {
-                TextVal1 = "先頭に追加";
-                TextVal2 = "後方に追加";
+                labelText1 = "先頭に追加";
+                labelText2 = "後方に追加";
             }
             else if (radioButton_ChangeDelete.IsChecked == true)
             {
-                TextVal1 = "削除文字";
+                labelText1 = "削除文字";
             }
             else if (radioButton_ChangeReplace.IsChecked == true)
             {
-                TextVal1 = "置換前";
-                TextVal2 = "置換後";
+                labelText1 = "置換前";
+                labelText2 = "置換後";
             }
             else if (radioButton_ChangeExt.IsChecked == true)
             {
-                TextVal1 = "拡張子";
+                labelText1 = "拡張子";
             }
             else if (radioButton_ChangeAddDirName.IsChecked == true)
             {
                 // 何も無し
             }
 
-            label_String1.Content = TextVal1;
-            label_String2.Content = TextVal2;
+            label_String1.Content = labelText1;
+            label_String2.Content = labelText2;
         }
 
         private void UpdateNameChangeControl(object sender, RoutedEventArgs e)
@@ -576,7 +567,7 @@ namespace FFEditForWpf
                 return;
             }
 
-            bool IsChangeNumber = radioButton_ChangeNumber.IsChecked == true;
+            bool isChangeNumber = radioButton_ChangeNumber.IsChecked == true;
             SetNameChangeControlLabel();
 
             // TextBoxの表示
@@ -584,11 +575,11 @@ namespace FFEditForWpf
             comboBox_String2.IsEnabled = (String)label_String2.Content != String.Empty;
 
             // ChangeNumber用の設定
-            label_ChangeNumber_FirstVal.IsEnabled = IsChangeNumber;
-            textBox_ChangeNumber_FirstVal.IsEnabled = IsChangeNumber;
+            label_ChangeNumber_FirstVal.IsEnabled = isChangeNumber;
+            textBox_ChangeNumber_FirstVal.IsEnabled = isChangeNumber;
 
-            comboBox_ChangeNumber_Digit.IsEnabled = IsChangeNumber;
-            checkBox_ChangeNumber_OrgName.IsEnabled = IsChangeNumber;
+            comboBox_ChangeNumber_Digit.IsEnabled = isChangeNumber;
+            checkBox_ChangeNumber_OrgName.IsEnabled = isChangeNumber;
         }
 
         // *******************************************************************************
@@ -601,10 +592,10 @@ namespace FFEditForWpf
                 return;
             }
 
-            Boolean IsOperationEn = radioButton_Delete_BlankDir.IsChecked != true;
-            checkBox_Operation_AnyDir.IsEnabled = IsOperationEn;
+            Boolean isDestDirSelectable = radioButton_Delete_BlankDir.IsChecked != true;
+            checkBox_Operation_AnyDir.IsEnabled = isDestDirSelectable;
 
-            textBox_Function_Any_Directory.IsEnabled = IsOperationEn && checkBox_Operation_AnyDir.IsChecked == true;
+            textBox_Function_Any_Directory.IsEnabled = isDestDirSelectable && checkBox_Operation_AnyDir.IsChecked == true;
         }
 
         private void textBox_Function_Any_Directory_GotKeyboardFocus(object sender, KeyboardFocusChangedEventArgs e)
@@ -619,14 +610,14 @@ namespace FFEditForWpf
 
         private String GetDestDirOtherFunction()
         {
-            String DestDirName = comboBox_TargetDir.Text;
+            String destDirName = comboBox_TargetDir.Text;
             if (radioButton_Delete_BlankDir.IsChecked != true &&
                 checkBox_Operation_AnyDir.IsChecked == true)
             {
-                DestDirName = textBox_Function_Any_Directory.Text;
+                destDirName = textBox_Function_Any_Directory.Text;
             }
 
-            return DestDirName;
+            return destDirName;
         }
 
         private Function.FunctionType GetFunctionType()
@@ -639,30 +630,29 @@ namespace FFEditForWpf
             {
                 return Function.FunctionType.Move;
             }
-            //else if (radioButton_Copy_Target.IsChecked == true)
-            {
-                return Function.FunctionType.Copy;
-            }
+
+            // radioButton_Copy_Target
+            return Function.FunctionType.Copy;
         }
 
         private String ChangeOtherFunction()
         {
-            fs._base_dir = comboBox_TargetDir.Text.TrimEnd('\\');
-            fs._target_dir = GetDestDirOtherFunction().TrimEnd('\\');
+            function.BaseDir = comboBox_TargetDir.Text.TrimEnd('\\');
+            function.DestDir = GetDestDirOtherFunction().TrimEnd('\\');
 
-            fs._file_list = GetFileList();
-            fs._function_type = GetFunctionType();
+            function.FileList = GetFileList();
+            function.Type = GetFunctionType();
 
-            return fs.Execute();
+            return function.Execute();
         }
 
         // *******************************************************************************
         // 時刻入力欄(WinForms版のDateTimePicker Format=Time / ShowUpDown=true の代わり)
 
-        private void SetTime(TimeSpan Time)
+        private void SetTime(TimeSpan time)
         {
-            currentTime = Time;
-            textBox_Time.Text = TimeText.Format(Time);
+            currentTime = time;
+            textBox_Time.Text = TimeText.Format(time);
         }
 
         // 入力内容が正しければ採用し、不正なら最後に正しかった時刻に戻す
@@ -672,12 +662,12 @@ namespace FFEditForWpf
             SetTime(TimeText.TryParse(textBox_Time.Text, out parsed) ? parsed : currentTime);
         }
 
-        private void StepTime(int Delta)
+        private void StepTime(int delta)
         {
             int caret = textBox_Time.CaretIndex;
             CommitTimeText();
             int field = TimeText.GetFieldIndex(textBox_Time.Text, caret);
-            SetTime(TimeText.Increment(currentTime, field, Delta));
+            SetTime(TimeText.Increment(currentTime, field, delta));
             textBox_Time.CaretIndex = Math.Min(caret, textBox_Time.Text.Length);
         }
 

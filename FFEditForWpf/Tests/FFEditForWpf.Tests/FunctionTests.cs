@@ -51,10 +51,10 @@ namespace FFEditForWpf.Tests
 
             var fs = new Function
             {
-                _base_dir = tempDirectory,
-                _target_dir = targetDirectory,
-                _file_list = new List<string> { "a.txt" },
-                _function_type = Function.FunctionType.Move,
+                BaseDir = tempDirectory,
+                DestDir = targetDirectory,
+                FileList = new List<string> { "a.txt" },
+                Type = Function.FunctionType.Move,
             };
 
             string errors = fs.Execute();
@@ -72,10 +72,10 @@ namespace FFEditForWpf.Tests
 
             var fs = new Function
             {
-                _base_dir = tempDirectory,
-                _target_dir = targetDirectory,
-                _file_list = new List<string> { "a.txt" },
-                _function_type = Function.FunctionType.Move,
+                BaseDir = tempDirectory,
+                DestDir = targetDirectory,
+                FileList = new List<string> { "a.txt" },
+                Type = Function.FunctionType.Move,
             };
             fs.Execute();
 
@@ -89,10 +89,10 @@ namespace FFEditForWpf.Tests
 
             var fs = new Function
             {
-                _base_dir = tempDirectory,
-                _target_dir = targetDirectory,
-                _file_list = new List<string> { "a.txt" },
-                _function_type = Function.FunctionType.Copy,
+                BaseDir = tempDirectory,
+                DestDir = targetDirectory,
+                FileList = new List<string> { "a.txt" },
+                Type = Function.FunctionType.Copy,
             };
 
             string errors = fs.Execute();
@@ -109,10 +109,10 @@ namespace FFEditForWpf.Tests
 
             var fs = new Function
             {
-                _base_dir = tempDirectory,
-                _target_dir = targetDirectory,
-                _file_list = new List<string> { "a.txt" },
-                _function_type = Function.FunctionType.Move,
+                BaseDir = tempDirectory,
+                DestDir = targetDirectory,
+                FileList = new List<string> { "a.txt" },
+                Type = Function.FunctionType.Move,
             };
             fs.Execute();
 
@@ -133,10 +133,10 @@ namespace FFEditForWpf.Tests
 
             var fs = new Function
             {
-                _base_dir = tempDirectory,
-                _target_dir = targetDirectory,
-                _file_list = new List<string> { "a.txt" },
-                _function_type = Function.FunctionType.Copy,
+                BaseDir = tempDirectory,
+                DestDir = targetDirectory,
+                FileList = new List<string> { "a.txt" },
+                Type = Function.FunctionType.Copy,
             };
             fs.Execute();
 
@@ -156,9 +156,9 @@ namespace FFEditForWpf.Tests
 
             var fs = new Function
             {
-                _base_dir = tempDirectory,
-                _file_list = new List<string> { "empty_sub" },
-                _function_type = Function.FunctionType.DelEmptyDir,
+                BaseDir = tempDirectory,
+                FileList = new List<string> { "empty_sub" },
+                Type = Function.FunctionType.DelEmptyDir,
             };
             fs.Execute();
 
@@ -176,9 +176,9 @@ namespace FFEditForWpf.Tests
 
             var fs = new Function
             {
-                _base_dir = tempDirectory,
-                _file_list = new List<string> { "root" },
-                _function_type = Function.FunctionType.DelEmptyDir,
+                BaseDir = tempDirectory,
+                FileList = new List<string> { "root" },
+                Type = Function.FunctionType.DelEmptyDir,
             };
             fs.Execute();
 
@@ -199,9 +199,9 @@ namespace FFEditForWpf.Tests
 
             var fs = new Function
             {
-                _base_dir = tempDirectory,
-                _file_list = new List<string> { "root2" },
-                _function_type = Function.FunctionType.DelEmptyDir,
+                BaseDir = tempDirectory,
+                FileList = new List<string> { "root2" },
+                Type = Function.FunctionType.DelEmptyDir,
             };
             fs.Execute();
 

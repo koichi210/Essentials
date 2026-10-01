@@ -1,7 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using System.IO;
 
 namespace FFEditForWpf
@@ -19,17 +17,17 @@ namespace FFEditForWpf
             AddDirName,
         }
 
-        public String _base_dir = "";
-        public List<String> _file_list;
-        public ChangeType _change_type;
-        public String _param1 = "";
-        public String _param2 = "";
-        public int _first_number = 0;
-        public int _pad_number = 0; // 0埋めする桁数
-        public Boolean _keep_org_name = false;
+        public String BaseDir { get; set; } = "";
+        public List<String> FileList { get; set; }
+        public ChangeType Type { get; set; }
+        public String Param1 { get; set; } = "";
+        public String Param2 { get; set; } = "";
+        public int FirstNumber { get; set; }
+        public int PaddingDigits { get; set; } // 0埋めする桁数
+        public Boolean KeepOriginalName { get; set; }
 
-        private FileMng fm = new FileMng();
-        
+        private readonly FileMng fm = new FileMng();
+
         public Boolean Restore()
         {
             return fm.RestoreAll();
@@ -37,139 +35,140 @@ namespace FFEditForWpf
 
         public String Execute()
         {
-            String ErrorList = "";
+            String errorList = "";
 
-            for (int i = 0; i < _file_list.Count; i++)
+            for (int i = 0; i < FileList.Count; i++)
             {
-                String TargetName = _file_list[i];
-                String SrcName = _base_dir + '\\' + TargetName;
-                String DestName = _base_dir + '\\' + GetChangedName(TargetName, i);
+                String targetName = FileList[i];
+                String srcName = BaseDir + '\\' + targetName;
+                String destName = BaseDir + '\\' + GetChangedName(targetName, i);
 
                 // 同一だったら処理しない
-                if (SrcName == DestName)
+                if (srcName == destName)
                 {
                     continue;
                 }
 
-                if (fm.Move(SrcName, DestName))
+                if (fm.Move(srcName, destName))
                 {
                     // 復元用に処理を覚えておく
-                    fm.SetRestoreList(SrcName, DestName);
+                    fm.SetRestoreList(srcName, destName);
                 }
                 else
                 {
                     // エラー発生
-                    ErrorList += "Src=" + SrcName + Environment.NewLine;
-                    ErrorList += "Dst=" + DestName + Environment.NewLine;
-                    ErrorList += Environment.NewLine;
+                    errorList += "Src=" + srcName + Environment.NewLine;
+                    errorList += "Dst=" + destName + Environment.NewLine;
+                    errorList += Environment.NewLine;
                 }
             }
             fm.IncrementRegistNumber();
 
-            return ErrorList;
+            return errorList;
         }
 
-        private String GetChangedName(String SrcName, int LoopCnt = 0)
+        private String GetChangedName(String srcName, int index)
         {
-            String TargetName = Path.GetFileName(SrcName);
+            String targetName = Path.GetFileName(srcName);
 
-            switch(_change_type)
+            switch (Type)
             {
                 case ChangeType.Number:
-                    TargetName = GetAddNumberName(TargetName, LoopCnt);
+                    targetName = GetNumberedName(targetName, index);
                     break;
                 case ChangeType.DelNum:
-                    TargetName = GetDelNumberName(TargetName);
+                    targetName = GetCharsRemovedName(targetName);
                     break;
                 case ChangeType.Add:
-                    TargetName = GetAddName(TargetName);
+                    targetName = GetAddedName(targetName);
                     break;
                 case ChangeType.Delete:
-                    TargetName = TargetName.Replace(_param1, "");
+                    targetName = targetName.Replace(Param1, "");
                     break;
                 case ChangeType.Replace:
-                    TargetName = TargetName.Replace(_param1, _param2);
+                    targetName = targetName.Replace(Param1, Param2);
                     break;
                 case ChangeType.OnlyExt:
-                    TargetName = Path.GetFileNameWithoutExtension(TargetName);
-                    TargetName += "." + _param1;
+                    targetName = Path.GetFileNameWithoutExtension(targetName);
+                    targetName += "." + Param1;
                     break;
                 case ChangeType.AddDirName:
-                    TargetName = SrcName.Replace('\\', '_');
+                    targetName = srcName.Replace('\\', '_');
                     break;
                 default:
                     break;
             }
 
-            String FullPathName = "";
-            String DirectoryPath = Path.GetDirectoryName(SrcName);
-            if (DirectoryPath != String.Empty)
+            String fullPathName = "";
+            String directoryPath = Path.GetDirectoryName(srcName);
+            if (directoryPath != String.Empty)
             {
-                FullPathName += DirectoryPath.TrimEnd('\\') + @"\";
+                fullPathName += directoryPath.TrimEnd('\\') + @"\";
             }
-            FullPathName += TargetName;
+            fullPathName += targetName;
 
-            return FullPathName;
+            return fullPathName;
         }
 
-        private String GetAddNumberName(String SrcName, int LoopCnt)
+        // 連番のファイル名(元の名前を残す指定なら「連番＋元の名前」)
+        private String GetNumberedName(String srcName, int index)
         {
-            String DestName = "";
-            int Number = LoopCnt + _first_number;
+            int number = index + FirstNumber;
 
             // 文字列生成
-            DestName += Number.ToString().PadLeft(_pad_number, '0');
-            
-            if (_keep_org_name)
-            {
-                DestName += Path.GetFileNameWithoutExtension(SrcName);
-            }
-            DestName += Path.GetExtension(SrcName);
+            String destName = number.ToString().PadLeft(PaddingDigits, '0');
 
-            return DestName;
+            if (KeepOriginalName)
+            {
+                destName += Path.GetFileNameWithoutExtension(srcName);
+            }
+            destName += Path.GetExtension(srcName);
+
+            return destName;
         }
 
-        private String GetDelNumberName(String SrcName)
+        // 先頭からParam1文字・(拡張子を除いた)後方からParam2文字を削除したファイル名
+        private String GetCharsRemovedName(String srcName)
         {
-            String DestName = "";
-            if (_param1 != String.Empty)
+            String destName = "";
+            if (Param1 != String.Empty)
             {
-                DestName = SrcName.Remove(0, int.Parse(_param1));
-                SrcName = DestName;
+                destName = srcName.Remove(0, int.Parse(Param1));
+                srcName = destName;
             }
 
-            if (_param2 != String.Empty)
+            if (Param2 != String.Empty)
             {
-                String FileNameWithOutExt = Path.GetFileNameWithoutExtension(SrcName);
-                DestName = FileNameWithOutExt.Remove(FileNameWithOutExt.Length - int.Parse(_param2));
-                DestName += Path.GetExtension(SrcName);
+                String fileNameWithoutExt = Path.GetFileNameWithoutExtension(srcName);
+                destName = fileNameWithoutExt.Remove(fileNameWithoutExt.Length - int.Parse(Param2));
+                destName += Path.GetExtension(srcName);
             }
 
-            return DestName;
+            return destName;
         }
 
-        private String GetAddName(String SrcName)
+        private String GetAddedName(String srcName)
         {
-            String DestName = SrcName;
+            String destName = srcName;
 
             // 先頭に追加するときはシンプルに。
-            if (_param1 != String.Empty)
+            if (Param1 != String.Empty)
             {
-                DestName = _param1 + SrcName;
+                destName = Param1 + srcName;
             }
 
             // 後方に追加するときは、「ファイル名＋追加文字＋拡張子」に。
-            if (_param2 != String.Empty)
+            if (Param2 != String.Empty)
             {
                 // 先頭に文字追加しているケースをcare
-                SrcName = DestName;
+                srcName = destName;
 
-                DestName = Path.GetFileNameWithoutExtension(SrcName);
-                DestName += _param2;
-                DestName += Path.GetExtension(SrcName);
+                destName = Path.GetFileNameWithoutExtension(srcName);
+                destName += Param2;
+                destName += Path.GetExtension(srcName);
             }
 
-            return DestName;
+            return destName;
         }
     }
 }

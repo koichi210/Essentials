@@ -1,7 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using System.Windows;
 using System.IO;
 using StandardTemplate;
@@ -10,8 +7,8 @@ namespace FFEditForWpf
 {
     class FileMng : StcProcessMemory
     {
-        private StcUtils util = new StcUtils();
-        private StcFileInputOutput FileIO = new StcFileInputOutput();
+        private readonly StcUtils util = new StcUtils();
+        private readonly StcFileInputOutput fileIO = new StcFileInputOutput();
 
         // 直前の操作1回分を、記録しておいた移動元へ戻す。
         // Rename/Functionの両方に同じ実装が置かれていたためここへ集約した
@@ -24,28 +21,28 @@ namespace FFEditForWpf
 
             while (IsExistRestoreList())
             {
-                String SrcName = "";
-                String DestName = "";
-                GetRestoreList(ref SrcName, ref DestName);
-                Move(DestName, SrcName);
+                String srcName = "";
+                String destName = "";
+                GetRestoreList(ref srcName, ref destName);
+                Move(destName, srcName);
             }
 
             return true;
         }
 
-        public bool Move(String SrcName, String DestName, Boolean IsErrorPopup = false)
+        public bool Move(String srcName, String destName, Boolean showErrorPopup = false)
         {
             bool success = true;
 
             try
             {
-                if (File.Exists(SrcName))
+                if (File.Exists(srcName))
                 {
-                    File.Move(SrcName, DestName);
+                    File.Move(srcName, destName);
                 }
-                else if (Directory.Exists(SrcName))
+                else if (Directory.Exists(srcName))
                 {
-                    Directory.Move(SrcName, DestName);
+                    Directory.Move(srcName, destName);
                 }
                 else
                 {
@@ -54,11 +51,11 @@ namespace FFEditForWpf
             }
             catch (Exception)
             {
-                if (IsErrorPopup)
+                if (showErrorPopup)
                 {
                     MessageBox.Show("指定パスが移動できませんでした。" + Environment.NewLine +
-                        SrcName + Environment.NewLine +
-                        DestName);
+                        srcName + Environment.NewLine +
+                        destName);
                 }
                 success = false;
             }
@@ -66,23 +63,22 @@ namespace FFEditForWpf
             return success;
         }
 
-        public bool Copy(String SrcName, String DestName, Boolean IsErrorPopup = false)
+        public bool Copy(String srcName, String destName, Boolean showErrorPopup = false)
         {
             bool success = true;
 
             try
             {
-                if (File.Exists(SrcName))
+                if (File.Exists(srcName))
                 {
-                    File.Copy(SrcName, DestName);
+                    File.Copy(srcName, destName);
                 }
-                else if (Directory.Exists(SrcName))
+                else if (Directory.Exists(srcName))
                 {
                     MessageBox.Show("ディレクトリコピーは未対応です。" + Environment.NewLine +
-                        SrcName + Environment.NewLine +
-                        DestName);
+                        srcName + Environment.NewLine +
+                        destName);
                     success = false;
-                    
                 }
                 else
                 {
@@ -91,11 +87,11 @@ namespace FFEditForWpf
             }
             catch (Exception)
             {
-                if (IsErrorPopup)
+                if (showErrorPopup)
                 {
                     MessageBox.Show("指定パスが移動できませんでした。" + Environment.NewLine +
-                        SrcName + Environment.NewLine +
-                        DestName);
+                        srcName + Environment.NewLine +
+                        destName);
                 }
                 success = false;
             }
@@ -103,15 +99,14 @@ namespace FFEditForWpf
             return success;
         }
 
-        public void DeleteBlankDir(String DirPath)
+        public void DeleteBlankDir(String dirPath)
         {
-            String Command;
-            Command = @"for /f ""delims="" %%d in ('dir """ + DirPath + @""" /ad /b /s') do rd ""%%d""" + Environment.NewLine;
+            String command = @"for /f ""delims="" %%d in ('dir """ + dirPath + @""" /ad /b /s') do rd ""%%d""" + Environment.NewLine;
 
-            String BatchFile = FileIO.CreateTempFile("bat");
-            FileIO.CreateFile(BatchFile, Command);
+            String batchFile = fileIO.CreateTempFile("bat");
+            fileIO.CreateFile(batchFile, command);
 
-            util.ExecuteProcess(BatchFile, true );
+            util.ExecuteProcess(batchFile, true);
         }
     }
 }
