@@ -6,6 +6,7 @@
     <Grid Margin="8">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
 
@@ -13,11 +14,15 @@
         <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,8">
             <Button x:Name="AddSectionButton" Content="＋ セクション追加" Padding="8,4" Margin="0,0,6,0" Click="AddSectionButton_Click"/>
             <Button x:Name="ReloadButton" Content="再読み込み" Padding="8,4" Margin="0,0,6,0" Click="ReloadButton_Click"/>
-            <Button x:Name="OpenConfigButton" Content="設定ファイルを開く" Padding="8,4" Click="OpenConfigButton_Click"/>
+            <Button x:Name="OpenConfigButton" Content="設定ファイルを開く" Padding="8,4" Margin="0,0,6,0" Click="OpenConfigButton_Click"/>
+            <Button x:Name="ChangeDataFolderButton" Content="保存先フォルダを変更..." Padding="8,4" Click="ChangeDataFolderButton_Click"/>
         </StackPanel>
 
+        <!-- 現在の保存先フォルダ表示 -->
+        <TextBlock x:Name="DataFolderText" Grid.Row="1" Margin="0,0,0,8" Foreground="#777777" TextTrimming="CharacterEllipsis"/>
+
         <!-- セクション一覧 -->
-        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+        <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto">
             <ItemsControl x:Name="SectionsItemsControl">
                 <ItemsControl.ItemTemplate>
                     <DataTemplate>

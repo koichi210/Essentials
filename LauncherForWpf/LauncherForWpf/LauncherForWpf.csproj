@@ -10,4 +10,14 @@
     <ApplicationIcon />
   </PropertyGroup>
 
+  <ItemGroup>
+    <!-- 保存先フォルダの管理（ポインタファイル方式）とフォルダ選択ダイアログはCheetos/FFEdit/FileArranger等と共通のロジックを使う -->
+    <Compile Include="..\..\_Common\UserDataLocation.cs" Link="Common\UserDataLocation.cs" />
+    <Compile Include="..\..\_Common\DataFolderChooser.cs" Link="Common\DataFolderChooser.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="WindowsAPICodePack-Shell" Version="1.1.1" />
+  </ItemGroup>
+
 </Project>

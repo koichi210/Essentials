@@ -1,19 +1,23 @@
-﻿using System;
-using System.Collections.ObjectModel;
+using System;
 using System.IO;
 using System.Text.Encodings.Web;
 using System.Text.Json;
 using LauncherForWpf.Models;
+using StandardTemplate;
 
 namespace LauncherForWpf.Services
 {
     /// <summary>
     /// 設定（JSON）の読み書きを担当。
-    /// 保存先はWindowsユーザーごとのAppDataフォルダなので、
-    /// 自動的にユーザーごとに別設定になる。
+    /// 保存先フォルダはCheetos/FFEdit/FileArranger等と同じ[[_Common/UserDataLocation.cs]]方式
+    /// （ポインタファイル＋既定は%LOCALAPPDATA%）で管理するため、ユーザーごとに自動的に
+    /// 別設定になり、かつ画面から保存先フォルダを任意の場所に変更できる。
     /// </summary>
     public class ConfigService
     {
+        private const string AppName = "LauncherForWpf";
+        private const string ConfigFileName = "config.json";
+
         private static readonly JsonSerializerOptions JsonOptions = new JsonSerializerOptions
         {
             WriteIndented = true,
@@ -21,16 +25,15 @@ namespace LauncherForWpf.Services
             Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
         };
 
+        /// <summary>現在の保存先フォルダ</summary>
+        public string DataFolder { get; private set; }
+
         /// <summary>設定ファイルのフルパス</summary>
-        public string ConfigFilePath { get; }
+        public string ConfigFilePath => Path.Combine(DataFolder, ConfigFileName);
 
         public ConfigService()
         {
-            string dir = Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-                "LauncherForWpf");
-            Directory.CreateDirectory(dir);
-            ConfigFilePath = Path.Combine(dir, "config.json");
+            DataFolder = UserDataLocation.GetUserDataFolder(AppName);
         }
 
         /// <summary>
@@ -60,6 +63,52 @@ namespace LauncherForWpf.Services
         {
             string json = JsonSerializer.Serialize(config, JsonOptions);
             File.WriteAllText(ConfigFilePath, json);
+        }
+
+        /// <summary>
+        /// 保存先フォルダ選択ダイアログを表示し、選ばれたフォルダに切り替える。
+        /// 既存のconfig.jsonは新しい保存先へ移動し、次回以降もそのフォルダを使うよう
+        /// ポインタファイルを書き換える（切り替えはこのセッションにも即時反映する）。
+        /// キャンセル時・変更なしの場合はfalseを返す。
+        /// </summary>
+        public bool ChangeDataFolder(out string message)
+        {
+            string selected = DataFolderChooser.ChooseFolder("ランチャーの保存先フォルダを選んでください", DataFolder);
+            if (string.IsNullOrEmpty(selected))
+            {
+                message = null;
+                return false;
+            }
+
+            string newFolder = Path.GetFullPath(selected);
+            if (string.Equals(newFolder.TrimEnd('\\'), Path.GetFullPath(DataFolder).TrimEnd('\\'), StringComparison.OrdinalIgnoreCase))
+            {
+                message = null;
+                return false;
+            }
+
+            Directory.CreateDirectory(newFolder);
+
+            string oldConfigPath = ConfigFilePath;
+            string newConfigPath = Path.Combine(newFolder, ConfigFileName);
+
+            if (File.Exists(newConfigPath))
+            {
+                message = $"選択したフォルダには既にconfig.jsonがあったため、そちらをそのまま使うよ。\n{newFolder}";
+            }
+            else if (File.Exists(oldConfigPath))
+            {
+                File.Move(oldConfigPath, newConfigPath);
+                message = $"保存先を移動したよ。\n{newFolder}";
+            }
+            else
+            {
+                message = $"保存先を変更したよ。\n{newFolder}";
+            }
+
+            DataFolder = newFolder;
+            UserDataLocation.SetUserDataFolder(AppName, newFolder);
+            return true;
         }
 
         private static LauncherConfig CreateDefaultConfig()

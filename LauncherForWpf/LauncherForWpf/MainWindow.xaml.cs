@@ -25,6 +25,7 @@ namespace LauncherForWpf
 
             _config = _configService.Load();
             SectionsItemsControl.ItemsSource = Sections;
+            UpdateDataFolderText();
         }
 
         // ランチャー項目を起動
@@ -182,6 +183,40 @@ namespace LauncherForWpf
         {
             _config = _configService.Load();
             SectionsItemsControl.ItemsSource = Sections;
+            UpdateDataFolderText();
+        }
+
+        // 保存先フォルダを選び直す
+        private void ChangeDataFolderButton_Click(object sender, RoutedEventArgs e)
+        {
+            bool changed;
+            string message;
+            try
+            {
+                changed = _configService.ChangeDataFolder(out message);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"保存先フォルダの変更に失敗しました。\n\n{ex.Message}", "エラー", MessageBoxButton.OK, MessageBoxImage.Error);
+                return;
+            }
+
+            if (!changed)
+            {
+                return;
+            }
+
+            // 新しい保存先の内容を読み込み直す（既存のconfig.jsonがあればそちらを使う）
+            _config = _configService.Load();
+            SectionsItemsControl.ItemsSource = Sections;
+            UpdateDataFolderText();
+
+            MessageBox.Show(message, "保存先フォルダの変更", MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+
+        private void UpdateDataFolderText()
+        {
+            DataFolderText.Text = $"保存先: {_configService.ConfigFilePath}";
         }
 
         private void SaveConfig()
