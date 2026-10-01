@@ -28,15 +28,15 @@ namespace FileArrangerForWpf
         private const int RenameSrcIdx = 0;
         private const int RenameDestIdx = 1;
 
-        private const int CreateFolderTargetIdx = 0;
-        private const int CreateFolderMoveSrcIdx = 1;
-        private const int CreateFolderMoveDestIdx = 2;
+        private const int PartitionTargetIdx = 0;
+        private const int PartitionMoveSrcIdx = 1;
+        private const int PartitionMoveDestIdx = 2;
 
         public String[] ReferenceCandidateFolders { get; set; }     // リファレンス名の候補
 
         private readonly String userDataFolder;
         private readonly StcFileInputOutput fio = new StcFileInputOutput();
-        // FileArranger固有の拡張メソッド(AvoidFolderNameOverlap等)を持つUtils(StcUtilsを継承)
+        // FileArranger固有の拡張メソッド(AvoidFolderNameConflict等)を持つUtils(StcUtilsを継承)
         private readonly Utils util = new Utils();
         // フォルダ名変更タブ(rd)の「元に戻す」用の履歴
         private readonly StcProcessMemory renameDirMemory = new StcProcessMemory();
@@ -67,7 +67,7 @@ namespace FileArrangerForWpf
 
             // 起動時は既定の設定ファイル(FileArranger.json)を読む。旧XMLからの移行はWinForms版で済んでいる前提
             SaveRestore.LoadOrDefault(Path.Combine(userDataFolder, SettingFileName));
-            AfterLoadProfile();
+            RefreshAfterLoad();
 
             // 一覧の先頭が選ばれ、SelectionChangedでそのプロファイルが読み込まれる(WinForms版と同じ)
             WpfProfile.UpdateProfileList(comboBox_LoadSetting, ProfileExtensions, "", userDataFolder);
@@ -162,12 +162,12 @@ namespace FileArrangerForWpf
             {
                 return false;
             }
-            AfterLoadProfile();
+            RefreshAfterLoad();
             return true;
         }
 
         // WinForms版LoadJsonFile/LoadProcの後処理
-        private void AfterLoadProfile()
+        private void RefreshAfterLoad()
         {
             // コンボボックス更新
             UpdateRenameComboBox();
@@ -182,9 +182,9 @@ namespace FileArrangerForWpf
         // 設定ファイルを保存する(WinForms版SaveJsonFile)。コンボボックスの入力値を履歴へ追加してから保存する
         internal Boolean SaveProfile(String filePath)
         {
-            WpfControlHelper.ModifyComboBoxList(md_comboBox_TargetDir);
-            WpfControlHelper.ModifyComboBoxList(rd_comboBox_RenameDir);
-            WpfControlHelper.ModifyComboBoxList(rd_comboBox_AddTitlePostWord);
+            WpfControlHelper.AddComboBoxTextToItems(md_comboBox_TargetDir);
+            WpfControlHelper.AddComboBoxTextToItems(rd_comboBox_RenameDir);
+            WpfControlHelper.AddComboBoxTextToItems(rd_comboBox_AddTitlePostWord);
 
             return SaveRestore.Save(filePath);
         }
@@ -241,15 +241,15 @@ namespace FileArrangerForWpf
             }
         }
 
-        // リストアップ前のフォルダ確認(isErrorPopup=falseなら、無効でもメッセージを出さずに中断する)
-        private static Boolean IsValidFolderPath(String folderPath, Boolean isErrorPopup = true)
+        // リストアップ前のフォルダ確認(showErrorPopup=falseなら、無効でもメッセージを出さずに中断する)
+        private static Boolean IsValidFolderPath(String folderPath, Boolean showErrorPopup = true)
         {
             if (Directory.Exists(folderPath))
             {
                 return true;
             }
 
-            if (isErrorPopup)
+            if (showErrorPopup)
             {
                 MessageBox.Show("フォルダパスが不正です。" + folderPath);
             }

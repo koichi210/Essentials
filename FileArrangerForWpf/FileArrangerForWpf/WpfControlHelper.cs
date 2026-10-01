@@ -1,7 +1,7 @@
 // StcUtils([[_Common/StandardTemplateClass.cs]])のうち、WinFormsのコントロールを引数に取るもの
 // (SetComboBoxFromArray/SetComboBoxFromArraySubString/FindStringFromComboBox/AddComboBoxTextToItems/
 //  CopyToClipboard/SelectAll)を、WPFのコントロールで使えるようにしたプロジェクト内ヘルパー。
-// 中身はWinForms版と同じ処理にしてある(AddComboBoxTextToItemsに当たるものはModifyComboBoxListという名前にしてある)。
+// 中身はWinForms版と同じ処理にしてある(メソッド名もStcUtilsと同じにしてある)。
 //
 // ※他のWPF移植でも使えそうなので、_Common/Wpf へ移す候補
 using System;
@@ -227,7 +227,7 @@ namespace FileArrangerForWpf
         public static String FindStringFromComboBox(ComboBox comboCtrl, String srcName, String trimName = "", Boolean isReverse = false)
         {
             // trimNameが設定されていたら、特定の文字列で区切る
-            String searchName = Logic.CutBeforeDelimiter(srcName, trimName, isReverse);
+            String searchName = Logic.TrimAtSeparator(srcName, trimName, isReverse);
             if (searchName.Length == 0)
             {
                 return "";
@@ -236,7 +236,7 @@ namespace FileArrangerForWpf
         }
 
         // ComboBoxのTextをプルダウンに追加する(重複は除く。StcUtils.AddComboBoxTextToItems相当)
-        public static void ModifyComboBoxList(ComboBox comboCtrl)
+        public static void AddComboBoxTextToItems(ComboBox comboCtrl)
         {
             if (comboCtrl.Text == String.Empty)
             {

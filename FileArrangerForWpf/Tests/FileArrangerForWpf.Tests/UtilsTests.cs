@@ -43,67 +43,67 @@ namespace FileArrangerForWpf.Tests
         }
 
         // ------------------------------------------------------------------
-        // AvoidFolderNameOverlap
+        // AvoidFolderNameConflict
         // ------------------------------------------------------------------
 
         [TestMethod]
-        public void AvoidFolderNameOverlap_フォルダが存在しなければ変更しない()
+        public void AvoidFolderNameConflict_フォルダが存在しなければ変更しない()
         {
             string path = Path.Combine(tempDirectory, "not_exist");
 
-            util.AvoidFolderNameOverlap(ref path, 1);
+            util.AvoidFolderNameConflict(ref path, 1);
 
             Assert.AreEqual(Path.Combine(tempDirectory, "not_exist"), path);
         }
 
         [TestMethod]
-        public void AvoidFolderNameOverlap_フォルダが存在すれば連番付きの名前にする()
+        public void AvoidFolderNameConflict_フォルダが存在すれば連番付きの名前にする()
         {
             string original = Path.Combine(tempDirectory, "exists");
             Directory.CreateDirectory(original);
             string path = original;
 
-            util.AvoidFolderNameOverlap(ref path, 3);
+            util.AvoidFolderNameConflict(ref path, 3);
 
             Assert.AreNotEqual(original, path);
             StringAssert.StartsWith(path, original + "_Cnt3_");
         }
 
         [TestMethod]
-        public void AvoidFolderNameOverlap_LoopIdxが0でも連番0として埋め込む()
+        public void AvoidFolderNameConflict_LoopIdxが0でも連番0として埋め込む()
         {
             string original = Path.Combine(tempDirectory, "exists_zero");
             Directory.CreateDirectory(original);
             string path = original;
 
-            util.AvoidFolderNameOverlap(ref path, 0);
+            util.AvoidFolderNameConflict(ref path, 0);
 
             StringAssert.StartsWith(path, original + "_Cnt0_");
         }
 
         // ------------------------------------------------------------------
-        // AvoidFileNameOverlap
+        // AvoidFileNameConflict
         // ------------------------------------------------------------------
 
         [TestMethod]
-        public void AvoidFileNameOverlap_何も無ければtrueを返し名前も変えない()
+        public void AvoidFileNameConflict_何も無ければtrueを返し名前も変えない()
         {
             string path = Path.Combine(tempDirectory, "new.txt");
 
-            bool result = util.AvoidFileNameOverlap(ref path, 1);
+            bool result = util.AvoidFileNameConflict(ref path, 1);
 
             Assert.IsTrue(result);
             Assert.AreEqual(Path.Combine(tempDirectory, "new.txt"), path);
         }
 
         [TestMethod]
-        public void AvoidFileNameOverlap_ファイルが存在すればfalseを返し連番を付ける()
+        public void AvoidFileNameConflict_ファイルが存在すればfalseを返し連番を付ける()
         {
             string original = Path.Combine(tempDirectory, "dup.txt");
             File.WriteAllText(original, "dummy");
             string path = original;
 
-            bool result = util.AvoidFileNameOverlap(ref path, 2);
+            bool result = util.AvoidFileNameConflict(ref path, 2);
 
             Assert.IsFalse(result);
             Assert.AreNotEqual(original, path);
@@ -111,26 +111,26 @@ namespace FileArrangerForWpf.Tests
         }
 
         [TestMethod]
-        public void AvoidFileNameOverlap_LoopIdxが0でも連番0として埋め込む()
+        public void AvoidFileNameConflict_LoopIdxが0でも連番0として埋め込む()
         {
             string original = Path.Combine(tempDirectory, "dup_zero.txt");
             File.WriteAllText(original, "dummy");
             string path = original;
 
-            util.AvoidFileNameOverlap(ref path, 0);
+            util.AvoidFileNameConflict(ref path, 0);
 
             StringAssert.StartsWith(path, original + "_Cnt0_");
         }
 
         [TestMethod]
-        public void AvoidFileNameOverlap_同名のフォルダがあってもfalseを返す()
+        public void AvoidFileNameConflict_同名のフォルダがあってもfalseを返す()
         {
             // ファイルではなくフォルダとの重複も検知する
             string original = Path.Combine(tempDirectory, "dup_dir");
             Directory.CreateDirectory(original);
             string path = original;
 
-            bool result = util.AvoidFileNameOverlap(ref path, 1);
+            bool result = util.AvoidFileNameConflict(ref path, 1);
 
             Assert.IsFalse(result);
         }

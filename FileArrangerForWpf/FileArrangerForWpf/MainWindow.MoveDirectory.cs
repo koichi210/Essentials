@@ -32,6 +32,62 @@ namespace FileArrangerForWpf
             MoveSelectedDirectories(true);
         }
 
+        private void md_listBox_Listup_KeyDown(object sender, KeyEventArgs e)
+        {
+            if (e.Key == Key.Enter)
+            {
+                MoveSelectedDirectories(false);
+            }
+            else
+            {
+                WpfControlHelper.SelectAll(md_listBox_Listup, e);
+            }
+        }
+
+        private void md_listBox_Listup_MouseDoubleClick(object sender, MouseButtonEventArgs e)
+        {
+            List<Object> selectedItems = WpfControlHelper.GetSelectedItemsInIndexOrder(md_listBox_Listup);
+            if (selectedItems.Count > 0)
+            {
+                String targetPath = md_textBox_SourceDir.Text + @"\" + selectedItems[0].ToString();
+                util.ExecutePath(targetPath);
+            }
+        }
+
+        private void md_button_MoveSubDir_Click(object sender, RoutedEventArgs e)
+        {
+            MoveSelectedDirectories(false);
+        }
+
+        private void md_button_Delete_Click(object sender, RoutedEventArgs e)
+        {
+            if (!fio.EnsureDirectory(md_comboBox_TargetDir.Text))
+            {
+                return;
+            }
+
+            List<Object> selectedItems = WpfControlHelper.GetSelectedItemsInIndexOrder(md_listBox_Listup);
+            if (selectedItems.Count == 0)
+            {
+                MessageBox.Show("項目が選択されていません。");
+                return;
+            }
+
+            foreach (Object item in selectedItems)
+            {
+                String delPath = md_textBox_SourceDir.Text + @"\" + item.ToString();
+                new DirectoryInfo(delPath).Delete(true);
+            }
+
+            // リストを更新
+            ListupMoveDirectory();
+        }
+
+        private void md_listBox_Listup_SelectedIndexChanged(object sender, SelectionChangedEventArgs e)
+        {
+            md_label_SelectNum.Text = "選択数：" + md_listBox_Listup.SelectedItems.Count.ToString();
+        }
+
         // 選択したフォルダを移動先へ移動する(WinForms版Move_Directory)。
         // isMoveTopDir=trueなら最上位のフォルダごと、falseなら末端のフォルダだけを移動する
         private void MoveSelectedDirectories(Boolean isMoveTopDir)
@@ -73,7 +129,7 @@ namespace FileArrangerForWpf
                 }
 
                 // 移動先にすでにフォルダがある場合は重複回避
-                util.AvoidFolderNameOverlap(ref destPath, i);
+                util.AvoidFolderNameConflict(ref destPath, i);
 
                 fio.MoveDirectory(sourcePath, destPath);
             }
@@ -82,7 +138,7 @@ namespace FileArrangerForWpf
             ListupMoveDirectory(true);
         }
 
-        private void ListupMoveDirectory(Boolean isRestoreScrollBarPos = false)
+        private void ListupMoveDirectory(Boolean keepScrollPosition = false)
         {
             if (!IsValidFolderPath(md_textBox_SourceDir.Text))
             {
@@ -95,7 +151,7 @@ namespace FileArrangerForWpf
 
             ScrollViewer scroller = FindScrollViewer(md_listBox_Listup);
             double scrollBarPos = 0;
-            if (isRestoreScrollBarPos && scroller != null)
+            if (keepScrollPosition && scroller != null)
             {
                 scrollBarPos = scroller.VerticalOffset;
             }

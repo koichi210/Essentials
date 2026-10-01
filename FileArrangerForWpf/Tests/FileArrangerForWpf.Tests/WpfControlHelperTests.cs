@@ -75,16 +75,16 @@ namespace FileArrangerForWpf.Tests
         }
 
         [TestMethod]
-        public void ModifyComboBoxList_入力値を履歴に追加し重複は除く()
+        public void AddComboBoxTextToItems_入力値を履歴に追加し重複は除く()
         {
             StaRunner.Run(() =>
             {
                 var combo = new ComboBoxEx();
                 combo.Items.Add("a");
                 combo.Text = "b";
-                WpfControlHelper.ModifyComboBoxList(combo);
+                WpfControlHelper.AddComboBoxTextToItems(combo);
                 combo.Text = "a";
-                WpfControlHelper.ModifyComboBoxList(combo);
+                WpfControlHelper.AddComboBoxTextToItems(combo);
 
                 CollectionAssert.AreEqual(new object[] { "a", "b" }, ItemsOf(combo));
                 Assert.AreEqual("a", combo.Text);
@@ -92,13 +92,13 @@ namespace FileArrangerForWpf.Tests
         }
 
         [TestMethod]
-        public void ModifyComboBoxList_入力値が空なら何もしない()
+        public void AddComboBoxTextToItems_入力値が空なら何もしない()
         {
             StaRunner.Run(() =>
             {
                 var combo = new ComboBoxEx();
                 combo.Items.Add("a");
-                WpfControlHelper.ModifyComboBoxList(combo);
+                WpfControlHelper.AddComboBoxTextToItems(combo);
 
                 CollectionAssert.AreEqual(new object[] { "a" }, ItemsOf(combo));
             });

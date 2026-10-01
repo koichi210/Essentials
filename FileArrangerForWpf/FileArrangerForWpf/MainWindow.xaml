@@ -107,9 +107,9 @@
                     <ListBox Grid.Row="3" Grid.ColumnSpan="3" x:Name="md_listBox_Listup" Margin="0,4,0,4"
                              SelectionMode="Extended"
                              ScrollViewer.HorizontalScrollBarVisibility="Auto"
-                             SelectionChanged="mf_listBox_Listup_SelectedIndexChanged"
-                             KeyDown="mf_listBox_Listup_KeyDown"
-                             MouseDoubleClick="mf_listBox_Listup_MouseDoubleClick" />
+                             SelectionChanged="md_listBox_Listup_SelectedIndexChanged"
+                             KeyDown="md_listBox_Listup_KeyDown"
+                             MouseDoubleClick="md_listBox_Listup_MouseDoubleClick" />
 
                     <Grid Grid.Row="4" Grid.ColumnSpan="3">
                         <Grid.ColumnDefinitions>
@@ -124,9 +124,9 @@
                             <Button x:Name="md_button_MoveTopDir" Content="トップディレクトリを移動" Width="137"
                                     Click="md_button_MoveTopDir_Click" />
                             <Button x:Name="md_button_MoveSubDir" Content="サブディレクトリを移動" Width="137" Margin="6,0,0,0"
-                                    Click="mf_button_Move_SubDir_Click" />
+                                    Click="md_button_MoveSubDir_Click" />
                             <Button x:Name="md_button_Delete" Content="削除" Width="100" Margin="6,0,0,0"
-                                    Click="mf_button_Delete_Click" />
+                                    Click="md_button_Delete_Click" />
                         </StackPanel>
                     </Grid>
                 </Grid>

@@ -13,55 +13,55 @@ namespace FileArrangerForWpf.Tests
     public class LogicTests
     {
         // ------------------------------------------------------------------
-        // GetPadding / GetNumber
+        // GetPaddingDigits / ToPaddedNumberString
         // ------------------------------------------------------------------
 
         [TestMethod]
-        public void GetPadding_1桁でも2桁ゼロ埋めにする()
+        public void GetPaddingDigits_1桁でも2桁ゼロ埋めにする()
         {
-            Assert.AreEqual(2, Logic.GetPadding(5));
+            Assert.AreEqual(2, Logic.GetPaddingDigits(5));
         }
 
         [TestMethod]
-        public void GetPadding_2桁ちょうどでも2桁のまま()
+        public void GetPaddingDigits_2桁ちょうどでも2桁のまま()
         {
-            Assert.AreEqual(2, Logic.GetPadding(42));
+            Assert.AreEqual(2, Logic.GetPaddingDigits(42));
         }
 
         [TestMethod]
-        public void GetPadding_3桁以上ならパディング不要()
+        public void GetPaddingDigits_3桁以上ならパディング不要()
         {
-            Assert.AreEqual(0, Logic.GetPadding(100));
+            Assert.AreEqual(0, Logic.GetPaddingDigits(100));
         }
 
         [TestMethod]
-        public void GetPadding_ThroughNumberZeroがtrueで値が0ならパディング0()
+        public void GetPaddingDigits_isZeroDigitForZeroがtrueで値が0ならパディング0()
         {
-            Assert.AreEqual(0, Logic.GetPadding(0, true));
+            Assert.AreEqual(0, Logic.GetPaddingDigits(0, true));
         }
 
         [TestMethod]
-        public void GetPadding_ThroughNumberZeroがfalseなら0でも2桁扱い()
+        public void GetPaddingDigits_isZeroDigitForZeroがfalseなら0でも2桁扱い()
         {
-            Assert.AreEqual(2, Logic.GetPadding(0, false));
+            Assert.AreEqual(2, Logic.GetPaddingDigits(0, false));
         }
 
         [TestMethod]
-        public void GetNumber_加算数を足してゼロ埋めした文字列になる()
+        public void ToPaddedNumberString_加算数を足してゼロ埋めした文字列になる()
         {
-            Assert.AreEqual("07", Logic.GetNumber(5, 2));
+            Assert.AreEqual("07", Logic.ToPaddedNumberString(5, 2));
         }
 
         [TestMethod]
-        public void GetNumber_加算数省略時は0扱い()
+        public void ToPaddedNumberString_加算数省略時は0扱い()
         {
-            Assert.AreEqual("05", Logic.GetNumber(5));
+            Assert.AreEqual("05", Logic.ToPaddedNumberString(5));
         }
 
         [TestMethod]
-        public void GetNumber_3桁以上になったらゼロ埋めしない()
+        public void ToPaddedNumberString_3桁以上になったらゼロ埋めしない()
         {
-            Assert.AreEqual("150", Logic.GetNumber(100, 50));
+            Assert.AreEqual("150", Logic.ToPaddedNumberString(100, 50));
         }
 
         // ------------------------------------------------------------------

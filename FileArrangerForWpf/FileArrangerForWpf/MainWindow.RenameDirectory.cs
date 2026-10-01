@@ -23,7 +23,7 @@ namespace FileArrangerForWpf
 
         private void rd_button_Execute_Rename_Click(object sender, RoutedEventArgs e)
         {
-            RenameFolderExecute();
+            ExecuteRenameFolder();
         }
 
         private void rd_button_RenameFolderRestore_Click(object sender, RoutedEventArgs e)
@@ -44,7 +44,7 @@ namespace FileArrangerForWpf
             ListupRenameTargetDirectory();
         }
 
-        private void RenameFolderExecute()
+        private void ExecuteRenameFolder()
         {
             List<int> selectedIndices = WpfControlHelper.GetSelectedIndices(rd_listView_Target);
             if (selectedIndices.Count == 0)
@@ -65,7 +65,7 @@ namespace FileArrangerForWpf
                 String destName = rd_comboBox_RenameDir.Text + @"\" + row[RenameDestIdx];
 
                 // ファイル名の重複回避
-                util.AvoidFileNameOverlap(ref destName, i);
+                util.AvoidFileNameConflict(ref destName, i);
                 fio.MoveDirectory(srcName, destName);
                 renameDirMemory.AddRestoreItem(srcName, destName);
             }
@@ -138,7 +138,7 @@ namespace FileArrangerForWpf
             UpdateRenameDestNames();
         }
 
-        // 区切り文字・番号前に追加・番号検索の後部/検索長のTextBox(WinForms版はrd_comboBox_MergeWord_TextChangedを共用していた)
+        // 区切り文字・番号前に追加・番号検索の後部/検索長のTextBox(WinForms版はrd_RenameSetting_TextChangedを共用していた)
         private void rd_textBox_TextChanged(object sender, TextChangedEventArgs e)
         {
             UpdateRenameDestNames();
@@ -159,7 +159,7 @@ namespace FileArrangerForWpf
                     rd_textBox_SearchTitleLine.Text,
                     rd_textBox_SearchTitleLength.Text);
 
-                String number = Logic.GetNumber(destNumber);
+                String number = Logic.ToPaddedNumberString(destNumber);
 
                 // 変更後ファイル名を生成
                 row[RenameDestIdx] = rd_comboBox_MergeWord.Text + rd_textBox_AddTitlePreWord.Text + number + rd_comboBox_AddTitlePostWord.Text;
@@ -234,7 +234,7 @@ namespace FileArrangerForWpf
         {
             if (IsCtrlEnter(e))
             {
-                RenameFolderExecute();
+                ExecuteRenameFolder();
             }
         }
 
@@ -242,7 +242,7 @@ namespace FileArrangerForWpf
         {
             if (IsCtrlEnter(e))
             {
-                RenameFolderExecute();
+                ExecuteRenameFolder();
                 rd_comboBox_MergeWord.Focus();
             }
             else

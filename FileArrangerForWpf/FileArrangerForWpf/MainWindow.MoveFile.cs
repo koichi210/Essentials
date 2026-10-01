@@ -8,77 +8,20 @@ using System.Windows.Input;
 
 namespace FileArrangerForWpf
 {
-    // ファイル移動タブ(mf)の処理(WinForms版Form1.MoveFile.csから移植)。
-    // フォルダ移動タブ(md)のリスト・ボタンのハンドラも、WinForms版と同じくこのファイルにある
+    // ファイル移動タブ(mf)の処理(WinForms版Form1.MoveFile.csから移植)
     public partial class MainWindow
     {
-        private void mf_listBox_Listup_KeyDown(object sender, KeyEventArgs e)
-        {
-            if (e.Key == Key.Enter)
-            {
-                MoveSelectedDirectories(false);
-            }
-            else
-            {
-                WpfControlHelper.SelectAll(md_listBox_Listup, e);
-            }
-        }
-
         private void mf_textBox_TargetDir_KeyDown(object sender, KeyEventArgs e)
         {
             ExecutePathOnEnter(mf_textBox_TargetDir.Text, e);
         }
 
-        private void mf_listBox_Listup_MouseDoubleClick(object sender, MouseButtonEventArgs e)
-        {
-            List<Object> selectedItems = WpfControlHelper.GetSelectedItemsInIndexOrder(md_listBox_Listup);
-            if (selectedItems.Count > 0)
-            {
-                String targetPath = md_textBox_SourceDir.Text + @"\" + selectedItems[0].ToString();
-                util.ExecutePath(targetPath);
-            }
-        }
-
-        private void mf_button_Move_SubDir_Click(object sender, RoutedEventArgs e)
-        {
-            MoveSelectedDirectories(false);
-        }
-
-        private void mf_button_Delete_Click(object sender, RoutedEventArgs e)
-        {
-            if (!fio.EnsureDirectory(md_comboBox_TargetDir.Text))
-            {
-                return;
-            }
-
-            List<Object> selectedItems = WpfControlHelper.GetSelectedItemsInIndexOrder(md_listBox_Listup);
-            if (selectedItems.Count == 0)
-            {
-                MessageBox.Show("項目が選択されていません。");
-                return;
-            }
-
-            foreach (Object item in selectedItems)
-            {
-                String delPath = md_textBox_SourceDir.Text + @"\" + item.ToString();
-                new DirectoryInfo(delPath).Delete(true);
-            }
-
-            // リストを更新
-            ListupMoveDirectory();
-        }
-
-        private void mf_listBox_Listup_SelectedIndexChanged(object sender, SelectionChangedEventArgs e)
-        {
-            md_label_SelectNum.Text = "選択数：" + md_listBox_Listup.SelectedItems.Count.ToString();
-        }
-
         private void mf_button_Listup_Click(object sender, RoutedEventArgs e)
         {
-            ListupMoveFile();
+            ListupMoveFileTargets();
         }
 
-        private void ListupMoveFile()
+        private void ListupMoveFileTargets()
         {
             if (!IsValidFolderPath(mf_textBox_SourceDir.Text))
             {
@@ -169,7 +112,7 @@ namespace FileArrangerForWpf
                 String targetPath = param.TargetDir + @"\" + fio.GetLastPathName(targetName);
 
                 // 移動先にすでにフォルダがある場合は重複回避
-                util.AvoidFolderNameOverlap(ref targetPath, i);
+                util.AvoidFolderNameConflict(ref targetPath, i);
                 fio.MoveDirectory(sourcePath, targetPath);
 
                 worker.ReportProgress(i);      // ⇒ProgressChanged()
@@ -202,7 +145,7 @@ namespace FileArrangerForWpf
             }
 
             // リストを更新
-            ListupMoveFile();
+            ListupMoveFileTargets();
         }
     }
 }
