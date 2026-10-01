@@ -74,7 +74,7 @@
                     <DatePicker Grid.Row="0" Grid.Column="1" x:Name="dateTimePicker_Calendar" VerticalAlignment="Center" />
                     <Label Grid.Row="0" Grid.Column="2" Content="生成数：" HorizontalAlignment="Right" />
                     <stc:TextBoxEx Grid.Row="0" Grid.Column="3" x:Name="textBox_CreateNum" Text="5" VerticalAlignment="Center" />
-                    <CheckBox Grid.Row="1" Grid.Column="1" x:Name="check_BoxReverse" Content="Reverse" IsChecked="True" VerticalAlignment="Center" />
+                    <CheckBox Grid.Row="1" Grid.Column="1" x:Name="checkBox_Reverse" Content="Reverse" IsChecked="True" VerticalAlignment="Center" />
                     <Label Grid.Row="1" Grid.Column="2" Content="インターバル(msec)：" HorizontalAlignment="Right" />
                     <stc:TextBoxEx Grid.Row="1" Grid.Column="3" x:Name="textBox_IntervalMsec" Text="5000" VerticalAlignment="Center" />
                     <Button Grid.Row="0" Grid.RowSpan="2" Grid.Column="4" x:Name="button_OpenBrowse_OneWeek" Content="一括表示"

@@ -88,7 +88,7 @@ namespace MailerForWpf
             {
                 return;
             }
-            var offsets = Logic.GetDayOffsetList(param.CreateNum, check_BoxReverse.IsChecked == true);
+            var offsets = Logic.GetDayOffsetList(param.CreateNum, checkBox_Reverse.IsChecked == true);
             foreach (var offset in offsets)
             {
                 OpenBrowse(offset);
