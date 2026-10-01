@@ -96,7 +96,7 @@ namespace FileArrangerForWpf
                 rd_listView_Target.Items.Add(new ListViewRow(folderName, ""));
             }
 
-            if (scrollToIdx > folders.Length)
+            if (scrollToIdx >= folders.Length)
             {
                 scrollToIdx = folders.Length - 1;
             }
