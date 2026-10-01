@@ -79,7 +79,7 @@ namespace MailerForWpf
                 return;
             }
 
-            OpenBrowse();
+            OpenBrowser();
         }
 
         private void button_OpenBrowse_OneWeek_Click(object sender, RoutedEventArgs e)
@@ -91,12 +91,12 @@ namespace MailerForWpf
             var offsets = Logic.GetDayOffsetList(param.CreateNum, checkBox_Reverse.IsChecked == true);
             foreach (var offset in offsets)
             {
-                OpenBrowse(offset);
+                OpenBrowser(offset);
                 System.Threading.Thread.Sleep(param.IntervalMsec);
             }
         }
 
-        private void OpenBrowse(int daysOffset = 0)
+        private void OpenBrowser(int daysOffset = 0)
         {
             String browseUrl = MailUrl;
             if (textBox_MailTo.Text != String.Empty)
