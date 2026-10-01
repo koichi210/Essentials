@@ -63,32 +63,22 @@ namespace CheetosForWpf
             // senderの値はbgWorkerの値と同じ
             BackgroundWorker worker = (BackgroundWorker)sender;
 
-            String ErrorString = "";
+            String errorLog = "";
 
             // このメソッドへのパラメータ
             OrientWorkerParam param = (OrientWorkerParam)e.Argument;
-            int WhiteLength = param.WhiteLength;
-            int WhiteCoef = param.WhiteCoef;
-            String DestPortFolderPath = param.DestPortFolderPath;
-            String DestLandFolderPath = param.DestLandFolderPath;
             String[] files = param.Files;
 
             for (int i = 0; i <= files.Length - 1; i++)
             {
-                String DestName;
-                if (Logic.IsPortrait(files[i], WhiteLength, WhiteCoef))
-                {
-                    DestName = DestPortFolderPath;
-                }
-                else
-                {
-                    DestName = DestLandFolderPath;
-                }
-                DestName += @"\" + Path.GetFileName(files[i]);
+                String destFolderPath = Logic.IsPortrait(files[i], param.WhiteLength, param.WhiteCoef)
+                    ? param.DestPortFolderPath
+                    : param.DestLandFolderPath;
+                String destPath = destFolderPath + @"\" + Path.GetFileName(files[i]);
 
-                if (!fio.FileMove(files[i], DestName))
+                if (!fio.FileMove(files[i], destPath))
                 {
-                    ErrorString += "Move " + files[i] + " " + DestName + Environment.NewLine;
+                    errorLog += "Move " + files[i] + " " + destPath + Environment.NewLine;
                 }
 
                 // 進捗率の表示
@@ -103,7 +93,7 @@ namespace CheetosForWpf
             }
 
             worker.ReportProgress(files.Length);      // ⇒ProgressChanged()
-            e.Result = ErrorString;
+            e.Result = errorLog;
         }
 
         private void bkgWorkerOrient_RunWorkerCompleted(object sender, RunWorkerCompletedEventArgs e)
@@ -113,24 +103,19 @@ namespace CheetosForWpf
                 MessageBox.Show("キャンセルされました");
                 // この場合はe.Resultにはアクセスできない
             }
-            else if (!(e.Error == null))
+            else if (e.Error != null)
             {
                 MessageBox.Show("エラーが発生しました[" + e.Error.Message + "]");
             }
             else
             {
-                String Result = e.Result.ToString();
-                if (Result != String.Empty)
+                String result = e.Result.ToString();
+                if (result != String.Empty)
                 {
-                    MessageBox.Show("処理が失敗しました。" + Environment.NewLine + Result,
+                    MessageBox.Show("処理が失敗しました。" + Environment.NewLine + result,
                         "Warning",
                         MessageBoxButton.OK,
                         MessageBoxImage.Warning);
-                }
-                else
-                {
-                    // 処理結果の表示
-                    //MessageBox.Show("正常に完了しました");
                 }
             }
             TextBox_Status.Text += " 完了";

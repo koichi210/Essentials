@@ -16,50 +16,50 @@ namespace CheetosForWpf
     {
         // StcUtils.GetStrArrayFromListBox の代わり。
         // WPFのSelectedItemsは「選択した順」に並ぶため、WinForms版と同じ「リストの並び順」に揃えて返す
-        public static String[] GetSelectedStrArray(ListBox ListCtrl)
+        public static String[] GetSelectedStrArray(ListBox listCtrl)
         {
-            return ListCtrl.Items.Cast<Object>()
-                .Where(item => ListCtrl.SelectedItems.Contains(item))
+            return listCtrl.Items.Cast<Object>()
+                .Where(item => listCtrl.SelectedItems.Contains(item))
                 .Select(item => item.ToString())
                 .ToArray();
         }
 
         // WinForms版の「ListBox.Sorted=true のリストへ Items.Add」の代わり。並べ替えてから一括で入れる
-        public static void SetSortedItems(ListBox ListCtrl, String[] Items)
+        public static void SetSortedItems(ListBox listCtrl, String[] items)
         {
-            String[] sorted = (String[])Items.Clone();
+            String[] sorted = (String[])items.Clone();
             Array.Sort(sorted, StringComparer.CurrentCulture);
 
-            ListCtrl.Items.Clear();
+            listCtrl.Items.Clear();
             foreach (String item in sorted)
             {
-                ListCtrl.Items.Add(item);
+                listCtrl.Items.Add(item);
             }
         }
 
         // GDI+のBitmapをWPFで表示できるBitmapSourceへ変換する(96dpi・アルファ付き)。
         // 元のBitmapは呼び出し側で破棄してよい(ピクセルはコピー済み)
-        public static BitmapSource ToBitmapSource(System.Drawing.Bitmap Bmp)
+        public static BitmapSource ToBitmapSource(System.Drawing.Bitmap bmp)
         {
-            System.Drawing.Rectangle rect = new System.Drawing.Rectangle(0, 0, Bmp.Width, Bmp.Height);
-            BitmapData data = Bmp.LockBits(rect, ImageLockMode.ReadOnly, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
+            System.Drawing.Rectangle rect = new System.Drawing.Rectangle(0, 0, bmp.Width, bmp.Height);
+            BitmapData data = bmp.LockBits(rect, ImageLockMode.ReadOnly, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
             try
             {
-                BitmapSource source = BitmapSource.Create(Bmp.Width, Bmp.Height, 96, 96, PixelFormats.Bgra32, null,
-                    data.Scan0, data.Stride * Bmp.Height, data.Stride);
+                BitmapSource source = BitmapSource.Create(bmp.Width, bmp.Height, 96, 96, PixelFormats.Bgra32, null,
+                    data.Scan0, data.Stride * bmp.Height, data.Stride);
                 source.Freeze();
                 return source;
             }
             finally
             {
-                Bmp.UnlockBits(data);
+                bmp.UnlockBits(data);
             }
         }
 
         // ファイルをロックしたままにしないよう、一度メモリへ読み込んでから変換する
-        public static BitmapSource LoadBitmapSource(String FilePath)
+        public static BitmapSource LoadBitmapSource(String filePath)
         {
-            using (System.Drawing.Bitmap bmp = new System.Drawing.Bitmap(FilePath))
+            using (System.Drawing.Bitmap bmp = new System.Drawing.Bitmap(filePath))
             {
                 return ToBitmapSource(bmp);
             }
@@ -73,9 +73,9 @@ namespace CheetosForWpf
         // WPFのWindowはWinFormsのControlではないため、非表示の小さなWinFormsコントロールを作って
         // WPFウィンドウの子ウィンドウにしておく(子ウィンドウはいつも親と同じモニタ上にいる)。
         // WindowのSourceInitialized以降(HWNDができてから)に呼ぶこと
-        public static System.Windows.Forms.Control CreateScreenAnchor(System.Windows.Window Owner)
+        public static System.Windows.Forms.Control CreateScreenAnchor(System.Windows.Window owner)
         {
-            IntPtr ownerHandle = new WindowInteropHelper(Owner).Handle;
+            IntPtr ownerHandle = new WindowInteropHelper(owner).Handle;
             if (ownerHandle == IntPtr.Zero)
             {
                 return null;

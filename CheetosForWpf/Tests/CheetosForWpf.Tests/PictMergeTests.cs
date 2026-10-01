@@ -9,10 +9,10 @@ namespace CheetosForWpf.Tests
     /// PictMerge（PictMerge.cs のフォーム部分とは別に定義されている、画像合成ロジック。
     /// public class、Form非依存）のテスト。
     ///
-    /// ⚠️ 絶対に踏んではいけない分岐がある: MergeExecute() は TrimHeightAry の要素が
+    /// ⚠️ 絶対に踏んではいけない分岐がある: MergeExecute() は TrimHeightRanges の要素が
     /// "開始,終了" の2値カンマ区切りになっていないと、確認用の MessageBox.Show
     /// (Yes/Noボタン付き)を呼ぶ。自動テストでこれを踏むと誰もクリックできないダイアログで
-    /// ハングする。そのため TrimHeightAry には必ず空文字列か正しい2値のカンマ区切りだけを渡す。
+    /// ハングする。そのため TrimHeightRanges には必ず空文字列か正しい2値のカンマ区切りだけを渡す。
     /// </summary>
     [TestClass]
     public class PictMergeTests
@@ -189,7 +189,7 @@ namespace CheetosForWpf.Tests
                 SourceFile1Prefix = "left",
                 SourceFile2Prefix = "right",
                 // "-" 開始・"-" 終了 で画像全体を対象にする、正しい形式の1要素だけを渡す
-                TrimHeightAry = new[] { "-,-" },
+                TrimHeightRanges = new[] { "-,-" },
             };
             pm.SetTargetFileName("left.jpg");
             Assert.IsTrue(pm.IsProcTarget());
@@ -219,7 +219,7 @@ namespace CheetosForWpf.Tests
                 SourceFile1Prefix = "left",
                 SourceFile2Prefix = "right",
                 // 空文字の行を混ぜても、フォーマットチェックには引っかからず単に読み飛ばされる
-                TrimHeightAry = new[] { "", "-,-", "" },
+                TrimHeightRanges = new[] { "", "-,-", "" },
             };
             pm.SetTargetFileName("left.jpg");
             pm.IsProcTarget();

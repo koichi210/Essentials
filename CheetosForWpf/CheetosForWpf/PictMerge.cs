@@ -9,11 +9,13 @@ namespace CheetosForWpf
 {
     public class PictMerge
     {
-        public String BackUpDirPath = String.Empty;
-        public String SourceFolderPath = String.Empty;
-        public String SourceFile1Prefix = String.Empty;
-        public String SourceFile2Prefix = String.Empty;
-        public String[] TrimHeightAry = null;
+        public String BackUpDirPath { get; set; } = String.Empty;
+        public String SourceFolderPath { get; set; } = String.Empty;
+        public String SourceFile1Prefix { get; set; } = String.Empty;
+        public String SourceFile2Prefix { get; set; } = String.Empty;
+
+        // 切り出す高さの範囲。1要素が"開始,終了"("-"は開始なら0、終了なら画像の高さ)
+        public String[] TrimHeightRanges { get; set; }
 
         private String TargetFileName = String.Empty;
         private String Prefix1 = String.Empty;
@@ -22,16 +24,16 @@ namespace CheetosForWpf
         private String SourceBackUpFullName = String.Empty;
         private String MergeFileFullName = String.Empty;
         private String MergeBackUpFullName = String.Empty;
-        private String ErrorList = String.Empty;
+        private String ErrorLog = String.Empty;
 
-        public bool SetTargetFileName(String target_file_name)
+        public bool SetTargetFileName(String targetFileName)
         {
-            if (target_file_name == String.Empty)
+            if (targetFileName == String.Empty)
             {
                 // 空行だったら処理しない
                 return false;
             }
-            TargetFileName = target_file_name;
+            TargetFileName = targetFileName;
             return true;
         }
 
@@ -55,7 +57,7 @@ namespace CheetosForWpf
 
             if (!File.Exists(SourceFileFullName))
             {
-                ErrorList += "ファイルが存在しません。" + SourceFileFullName + Environment.NewLine;
+                ErrorLog += "ファイルが存在しません。" + SourceFileFullName + Environment.NewLine;
                 return false;
             }
             File.Copy(SourceFileFullName, SourceBackUpFullName, true);
@@ -70,19 +72,20 @@ namespace CheetosForWpf
 
             if (!File.Exists(MergeFileFullName))
             {
-                ErrorList += "ファイルが存在しません。" + MergeFileFullName + Environment.NewLine;
+                ErrorLog += "ファイルが存在しません。" + MergeFileFullName + Environment.NewLine;
                 return false;
             }
             return true;
         }
 
-        public int GetHeight(String StartHeight, int DefaultHeight = 0)
+        // "-"なら既定値、それ以外は数値として読む
+        public int GetHeight(String heightStr, int defaultHeight = 0)
         {
-            if (StartHeight == "-")
+            if (heightStr == "-")
             {
-                return DefaultHeight;
+                return defaultHeight;
             }
-            return int.Parse(StartHeight);
+            return int.Parse(heightStr);
         }
 
         public bool MergeExecute()
@@ -93,18 +96,18 @@ namespace CheetosForWpf
             mrg.CreateSourceImg(MergeFileFullName);
             Drawing.Size sz = mrg.GetCanvasSize();
 
-            for (int i = 0; i < TrimHeightAry.Length; i++)
+            for (int i = 0; i < TrimHeightRanges.Length; i++)
             {
-                if (TrimHeightAry[i] == String.Empty)
+                if (TrimHeightRanges[i] == String.Empty)
                 {
                     continue;
                 }
 
-                string[] TrimHeight = TrimHeightAry[i].Split(new[] { "," }, StringSplitOptions.None);
-                if (TrimHeight.Length != 2)
+                string[] range = TrimHeightRanges[i].Split(new[] { "," }, StringSplitOptions.None);
+                if (range.Length != 2)
                 {
                     // 想定外の値
-                    MessageBoxResult dr = MessageBox.Show("フォーマットが不正です。[" + TrimHeightAry[i] + "]" +
+                    MessageBoxResult dr = MessageBox.Show("フォーマットが不正です。[" + TrimHeightRanges[i] + "]" +
                         Environment.NewLine + "処理を中断しますか？",
                         "Error",
                         MessageBoxButton.YesNo,
@@ -119,15 +122,15 @@ namespace CheetosForWpf
                     }
                 }
 
-                int StartHeight = GetHeight(TrimHeight[0], 0);
-                int EndHeight = GetHeight(TrimHeight[1], sz.Height);
-                if (sz.Height < StartHeight)
+                int startHeight = GetHeight(range[0], 0);
+                int endHeight = GetHeight(range[1], sz.Height);
+                if (sz.Height < startHeight)
                 {
                     // 画像サイズよりも指定されたサイズが大きい
                     break;
                 }
-                Drawing.Rectangle CutParam = new Drawing.Rectangle(0, StartHeight, sz.Width, EndHeight - StartHeight);
-                mrg.MergeExec(CutParam);
+                Drawing.Rectangle cutParam = new Drawing.Rectangle(0, startHeight, sz.Width, endHeight - startHeight);
+                mrg.MergeExec(cutParam);
             }
 
             mrg.ReleaseSourceImg();
@@ -144,7 +147,7 @@ namespace CheetosForWpf
 
         public String GetErrorMessage()
         {
-            return ErrorList;
+            return ErrorLog;
         }
     }
 
@@ -153,7 +156,7 @@ namespace CheetosForWpf
     {
         private void MergeExec()
         {
-            Debug.WriteData("MergeExec_Click" + Environment.NewLine, false);
+            debug.WriteData("MergeExec_Click" + Environment.NewLine, false);
 
             // キャンセル
             if (bkgWorkerMerge.IsBusy)
@@ -162,10 +165,10 @@ namespace CheetosForWpf
                 return;
             }
 
-            String BackUpDirPath = pm_SourceFolderPath.Text + @"\" + @"Bk_Merge";
-            if (!fio.EnsureDirectory(BackUpDirPath))
+            String backUpDirPath = pm_SourceFolderPath.Text + @"\" + @"Bk_Merge";
+            if (!fio.EnsureDirectory(backUpDirPath))
             {
-                MessageBox.Show("無効なフォルダパスです。\n" + BackUpDirPath);
+                MessageBox.Show("無効なフォルダパスです。\n" + backUpDirPath);
                 return;
             }
 
@@ -174,22 +177,22 @@ namespace CheetosForWpf
             // 別スレッドを非同期実行
             MergeWorkerParam param = new MergeWorkerParam
             {
-                BackUpDirPath = BackUpDirPath,
+                BackUpDirPath = backUpDirPath,
                 SourceFolderPath = pm_SourceFolderPath.Text,
                 SourceFile1Prefix = pm_SourceFile1Prefix.Text,
                 SourceFile2Prefix = pm_SourceFile2Prefix.Text,
             };
 
-            Debug.WriteData("BackUpDirPath = " + BackUpDirPath);
-            Debug.WriteData("SourceFolderPath = " + pm_SourceFolderPath.Text);
-            Debug.WriteData("Prefix1 = " + pm_SourceFile1Prefix.Text);
-            Debug.WriteData("Prefix2 = " + pm_SourceFile2Prefix.Text);
+            debug.WriteData("BackUpDirPath = " + backUpDirPath);
+            debug.WriteData("SourceFolderPath = " + pm_SourceFolderPath.Text);
+            debug.WriteData("Prefix1 = " + pm_SourceFile1Prefix.Text);
+            debug.WriteData("Prefix2 = " + pm_SourceFile2Prefix.Text);
 
             // 切断基準となる高さ
-            param.TrimHeightAry = pm_TrimingHeight.Text.Split(new[] { Environment.NewLine }, StringSplitOptions.None);
+            param.TrimHeightRanges = pm_TrimingHeight.Text.Split(new[] { Environment.NewLine }, StringSplitOptions.None);
 
             // ListBoxの値を配列で取得
-            param.TargetNameAry = WpfUtils.GetSelectedStrArray(pm_ListBox_ListUp);
+            param.TargetFileNames = WpfUtils.GetSelectedStrArray(pm_ListBox_ListUp);
 
             SetStartTime();
             pm_MergeExec_Click.Content = "中断";
@@ -211,17 +214,19 @@ namespace CheetosForWpf
             // このメソッドへのパラメータ
             MergeWorkerParam param = (MergeWorkerParam)e.Argument;
 
-            PictMerge pm = new PictMerge();
-            pm.BackUpDirPath = param.BackUpDirPath;
-            pm.SourceFolderPath = param.SourceFolderPath;
-            pm.SourceFile1Prefix = param.SourceFile1Prefix;
-            pm.SourceFile2Prefix = param.SourceFile2Prefix;
-            pm.TrimHeightAry = param.TrimHeightAry;
-            String[] TargetNameAry = param.TargetNameAry;
-
-            for (int ItemIdx = 0; ItemIdx < TargetNameAry.Length; ItemIdx++)
+            PictMerge pm = new PictMerge
             {
-                if (!pm.SetTargetFileName(TargetNameAry[ItemIdx]))
+                BackUpDirPath = param.BackUpDirPath,
+                SourceFolderPath = param.SourceFolderPath,
+                SourceFile1Prefix = param.SourceFile1Prefix,
+                SourceFile2Prefix = param.SourceFile2Prefix,
+                TrimHeightRanges = param.TrimHeightRanges,
+            };
+            String[] targetFileNames = param.TargetFileNames;
+
+            for (int itemIdx = 0; itemIdx < targetFileNames.Length; itemIdx++)
+            {
+                if (!pm.SetTargetFileName(targetFileNames[itemIdx]))
                 {
                     continue;
                 }
@@ -242,7 +247,7 @@ namespace CheetosForWpf
                 }
 
                 pm.MergeExecute();
-                worker.ReportProgress(ItemIdx);      // ⇒ProgressChanged()
+                worker.ReportProgress(itemIdx);      // ⇒ProgressChanged()
                 if (worker.CancellationPending)
                 {
                     e.Cancel = true;
@@ -250,7 +255,7 @@ namespace CheetosForWpf
                 }
             }
             e.Result = pm.GetErrorMessage();
-            worker.ReportProgress(TargetNameAry.Length);      // ⇒ProgressChanged()
+            worker.ReportProgress(targetFileNames.Length);      // ⇒ProgressChanged()
         }
 
         private void bkgWorkerMerge_RunWorkerCompleted(object sender, RunWorkerCompletedEventArgs e)
@@ -260,24 +265,19 @@ namespace CheetosForWpf
                 MessageBox.Show("キャンセルされました");
                 // この場合はe.Resultにはアクセスできない
             }
-            else if (!(e.Error == null))
+            else if (e.Error != null)
             {
                 MessageBox.Show("エラーが発生しました[" + e.Error.Message + "]");
             }
             else
             {
-                String Result = e.Result.ToString();
-                if (Result != String.Empty)
+                String result = e.Result.ToString();
+                if (result != String.Empty)
                 {
-                    MessageBox.Show("処理中にエラーが発生しました。" + Environment.NewLine + Result,
+                    MessageBox.Show("処理中にエラーが発生しました。" + Environment.NewLine + result,
                         "Error",
                         MessageBoxButton.OK,
                         MessageBoxImage.Error);
-                }
-                else
-                {
-                    // 処理結果の表示
-                    //MessageBox.Show("正常に完了しました");
                 }
             }
             TextBox_Status.Text += " 完了";

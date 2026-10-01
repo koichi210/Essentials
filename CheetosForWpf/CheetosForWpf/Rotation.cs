@@ -8,24 +8,24 @@ namespace CheetosForWpf
 {
     public class Rotation
     {
-        public int BaseX = 0;
-        public int BaseY = 0;
-        public int Angle = 0;
-        public String SourceFolderPath = String.Empty;
-        public String BackUpDirPath = String.Empty;
+        public int BaseX { get; set; }
+        public int BaseY { get; set; }
+        public int Angle { get; set; }
+        public String SourceFolderPath { get; set; } = String.Empty;
+        public String BackUpDirPath { get; set; } = String.Empty;
 
         private String TargetFileName = String.Empty;
         private String FilePath = String.Empty;
         private String BackUpFilePath = String.Empty;
 
-        public bool SetTargetFileName(String target_file_name)
+        public bool SetTargetFileName(String targetFileName)
         {
-            if (target_file_name == String.Empty)
+            if (targetFileName == String.Empty)
             {
                 // 空行だったら処理しない
                 return false;
             }
-            TargetFileName = target_file_name;
+            TargetFileName = targetFileName;
             return true;
         }
 
@@ -128,23 +128,23 @@ namespace CheetosForWpf
                 return;
             }
 
-            String BackUpDirPath = pr_SourceFolderPath.Text + @"\" + @"Bk_Rotate";
-            if (!fio.EnsureDirectory(BackUpDirPath))
+            String backUpDirPath = pr_SourceFolderPath.Text + @"\" + @"Bk_Rotate";
+            if (!fio.EnsureDirectory(backUpDirPath))
             {
-                MessageBox.Show("無効なフォルダパスです。\n" + BackUpDirPath);
+                MessageBox.Show("無効なフォルダパスです。\n" + backUpDirPath);
                 return;
             }
 
             int val;
-            if (!Int32.TryParse(pr_BaseX.Text.ToString(), out val))
+            if (!Int32.TryParse(pr_BaseX.Text, out val))
             {
                 pr_BaseX.Text = "";
             }
-            if (!Int32.TryParse(pr_BaseY.Text.ToString(), out val))
+            if (!Int32.TryParse(pr_BaseY.Text, out val))
             {
                 pr_BaseY.Text = "";
             }
-            if (!Int32.TryParse(pr_Angle.Text.ToString(), out val))
+            if (!Int32.TryParse(pr_Angle.Text, out val))
             {
                 pr_Angle.Text = "";
             }
@@ -158,10 +158,10 @@ namespace CheetosForWpf
                 BaseY = pr_BaseY.Text,
                 Angle = pr_Angle.Text,
                 SourceFolderPath = pr_SourceFolderPath.Text,
-                BackUpDirPath = BackUpDirPath,
+                BackUpDirPath = backUpDirPath,
 
                 // ListBoxの値を配列で取得
-                TargetNameAry = WpfUtils.GetSelectedStrArray(pr_ListBox_ListUp),
+                TargetFileNames = WpfUtils.GetSelectedStrArray(pr_ListBox_ListUp),
             };
 
             SetStartTime();
@@ -179,18 +179,19 @@ namespace CheetosForWpf
             // このメソッドへのパラメータ
             RotationWorkerParam param = (RotationWorkerParam)e.Argument;
 
-            Rotation rt = new Rotation();
-
-            rt.BaseX = int.Parse(param.BaseX);
-            rt.BaseY = int.Parse(param.BaseY);
-            rt.Angle = int.Parse(param.Angle);
-            rt.SourceFolderPath = param.SourceFolderPath;
-            rt.BackUpDirPath = param.BackUpDirPath;
-            String[] TargetNameAry = param.TargetNameAry;
-
-            for (int ItemIdx = 0; ItemIdx < TargetNameAry.Length; ItemIdx++)
+            Rotation rt = new Rotation
             {
-                if (!rt.SetTargetFileName(TargetNameAry[ItemIdx]))
+                BaseX = int.Parse(param.BaseX),
+                BaseY = int.Parse(param.BaseY),
+                Angle = int.Parse(param.Angle),
+                SourceFolderPath = param.SourceFolderPath,
+                BackUpDirPath = param.BackUpDirPath,
+            };
+            String[] targetFileNames = param.TargetFileNames;
+
+            for (int itemIdx = 0; itemIdx < targetFileNames.Length; itemIdx++)
+            {
+                if (!rt.SetTargetFileName(targetFileNames[itemIdx]))
                 {
                     continue;
                 }
@@ -199,7 +200,7 @@ namespace CheetosForWpf
                 rt.RotateExecute();
 
                 // 進捗率
-                worker.ReportProgress(ItemIdx);      // ⇒ProgressChanged()
+                worker.ReportProgress(itemIdx);      // ⇒ProgressChanged()
 
                 // キャンセルされてないかチェック
                 if (worker.CancellationPending)
@@ -208,7 +209,7 @@ namespace CheetosForWpf
                     break;
                 }
             }
-            worker.ReportProgress(TargetNameAry.Length);      // ⇒ProgressChanged()
+            worker.ReportProgress(targetFileNames.Length);      // ⇒ProgressChanged()
         }
 
         private void bkgWorkerRotation_RunWorkerCompleted(object sender, RunWorkerCompletedEventArgs e)
@@ -218,14 +219,9 @@ namespace CheetosForWpf
                 MessageBox.Show("キャンセルされました");
                 // この場合はe.Resultにはアクセスできない
             }
-            else if (!(e.Error == null))
+            else if (e.Error != null)
             {
                 MessageBox.Show("エラーが発生しました[" + e.Error.Message + "]");
-            }
-            else
-            {
-                // 処理結果の表示
-                //MessageBox.Show("正常に完了しました");
             }
             TextBox_Status.Text += " 完了";
             pr_Button_Rotation.Content = "回転実行";

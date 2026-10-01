@@ -11,7 +11,7 @@ namespace CheetosForWpf.Tests
     ///
     /// WinForms版Cheetosの SaveRestoreTests を移植したもの。WinForms版はXML(SaveXmlFile/LoadXmlFile)と
     /// JSONの両方をテストしていたが、WPF版はJSONプロファイルだけに対応するので、XMLのテストはJSONで同じ内容を確かめる。
-    /// 実物のMainWindowを使うのは、RegistLoadItem 内のタイプミスや属性名の重複を検出したいため。
+    /// 実物のMainWindowを使うのは、RegisterSaveRestoreItems 内のタイプミスや属性名の重複を検出したいため。
     ///
     /// MainWindowはテスト用のコンストラクタ(データフォルダ指定)で作り、実際のユーザーデータフォルダには触れない。
     /// </summary>

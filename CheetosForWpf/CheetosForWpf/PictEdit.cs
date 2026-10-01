@@ -10,31 +10,28 @@ namespace Picture
         protected Bitmap m_Canvas;
         protected Bitmap m_SourceImg;
 
-        public PicEdit(String BasePictFile)
+        public PicEdit(String basePictFile)
         {
             //既存ファイルをもとに、描画先Imageオブジェクトを作成
-            m_Canvas = new Bitmap(BasePictFile);
+            m_Canvas = new Bitmap(basePictFile);
         }
 
-        public PicEdit(int DestWidth, int DestHeight)
+        public PicEdit(int destWidth, int destHeight)
         {
             //新規に描画先Imageオブジェクトを作成
-            m_Canvas = new Bitmap(DestWidth, DestHeight);
+            m_Canvas = new Bitmap(destWidth, destHeight);
         }
 
-        ~PicEdit()
-        {
-        }
         public void Dispose()
         {
-            //// リソース解放
+            // リソース解放
             ReleaseImg(ref m_Canvas);
             ReleaseImg(ref m_SourceImg);
         }
 
-        public void SaveCanvas(String SavePictFile)
+        public void SaveCanvas(String savePictFile)
         {
-            m_Canvas.Save(SavePictFile);
+            m_Canvas.Save(savePictFile);
 
             // TODO：デストラクタでは想定したタイミングで呼ばれないため暫定。
             // リソース解放
@@ -42,29 +39,17 @@ namespace Picture
             ReleaseImg(ref m_SourceImg);
         }
 
-        public void TrimExec(String BasePictFile, Rectangle CutParam)
+        public void TrimExec(String basePictFile, Rectangle cutParam)
         {
-            TrimExec(BasePictFile, CutParam, new Point(CutParam.X, CutParam.Y));
+            TrimExec(basePictFile, cutParam, new Point(cutParam.X, cutParam.Y));
         }
 
-        public void TrimExec(String BasePictFile, Rectangle CutParam, Point PutParam)
+        public void TrimExec(String basePictFile, Rectangle cutParam, Point putParam)
         {
-            //描画する部分の範囲を設定。位置(X, Y)、大きさ(Width, Height)
-            Rectangle PasteRect = new Rectangle(PutParam.X, PutParam.Y, CutParam.Width, CutParam.Height);
-
             //画像ファイルのImageオブジェクトを作成
-            using (Bitmap img = new Bitmap(BasePictFile))
+            using (Bitmap img = new Bitmap(basePictFile))
             {
-                //ImageオブジェクトのGraphicsオブジェクトを作成
-                using (Graphics g = Graphics.FromImage(m_Canvas))
-                {
-                    //画像の一部を描画
-                    g.DrawImage(img, PasteRect, CutParam, GraphicsUnit.Pixel);
-
-                    //Graphicsオブジェクトのリソースを解放
-                    //g.Dispose();
-                }
-                //img.Dispose();
+                TrimExec(img, cutParam, putParam);
             }
         }
 
@@ -72,13 +57,15 @@ namespace Picture
         // 切り出したい場合(Cheetos.Logic.IsPortrait等)、ファイルパス版を複数回呼ぶと
         // その都度フルデコードが走ってしまうため、デコード済みのBitmapを使い回せるように
         // 用意した。渡されたBitmapの所有権は呼び出し側のままなので、ここではDisposeしない。
-        public void TrimExec(Bitmap SourceImg, Rectangle CutParam, Point PutParam)
+        public void TrimExec(Bitmap sourceImg, Rectangle cutParam, Point putParam)
         {
-            Rectangle PasteRect = new Rectangle(PutParam.X, PutParam.Y, CutParam.Width, CutParam.Height);
+            //描画する部分の範囲を設定。位置(X, Y)、大きさ(Width, Height)
+            Rectangle pasteRect = new Rectangle(putParam.X, putParam.Y, cutParam.Width, cutParam.Height);
 
+            //ImageオブジェクトのGraphicsオブジェクトを作成し、画像の一部を描画
             using (Graphics g = Graphics.FromImage(m_Canvas))
             {
-                g.DrawImage(SourceImg, PasteRect, CutParam, GraphicsUnit.Pixel);
+                g.DrawImage(sourceImg, pasteRect, cutParam, GraphicsUnit.Pixel);
             }
         }
 
@@ -93,10 +80,10 @@ namespace Picture
             }
         }
 
-        public void CreateSourceImg(String SourceImgFile)
+        public void CreateSourceImg(String sourceImgFile)
         {
             //加工元ファイルのImageオブジェクトを作成
-            m_SourceImg = new Bitmap(SourceImgFile);
+            m_SourceImg = new Bitmap(sourceImgFile);
         }
 
         public void ReleaseSourceImg()
@@ -104,38 +91,23 @@ namespace Picture
             ReleaseImg(ref m_SourceImg);
         }
 
-        public void MergeExec(Rectangle CutParam)
+        public void MergeExec(Rectangle cutParam)
         {
-            MergeExec(CutParam, new Point(CutParam.X, CutParam.Y));
+            MergeExec(cutParam, new Point(cutParam.X, cutParam.Y));
         }
 
-        public void MergeExec(Rectangle CutParam, Point PutParam)
+        public void MergeExec(Rectangle cutParam, Point putParam)
         {
-            //描画する部分の範囲を設定。位置(X, Y)、大きさ(Width, Height)
-            Rectangle PasteRect = new Rectangle(PutParam.X, PutParam.Y, CutParam.Width, CutParam.Height);
-
-            //画像ファイルのImageオブジェクトを作成
+            //CreateSourceImgで読み込んだ画像の複製から描画する
             using (Bitmap img = new Bitmap(m_SourceImg))
             {
-                //ImageオブジェクトのGraphicsオブジェクトを作成
-                using (Graphics g = Graphics.FromImage(m_Canvas))
-                {
-                    //画像の一部を描画
-                    g.DrawImage(img, PasteRect, CutParam, GraphicsUnit.Pixel);
-
-                    //Graphicsオブジェクトのリソースを解放
-                    //g.Dispose();
-                }
-                //img.Dispose();
+                TrimExec(img, cutParam, putParam);
             }
         }
 
         public Size GetCanvasSize()
         {
-            Size sz = new Size();
-            sz.Width = m_Canvas.Width;
-            sz.Height = m_Canvas.Height;
-            return sz;
+            return new Size(m_Canvas.Width, m_Canvas.Height);
         }
 
         private void ReleaseImg(ref Bitmap img)

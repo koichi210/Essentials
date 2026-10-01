@@ -21,7 +21,7 @@ namespace CheetosForWpf
             DROP_DOWN,
         };
 
-        private struct DataGridClass
+        private struct DataGridColumnInfo
         {
             public String HeaderName;
             public DataGridType Type;
@@ -40,20 +40,20 @@ namespace CheetosForWpf
         private const String NotExecuteStr = "×";
 
         // 列の並びはCaptureGridRowのプロパティ順と同じ
-        private readonly DataGridClass[] DataGridParam = new DataGridClass[]{
-            new DataGridClass() { HeaderName = GridHeaderSleepStr, Type = DataGridType.EDIT_BOX },
-            new DataGridClass() { HeaderName = GridHeaderMouseXStr, Type = DataGridType.EDIT_BOX },
-            new DataGridClass() { HeaderName = GridHeaderMouseYStr, Type = DataGridType.EDIT_BOX },
-            new DataGridClass() { HeaderName = GridHeaderMouseActionStr, Type = DataGridType.DROP_DOWN },
-            new DataGridClass() { HeaderName = GridHeaderCaptureStr, Type = DataGridType.DROP_DOWN }
+        private readonly DataGridColumnInfo[] dataGridColumns = new DataGridColumnInfo[]{
+            new DataGridColumnInfo() { HeaderName = GridHeaderSleepStr, Type = DataGridType.EDIT_BOX },
+            new DataGridColumnInfo() { HeaderName = GridHeaderMouseXStr, Type = DataGridType.EDIT_BOX },
+            new DataGridColumnInfo() { HeaderName = GridHeaderMouseYStr, Type = DataGridType.EDIT_BOX },
+            new DataGridColumnInfo() { HeaderName = GridHeaderMouseActionStr, Type = DataGridType.DROP_DOWN },
+            new DataGridColumnInfo() { HeaderName = GridHeaderCaptureStr, Type = DataGridType.DROP_DOWN }
         };
 
-        private readonly String[] MouseEvent = new String[] {
+        private readonly String[] mouseEventItems = new String[] {
             MouseEventMoveStr,
             MouseEventLeftDownStr
         };
 
-        private readonly String[] CaptureEvent = new String[] {
+        private readonly String[] captureEventItems = new String[] {
             ExecuteStr,
             NotExecuteStr
         };
@@ -67,9 +67,9 @@ namespace CheetosForWpf
         private readonly String userDataFolder;
         private readonly StcUtils util = new StcUtils();
         private readonly StcFileInputOutput fio = new StcFileInputOutput();
-        private readonly StcDebug Debug = new StcDebug();
+        private readonly StcDebug debug = new StcDebug();
         internal readonly WpfSaveRestore sr = new WpfSaveRestore();
-        private bool IsTaskRun = false;
+        private bool isCaptureRunning = false;
 
         // cw_dataGridViewの中身(1要素=1行)
         internal readonly ObservableCollection<CaptureGridRow> cw_Rows = new ObservableCollection<CaptureGridRow>();
@@ -85,21 +85,21 @@ namespace CheetosForWpf
         }
 
         // internal: テストでは実際のユーザーデータフォルダではなく一時フォルダを渡す
-        internal MainWindow(String DataFolder)
+        internal MainWindow(String dataFolder)
         {
             InitializeComponent();
-            userDataFolder = DataFolder;
+            userDataFolder = dataFolder;
             util.SetCurrentDirectory();
 
             // デバッグログに時間を表示
-            Debug.SetWriteTime(true);
+            debug.SetWriteTime(true);
 
             InitializeBackgroundWorkers();
 
             // DataGridの初期設定
             InitializeDataGridView();
 
-            RegistLoadItem();
+            RegisterSaveRestoreItems();
             sr.LoadOrDefault(Path.Combine(userDataFolder, SettingFileName));
             WpfProfile.UpdateProfileList(Profile, ProfileExtensions, "", userDataFolder);
 
@@ -110,7 +110,7 @@ namespace CheetosForWpf
                 (oldFolder, newFolder) => DataFolderMenu.MoveProfiles(oldFolder, newFolder, AppName)));
         }
 
-        internal void RegistLoadItem()
+        internal void RegisterSaveRestoreItems()
         {
             // キーはWinForms版(SaveRestore.RegistItem)と同じにすること。
             // 第2引数(設定ファイルのキー名)のtypoはWinForms版で修正済みで、旧キーはLegacyAttrValueで読み替える
@@ -156,9 +156,9 @@ namespace CheetosForWpf
         }
 
         // WinForms版SaveRestore.LoadProcと同じく、読み込み前にdo_WhiteCoefを既定値(30)へ戻してから読む
-        internal Boolean LoadProfile(String LoadFileName)
+        internal Boolean LoadProfile(String loadFileName)
         {
-            if (LoadFileName == String.Empty)
+            if (loadFileName == String.Empty)
             {
                 return false;
             }
@@ -166,7 +166,7 @@ namespace CheetosForWpf
             // Default値
             do_WhiteCoef.Text = @"30";
 
-            return sr.Load(LoadFileName);
+            return sr.Load(loadFileName);
         }
 
         // *******************************************************************************
@@ -178,10 +178,10 @@ namespace CheetosForWpf
             return cw_Rows.Select(row => row.ToList()).ToList();
         }
 
-        private void SetGridRows(List<List<String>> Rows)
+        private void SetGridRows(List<List<String>> rows)
         {
             cw_Rows.Clear();
-            foreach (List<String> values in Rows)
+            foreach (List<String> values in rows)
             {
                 cw_Rows.Add(CaptureGridRow.FromList(values));
             }
@@ -226,52 +226,33 @@ namespace CheetosForWpf
             }
         }
 
-        private int GetDataGridColumnIdx(String ColumnName)
+        // 見つからなければ先頭列(0)を返す
+        private int GetDataGridColumnIdx(String columnName)
         {
-            int ColumnIdx = 0;
-            for (int i = 0; i < DataGridParam.Length; i++)
+            for (int i = 0; i < dataGridColumns.Length; i++)
             {
-                if (ColumnName.Equals(DataGridParam[i].HeaderName))
+                if (columnName.Equals(dataGridColumns[i].HeaderName))
                 {
-                    ColumnIdx = i;
-                    break;
+                    return i;
                 }
             }
-
-            return ColumnIdx;
+            return 0;
         }
 
-        private CaptWindow.MOUSE_EVENT GetMouseEvent(String MouseEventStr)
+        // "Move"以外(LeftDown・空欄など)はすべて左クリック扱い
+        private CaptWindow.MOUSE_EVENT GetMouseEvent(String mouseEventStr)
         {
-            CaptWindow.MOUSE_EVENT Event = CaptWindow.MOUSE_EVENT.LEFT_CLICK;
-            switch (MouseEventStr)
+            if (mouseEventStr == MouseEventMoveStr)
             {
-                case MouseEventMoveStr:
-                    Event = CaptWindow.MOUSE_EVENT.MOVE;
-                    break;
-
-                case MouseEventLeftDownStr:
-                    Event = CaptWindow.MOUSE_EVENT.LEFT_CLICK;
-                    break;
+                return CaptWindow.MOUSE_EVENT.MOVE;
             }
-            return Event;
+            return CaptWindow.MOUSE_EVENT.LEFT_CLICK;
         }
 
-        private Boolean IsCaptureEvent(String CaptureEventStr)
+        // "〇"のときだけキャプチャする(空欄・"×"はキャプチャしない)
+        private Boolean IsCaptureEvent(String captureEventStr)
         {
-            Boolean IsCapture = true;
-            switch (CaptureEventStr)
-            {
-                case ExecuteStr:
-                    IsCapture = true;
-                    break;
-
-                default: // nobreak
-                case NotExecuteStr:
-                    IsCapture = false;
-                    break;
-            }
-            return IsCapture;
+            return captureEventStr == ExecuteStr;
         }
 
         private void fc_Button_Collect_Click(object sender, RoutedEventArgs e)
@@ -293,13 +274,13 @@ namespace CheetosForWpf
             InitProgressBar(files.Length);
             for (int i = 0; i <= files.Length - 1; i++)
             {
-                String DestName = fc_DestFolderPath.Text + @"\" + Path.GetFileName(files[i]);
-                File.Move(files[i], DestName);
+                String destPath = fc_DestFolderPath.Text + @"\" + Path.GetFileName(files[i]);
+                File.Move(files[i], destPath);
 
                 // 進捗率の表示
-                int ProgressVal = i + 1;
-                TextBox_Status.Text = ProgressVal.ToString() + "/" + (int)ProgressBar_Status.Maximum;
-                ProgressBar_Status.Value = ProgressVal;
+                int progress = i + 1;
+                TextBox_Status.Text = progress.ToString() + "/" + (int)ProgressBar_Status.Maximum;
+                ProgressBar_Status.Value = progress;
             }
         }
 
@@ -310,9 +291,8 @@ namespace CheetosForWpf
                 return;
             }
 
-            Boolean IsDebugMode = Debug.GetDebugMode();
-            Debug.SetDebugMode(!IsDebugMode);
-            MessageBox.Show("DebugMode=" + Debug.GetDebugMode().ToString());
+            debug.SetDebugMode(!debug.GetDebugMode());
+            MessageBox.Show("DebugMode=" + debug.GetDebugMode().ToString());
         }
 
         public void SetStartTime()
@@ -321,7 +301,7 @@ namespace CheetosForWpf
             textBox_ExpectEndTime.Text = "";
         }
 
-        public void SetExpectEndTime(int TotalNum)
+        public void SetExpectEndTime(int totalCount)
         {
             // 開始時間
             DateTime dtStart = DateTime.Parse(textBox_StartTime.Text);
@@ -330,43 +310,45 @@ namespace CheetosForWpf
             DateTime dtEnd = DateTime.Now;
 
             // 一個分の処理時間
-            long ProcTime = dtEnd.Ticks - dtStart.Ticks;
-            DateTime dtExpect = new DateTime(dtStart.Ticks + ProcTime * TotalNum);
+            long procTime = dtEnd.Ticks - dtStart.Ticks;
+            DateTime dtExpect = new DateTime(dtStart.Ticks + procTime * totalCount);
 
             textBox_ExpectEndTime.Text = dtExpect.ToString();
         }
 
         private void pt_Radio_SelectPointOfEnd_Click(object sender, RoutedEventArgs e)
         {
-            UpdatePitTrimSize();
+            UpdatePictTrimSize();
         }
 
         private void pt_Radio_SelectSizeOfEnd_Click(object sender, RoutedEventArgs e)
         {
-            UpdatePitTrimSize();
+            UpdatePictTrimSize();
         }
 
         private void pt_ListBox_ListUp_DoubleClick(object sender, MouseButtonEventArgs e)
         {
-            foreach (String name in WpfUtils.GetSelectedStrArray(pt_ListBox_ListUp))
-            {
-                String FilePath = pt_SourceFolderPath.Text + @"\" + name;
-                util.ExecutePath(FilePath);
-            }
+            ExecuteSelectedFiles(pt_SourceFolderPath, pt_ListBox_ListUp);
         }
 
         private void pm_ListBox_ListUp_DoubleClick(object sender, MouseButtonEventArgs e)
         {
-            foreach (String name in WpfUtils.GetSelectedStrArray(pm_ListBox_ListUp))
+            ExecuteSelectedFiles(pm_SourceFolderPath, pm_ListBox_ListUp);
+        }
+
+        // リストボックスで選択中のファイルを開く(Trim/Mergeの各タブで共通)
+        private void ExecuteSelectedFiles(TextBox folderPathCtrl, ListBox listCtrl)
+        {
+            foreach (String name in WpfUtils.GetSelectedStrArray(listCtrl))
             {
-                String FilePath = pm_SourceFolderPath.Text + @"\" + name;
-                util.ExecutePath(FilePath);
+                String filePath = folderPathCtrl.Text + @"\" + name;
+                util.ExecutePath(filePath);
             }
         }
 
-        private void InitProgressBar(int Maximum, int Minimum = 0)
+        private void InitProgressBar(int maximum)
         {
-            ProgressBar_Status.Maximum = Maximum;
+            ProgressBar_Status.Maximum = maximum;
             ProgressBar_Status.Minimum = 0;
             ProgressBar_Status.Value = 0;
         }
@@ -406,16 +388,16 @@ namespace CheetosForWpf
         }
 
         // 指定フォルダ直下のファイル名をリストボックスへ並べる(Trim/Merge/Rotationの各タブで共通)
-        private void ListupFolderFiles(TextBox FolderPathCtrl, ListBox ListCtrl)
+        private void ListupFolderFiles(TextBox folderPathCtrl, ListBox listCtrl)
         {
-            if (!Directory.Exists(FolderPathCtrl.Text))
+            if (!Directory.Exists(folderPathCtrl.Text))
             {
                 MessageBox.Show("フォルダパスが不正です");
                 return;
             }
 
-            string[] files = Directory.GetFiles(FolderPathCtrl.Text, "*", SearchOption.TopDirectoryOnly);
-            WpfUtils.SetSortedItems(ListCtrl, files.Select(file => Path.GetFileName(file)).ToArray());
+            string[] files = Directory.GetFiles(folderPathCtrl.Text, "*", SearchOption.TopDirectoryOnly);
+            WpfUtils.SetSortedItems(listCtrl, files.Select(file => Path.GetFileName(file)).ToArray());
         }
 
         private void InitializeDataGridView()
@@ -423,12 +405,12 @@ namespace CheetosForWpf
             // 左端(行ヘッダ)の非表示・最下部(新規行)の非表示・幅の自動調整はXAML側で設定済み
 
             // ヘッダ作成とComboBoxのリスト作成
-            for (int i = 0; i < DataGridParam.Length; i++)
+            for (int i = 0; i < dataGridColumns.Length; i++)
             {
-                cw_dataGridView.Columns[i].Header = DataGridParam[i].HeaderName;
+                cw_dataGridView.Columns[i].Header = dataGridColumns[i].HeaderName;
             }
-            ((DataGridComboBoxColumn)cw_dataGridView.Columns[GetDataGridColumnIdx(GridHeaderMouseActionStr)]).ItemsSource = MouseEvent;
-            ((DataGridComboBoxColumn)cw_dataGridView.Columns[GetDataGridColumnIdx(GridHeaderCaptureStr)]).ItemsSource = CaptureEvent;
+            ((DataGridComboBoxColumn)cw_dataGridView.Columns[GetDataGridColumnIdx(GridHeaderMouseActionStr)]).ItemsSource = mouseEventItems;
+            ((DataGridComboBoxColumn)cw_dataGridView.Columns[GetDataGridColumnIdx(GridHeaderCaptureStr)]).ItemsSource = captureEventItems;
 
             cw_dataGridView.ItemsSource = cw_Rows;
             cw_Rows.Add(new CaptureGridRow());
@@ -443,13 +425,13 @@ namespace CheetosForWpf
                 return;
             }
 
-            int ColumnIdx = cw_dataGridView.Columns.IndexOf(cell.Column);
-            if (ColumnIdx < 0 || ColumnIdx >= DataGridParam.Length)
+            int columnIdx = cw_dataGridView.Columns.IndexOf(cell.Column);
+            if (columnIdx < 0 || columnIdx >= dataGridColumns.Length)
             {
                 return;
             }
 
-            switch (DataGridParam[ColumnIdx].Type)
+            switch (dataGridColumns[columnIdx].Type)
             {
                 case DataGridType.DROP_DOWN:
                     if (!cell.IsFocused)
@@ -483,18 +465,18 @@ namespace CheetosForWpf
         {
             CommitGridEdit();
 
-            int CurrentIdx = GetCurrentGridRowIndex();
-            if (CurrentIdx < 0)
+            int currentIdx = GetCurrentGridRowIndex();
+            if (currentIdx < 0)
             {
                 // WinForms版は行が必ずどれか選ばれていた(先頭行)ので、それに合わせる
-                CurrentIdx = 0;
+                currentIdx = 0;
             }
-            int InsertIndex = Math.Min(CurrentIdx + 1, cw_Rows.Count);
+            int insertIdx = Math.Min(currentIdx + 1, cw_Rows.Count);
 
             CaptureGridRow row = new CaptureGridRow();
             row[GetDataGridColumnIdx(GridHeaderMouseActionStr)] = MouseEventMoveStr;
             row[GetDataGridColumnIdx(GridHeaderCaptureStr)] = NotExecuteStr;
-            cw_Rows.Insert(InsertIndex, row);
+            cw_Rows.Insert(insertIdx, row);
         }
 
         private void cw_Button_DelLine_Click(object sender, RoutedEventArgs e)
@@ -503,12 +485,12 @@ namespace CheetosForWpf
 
             if (cw_Rows.Count > 1)
             {
-                int CurrentIdx = GetCurrentGridRowIndex();
-                if (CurrentIdx < 0)
+                int currentIdx = GetCurrentGridRowIndex();
+                if (currentIdx < 0)
                 {
-                    CurrentIdx = 0;
+                    currentIdx = 0;
                 }
-                cw_Rows.RemoveAt(CurrentIdx);
+                cw_Rows.RemoveAt(currentIdx);
             }
         }
 

@@ -11,27 +11,28 @@ namespace CheetosForWpf
     // 画像処理はWinForms版と同じくGDI+(System.Drawing)で行い、表示するときだけBitmapSourceへ変換する
     public partial class RotationPreview : Window
     {
-        public String OriginX = "";
-        public String OriginY = "";
-        public String Angle = "";
+        // OKで閉じたときの入力値
+        public String OriginX { get; private set; } = "";
+        public String OriginY { get; private set; } = "";
+        public String Angle { get; private set; } = "";
 
         // 画面の組み立て中(InitializeComponent中や初期値の代入中)はTextChangedで描画しない
-        private Boolean IsInitialized_ = false;
+        private Boolean isConstructed = false;
 
         public RotationPreview()
         {
             InitializeComponent();
-            IsInitialized_ = true;
+            isConstructed = true;
         }
 
-        public RotationPreview(String OriginX, String OriginY, String Angle)
+        public RotationPreview(String originX, String originY, String angle)
         {
             InitializeComponent();
 
-            textBox_OriginX.Text = OriginX;
-            textBox_OriginY.Text = OriginY;
-            textBox_angle.Text = Angle;
-            IsInitialized_ = true;
+            textBox_OriginX.Text = originX;
+            textBox_OriginY.Text = originY;
+            textBox_angle.Text = angle;
+            isConstructed = true;
         }
 
         private void button_ClickDraw(object sender, RoutedEventArgs e)
@@ -44,7 +45,7 @@ namespace CheetosForWpf
         // WinForms版はKeyPressのたびに再描画していた。WPFでは入力後の値で描画できるTextChangedを使う
         private void textBox_Param_TextChanged(object sender, TextChangedEventArgs e)
         {
-            if (IsInitialized_)
+            if (isConstructed)
             {
                 Draw();
             }
@@ -66,7 +67,7 @@ namespace CheetosForWpf
             UpdateValue(textBox_angle, e);
         }
 
-        private void UpdateValue(TextBox Ctrl, KeyEventArgs e)
+        private void UpdateValue(TextBox ctrl, KeyEventArgs e)
         {
             if (e.Key != Key.Up && e.Key != Key.Down)
             {
@@ -74,8 +75,8 @@ namespace CheetosForWpf
             }
 
             // 値が変わればTextChangedで再描画される
-            Ctrl.Text = Logic.UpdateValue(Ctrl.Text, e.Key);
-            Ctrl.CaretIndex = Ctrl.Text.Length;
+            ctrl.Text = Logic.UpdateValue(ctrl.Text, e.Key);
+            ctrl.CaretIndex = ctrl.Text.Length;
             e.Handled = true;
         }
 
@@ -103,15 +104,15 @@ namespace CheetosForWpf
             }
 
             int val;
-            if (!Int32.TryParse(textBox_OriginX.Text.ToString(), out val))
+            if (!Int32.TryParse(textBox_OriginX.Text, out val))
             {
                 textBox_OriginX.Text = "";
             }
-            if (!Int32.TryParse(textBox_OriginY.Text.ToString(), out val))
+            if (!Int32.TryParse(textBox_OriginY.Text, out val))
             {
                 textBox_OriginY.Text = "";
             }
-            if (!Int32.TryParse(textBox_angle.Text.ToString(), out val))
+            if (!Int32.TryParse(textBox_angle.Text, out val))
             {
                 textBox_angle.Text = "";
             }
@@ -128,25 +129,21 @@ namespace CheetosForWpf
 
             using (Drawing.Bitmap img = new Drawing.Bitmap(textBox_loadfiepath.Text))
             {
-                int max = img.Width;
-                if (img.Width < img.Height)
-                {
-                    max = img.Height;
-                }
+                int max = Math.Max(img.Width, img.Height);
 
                 using (Drawing.Bitmap canvas = new Drawing.Bitmap(max * 2, max * 2))
                 {
                     //ラジアン単位に変換
-                    int angle = 0;
-                    Int32.TryParse(textBox_angle.Text.ToString(), out angle);
+                    int angle;
+                    Int32.TryParse(textBox_angle.Text, out angle);
                     double d = angle / (180 / Math.PI);
 
                     //新しい座標位置を計算する
                     // (WinForms版はfloat.Parseで、空欄だと例外になっていた。空欄は0として扱う)
                     float x;
                     float y;
-                    float.TryParse(textBox_OriginX.Text.ToString(), out x);
-                    float.TryParse(textBox_OriginY.Text.ToString(), out y);
+                    float.TryParse(textBox_OriginX.Text, out x);
+                    float.TryParse(textBox_OriginY.Text, out y);
 
                     float x1 = x + img.Width * (float)Math.Cos(d);
                     float y1 = y + img.Width * (float)Math.Sin(d);
