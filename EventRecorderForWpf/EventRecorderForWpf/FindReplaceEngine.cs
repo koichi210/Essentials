@@ -17,9 +17,9 @@ namespace EventRecorderForWpf
     // 検索結果一覧の1行分(レコード表のどの行か・表示列ごとの値・どの表示列でヒットしたか)
     internal sealed class FindHit
     {
-        public int TargetRowIndex;
-        public String[] Values;
-        public List<int> HitVisibleColumnIndexes;
+        public int TargetRowIndex { get; set; }
+        public String[] Values { get; set; }
+        public List<int> HitVisibleColumnIndexes { get; set; }
     }
 
     internal sealed class FindReplaceEngine
@@ -30,8 +30,8 @@ namespace EventRecorderForWpf
         private readonly Action endUndoBatch;
 
         // 「次を検索」で最後に見つけたセル位置(行インデックス・表示列インデックス)。次回はこの続き(次のセル)から探す
-        public int LastFoundRow { get; private set; } = -1;
-        public int LastFoundColumn { get; private set; } = -1;
+        public int LastFoundRowIndex { get; private set; } = -1;
+        public int LastFoundColumnIndex { get; private set; } = -1;
 
         public Boolean MatchCase { get; set; }
 
@@ -90,7 +90,7 @@ namespace EventRecorderForWpf
             return hits;
         }
 
-        // LastFoundRow/LastFoundColumnの次のセルから、キーワードを含む次のセルを探す(見つかったらtrue)。
+        // LastFoundRowIndex/LastFoundColumnIndexの次のセルから、キーワードを含む次のセルを探す(見つかったらtrue)。
         // 末尾まで探して見つからなければ先頭に戻ってもう一周する(現在位置自体は含めない)。
         // statusは画面下部に出すメッセージ(nullなら表示を変えない)
         public Boolean FindNext(String keyword, out String status)
@@ -111,8 +111,8 @@ namespace EventRecorderForWpf
                 return false;
             }
 
-            int r = LastFoundRow < 0 ? 0 : LastFoundRow;
-            int c = LastFoundRow < 0 ? -1 : LastFoundColumn;
+            int r = LastFoundRowIndex < 0 ? 0 : LastFoundRowIndex;
+            int c = LastFoundRowIndex < 0 ? -1 : LastFoundColumnIndex;
             if (r >= rowCount)
             {
                 // 前回見つけた行が削除されて無くなっていたら、先頭から探し直す
@@ -135,8 +135,8 @@ namespace EventRecorderForWpf
 
                 if (Matches(rows[r].GetCell(columns[c]), keyword))
                 {
-                    LastFoundRow = r;
-                    LastFoundColumn = c;
+                    LastFoundRowIndex = r;
+                    LastFoundColumnIndex = c;
                     status = "";
                     return true;
                 }
@@ -156,13 +156,13 @@ namespace EventRecorderForWpf
 
             IList<IEditableGridRow> rows = getRows();
             IList<String> columns = getVisibleColumns();
-            if (LastFoundRow >= 0 && LastFoundRow < rows.Count && LastFoundColumn >= 0 && LastFoundColumn < columns.Count)
+            if (LastFoundRowIndex >= 0 && LastFoundRowIndex < rows.Count && LastFoundColumnIndex >= 0 && LastFoundColumnIndex < columns.Count)
             {
-                IEditableGridRow row = rows[LastFoundRow];
-                String text = row.GetCell(columns[LastFoundColumn]);
+                IEditableGridRow row = rows[LastFoundRowIndex];
+                String text = row.GetCell(columns[LastFoundColumnIndex]);
                 if (Matches(text, keyword))
                 {
-                    row.SetCell(columns[LastFoundColumn], ReplaceAllOccurrences(text, keyword, replacement ?? "", Comparison));
+                    row.SetCell(columns[LastFoundColumnIndex], ReplaceAllOccurrences(text, keyword, replacement ?? "", Comparison));
                 }
             }
         }

@@ -165,11 +165,11 @@ namespace EventRecorderForWpf
                     }
                     else
                     {
-                        String px, py, pkey;
-                        EventRules.ParseDetail(detail, out px, out py, out pkey);
-                        Store(ColX, px, changes);
-                        Store(ColY, py, changes);
-                        Store(ColKey, pkey, changes);
+                        String parsedX, parsedY, parsedKey;
+                        EventRules.ParseDetail(detail, out parsedX, out parsedY, out parsedKey);
+                        Store(ColX, parsedX, changes);
+                        Store(ColY, parsedY, changes);
+                        Store(ColKey, parsedKey, changes);
                     }
                     break;
             }

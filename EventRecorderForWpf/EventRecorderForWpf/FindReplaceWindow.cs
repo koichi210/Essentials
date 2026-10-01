@@ -275,9 +275,9 @@ namespace EventRecorderForWpf
             if (found)
             {
                 List<DataGridColumn> visibleColumns = WpfGridHelper.GetVisibleColumnsInDisplayOrder(targetGrid);
-                if (engine.LastFoundColumn < visibleColumns.Count)
+                if (engine.LastFoundColumnIndex < visibleColumns.Count)
                 {
-                    WpfGridHelper.JumpToCell(targetGrid, engine.LastFoundRow, visibleColumns[engine.LastFoundColumn]);
+                    WpfGridHelper.JumpToCell(targetGrid, engine.LastFoundRowIndex, visibleColumns[engine.LastFoundColumnIndex]);
                 }
             }
             if (status != null)

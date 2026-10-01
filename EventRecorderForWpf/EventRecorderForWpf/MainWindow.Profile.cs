@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 using StandardTemplate;
@@ -48,15 +47,15 @@ namespace EventRecorderForWpf
             {
                 // WPF版は旧XML形式を読めない。前のファイルの記録データを誤って再生しないよう、空にして何も再生しない
                 eventRows.Clear();
-                highlightedRowIndex = -1;
+                highlightedEventRowIndex = -1;
                 return;
             }
 
             LoadProfileFromJson(filePath, false);
         }
 
-        // JSONファイルを読み込み、記録データ(+clearPlaylistがtrueならプレイリストとモードも)を画面へ反映する
-        internal void LoadProfileFromJson(String filePath, Boolean clearPlaylist)
+        // JSONファイルを読み込み、記録データ(+loadPlaylistAndModeがtrueならプレイリストとモードも)を画面へ反映する
+        internal void LoadProfileFromJson(String filePath, Boolean loadPlaylistAndMode)
         {
             EventRecorderProfile profile = JsonFileStorage.Load<EventRecorderProfile>(filePath);
             if (profile == null)
@@ -66,7 +65,7 @@ namespace EventRecorderForWpf
 
             // 編集途中のセルがあれば破棄してから入れ替える(古い行へ書き戻されないように)
             dataGrid_Events.CancelEdit(DataGridEditingUnit.Row);
-            if (clearPlaylist)
+            if (loadPlaylistAndMode)
             {
                 dataGrid_Playlist.CancelEdit(DataGridEditingUnit.Row);
             }
@@ -75,32 +74,32 @@ namespace EventRecorderForWpf
 
             // 行は一旦リストに作ってから、グリッドへはまとめて1回で反映する(行数が多いプロファイルでも読込が遅くならないように)
             List<EventRow> rows = new List<EventRow>();
-            foreach (MacroEventData ev in profile.Events ?? new List<MacroEventData>())
+            foreach (MacroEventData eventData in profile.Events ?? new List<MacroEventData>())
             {
-                if (ev == null)
+                if (eventData == null)
                 {
                     continue;
                 }
-                rows.Add(EventRow.FromData(ev.Type, ev.X, ev.Y, ev.Key, ev.Wait, ev.Remarks));
+                rows.Add(EventRow.FromData(eventData.Type, eventData.X, eventData.Y, eventData.Key, eventData.Wait, eventData.Remarks));
             }
 
             // 万一、旧形式相当(各行が自分のWaitを持つ)のデータを読み込んでも安全なように、待機をWAIT_MS行へ切り出す
             EventRules.MigrateWaitColumnToRows(rows);
 
-            highlightedRowIndex = -1;
+            highlightedEventRowIndex = -1;
             eventRows.ReplaceAll(rows);
 
-            if (clearPlaylist)
+            if (loadPlaylistAndMode)
             {
                 List<PlaylistRow> playlist = new List<PlaylistRow>();
-                foreach (PlaylistEntryData pl in profile.Playlist ?? new List<PlaylistEntryData>())
+                foreach (PlaylistEntryData entryData in profile.Playlist ?? new List<PlaylistEntryData>())
                 {
-                    if (pl == null)
+                    if (entryData == null)
                     {
                         continue;
                     }
-                    PlaylistRow row = PlaylistRow.FromData(pl.Enabled, pl.FileName, pl.LoopCount);
-                    row.IsVisible = !showOnlyCheckedPlaylistRows || row.Enabled;
+                    PlaylistRow row = PlaylistRow.FromData(entryData.Enabled, entryData.FileName, entryData.LoopCount);
+                    ApplyPlaylistRowFilter(row);
                     playlist.Add(row);
                 }
 
@@ -119,7 +118,7 @@ namespace EventRecorderForWpf
                 SyncPlaylistFileItems();
 
                 // モード切替ラジオボタン・最小化チェックボックスは、プレイリスト再生時の各行のファイル読込
-                // (clearPlaylist=false)では適用しない(途中でモードが切り替わってしまうのを防ぐため)
+                // (loadPlaylistAndMode=false)では適用しない(途中でモードが切り替わってしまうのを防ぐため)
                 radioButton_Record.IsChecked = profile.IsRecordMode;
                 radioButton_Playback.IsChecked = !profile.IsRecordMode;
                 checkBox_MinimizeOnPlay.IsChecked = profile.MinimizeOnPlay;
@@ -127,7 +126,7 @@ namespace EventRecorderForWpf
 
             // ファイル読込は「ユーザーの編集操作」ではないので、Ctrl+Zで戻せないようにする
             eventsUndo.ClearUndoHistory();
-            if (clearPlaylist)
+            if (loadPlaylistAndMode)
             {
                 playlistUndo.ClearUndoHistory();
             }
@@ -288,15 +287,15 @@ namespace EventRecorderForWpf
 
                 if (overwriteResult == MessageBoxResult.Yes)
                 {
-                    String overwriteFileName = Path.Combine(userDataFolder, currentName);
-                    if (!SaveProfile(overwriteFileName))
+                    String overwriteFilePath = Path.Combine(userDataFolder, currentName);
+                    if (!SaveProfile(overwriteFilePath))
                     {
-                        MessageBox.Show(this, "設定の保存に失敗したよ" + Environment.NewLine + overwriteFileName,
+                        MessageBox.Show(this, "設定の保存に失敗したよ" + Environment.NewLine + overwriteFilePath,
                             AppName + " - エラー", MessageBoxButton.OK, MessageBoxImage.Warning);
                         return;
                     }
 
-                    AfterProfileSaved(overwriteFileName);
+                    AfterProfileSaved(overwriteFilePath);
                     return;
                 }
             }
@@ -316,20 +315,20 @@ namespace EventRecorderForWpf
                 return;
             }
 
-            String saveFileName = dlg.FileName;
-            if (!IsJsonFile(saveFileName))
+            String saveFilePath = dlg.FileName;
+            if (!IsJsonFile(saveFilePath))
             {
-                saveFileName += ".json";
+                saveFilePath += ".json";
             }
 
-            if (!SaveProfile(saveFileName))
+            if (!SaveProfile(saveFilePath))
             {
-                MessageBox.Show(this, "設定の保存に失敗したよ" + Environment.NewLine + saveFileName,
+                MessageBox.Show(this, "設定の保存に失敗したよ" + Environment.NewLine + saveFilePath,
                     AppName + " - エラー", MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
 
-            AfterProfileSaved(saveFileName);
+            AfterProfileSaved(saveFilePath);
         }
 
         // 保存したファイルをプルダウンで選択状態にして(読み直しはしない)、プレイリストの選択肢も最新にする

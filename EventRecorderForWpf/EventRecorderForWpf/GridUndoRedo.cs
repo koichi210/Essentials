@@ -27,13 +27,13 @@ namespace EventRecorderForWpf
     // 1つのセルの値の変更(列名・変更前・変更後)
     internal sealed class GridCellChange
     {
-        public String Name;
-        public String OldValue;
-        public String NewValue;
+        public String ColumnName { get; }
+        public String OldValue { get; }
+        public String NewValue { get; }
 
-        public GridCellChange(String name, String oldValue, String newValue)
+        public GridCellChange(String columnName, String oldValue, String newValue)
         {
-            Name = name;
+            ColumnName = columnName;
             OldValue = oldValue;
             NewValue = newValue;
         }
@@ -49,11 +49,11 @@ namespace EventRecorderForWpf
             Changes = changes;
         }
 
-        public Boolean Contains(String name)
+        public Boolean Contains(String columnName)
         {
             foreach (GridCellChange change in Changes)
             {
-                if (change.Name == name)
+                if (change.ColumnName == columnName)
                 {
                     return true;
                 }
@@ -191,7 +191,7 @@ namespace EventRecorderForWpf
                         Entry entry = entries[i];
                         for (int c = entry.Changes.Count - 1; c >= 0; c--)
                         {
-                            entry.Row.SetCellRaw(entry.Changes[c].Name, entry.Changes[c].OldValue);
+                            entry.Row.SetCellRaw(entry.Changes[c].ColumnName, entry.Changes[c].OldValue);
                         }
                     }
                 }
@@ -201,7 +201,7 @@ namespace EventRecorderForWpf
                     {
                         foreach (GridCellChange change in entry.Changes)
                         {
-                            entry.Row.SetCellRaw(change.Name, change.NewValue);
+                            entry.Row.SetCellRaw(change.ColumnName, change.NewValue);
                         }
                     }
                 }

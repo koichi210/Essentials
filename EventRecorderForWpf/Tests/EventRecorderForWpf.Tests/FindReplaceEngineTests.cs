@@ -58,14 +58,14 @@ namespace EventRecorderForWpf.Tests
         {
             String status;
             Assert.IsTrue(engine.FindNext("LEFT", out status));
-            Assert.AreEqual(0, engine.LastFoundRow);
+            Assert.AreEqual(0, engine.LastFoundRowIndex);
             Assert.IsTrue(engine.FindNext("LEFT", out status));
-            Assert.AreEqual(2, engine.LastFoundRow);
-            Assert.AreEqual(2, engine.LastFoundColumn);
+            Assert.AreEqual(2, engine.LastFoundRowIndex);
+            Assert.AreEqual(2, engine.LastFoundColumnIndex);
             Assert.IsTrue(engine.FindNext("LEFT", out status));
-            Assert.AreEqual(3, engine.LastFoundRow);
+            Assert.AreEqual(3, engine.LastFoundRowIndex);
             Assert.IsTrue(engine.FindNext("LEFT", out status));
-            Assert.AreEqual(0, engine.LastFoundRow, "末尾まで行ったら先頭に戻る");
+            Assert.AreEqual(0, engine.LastFoundRowIndex, "末尾まで行ったら先頭に戻る");
 
             Assert.IsFalse(engine.FindNext("存在しない", out status));
             Assert.AreEqual("見つからなかったよ", status);

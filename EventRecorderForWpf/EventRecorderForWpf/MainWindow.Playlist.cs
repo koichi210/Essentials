@@ -284,7 +284,7 @@ namespace EventRecorderForWpf
             if (e.Contains(PlaylistRow.ColEnabled))
             {
                 // チェックON/OFFが変わったら、表示フィルタが有効な時はその場で表示/非表示を切り替える
-                row.IsVisible = !showOnlyCheckedPlaylistRows || row.Enabled;
+                ApplyPlaylistRowFilter(row);
             }
 
             if (!e.Contains(PlaylistRow.ColFileName) || isLoadingPlaylist)
@@ -477,8 +477,14 @@ namespace EventRecorderForWpf
         {
             foreach (PlaylistRow row in playlistRows)
             {
-                row.IsVisible = !showOnlyCheckedPlaylistRows || row.Enabled;
+                ApplyPlaylistRowFilter(row);
             }
+        }
+
+        // 1行分の表示/非表示を、今の表示フィルタと実行チェックの状態に合わせる
+        private void ApplyPlaylistRowFilter(PlaylistRow row)
+        {
+            row.IsVisible = !showOnlyCheckedPlaylistRows || row.Enabled;
         }
 
         internal Boolean ShowOnlyCheckedPlaylistRows
@@ -502,7 +508,7 @@ namespace EventRecorderForWpf
             insertAt = Math.Max(0, Math.Min(insertAt, playlistRows.Count));
 
             PlaylistRow newRow = PlaylistRow.FromData(isEnabled, "", "1");
-            newRow.IsVisible = !showOnlyCheckedPlaylistRows || isEnabled;
+            ApplyPlaylistRowFilter(newRow);
             playlistRows.Insert(insertAt, newRow);
         }
 
@@ -546,11 +552,11 @@ namespace EventRecorderForWpf
         // プレイリストの1行分(ファイル名+そのファイル専用のループ回数)
         internal class PlaylistEntry
         {
-            public String FileName;
-            public int LoopCount;
+            public String FileName { get; set; }
+            public int LoopCount { get; set; }
 
             // プレイリスト上の元の行インデックス。実行中にその行をハイライトするために使う
-            public int RowIndex;
+            public int RowIndex { get; set; }
         }
 
         // プレイリストの各行のうち、チェックが入っていてファイルが選ばれている行だけを、上から順番に取り出す
@@ -565,13 +571,7 @@ namespace EventRecorderForWpf
                     continue;
                 }
 
-                int loopCount = util.GetInteger(row.LoopCount);
-                if (loopCount <= 0)
-                {
-                    loopCount = 1;
-                }
-
-                entries.Add(new PlaylistEntry() { FileName = row.FileName, LoopCount = loopCount, RowIndex = i });
+                entries.Add(new PlaylistEntry() { FileName = row.FileName, LoopCount = ParseLoopCount(row.LoopCount), RowIndex = i });
             }
 
             return entries;
@@ -587,11 +587,7 @@ namespace EventRecorderForWpf
             }
 
             // 「全体ループ」も単発再生の「ループ回数」とtextBox_Loopを共有している
-            int overallLoopCount = util.GetInteger(textBox_Loop.Text);
-            if (overallLoopCount <= 0)
-            {
-                overallLoopCount = 1;
-            }
+            int overallLoopCount = ParseLoopCount(textBox_Loop.Text);
 
             cursorPositionBeforePlay = System.Windows.Forms.Cursor.Position;
 
@@ -602,7 +598,7 @@ namespace EventRecorderForWpf
 
             isPlaying = true;
             stopPlayRequested = false;
-            UpdatePlayButtons();
+            UpdatePlayButton();
             UpdateTitle();
             MinimizeIfRequested();
 
@@ -667,10 +663,10 @@ namespace EventRecorderForWpf
                 stopPlayRequested = false;
                 Dispatcher.Invoke(() =>
                 {
-                    UpdatePlayButtons();
+                    UpdatePlayButton();
                     label_PlaylistStatus.Text = "";
                     UpdateTitle();
-                    HighlightPlayingRow(-1);
+                    HighlightEventRow(-1);
                     HighlightPlaylistRow(-1);
                     RestoreIfMinimizedByPlay();
                 });

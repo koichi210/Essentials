@@ -1,5 +1,3 @@
-using System;
-
 namespace EventRecorderForWpf
 {
     // アプリ本体の設定値をまとめて1つのファイル(EventRecorder.json、userDataFolder配下)に保存するためのクラス。

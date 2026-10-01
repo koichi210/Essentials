@@ -11,14 +11,14 @@ namespace EventRecorderForWpf
     // 配列の順序([Type, X, Y, Key, Wait])との対応はここ1か所に閉じ込め、単体テストで保証する
     internal static class EventRowMapper
     {
-        // r([Type, X, Y, Key, Wait]の順)の値を、rowの各列へ書き込む
-        internal static void ApplyToRow(EventRow row, String[] r)
+        // values([Type, X, Y, Key, Wait]の順)の値を、rowの各列へ書き込む
+        internal static void ApplyToRow(EventRow row, String[] values)
         {
-            row.Type = r[0];
-            row.X = r[1];
-            row.Y = r[2];
-            row.Key = r[3];
-            row.Wait = r[4];
+            row.Type = values[0];
+            row.X = values[1];
+            row.Y = values[2];
+            row.Key = values[3];
+            row.Wait = values[4];
         }
 
         // rowの各列の値を[Type, X, Y, Key, Wait]の順の配列に読み出す(ApplyToRowの逆)

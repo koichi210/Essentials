@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Generic;
 using System.Windows;
 using Keys = System.Windows.Forms.Keys;
 
@@ -23,7 +22,7 @@ namespace EventRecorderForWpf
             }
 
             eventRows.Clear();
-            highlightedRowIndex = -1;
+            highlightedEventRowIndex = -1;
         }
 
         // 現在の記録中/再生中の状態をタイトルバーに反映する
@@ -50,7 +49,7 @@ namespace EventRecorderForWpf
 
         // 単発再生とプレイリスト実行は1つのbutton_Play(表示名「再生」)に統合したので、
         // isPlayingが変わるたびにその表示を同期させるだけでよい
-        private void UpdatePlayButtons()
+        private void UpdatePlayButton()
         {
             button_Play.Content = isPlaying ? "停止" : "再生";
         }
@@ -213,10 +212,10 @@ namespace EventRecorderForWpf
             }
 
             int lastIdx = -1;
-            foreach (String[] r in pendingRows)
+            foreach (String[] values in pendingRows)
             {
                 EventRow row = new EventRow();
-                EventRowMapper.ApplyToRow(row, r);
+                EventRowMapper.ApplyToRow(row, values);
                 eventRows.Add(row);
                 lastIdx = eventRows.Count - 1;
             }
@@ -226,7 +225,7 @@ namespace EventRecorderForWpf
             // 記録中も、今追加された最新行を薄い黄色でハイライト+自動スクロールする
             if (lastIdx >= 0)
             {
-                HighlightPlayingRow(lastIdx);
+                HighlightEventRow(lastIdx);
             }
         }
     }

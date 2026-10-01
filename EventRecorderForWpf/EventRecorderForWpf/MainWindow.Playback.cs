@@ -57,11 +57,7 @@ namespace EventRecorderForWpf
                 return;
             }
 
-            int loopCount = util.GetInteger(textBox_Loop.Text);
-            if (loopCount <= 0)
-            {
-                loopCount = 1;
-            }
+            int loopCount = ParseLoopCount(textBox_Loop.Text);
 
             List<String[]> rows = SnapshotRows();
             if (rows.Count == 0)
@@ -80,11 +76,18 @@ namespace EventRecorderForWpf
 
             isPlaying = true;
             stopPlayRequested = false;
-            UpdatePlayButtons();
+            UpdatePlayButton();
             UpdateTitle();
             MinimizeIfRequested();
 
             Task.Run(() => PlayLoop(rows, loopCount));
+        }
+
+        // ループ回数の入力値を数値にする(0以下・数値以外は1回扱い)。単発再生・プレイリストの全体ループ/各行で共通
+        private int ParseLoopCount(String text)
+        {
+            int loopCount = util.GetInteger(text);
+            return loopCount <= 0 ? 1 : loopCount;
         }
 
         // checkBox_MinimizeOnPlayがチェックされていたら、再生開始と同時にウィンドウを最小化する
@@ -132,9 +135,9 @@ namespace EventRecorderForWpf
                 stopPlayRequested = false;
                 Dispatcher.Invoke(() =>
                 {
-                    UpdatePlayButtons();
+                    UpdatePlayButton();
                     UpdateTitle();
-                    HighlightPlayingRow(-1);
+                    HighlightEventRow(-1);
                     RestoreIfMinimizedByPlay();
                 });
             }
@@ -156,16 +159,16 @@ namespace EventRecorderForWpf
 
                 for (int idx = 0; idx < rows.Count && !stopPlayRequested; idx++)
                 {
-                    String[] r = rows[idx];
+                    String[] values = rows[idx];
 
                     int rowIndex = idx;
                     Dispatcher.Invoke(() =>
                     {
-                        HighlightPlayingRow(rowIndex);
+                        HighlightEventRow(rowIndex);
                         UpdateTitle();
                     });
 
-                    int wait = util.GetInteger(r[4]);
+                    int wait = util.GetInteger(values[4]);
                     if (wait > 0)
                     {
                         InterruptibleSleep(wait);
@@ -176,7 +179,7 @@ namespace EventRecorderForWpf
                         return;
                     }
 
-                    PlayOneEvent(r[0], r[1], r[2], r[3]);
+                    PlayOneEvent(values[0], values[1], values[2], values[3]);
                 }
             }
         }
@@ -219,9 +222,9 @@ namespace EventRecorderForWpf
         }
 
         // 記録中の最新行・単発再生中の実行中行のハイライト(dataGrid_Events側)
-        private void HighlightPlayingRow(int idx)
+        private void HighlightEventRow(int idx)
         {
-            HighlightRow(dataGrid_Events, eventRows, idx, ref highlightedRowIndex, (row, on) => row.IsHighlighted = on);
+            HighlightRow(dataGrid_Events, eventRows, idx, ref highlightedEventRowIndex, (row, on) => row.IsHighlighted = on);
         }
 
         // プレイリスト実行中、今どのファイル(行)を再生しているかのハイライト(dataGrid_Playlist側)
@@ -506,9 +509,9 @@ namespace EventRecorderForWpf
 
             foreach (int idx in EventRules.CollectRowsToDelete(eventRows, targetIndexes))
             {
-                if (idx == highlightedRowIndex)
+                if (idx == highlightedEventRowIndex)
                 {
-                    highlightedRowIndex = -1;
+                    highlightedEventRowIndex = -1;
                 }
                 eventRows.RemoveAt(idx);
             }

@@ -41,7 +41,7 @@ namespace EventRecorderForWpf
         private int lastEventTick = 0;
 
         // 記録中/再生中にハイライトしている行のインデックス(-1ならハイライト無し)
-        private int highlightedRowIndex = -1;
+        private int highlightedEventRowIndex = -1;
 
         // プレイリスト実行中にハイライトしている行(dataGrid_Playlist側)のインデックス
         private int highlightedPlaylistRowIndex = -1;
