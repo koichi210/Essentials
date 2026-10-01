@@ -92,16 +92,11 @@ namespace EventRecorderForWpf
         private readonly Stack<List<Entry>> redoStack = new Stack<List<Entry>>();
 
         private List<Entry> pendingBatch;
+        // Undo/Redoの適用中かどうか(この間に行側から来る変更通知は履歴に積まない)
         private Boolean isApplyingHistory;
 
         // Ctrl+Z/Ctrl+Yによる元に戻す/やり直すを有効にするかどうか。既定は有効
         public Boolean EnableUndoRedo { get; set; } = true;
-
-        // Undo/Redoの適用中かどうか(この間に行側から来る変更通知は履歴に積まない)
-        public Boolean IsApplyingHistory
-        {
-            get { return isApplyingHistory; }
-        }
 
         // 管理下の行のどれかでセルの値が変わった(Undo/Redoによる書き戻しも含む)
         public event Action<TRow, GridCellChangedEventArgs> RowCellChanged;
