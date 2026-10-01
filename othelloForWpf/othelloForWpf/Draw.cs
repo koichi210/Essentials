@@ -12,11 +12,10 @@ namespace othelloForWpf
     /// </summary>
     class Draw
     {
-        private readonly int CellMax = 8;
-        //private readonly int EdgeOffset = 3;
-        private readonly int EdgeOffset = 0;
-        private readonly Color LineColor = Color.Black;
-        private readonly int LineWidth = 2;
+        private const int CellMax = 8;
+        private const int EdgeOffset = 0;
+        private static readonly Color LineColor = Color.Black;
+        private const int LineWidth = 2;
 
         // 描画先のサイズ(ピクセル)。WinForms版のpb.Width/pb.Height相当。
         private int areaWidth;
@@ -25,6 +24,7 @@ namespace othelloForWpf
         /// <summary>
         /// 現在描画中のBitmap。WinForms版のpictureBox.Image相当。
         /// CreateCanvasが無効サイズでスキップされた場合やDeleteCanvas後はnull。
+        /// 描画メソッドはこれを直接書き換える(毎回盤面全体をコピーするコストを避けるため)。
         /// </summary>
         public Bitmap Canvas { get; private set; }
 
@@ -74,16 +74,6 @@ namespace othelloForWpf
         }
 
         /// <summary>
-        /// 現在描画中のBitmapそのもの(コピーではなく参照)を返す。
-        /// 描画メソッドはこれを直接書き換えることで、毎回盤面全体をコピーする
-        /// 無駄なコストを避けている。
-        /// </summary>
-        private Bitmap GetCanvas()
-        {
-            return Canvas;
-        }
-
-        /// <summary>
         /// 初期化
         /// </summary>
         public void InitField()
@@ -110,18 +100,18 @@ namespace othelloForWpf
             for (int i = 0; i <= CellMax; i++)
             {
                 int x = EdgeOffset + (width * i / CellMax);
-                Point MovePt = new Point(x, EdgeOffset);
-                Point LinePt = new Point(x, areaHeight - EdgeOffset);
-                WriteLine(MovePt, LinePt, LineColor, LineWidth);
+                Point startPoint = new Point(x, EdgeOffset);
+                Point endPoint = new Point(x, areaHeight - EdgeOffset);
+                DrawLine(startPoint, endPoint, LineColor, LineWidth);
             }
 
             // 横線
             for (int i = 0; i <= CellMax; i++)
             {
                 int y = EdgeOffset + (height * i / CellMax);
-                Point MovePt = new Point(EdgeOffset, y);
-                Point LinePt = new Point(areaWidth - EdgeOffset, y);
-                WriteLine(MovePt, LinePt, LineColor, LineWidth);
+                Point startPoint = new Point(EdgeOffset, y);
+                Point endPoint = new Point(areaWidth - EdgeOffset, y);
+                DrawLine(startPoint, endPoint, LineColor, LineWidth);
             }
         }
 
@@ -219,7 +209,7 @@ namespace othelloForWpf
                 noticeWidth,
                 noticeHeight);
 
-            using (Graphics g = Graphics.FromImage(GetCanvas()))
+            using (Graphics g = Graphics.FromImage(Canvas))
             using (Brush brush = new SolidBrush(Color.FromArgb(140, Color.DarkGray)))
             {
                 g.FillEllipse(brush, rect);
@@ -248,28 +238,28 @@ namespace othelloForWpf
 
             Brush brush = color == StoneColor.Black ? Brushes.Black : Brushes.White;
 
-            using (Graphics g = Graphics.FromImage(GetCanvas()))
+            using (Graphics g = Graphics.FromImage(Canvas))
             {
                 g.FillEllipse(brush, rect);
             }
         }
 
-        public void FillBackground(Brush color)
+        public void FillBackground(Brush brush)
         {
             Rectangle rect = new Rectangle(0, 0, areaWidth, areaHeight);
 
-            using (Graphics g = Graphics.FromImage(GetCanvas()))
+            using (Graphics g = Graphics.FromImage(Canvas))
             {
-                g.FillRectangle(color, rect);
+                g.FillRectangle(brush, rect);
             }
         }
 
-        public void WriteLine(Point MovePt, Point LinePt, Color clr, int LineWidth)
+        public void DrawLine(Point startPoint, Point endPoint, Color color, int lineWidth)
         {
-            using (Graphics g = Graphics.FromImage(GetCanvas()))
-            using (Pen pen = new Pen(clr, LineWidth))
+            using (Graphics g = Graphics.FromImage(Canvas))
+            using (Pen pen = new Pen(color, lineWidth))
             {
-                g.DrawLine(pen, MovePt, LinePt);
+                g.DrawLine(pen, startPoint, endPoint);
             }
         }
     }

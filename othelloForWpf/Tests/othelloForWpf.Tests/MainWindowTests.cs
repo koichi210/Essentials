@@ -59,7 +59,7 @@ namespace othelloForWpf.Tests
             {
                 var window = new MainWindow();
                 Assert.IsNotNull(window);
-                Assert.IsNotNull(window.draw.Canvas);
+                Assert.IsNotNull(window.Draw.Canvas);
                 Assert.IsNotNull(window.pictureBoxField.Source);
                 Assert.AreEqual("黒の番 (黒:2 白:2)", window.label_Status.Text);
                 Assert.IsFalse(window.menuItem_Undo.IsEnabled);
@@ -85,7 +85,7 @@ namespace othelloForWpf.Tests
 
                     var source = PresentationSource.FromVisual(window);
                     double scale = source.CompositionTarget.TransformToDevice.M11;
-                    Assert.AreEqual((int)Math.Round(window.boardHost.ActualWidth * scale), window.draw.Width);
+                    Assert.AreEqual((int)Math.Round(window.boardHost.ActualWidth * scale), window.Draw.Width);
 
                     Assert.AreEqual(window.ActualWidth, window.MinWidth, 0.5);
                     Assert.AreEqual(window.ActualHeight, window.MinHeight, 0.5);
@@ -127,7 +127,7 @@ namespace othelloForWpf.Tests
                 {
                     IntPtr hwnd = new WindowInteropHelper(window).Handle;
                     Assert.IsTrue(GetWindowRect(hwnd, out RECT rect));
-                    int oldBitmapWidth = window.draw.Width;
+                    int oldBitmapWidth = window.Draw.Width;
 
                     // 右下(WMSZ_BOTTOMRIGHT=8)を掴んで幅を150px広げた時、高さはOSの提案のままにしておく
                     rect.Right += 150;
@@ -137,12 +137,12 @@ namespace othelloForWpf.Tests
 
                     Assert.IsTrue(window.boardHost.ActualWidth > 250, "盤面が広がっていない: " + window.boardHost.ActualWidth);
                     Assert.AreEqual(window.boardHost.ActualWidth, window.boardHost.ActualHeight, 2.0);
-                    Assert.IsTrue(window.draw.Width > oldBitmapWidth);
-                    Assert.AreEqual(window.draw.Width, ((BitmapSource)window.pictureBoxField.Source).PixelWidth);
+                    Assert.IsTrue(window.Draw.Width > oldBitmapWidth);
+                    Assert.AreEqual(window.Draw.Width, ((BitmapSource)window.pictureBoxField.Source).PixelWidth);
 
                     // 広げた後も、クリック位置とマス目の対応がずれない
                     Assert.IsTrue(window.HandleBoardClick(CellCenter(window, 5, 4)));
-                    Assert.AreEqual(StoneColor.Black, window.gm.Table[4, 5]);
+                    Assert.AreEqual(StoneColor.Black, window.GameMaster.Table[4, 5]);
                 }
                 finally
                 {
@@ -160,7 +160,7 @@ namespace othelloForWpf.Tests
                 try
                 {
                     var bmp = (BitmapSource)window.pictureBoxField.Source;
-                    Assert.AreEqual(window.draw.Width, bmp.PixelWidth);
+                    Assert.AreEqual(window.Draw.Width, bmp.PixelWidth);
 
                     // Table[y,x]: (3,3)=白, (4,3)=黒
                     Assert.AreEqual(0xFFFFFFFFu, PixelAt(bmp, 3.5, 3.5));
@@ -198,7 +198,7 @@ namespace othelloForWpf.Tests
 
                     // (x=2,y=3)は黒が置ける
                     Assert.IsTrue(window.HandleBoardClick(CellCenter(window, 2, 3)));
-                    Assert.AreEqual(StoneColor.Black, window.gm.Table[3, 2]);
+                    Assert.AreEqual(StoneColor.Black, window.GameMaster.Table[3, 2]);
                     Assert.AreEqual("白の番 (黒:4 白:1)", window.label_Status.Text);
                     Assert.IsTrue(window.menuItem_Undo.IsEnabled);
 
@@ -233,7 +233,7 @@ namespace othelloForWpf.Tests
                     double h = window.boardHost.ActualHeight;
                     var p = new Point(w * 3 / 8 - 0.6, h * 4 / 8 - 0.6);
                     Assert.IsTrue(window.HandleBoardClick(p));
-                    Assert.AreEqual(StoneColor.Black, window.gm.Table[3, 2]);
+                    Assert.AreEqual(StoneColor.Black, window.GameMaster.Table[3, 2]);
                 }
                 finally
                 {
@@ -253,15 +253,15 @@ namespace othelloForWpf.Tests
                 Assert.IsFalse(window.menuItem_PP.IsChecked);
                 Assert.IsFalse(window.IsComMovePending);
 
-                Assert.IsTrue(window.gm.TryPut(2, 3));
+                Assert.IsTrue(window.GameMaster.TryPut(2, 3));
                 // 白(COM)の番: クリックは受け付けない
                 window.menuItem_ComLevel_Click(window.menuItem_ComLevel2, null);
                 Assert.IsTrue(window.menuItem_ComLevel2.IsChecked);
                 Assert.IsFalse(window.menuItem_ComLevel1.IsChecked);
 
                 window.DoComMove();
-                Assert.AreEqual(StoneColor.Black, window.gm.CurrentTurn);
-                Assert.AreEqual(2, window.gm.History.Count);
+                Assert.AreEqual(StoneColor.Black, window.GameMaster.CurrentTurn);
+                Assert.AreEqual(2, window.GameMaster.History.Count);
                 Assert.IsFalse(window.IsComMovePending);
                 window.Close();
             });
@@ -309,7 +309,7 @@ namespace othelloForWpf.Tests
 
                 var window = new MainWindow();
                 Assert.IsTrue(window.LoadKihuText(text, false));
-                Assert.AreEqual(2, window.gm.History.Count);
+                Assert.AreEqual(2, window.GameMaster.History.Count);
                 Assert.AreEqual("黒の番 (黒:3 白:3)", window.label_Status.Text);
                 Assert.IsTrue(window.menuItem_Undo.IsEnabled);
 

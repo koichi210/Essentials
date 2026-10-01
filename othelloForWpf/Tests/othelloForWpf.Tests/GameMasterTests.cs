@@ -65,12 +65,12 @@ namespace othelloForWpf.Tests
         }
 
         [TestMethod]
-        public void CountStoneは初期状態で黒2白2を返す()
+        public void CountStonesは初期状態で黒2白2を返す()
         {
             var gm = new GameMaster();
             gm.Initialize();
 
-            gm.CountStone(out int black, out int white);
+            gm.CountStones(out int black, out int white);
 
             Assert.AreEqual(2, black);
             Assert.AreEqual(2, white);

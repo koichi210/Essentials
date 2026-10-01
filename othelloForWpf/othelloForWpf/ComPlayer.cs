@@ -221,7 +221,7 @@ namespace othelloForWpf
                         star = p;
                     }
                 }
-                else if (IsStarNear(p))
+                else if (IsNextStar(p))
                 {
                     if (nextStar == null)
                     {
@@ -274,7 +274,7 @@ namespace othelloForWpf
             return (p.X == 1 || p.X == max - 1) && (p.Y == 1 || p.Y == max - 1);
         }
 
-        private static bool IsStarNear(Point p)
+        private static bool IsNextStar(Point p)
         {
             int max = GameMaster.BoardSize - 1;
             bool edgeXcornerY = (p.X == 0 || p.X == max) && (p.Y == 1 || p.Y == max - 1);
@@ -294,7 +294,7 @@ namespace othelloForWpf
                 return false;
             }
 
-            StoneColor enemy = color == StoneColor.Black ? StoneColor.White : StoneColor.Black;
+            StoneColor enemy = GameMaster.GetEnemyColor(color);
             bool[,] enemyMoves = sim.GetValidMoves(enemy);
             int max = GameMaster.BoardSize - 1;
 

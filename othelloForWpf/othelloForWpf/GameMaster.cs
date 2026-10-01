@@ -81,7 +81,7 @@ namespace othelloForWpf
         /// </summary>
         public GameMaster Clone()
         {
-            GameMaster clone = new GameMaster
+            return new GameMaster
             {
                 Table = (StoneColor[,])Table.Clone(),
                 CurrentTurn = CurrentTurn,
@@ -89,10 +89,9 @@ namespace othelloForWpf
                 TurnCount = TurnCount,
                 History = new List<KihuMove>(History),
             };
-            return clone;
         }
 
-        private static StoneColor GetEnemyColor(StoneColor color)
+        internal static StoneColor GetEnemyColor(StoneColor color)
         {
             return color == StoneColor.Black ? StoneColor.White : StoneColor.Black;
         }
@@ -105,7 +104,7 @@ namespace othelloForWpf
         /// <summary>
         /// (x, y)にcolorを置けるか判定する。置ける場合、方向ごとにひっくり返せる石数をflipCountsに入れて返す。
         /// </summary>
-        private bool PutCheck(int x, int y, StoneColor color, int[] flipCounts)
+        private bool CanPut(int x, int y, StoneColor color, int[] flipCounts)
         {
             if (!IsInBoard(x, y) || Table[y, x] != StoneColor.Unknown)
             {
@@ -150,7 +149,7 @@ namespace othelloForWpf
                 for (int x = 0; x < BoardSize; x++)
                 {
                     Array.Clear(flipCounts, 0, flipCounts.Length);
-                    if (PutCheck(x, y, color, flipCounts))
+                    if (CanPut(x, y, color, flipCounts))
                     {
                         return true;
                     }
@@ -174,7 +173,7 @@ namespace othelloForWpf
                 for (int x = 0; x < BoardSize; x++)
                 {
                     Array.Clear(flipCounts, 0, flipCounts.Length);
-                    result[y, x] = PutCheck(x, y, color, flipCounts);
+                    result[y, x] = CanPut(x, y, color, flipCounts);
                 }
             }
 
@@ -188,7 +187,7 @@ namespace othelloForWpf
         public IEnumerable<Point> GetFlippedPositions(int x, int y, StoneColor color)
         {
             int[] flipCounts = new int[DirX.Length];
-            if (!PutCheck(x, y, color, flipCounts))
+            if (!CanPut(x, y, color, flipCounts))
             {
                 yield break;
             }
@@ -254,7 +253,7 @@ namespace othelloForWpf
             }
 
             int[] flipCounts = new int[DirX.Length];
-            if (!PutCheck(x, y, CurrentTurn, flipCounts))
+            if (!CanPut(x, y, CurrentTurn, flipCounts))
             {
                 return false;
             }
@@ -352,7 +351,7 @@ namespace othelloForWpf
             }
         }
 
-        public void CountStone(out int blackCount, out int whiteCount)
+        public void CountStones(out int blackCount, out int whiteCount)
         {
             blackCount = 0;
             whiteCount = 0;

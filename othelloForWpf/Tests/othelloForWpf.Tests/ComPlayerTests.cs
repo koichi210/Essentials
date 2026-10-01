@@ -60,7 +60,7 @@ namespace othelloForWpf.Tests
 
             Assert.IsTrue(gm.IsGameEnd);
             // 終局は必ずしも盤面が埋まりきるとは限らない(両者とも置けなくなれば途中でも終局する)
-            gm.CountStone(out int black, out int white);
+            gm.CountStones(out int black, out int white);
             Assert.IsTrue(black + white >= 4 && black + white <= 64);
         }
     }

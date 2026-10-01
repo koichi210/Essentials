@@ -25,8 +25,8 @@ namespace othelloForWpf
 
         private const int CountdownIntervalMs = 100;
 
-        internal readonly Draw draw = new Draw();
-        internal readonly GameMaster gm = new GameMaster();
+        internal Draw Draw { get; } = new Draw();
+        internal GameMaster GameMaster { get; } = new GameMaster();
         private PlayMode playMode = PlayMode.PlayerPlayer;
         private int comLevel = 1;
 
@@ -61,7 +61,7 @@ namespace othelloForWpf
 
             // 表示前はDPIが分からないので、まずはデザインサイズ(200x200)で描いておく。
             // 表示後はboardHost_SizeChangedで実際のピクセルサイズに作り直す。
-            draw.SetDrawArea((int)boardHost.Width, (int)boardHost.Height);
+            Draw.SetDrawArea((int)boardHost.Width, (int)boardHost.Height);
             RedrawBoard();
 
             Loaded += MainWindow_Loaded;
@@ -209,7 +209,15 @@ namespace othelloForWpf
             comMoveTimer.Stop();
             countdownTimer.Stop();
 
-            gm.Initialize();
+            GameMaster.Initialize();
+            ResetTimeLimit();
+        }
+
+        /// <summary>
+        /// 時間切れ状態を解除し、両者の残り時間を持ち時間いっぱいに戻す。
+        /// </summary>
+        private void ResetTimeLimit()
+        {
             isTimedOut = false;
             blackTimeMs = timeLimitSeconds < 0 ? 0 : timeLimitSeconds * 1000;
             whiteTimeMs = timeLimitSeconds < 0 ? 0 : timeLimitSeconds * 1000;
@@ -222,7 +230,7 @@ namespace othelloForWpf
         private void menuItem_Undo_Click(object sender, RoutedEventArgs e)
         {
             comMoveTimer.Stop();
-            if (gm.Undo())
+            if (GameMaster.Undo())
             {
                 isTimedOut = false;
                 RedrawBoard();
@@ -236,7 +244,7 @@ namespace othelloForWpf
         private void menuItem_Redo_Click(object sender, RoutedEventArgs e)
         {
             comMoveTimer.Stop();
-            if (gm.Redo())
+            if (GameMaster.Redo())
             {
                 isTimedOut = false;
                 RedrawBoard();
@@ -245,13 +253,13 @@ namespace othelloForWpf
 
         private void button_ReStart_Click(object sender, RoutedEventArgs e)
         {
-            MessageBoxResult DlgResult = MessageBox.Show(
+            MessageBoxResult dlgResult = MessageBox.Show(
                 this,
                 "初期画面にもどります。よろしいですか？",
                 "Warning",
                 MessageBoxButton.YesNo,
                 MessageBoxImage.Warning);
-            if (DlgResult == MessageBoxResult.Yes)
+            if (dlgResult == MessageBoxResult.Yes)
             {
                 ResetGame();
                 RedrawBoard();
@@ -416,7 +424,7 @@ namespace othelloForWpf
         /// </summary>
         private void menuItem_KihuShow_Click(object sender, RoutedEventArgs e)
         {
-            MessageBox.Show(this, Kihu.ToText(gm.History), "棋譜", MessageBoxButton.OK, MessageBoxImage.Information);
+            MessageBox.Show(this, Kihu.ToText(GameMaster.History), "棋譜", MessageBoxButton.OK, MessageBoxImage.Information);
         }
 
         /// <summary>
@@ -424,7 +432,7 @@ namespace othelloForWpf
         /// </summary>
         private void menuItem_KihuSave_Click(object sender, RoutedEventArgs e)
         {
-            if (gm.History.Count == 0)
+            if (GameMaster.History.Count == 0)
             {
                 MessageBox.Show(this, "まだ1手も打たれていないよ。", "棋譜の保存", MessageBoxButton.OK, MessageBoxImage.Information);
                 return;
@@ -438,7 +446,7 @@ namespace othelloForWpf
 
             if (dialog.ShowDialog(this) == true)
             {
-                System.IO.File.WriteAllText(dialog.FileName, Kihu.ToText(gm.History));
+                System.IO.File.WriteAllText(dialog.FileName, Kihu.ToText(GameMaster.History));
             }
         }
 
@@ -480,10 +488,8 @@ namespace othelloForWpf
             comMoveTimer.Stop();
             countdownTimer.Stop();
 
-            bool ok = Kihu.TryReplay(text, gm, out string errorMessage);
-            isTimedOut = false;
-            blackTimeMs = timeLimitSeconds < 0 ? 0 : timeLimitSeconds * 1000;
-            whiteTimeMs = timeLimitSeconds < 0 ? 0 : timeLimitSeconds * 1000;
+            bool ok = Kihu.TryReplay(text, GameMaster, out string errorMessage);
+            ResetTimeLimit();
 
             RedrawBoard();
 
@@ -517,7 +523,7 @@ namespace othelloForWpf
         /// </summary>
         private void MaybeTriggerComMove()
         {
-            if (!gm.IsGameEnd && IsComTurn(gm.CurrentTurn))
+            if (!GameMaster.IsGameEnd && IsComTurn(GameMaster.CurrentTurn))
             {
                 comMoveTimer.Start();
             }
@@ -539,14 +545,14 @@ namespace othelloForWpf
         {
             comMoveTimer.Stop();
 
-            if (isTimedOut || gm.IsGameEnd || !IsComTurn(gm.CurrentTurn))
+            if (isTimedOut || GameMaster.IsGameEnd || !IsComTurn(GameMaster.CurrentTurn))
             {
                 return;
             }
 
-            if (ComPlayer.TryGetMove(gm, gm.CurrentTurn, comLevel, out int x, out int y))
+            if (ComPlayer.TryGetMove(GameMaster, GameMaster.CurrentTurn, comLevel, out int x, out int y))
             {
-                gm.TryPut(x, y);
+                GameMaster.TryPut(x, y);
             }
 
             RedrawBoard();
@@ -563,7 +569,7 @@ namespace othelloForWpf
 
         internal void CountDown(int elapsedMs)
         {
-            if (gm.CurrentTurn == StoneColor.Black)
+            if (GameMaster.CurrentTurn == StoneColor.Black)
             {
                 blackTimeMs -= elapsedMs;
             }
@@ -612,20 +618,20 @@ namespace othelloForWpf
         /// </summary>
         internal bool HandleBoardClick(Point position)
         {
-            if (isTimedOut || gm.IsGameEnd)
+            if (isTimedOut || GameMaster.IsGameEnd)
             {
                 return false;
             }
 
             // COMの手番中(タイマー待ち)は人間のクリックを受け付けない
-            if (IsComTurn(gm.CurrentTurn))
+            if (IsComTurn(GameMaster.CurrentTurn))
             {
                 return false;
             }
 
             double boardWidth = boardHost.ActualWidth;
             double boardHeight = boardHost.ActualHeight;
-            if (boardWidth <= 0 || boardHeight <= 0 || draw.Width <= 0 || draw.Height <= 0)
+            if (boardWidth <= 0 || boardHeight <= 0 || Draw.Width <= 0 || Draw.Height <= 0)
             {
                 return false;
             }
@@ -633,14 +639,14 @@ namespace othelloForWpf
             // 盤面の画像(Draw.Canvas)はboardHost全体に引き伸ばして表示しているので、
             // DIP座標を画像のピクセル座標に直してから、Draw側の罫線と同じ計算式でマス目を求める
             // (DPI倍率はここでの比率に含まれる)。
-            int pixelX = (int)Math.Floor(position.X * draw.Width / boardWidth);
-            int pixelY = (int)Math.Floor(position.Y * draw.Height / boardHeight);
-            if (!Draw.TryGetCell(pixelX, pixelY, draw.Width, draw.Height, out int x, out int y))
+            int pixelX = (int)Math.Floor(position.X * Draw.Width / boardWidth);
+            int pixelY = (int)Math.Floor(position.Y * Draw.Height / boardHeight);
+            if (!Draw.TryGetCell(pixelX, pixelY, Draw.Width, Draw.Height, out int x, out int y))
             {
                 return false;
             }
 
-            if (gm.TryPut(x, y))
+            if (GameMaster.TryPut(x, y))
             {
                 RedrawBoard();
                 return true;
@@ -664,9 +670,9 @@ namespace othelloForWpf
                 return;
             }
 
-            if (pixelWidth != draw.Width || pixelHeight != draw.Height || draw.Canvas == null)
+            if (pixelWidth != Draw.Width || pixelHeight != Draw.Height || Draw.Canvas == null)
             {
-                draw.SetDrawArea(pixelWidth, pixelHeight);
+                Draw.SetDrawArea(pixelWidth, pixelHeight);
                 RedrawBoard();
             }
         }
@@ -678,18 +684,18 @@ namespace othelloForWpf
         /// </summary>
         private void RedrawBoard()
         {
-            bool showNotice = !isTimedOut && !gm.IsGameEnd && !IsComTurn(gm.CurrentTurn);
-            bool[,] validMoves = showNotice ? gm.GetValidMoves(gm.CurrentTurn) : null;
-            draw.DrawField(gm.Table, validMoves);
+            bool showNotice = !isTimedOut && !GameMaster.IsGameEnd && !IsComTurn(GameMaster.CurrentTurn);
+            bool[,] validMoves = showNotice ? GameMaster.GetValidMoves(GameMaster.CurrentTurn) : null;
+            Draw.DrawField(GameMaster.Table, validMoves);
             GetDpiScale(out double scaleX, out double scaleY);
-            pictureBoxField.Source = BoardImage.ToBitmapSource(draw.Canvas, 96.0 * scaleX, 96.0 * scaleY);
+            pictureBoxField.Source = BoardImage.ToBitmapSource(Draw.Canvas, 96.0 * scaleX, 96.0 * scaleY);
             UpdateStatusLabel();
             UpdateTimeLabel();
 
-            menuItem_Undo.IsEnabled = gm.CanUndo;
-            menuItem_Redo.IsEnabled = gm.CanRedo;
+            menuItem_Undo.IsEnabled = GameMaster.CanUndo;
+            menuItem_Redo.IsEnabled = GameMaster.CanRedo;
 
-            if (!isTimedOut && !gm.IsGameEnd && timeLimitSeconds >= 0)
+            if (!isTimedOut && !GameMaster.IsGameEnd && timeLimitSeconds >= 0)
             {
                 countdownTimer.Start();
             }
@@ -721,7 +727,7 @@ namespace othelloForWpf
         /// </summary>
         private void UpdateStatusLabel()
         {
-            gm.CountStone(out int blackCount, out int whiteCount);
+            GameMaster.CountStones(out int blackCount, out int whiteCount);
 
             if (isTimedOut)
             {
@@ -731,7 +737,7 @@ namespace othelloForWpf
                 return;
             }
 
-            if (gm.IsGameEnd)
+            if (GameMaster.IsGameEnd)
             {
                 string winner;
                 if (blackCount > whiteCount)
@@ -751,7 +757,7 @@ namespace othelloForWpf
             }
             else
             {
-                string turnName = gm.CurrentTurn == StoneColor.Black ? "黒" : "白";
+                string turnName = GameMaster.CurrentTurn == StoneColor.Black ? "黒" : "白";
                 label_Status.Text = string.Format("{0}の番 (黒:{1} 白:{2})", turnName, blackCount, whiteCount);
             }
         }
