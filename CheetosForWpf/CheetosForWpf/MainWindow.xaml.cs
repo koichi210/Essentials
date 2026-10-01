@@ -148,7 +148,7 @@ namespace CheetosForWpf
             sr.RegisterCtrl("PictMerge", "pm_SourceFolderPath", pm_SourceFolderPath);
             sr.RegisterCtrl("PictMerge", "pm_SourceFile1Prefix", pm_SourceFile1Prefix);
             sr.RegisterCtrl("PictMerge", "pm_SourceFile2Prefix", pm_SourceFile2Prefix);
-            sr.RegisterCtrl("PictMerge", "pm_TrimingHeight", pm_TrimingHeight);
+            sr.RegisterCtrl("PictMerge", "pm_TrimmingHeight", pm_TrimmingHeight);
 
             sr.RegisterCtrl("FileCollect", "fc_SourceFolderPath", fc_SourceFolderPath);
             sr.RegisterCtrl("FileCollect", "fc_DestFolderPath", fc_DestFolderPath);

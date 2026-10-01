@@ -146,7 +146,7 @@ namespace CheetosForWpf.Tests
                 writer.pm_SourceFolderPath.Text = @"D:\merge";
                 writer.pm_SourceFile1Prefix.Text = "left_";
                 writer.pm_SourceFile2Prefix.Text = "right_";
-                writer.pm_TrimingHeight.Text = "0,480\r\n-,-";
+                writer.pm_TrimmingHeight.Text = "0,480\r\n-,-";
 
                 writer.fc_SourceFolderPath.Text = @"D:\from";
                 writer.fc_DestFolderPath.Text = @"D:\to";
@@ -161,7 +161,7 @@ namespace CheetosForWpf.Tests
                 Assert.AreEqual(@"D:\merge", reader.pm_SourceFolderPath.Text);
                 Assert.AreEqual("left_", reader.pm_SourceFile1Prefix.Text);
                 Assert.AreEqual("right_", reader.pm_SourceFile2Prefix.Text);
-                Assert.AreEqual("0,480\r\n-,-", reader.pm_TrimingHeight.Text);
+                Assert.AreEqual("0,480\r\n-,-", reader.pm_TrimmingHeight.Text);
 
                 Assert.AreEqual(@"D:\from", reader.fc_SourceFolderPath.Text);
                 Assert.AreEqual(@"D:\to", reader.fc_DestFolderPath.Text);

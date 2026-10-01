@@ -21,7 +21,7 @@
                 <ColumnDefinition Width="Auto" />
             </Grid.ColumnDefinitions>
             <Label Grid.Column="0" Content="ファイルパス" Padding="2,0" Margin="0,0,4,0" VerticalAlignment="Center" />
-            <stc:TextBoxEx Grid.Column="1" x:Name="textBox_loadfiepath" FolderPathOnly="False" VerticalAlignment="Center" />
+            <stc:TextBoxEx Grid.Column="1" x:Name="textBox_LoadFilePath" FolderPathOnly="False" VerticalAlignment="Center" />
             <Button Grid.Column="2" x:Name="button_draw" Content="load" Width="75" Height="23" Margin="6,0,0,0" Click="button_ClickDraw" />
             <Button Grid.Column="4" x:Name="buttonOk" Content="OK" Width="75" Height="23" Click="buttonOk_Click" />
         </Grid>

@@ -38,7 +38,7 @@ namespace CheetosForWpf
         private void button_ClickDraw(object sender, RoutedEventArgs e)
         {
             pictureBox_Source.Source = null;
-            pictureBox_Source.Source = WpfUtils.LoadBitmapSource(textBox_loadfiepath.Text);
+            pictureBox_Source.Source = WpfUtils.LoadBitmapSource(textBox_LoadFilePath.Text);
             Draw();
         }
 
@@ -98,7 +98,7 @@ namespace CheetosForWpf
 
         private Boolean AdjustParam()
         {
-            if (!File.Exists(textBox_loadfiepath.Text))
+            if (!File.Exists(textBox_LoadFilePath.Text))
             {
                 return false;
             }
@@ -127,7 +127,7 @@ namespace CheetosForWpf
                 return;
             }
 
-            using (Drawing.Bitmap img = new Drawing.Bitmap(textBox_loadfiepath.Text))
+            using (Drawing.Bitmap img = new Drawing.Bitmap(textBox_LoadFilePath.Text))
             {
                 int max = Math.Max(img.Width, img.Height);
 

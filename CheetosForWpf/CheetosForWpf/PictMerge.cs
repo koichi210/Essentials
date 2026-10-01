@@ -172,7 +172,7 @@ namespace CheetosForWpf
             }
 
             // 切断基準となる高さ。書式の確認はバックグラウンドでは聞けないため、開始前にここで1回だけ行う
-            String[] trimHeightRanges = pm_TrimingHeight.Text.Split(new[] { Environment.NewLine }, StringSplitOptions.None);
+            String[] trimHeightRanges = pm_TrimmingHeight.Text.Split(new[] { Environment.NewLine }, StringSplitOptions.None);
             String[] invalidTrimHeights = global::CheetosForWpf.PictMerge.FindInvalidTrimHeights(trimHeightRanges);
             if (invalidTrimHeights.Length > 0)
             {
