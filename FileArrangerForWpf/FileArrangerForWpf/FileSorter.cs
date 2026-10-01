@@ -11,7 +11,7 @@ namespace FileArrangerForWpf
     ///
     /// 複数フォルダをまとめて Sort してから1回だけ CommitBatch する、という使い方は
     /// 元の Form1 の呼び出し順序（ループで SortFolder → ループの外で1回だけ
-    /// IncrementRegistNumber）をそのまま踏襲している。Restore() は1回呼ぶと、
+    /// IncrementSerialNumber）をそのまま踏襲している。Restore() は1回呼ぶと、
     /// 直前に CommitBatch した分（複数フォルダにまたがることもある）をまとめて元に戻す。
     /// </summary>
     internal class FileSorter
@@ -27,14 +27,14 @@ namespace FileArrangerForWpf
                 String ext = Path.GetExtension(files[i]);
                 String destName = folderPath + @"\" + String.Format("{0:D3}", i) + ext;
                 File.Move(files[i], destName);
-                pm.SetRestoreList(files[i], destName);
+                pm.AddRestoreItem(files[i], destName);
             }
         }
 
         /// <summary>SortFolder を1回以上呼んだあと、まとめて1回の「実行」として記録を確定する。</summary>
         public void CommitBatch()
         {
-            pm.IncrementRegistNumber();
+            pm.IncrementSerialNumber();
         }
 
         /// <summary>
@@ -43,16 +43,16 @@ namespace FileArrangerForWpf
         /// </summary>
         public Boolean Restore()
         {
-            if (!pm.DecrementRegistNumber())
+            if (!pm.DecrementSerialNumber())
             {
                 return false;
             }
 
-            while (pm.IsExistRestoreList())
+            while (pm.HasRestoreItem())
             {
                 String srcName = "";
                 String destName = "";
-                pm.GetRestoreList(ref srcName, ref destName);
+                pm.PopRestoreItem(ref srcName, ref destName);
                 File.Move(destName, srcName);
             }
 

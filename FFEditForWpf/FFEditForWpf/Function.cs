@@ -51,7 +51,7 @@ namespace FFEditForWpf
                         if (fm.Move(srcName, destName))
                         {
                             // 復元用に設定を覚えておく
-                            fm.SetRestoreList(srcName, destName);
+                            fm.AddRestoreItem(srcName, destName);
                         }
                         else
                         {
@@ -76,7 +76,7 @@ namespace FFEditForWpf
                         break;
                 }
             }
-            fm.IncrementRegistNumber();
+            fm.IncrementSerialNumber();
 
             return errorList;
         }

@@ -63,7 +63,7 @@ namespace FileArrangerForWpf
             ResizeRenameColumnsEvenly();
             ResizePartitionColumnsEvenly();
 
-            RegistLoadItem();
+            RegisterLoadItem();
 
             // 起動時は既定の設定ファイル(FileArranger.json)を読む。旧XMLからの移行はWinForms版で済んでいる前提
             SaveRestore.LoadOrDefault(Path.Combine(userDataFolder, SettingFileName));
@@ -102,45 +102,45 @@ namespace FileArrangerForWpf
         // *******************************************************************************
         // 設定の保存/読込(WinForms版SaveRestore.cs)
 
-        internal void RegistLoadItem()
+        internal void RegisterLoadItem()
         {
-            // キーはWinForms版(SaveRestore.RegistLoadItem)と同じにすること。
+            // キーはWinForms版(SaveRestore.RegisterLoadItem)と同じにすること。
             // 第2引数(キー名)にtypoが残っているもの・タブと合っていないもの(rd_comboBox_RenameDirが"MoveDir")があるが、
             // 直すと既存の設定ファイルの値が読めなくなるため、WinForms版のまま
-            SaveRestore.RegistCtrl("Common", "cmn_textBox_Reference", cmn_textBox_Reference);
-            SaveRestore.RegistCtrl("Common", "cmn_textBox_AddList", cmn_textBox_AddList);
-            SaveRestore.RegistCtrl("Common", "cmn_textBox_AddListSuffix", cmn_textBox_AddListSuffix);
+            SaveRestore.RegisterCtrl("Common", "cmn_textBox_Reference", cmn_textBox_Reference);
+            SaveRestore.RegisterCtrl("Common", "cmn_textBox_AddList", cmn_textBox_AddList);
+            SaveRestore.RegisterCtrl("Common", "cmn_textBox_AddListSuffix", cmn_textBox_AddListSuffix);
 
-            SaveRestore.RegistCtrl("MoveDir", "md_textBox_SourceDir", md_textBox_SourceDir);
-            RegistComboHistory("MoveDir", "md_comboBox_TargetDir", md_comboBox_TargetDir);
-            SaveRestore.RegistCtrl("MoveDir", "md_comboBox_TargetDir", md_comboBox_TargetDir);
+            SaveRestore.RegisterCtrl("MoveDir", "md_textBox_SourceDir", md_textBox_SourceDir);
+            RegisterComboHistory("MoveDir", "md_comboBox_TargetDir", md_comboBox_TargetDir);
+            SaveRestore.RegisterCtrl("MoveDir", "md_comboBox_TargetDir", md_comboBox_TargetDir);
 
-            RegistComboHistory("MoveDir", "rd_comboBox_RenameDir", rd_comboBox_RenameDir);
-            SaveRestore.RegistCtrl("MoveDir", "rd_comboBox_RenameDir", rd_comboBox_RenameDir);
-            SaveRestore.RegistCtrl("RenameDir", "rd_textBox_ExistItemDir", rd_textBox_ExistItemDir);
-            SaveRestore.RegistCtrl("RenameDir", "rd_comboBox_MergeWord", rd_comboBox_MergeWord);
-            SaveRestore.RegistCtrl("RenameDir", "rd_checkBox_FileOpen", rd_checkBox_FileOpen);
-            SaveRestore.RegistCtrl("RenameDir", "rd_textBox_SplitWord3", rd_textBox_SplitWord3);
-            SaveRestore.RegistCtrl("RenameDir", "rd_textBox_AddTitlePreWord", rd_textBox_AddTitlePreWord);
-            SaveRestore.RegistCtrl("RenameDir", "rd_textBox_SearchTitleLine", rd_textBox_SearchTitleLine);
-            SaveRestore.RegistCtrl("RenameDir", "rd_textBox_SearchTitleLength", rd_textBox_SearchTitleLength);
-            RegistComboHistory("RenameDir", "rd_comboBox_AddTitlePostWord", rd_comboBox_AddTitlePostWord);
-            SaveRestore.RegistCtrl("RenameDir", "rd_comboBox_AddTitlePostWord", rd_comboBox_AddTitlePostWord);
+            RegisterComboHistory("MoveDir", "rd_comboBox_RenameDir", rd_comboBox_RenameDir);
+            SaveRestore.RegisterCtrl("MoveDir", "rd_comboBox_RenameDir", rd_comboBox_RenameDir);
+            SaveRestore.RegisterCtrl("RenameDir", "rd_textBox_ExistItemDir", rd_textBox_ExistItemDir);
+            SaveRestore.RegisterCtrl("RenameDir", "rd_comboBox_MergeWord", rd_comboBox_MergeWord);
+            SaveRestore.RegisterCtrl("RenameDir", "rd_checkBox_FileOpen", rd_checkBox_FileOpen);
+            SaveRestore.RegisterCtrl("RenameDir", "rd_textBox_SplitWord3", rd_textBox_SplitWord3);
+            SaveRestore.RegisterCtrl("RenameDir", "rd_textBox_AddTitlePreWord", rd_textBox_AddTitlePreWord);
+            SaveRestore.RegisterCtrl("RenameDir", "rd_textBox_SearchTitleLine", rd_textBox_SearchTitleLine);
+            SaveRestore.RegisterCtrl("RenameDir", "rd_textBox_SearchTitleLength", rd_textBox_SearchTitleLength);
+            RegisterComboHistory("RenameDir", "rd_comboBox_AddTitlePostWord", rd_comboBox_AddTitlePostWord);
+            SaveRestore.RegisterCtrl("RenameDir", "rd_comboBox_AddTitlePostWord", rd_comboBox_AddTitlePostWord);
 
-            SaveRestore.RegistCtrl("SortFileName", "sf_textBox_TargetFile", sf_textBox_TargetFile);
+            SaveRestore.RegisterCtrl("SortFileName", "sf_textBox_TargetFile", sf_textBox_TargetFile);
 
-            SaveRestore.RegistCtrl("MoveFile", "mf_textBox_SourceDir", mf_textBox_SourceDir);
-            SaveRestore.RegistCtrl("MoveFile", "mf_textBox_TargetDir", mf_textBox_TargetDir);
+            SaveRestore.RegisterCtrl("MoveFile", "mf_textBox_SourceDir", mf_textBox_SourceDir);
+            SaveRestore.RegisterCtrl("MoveFile", "mf_textBox_TargetDir", mf_textBox_TargetDir);
 
-            SaveRestore.RegistCtrl("PartitionFile", "pf_textBox_TargetFile", pf_textBox_TargetFile);
-            SaveRestore.RegistCtrl("PartitionFile", "pf_textBox_ReferenceFile", pf_textBox_ReferenceFile, LegacyAttrValue: "pf_textBox_RefrenceFile");
-            SaveRestore.RegistCtrl("PartitionFile", "pf_textBox_TargetSeparator", pf_textBox_TargetSeparator, LegacyAttrValue: "pf_textBox_TargetSeprator");
-            SaveRestore.RegistCtrl("PartitionFile", "pf_textBox_SearchTitleLine", pf_textBox_SearchTitleLine);
-            SaveRestore.RegistCtrl("PartitionFile", "pf_textBox_SearchTitleLength", pf_textBox_SearchTitleLength);
-            SaveRestore.RegistCtrl("PartitionFile", "pf_checkBox_CreateNewDir", pf_checkBox_CreateNewDir);
+            SaveRestore.RegisterCtrl("PartitionFile", "pf_textBox_TargetFile", pf_textBox_TargetFile);
+            SaveRestore.RegisterCtrl("PartitionFile", "pf_textBox_ReferenceFile", pf_textBox_ReferenceFile, legacyAttrValue: "pf_textBox_RefrenceFile");
+            SaveRestore.RegisterCtrl("PartitionFile", "pf_textBox_TargetSeparator", pf_textBox_TargetSeparator, legacyAttrValue: "pf_textBox_TargetSeprator");
+            SaveRestore.RegisterCtrl("PartitionFile", "pf_textBox_SearchTitleLine", pf_textBox_SearchTitleLine);
+            SaveRestore.RegisterCtrl("PartitionFile", "pf_textBox_SearchTitleLength", pf_textBox_SearchTitleLength);
+            SaveRestore.RegisterCtrl("PartitionFile", "pf_checkBox_CreateNewDir", pf_checkBox_CreateNewDir);
 
             // WinForms版SaveJsonFile/LoadJsonFileが"ReferenceCandidate|Value_"というキーでprofileに相乗りさせていた配列
-            SaveRestore.RegistList(ReferenceCandidateAttrName, ReferenceCandidateAttrValue,
+            SaveRestore.RegisterList(ReferenceCandidateAttrName, ReferenceCandidateAttrValue,
                 () => (ReferenceCandidateFolders ?? new String[0]).ToList(),
                 items => ReferenceCandidateFolders = items.ToArray());
         }
@@ -148,9 +148,9 @@ namespace FileArrangerForWpf
         // ComboBoxの項目一覧(履歴)を保存する(WinForms版のRegistCtrlList相当)。
         // WpfSaveRestore.RegistCtrlListは値(Text)を戻した後にItems.Clearするため、入力可能なComboBoxでは
         // 戻したTextが消えてしまうことがある。入れ替え時にTextを残すよう、ここで登録している
-        private void RegistComboHistory(String attrName, String attrValue, ComboBox ctrl)
+        private void RegisterComboHistory(String attrName, String attrValue, ComboBox ctrl)
         {
-            SaveRestore.RegistList(attrName, attrValue,
+            SaveRestore.RegisterList(attrName, attrValue,
                 () => WpfControlHelper.GetItems(ctrl),
                 items => WpfControlHelper.SetItemsKeepText(ctrl, items));
         }

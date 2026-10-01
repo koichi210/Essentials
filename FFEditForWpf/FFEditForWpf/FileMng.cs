@@ -14,16 +14,16 @@ namespace FFEditForWpf
         // Rename/Functionの両方に同じ実装が置かれていたためここへ集約した
         public Boolean RestoreAll()
         {
-            if (!DecrementRegistNumber())
+            if (!DecrementSerialNumber())
             {
                 return false;
             }
 
-            while (IsExistRestoreList())
+            while (HasRestoreItem())
             {
                 String srcName = "";
                 String destName = "";
-                GetRestoreList(ref srcName, ref destName);
+                PopRestoreItem(ref srcName, ref destName);
                 Move(destName, srcName);
             }
 

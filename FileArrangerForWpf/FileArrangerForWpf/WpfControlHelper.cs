@@ -1,5 +1,5 @@
 // StcUtils([[_Common/StandardTemplateClass.cs]])のうち、WinFormsのコントロールを引数に取るもの
-// (SetComboBoxFromArray/SetComboBoxFromArraySubString/FindStringFromComboBox/ModifyCombBoxList/
+// (SetComboBoxFromArray/SetComboBoxFromArraySubString/FindStringFromComboBox/AddComboBoxTextToItems/
 //  CopyToClipboard/SelectAll)を、WPFのコントロールで使えるようにしたプロジェクト内ヘルパー。
 // 中身はWinForms版と同じ処理にしてある(ModifyCombBoxListはスペルを直してModifyComboBoxListにした)。
 //

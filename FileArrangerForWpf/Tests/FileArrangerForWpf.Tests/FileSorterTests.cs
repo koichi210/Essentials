@@ -71,7 +71,7 @@ namespace FileArrangerForWpf.Tests
         public void SortFolder_空フォルダのあとCommitしてもRestoreはtrueを返す()
         {
             // 記録するものが何も無いので、実際に元へ戻す対象は無い。それでも
-            // DecrementRegistNumber 自体は成功する（CommitBatchでCurrentIdxを1つ
+            // DecrementSerialNumber 自体は成功する（CommitBatchでCurrentIdxを1つ
             // 進めているので）ため、Restore() の戻り値は true になる。
             // 「戻せた」ではなく「巻き戻しの帳尻は合った」という意味の true であることに注意。
             // FFEdit の Function.Copy 後の Restore と同じ仕様（呼び出し元は判断できない）。

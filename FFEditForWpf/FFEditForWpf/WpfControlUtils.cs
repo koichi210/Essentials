@@ -1,5 +1,5 @@
 // StcUtils([[_Common/StandardTemplateClass.cs]])のうち、WinFormsのコントロールを引数に取るため
-// WPFから呼べないもの(ModifyCombBoxList / GetSelectName / CopyToClipboard)のWPF版。
+// WPFから呼べないもの(AddComboBoxTextToItems / GetSelectName / CopyToClipboard)のWPF版。
 // 挙動はWinForms版と同じにしてある。他のアプリでも使うようなら_Common/Wpfへ移す候補。
 using System;
 using System.Collections.Generic;
@@ -16,7 +16,7 @@ namespace FFEditForWpf
     {
         // ComboBoxのTextをプルダウン(履歴)に追加し、重複を取り除く。Textが空なら何もしない。
         // (StcUtils.ModifyCombBoxListと同じ。Items.Clearで入力中の文字列が消えないよう、Textは退避して戻す)
-        public static void ModifyCombBoxList(ComboBox comboBox)
+        public static void AddComboBoxTextToItems(ComboBox comboBox)
         {
             String text = comboBox.Text;
             if (text == String.Empty)

@@ -73,11 +73,11 @@ namespace FFEditForWpf
 
         internal void RegisterSettingItems()
         {
-            // キーはWinForms版(SaveRestore.RegistItem)と同じにすること
-            SaveRestore.RegistCtrlList("comboBox_TargetDir", "Value_", comboBox_TargetDir);
-            SaveRestore.RegistCtrlList("comboBox_String1", "Value_", comboBox_String1);
-            SaveRestore.RegistCtrlList("comboBox_String2", "Value_", comboBox_String2);
-            SaveRestore.RegistCtrl("textBox_Target_Extension", "Value", textBox_Target_Extension, "*");
+            // キーはWinForms版(SaveRestore.RegisterItem)と同じにすること
+            SaveRestore.RegisterCtrlList("comboBox_TargetDir", "Value_", comboBox_TargetDir);
+            SaveRestore.RegisterCtrlList("comboBox_String1", "Value_", comboBox_String1);
+            SaveRestore.RegisterCtrlList("comboBox_String2", "Value_", comboBox_String2);
+            SaveRestore.RegisterCtrl("textBox_Target_Extension", "Value", textBox_Target_Extension, "*");
         }
 
         // WinForms版のSaveRestore.LoadProcと同じ。ファイル名が空なら何もせず失敗を返す。
@@ -106,9 +106,9 @@ namespace FFEditForWpf
             }
 
             // コンボボックスの更新
-            WpfControlUtils.ModifyCombBoxList(comboBox_TargetDir);
-            WpfControlUtils.ModifyCombBoxList(comboBox_String1);
-            WpfControlUtils.ModifyCombBoxList(comboBox_String2);
+            WpfControlUtils.AddComboBoxTextToItems(comboBox_TargetDir);
+            WpfControlUtils.AddComboBoxTextToItems(comboBox_String1);
+            WpfControlUtils.AddComboBoxTextToItems(comboBox_String2);
 
             return SaveRestore.Save(saveFileName);
         }

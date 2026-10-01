@@ -16,7 +16,7 @@ namespace FileArrangerForWpf.Tests
         {
             var pm = new StcProcessMemory();
 
-            Assert.IsFalse(pm.IsExistRestoreList());
+            Assert.IsFalse(pm.HasRestoreItem());
         }
 
         [TestMethod]
@@ -24,21 +24,21 @@ namespace FileArrangerForWpf.Tests
         {
             var pm = new StcProcessMemory();
 
-            Assert.IsFalse(pm.DecrementRegistNumber());
+            Assert.IsFalse(pm.DecrementSerialNumber());
         }
 
         [TestMethod]
         public void GetRestoreListは後から登録した順に取り出される()
         {
             var pm = new StcProcessMemory();
-            pm.SetRestoreList("1_src", "1_dst");
-            pm.SetRestoreList("2_src", "2_dst");
+            pm.AddRestoreItem("1_src", "1_dst");
+            pm.AddRestoreItem("2_src", "2_dst");
 
             string src = "", dst = "";
-            pm.GetRestoreList(ref src, ref dst);
+            pm.PopRestoreItem(ref src, ref dst);
             Assert.AreEqual("2_src", src);
 
-            pm.GetRestoreList(ref src, ref dst);
+            pm.PopRestoreItem(ref src, ref dst);
             Assert.AreEqual("1_src", src);
         }
 
@@ -47,17 +47,17 @@ namespace FileArrangerForWpf.Tests
         {
             var pm = new StcProcessMemory();
 
-            pm.SetRestoreList("1a_src", "1a_dst");
-            pm.IncrementRegistNumber();
+            pm.AddRestoreItem("1a_src", "1a_dst");
+            pm.IncrementSerialNumber();
 
-            pm.SetRestoreList("2a_src", "2a_dst");
-            pm.IncrementRegistNumber();
+            pm.AddRestoreItem("2a_src", "2a_dst");
+            pm.IncrementSerialNumber();
 
-            Assert.IsTrue(pm.DecrementRegistNumber());
+            Assert.IsTrue(pm.DecrementSerialNumber());
             string src = "", dst = "";
-            pm.GetRestoreList(ref src, ref dst);
+            pm.PopRestoreItem(ref src, ref dst);
             Assert.AreEqual("2a_src", src, "直近の実行分だけが取り出される");
-            Assert.IsFalse(pm.IsExistRestoreList(), "2回目の分は1件だけ");
+            Assert.IsFalse(pm.HasRestoreItem(), "2回目の分は1件だけ");
         }
     }
 }

@@ -48,13 +48,13 @@ namespace MailerForWpf
 
         internal void RegisterSettingItems()
         {
-            // キーはWinForms版(SaveRestore.RegistLoadItem)と同じにすること
-            SaveRestore.RegistCtrl("Common", "textBox_BrowserPath", textBox_BrowserPath);
-            SaveRestore.RegistCtrl("Common", "textBox_MailTo", textBox_MailTo);
-            SaveRestore.RegistCtrl("Common", "textBox_MailCc", textBox_MailCc);
-            SaveRestore.RegistCtrl("Common", "textBox_MailBcc", textBox_MailBcc);
-            SaveRestore.RegistCtrl("Common", "textBox_MailSubject", textBox_MailSubject);
-            SaveRestore.RegistCtrl("Common", "textBox_MailBody", textBox_MailBody);
+            // キーはWinForms版(SaveRestore.RegisterLoadItem)と同じにすること
+            SaveRestore.RegisterCtrl("Common", "textBox_BrowserPath", textBox_BrowserPath);
+            SaveRestore.RegisterCtrl("Common", "textBox_MailTo", textBox_MailTo);
+            SaveRestore.RegisterCtrl("Common", "textBox_MailCc", textBox_MailCc);
+            SaveRestore.RegisterCtrl("Common", "textBox_MailBcc", textBox_MailBcc);
+            SaveRestore.RegisterCtrl("Common", "textBox_MailSubject", textBox_MailSubject);
+            SaveRestore.RegisterCtrl("Common", "textBox_MailBody", textBox_MailBody);
         }
 
         private void comboBox_LoadSetting_SelectionChanged(object sender, SelectionChangedEventArgs e)

@@ -133,7 +133,7 @@ namespace FFEditForWpf.Tests
         [TestMethod]
         public void SaveSettingは今入力中の文字列を履歴に追加してから重複を整理する()
         {
-            // ModifyCombBoxList は Items を無条件に整理するわけではない。
+            // AddComboBoxTextToItems は Items を無条件に整理するわけではない。
             // ComboBox.Text（今まさに入力/選択されている値）が空ならそのまま何もせず戻り、
             // 空でなければ Text を Items に追加したうえで重複を取り除く、という動き。
             StaRunner.Run(() =>
@@ -189,7 +189,7 @@ namespace FFEditForWpf.Tests
                 var reader = new MainWindow();
                 Assert.IsTrue(reader.SaveRestore.Load(path));
                 Assert.AreEqual(2, reader.comboBox_String1.Items.Count,
-                    "Text が空だと ModifyCombBoxList は即 return するので重複はそのまま残る");
+                    "Text が空だと AddComboBoxTextToItems は即 return するので重複はそのまま残る");
             });
         }
 

@@ -92,7 +92,7 @@ namespace CheetosForWpf
             util.SetCurrentDirectory();
 
             // デバッグログに時間を表示
-            debug.SetWriteTime(true);
+            debug.UseTimeInLog = true;
 
             InitializeBackgroundWorkers();
 
@@ -112,47 +112,47 @@ namespace CheetosForWpf
 
         internal void RegisterSaveRestoreItems()
         {
-            // キーはWinForms版(SaveRestore.RegistItem)と同じにすること。
+            // キーはWinForms版(SaveRestore.RegisterItem)と同じにすること。
             // 第2引数(設定ファイルのキー名)のtypoはWinForms版で修正済みで、旧キーはLegacyAttrValueで読み替える
-            sr.RegistCtrl("CaptureWindow", "cw_TextBox_SavePath", cw_TextBox_SavePath);
-            sr.RegistCtrl("CaptureWindow", "cw_TextBox_SaveFilePrefix", cw_TextBox_SaveFilePrefix, LegacyAttrValue: "cw_TextBox_SaveFilePrifix");
-            sr.RegistCtrl("CaptureWindow", "cw_checkBox_AddTimeStamp", cw_checkBox_AddTimeStamp, LegacyAttrValue: "cw_checkBox_AddTimeStump");
-            sr.RegistCtrl("CaptureWindow", "cw_Radio_FullScreen", cw_Radio_FullScreen, "True");
-            sr.RegistCtrl("CaptureWindow", "cw_Radio_CurrentScreen", cw_Radio_CurrentScreen);
-            sr.RegistCtrl("CaptureWindow", "cw_Radio_CurrentWindow", cw_Radio_CurrentWindow);
-            sr.RegistCtrl("CaptureWindow", "cw_TextBox_Sleep", cw_TextBox_Sleep, "2000");
-            sr.RegistCtrl("CaptureWindow", "cw_TextBox_Loop", cw_TextBox_Loop, "2");
-            sr.RegistGrid("DataGrid", "Cell", GetGridRows, SetGridRows);
+            sr.RegisterCtrl("CaptureWindow", "cw_TextBox_SavePath", cw_TextBox_SavePath);
+            sr.RegisterCtrl("CaptureWindow", "cw_TextBox_SaveFilePrefix", cw_TextBox_SaveFilePrefix, legacyAttrValue: "cw_TextBox_SaveFilePrifix");
+            sr.RegisterCtrl("CaptureWindow", "cw_checkBox_AddTimeStamp", cw_checkBox_AddTimeStamp, legacyAttrValue: "cw_checkBox_AddTimeStump");
+            sr.RegisterCtrl("CaptureWindow", "cw_Radio_FullScreen", cw_Radio_FullScreen, "True");
+            sr.RegisterCtrl("CaptureWindow", "cw_Radio_CurrentScreen", cw_Radio_CurrentScreen);
+            sr.RegisterCtrl("CaptureWindow", "cw_Radio_CurrentWindow", cw_Radio_CurrentWindow);
+            sr.RegisterCtrl("CaptureWindow", "cw_TextBox_Sleep", cw_TextBox_Sleep, "2000");
+            sr.RegisterCtrl("CaptureWindow", "cw_TextBox_Loop", cw_TextBox_Loop, "2");
+            sr.RegisterGrid("DataGrid", "Cell", GetGridRows, SetGridRows);
 
-            sr.RegistCtrl("PictTrim", "pt_SourceFolderPath", pt_SourceFolderPath);
-            sr.RegistCtrl("PictTrim", "pt_BaseX", pt_BaseX);
-            sr.RegistCtrl("PictTrim", "pt_BaseY", pt_BaseY);
-            sr.RegistCtrl("PictTrim", "pt_Radio_SelectPointOfEnd", pt_Radio_SelectPointOfEnd);
-            sr.RegistCtrl("PictTrim", "pt_Radio_SelectSizeOfEnd", pt_Radio_SelectSizeOfEnd);
-            sr.RegistCtrl("PictTrim", "pt_TargetX", pt_TargetX);
-            sr.RegistCtrl("PictTrim", "pt_TargetY", pt_TargetY);
+            sr.RegisterCtrl("PictTrim", "pt_SourceFolderPath", pt_SourceFolderPath);
+            sr.RegisterCtrl("PictTrim", "pt_BaseX", pt_BaseX);
+            sr.RegisterCtrl("PictTrim", "pt_BaseY", pt_BaseY);
+            sr.RegisterCtrl("PictTrim", "pt_Radio_SelectPointOfEnd", pt_Radio_SelectPointOfEnd);
+            sr.RegisterCtrl("PictTrim", "pt_Radio_SelectSizeOfEnd", pt_Radio_SelectSizeOfEnd);
+            sr.RegisterCtrl("PictTrim", "pt_TargetX", pt_TargetX);
+            sr.RegisterCtrl("PictTrim", "pt_TargetY", pt_TargetY);
 
-            sr.RegistCtrl("Rotation", "pr_SourceFolderPath", pr_SourceFolderPath);
-            sr.RegistCtrl("Rotation", "pr_BaseX", pr_BaseX);
-            sr.RegistCtrl("Rotation", "pr_BaseY", pr_BaseY);
-            sr.RegistCtrl("Rotation", "pr_Angle", pr_Angle);
+            sr.RegisterCtrl("Rotation", "pr_SourceFolderPath", pr_SourceFolderPath);
+            sr.RegisterCtrl("Rotation", "pr_BaseX", pr_BaseX);
+            sr.RegisterCtrl("Rotation", "pr_BaseY", pr_BaseY);
+            sr.RegisterCtrl("Rotation", "pr_Angle", pr_Angle);
 
-            sr.RegistCtrl("DistOrient", "do_SourceFolderPath", do_SourceFolderPath);
-            sr.RegistCtrl("DistOrient", "do_DestPortFolderPath", do_DestPortFolderPath);
-            sr.RegistCtrl("DistOrient", "do_DestLandFolderPath", do_DestLandFolderPath);
-            sr.RegistCtrl("DistOrient", "do_TargetFileName", do_TargetFileName);
-            sr.RegistCtrl("DistOrient", "do_WhiteLength", do_WhiteLength);
-            sr.RegistCtrl("DistOrient", "do_WhiteCoef", do_WhiteCoef, "30");
-            sr.RegistCtrl("DistOrient", "do_SampleFilePath", do_SampleFilePath);
+            sr.RegisterCtrl("DistOrient", "do_SourceFolderPath", do_SourceFolderPath);
+            sr.RegisterCtrl("DistOrient", "do_DestPortFolderPath", do_DestPortFolderPath);
+            sr.RegisterCtrl("DistOrient", "do_DestLandFolderPath", do_DestLandFolderPath);
+            sr.RegisterCtrl("DistOrient", "do_TargetFileName", do_TargetFileName);
+            sr.RegisterCtrl("DistOrient", "do_WhiteLength", do_WhiteLength);
+            sr.RegisterCtrl("DistOrient", "do_WhiteCoef", do_WhiteCoef, "30");
+            sr.RegisterCtrl("DistOrient", "do_SampleFilePath", do_SampleFilePath);
 
-            sr.RegistCtrl("PictMerge", "pm_SourceFolderPath", pm_SourceFolderPath);
-            sr.RegistCtrl("PictMerge", "pm_SourceFile1Prefix", pm_SourceFile1Prefix);
-            sr.RegistCtrl("PictMerge", "pm_SourceFile2Prefix", pm_SourceFile2Prefix);
-            sr.RegistCtrl("PictMerge", "pm_TrimingHeight", pm_TrimingHeight);
+            sr.RegisterCtrl("PictMerge", "pm_SourceFolderPath", pm_SourceFolderPath);
+            sr.RegisterCtrl("PictMerge", "pm_SourceFile1Prefix", pm_SourceFile1Prefix);
+            sr.RegisterCtrl("PictMerge", "pm_SourceFile2Prefix", pm_SourceFile2Prefix);
+            sr.RegisterCtrl("PictMerge", "pm_TrimingHeight", pm_TrimingHeight);
 
-            sr.RegistCtrl("FileCollect", "fc_SourceFolderPath", fc_SourceFolderPath);
-            sr.RegistCtrl("FileCollect", "fc_DestFolderPath", fc_DestFolderPath);
-            sr.RegistCtrl("FileCollect", "fc_TargetFileName", fc_TargetFileName);
+            sr.RegisterCtrl("FileCollect", "fc_SourceFolderPath", fc_SourceFolderPath);
+            sr.RegisterCtrl("FileCollect", "fc_DestFolderPath", fc_DestFolderPath);
+            sr.RegisterCtrl("FileCollect", "fc_TargetFileName", fc_TargetFileName);
         }
 
         // WinForms版SaveRestore.LoadProcと同じく、読み込み前にdo_WhiteCoefを既定値(30)へ戻してから読む
@@ -291,8 +291,8 @@ namespace CheetosForWpf
                 return;
             }
 
-            debug.SetDebugMode(!debug.GetDebugMode());
-            MessageBox.Show("DebugMode=" + debug.GetDebugMode().ToString());
+            debug.IsDebugMode = !debug.IsDebugMode;
+            MessageBox.Show("DebugMode=" + debug.IsDebugMode.ToString());
         }
 
         public void SetStartTime()

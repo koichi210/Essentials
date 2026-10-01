@@ -127,7 +127,7 @@ namespace FFEditForWpf.Tests
         {
             // Function.Execute の Copy ケースは「コピーのときは処理を覚えない」とコメントされており、
             // 復元リストに何も登録していない。ただし Execute() は種類に関わらず末尾で
-            // IncrementRegistNumber を呼ぶため、Restore() の DecrementRegistNumber 自体は成功し、
+            // IncrementSerialNumber を呼ぶため、Restore() の DecrementSerialNumber 自体は成功し、
             // Restore() の戻り値は true になる（実際に戻す対象が無くても、という点は現状の仕様）。
             CreateFile("a.txt");
 

@@ -28,17 +28,17 @@ namespace FileArrangerForWpf
 
         private void rd_button_RenameFolderRestore_Click(object sender, RoutedEventArgs e)
         {
-            if (!renameDirMemory.DecrementRegistNumber())
+            if (!renameDirMemory.DecrementSerialNumber())
             {
                 MessageBox.Show("これ以上復元できません");
                 return;
             }
 
-            while (renameDirMemory.IsExistRestoreList())
+            while (renameDirMemory.HasRestoreItem())
             {
                 String srcName = "";
                 String destName = "";
-                renameDirMemory.GetRestoreList(ref srcName, ref destName);
+                renameDirMemory.PopRestoreItem(ref srcName, ref destName);
                 Directory.Move(destName, srcName);
             }
             ListupRenameTargetDirectory();
@@ -67,9 +67,9 @@ namespace FileArrangerForWpf
                 // ファイル名の重複回避
                 util.AvoidFileNameOverlap(ref destName, i);
                 fio.MoveDirectory(srcName, destName);
-                renameDirMemory.SetRestoreList(srcName, destName);
+                renameDirMemory.AddRestoreItem(srcName, destName);
             }
-            renameDirMemory.IncrementRegistNumber();
+            renameDirMemory.IncrementSerialNumber();
 
             ListupRenameTargetDirectory(idx);
         }
