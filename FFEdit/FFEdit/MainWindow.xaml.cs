@@ -411,7 +411,11 @@ namespace FFEdit
             rename.Param1 = comboBox_String1.Text;
             rename.Param2 = comboBox_String2.Text;
 
-            rename.FirstNumber = int.Parse(textBox_ChangeNumber_FirstVal.Text);
+            // 連番モード以外ではtextBox_ChangeNumber_FirstValは空欄のままなので、
+            // 他のモード用ガード(isChangeNumber等)と同じ考え方でモード判定してからParseする
+            rename.FirstNumber = radioButton_ChangeNumber.IsChecked == true
+                ? int.Parse(textBox_ChangeNumber_FirstVal.Text)
+                : 0;
             rename.KeepOriginalName = checkBox_ChangeNumber_OrgName.IsChecked == true;
             rename.PaddingDigits = GetPaddingDigits();
 

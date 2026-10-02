@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Reflection;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using StandardTemplate.Wpf.Tests;
 
@@ -176,6 +177,31 @@ namespace FFEdit.Tests
             Assert.AreEqual(TimeSpan.TicksPerHour, MainWindow.GetTickTime(3));
             Assert.AreEqual(TimeSpan.TicksPerDay, MainWindow.GetTickTime(4));
             Assert.AreEqual(0L, MainWindow.GetTickTime(-1));
+        }
+
+        // 回帰テスト: textBox_ChangeNumber_FirstVal は「連番」モード専用の入力欄で、
+        // 他のモードでは空欄のまま使われる(radioButton_ChangeNumberがfalseの時Enabled=falseになる)。
+        // 以前はChangeName()内でモードを見ずに無条件でint.Parseしていたため、
+        // 連番以外のモード(例:ChangeAdd)でFirstValが空欄だとFormatExceptionで落ちていた
+        [TestMethod]
+        public void ChangeNameは連番モード以外ならFirstValが空欄でも例外にならない()
+        {
+            StaRunner.Run(() =>
+            {
+                var window = new MainWindow();
+
+                // デフォルトは連番モードなので、別モード(先頭/後方に文字列追加)に切り替える
+                window.radioButton_ChangeAdd.IsChecked = true;
+                window.textBox_ChangeNumber_FirstVal.Text = ""; // 連番モードでなければ空欄のまま使われるのが通常の状態
+                window.comboBox_TargetDir.Text = tempDirectory;
+
+                // 対象ファイル一覧(listBox)は空のままなので、実際のファイル操作は走らない。
+                // ここで確認したいのはint.Parse(FormatException)で落ちないことだけ
+                MethodInfo changeName = typeof(MainWindow).GetMethod("ChangeName", BindingFlags.NonPublic | BindingFlags.Instance);
+                object errorList = changeName.Invoke(window, null);
+
+                Assert.AreEqual(string.Empty, errorList);
+            });
         }
 
         [TestMethod]
