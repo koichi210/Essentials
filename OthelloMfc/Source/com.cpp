@@ -1,16 +1,16 @@
-#include "stdafx.h"
+ï»¿#include "stdafx.h"
 #include "othelloDef.h"
 #include "othellobase.h"
 #include "com.h"
 
-// ƒRƒ“ƒXƒgƒ‰ƒNƒ^
+// ã‚³ãƒ³ã‚¹ãƒˆãƒ©ã‚¯ã‚¿
 CComProc::CComProc()
 {
 	// before radom proc
 	srand( (unsigned)time( NULL ) );
 }
 
-// ƒfƒXƒgƒ‰ƒNƒ^
+// ãƒ‡ã‚¹ãƒˆãƒ©ã‚¯ã‚¿
 CComProc::~CComProc()
 {
 	// none
@@ -75,7 +75,7 @@ int CComProc::Turn(CPoint * z, int myclr, int com_level, int tn_cnt)
 	return rt ;
 }
 
-// +-+-+-+- ƒŒƒxƒ‹1 +-+-+-+-
+// +-+-+-+- ãƒ¬ãƒ™ãƒ«1 +-+-+-+-
 int CComProc::ComLevel1(CPoint * z)
 {
 	CPoint put[MAS_MAX] ;	// put matrix
@@ -95,7 +95,7 @@ int CComProc::ComLevel1(CPoint * z)
 	return rt ;
 }
 
-// +-+-+-+- ƒŒƒxƒ‹2 +-+-+-+-
+// +-+-+-+- ãƒ¬ãƒ™ãƒ«2 +-+-+-+-
 int CComProc::ComLevel2(CPoint * z)
 {
 	CPoint put[MAS_MAX] ;	// put matrix
@@ -124,7 +124,7 @@ int CComProc::ComLevel2(CPoint * z)
 	return rt ;
 }
 
-// +-+-+-+- ƒŒƒxƒ‹3 +-+-+-+-
+// +-+-+-+- ãƒ¬ãƒ™ãƒ«3 +-+-+-+-
 int CComProc::ComLevel3(CPoint * z)
 {
 	CPoint put[MAS_MAX] ;	// put matrix
@@ -665,7 +665,7 @@ int CComProc::GetKaiho(CPoint put[MAS_MAX], int * put_num)
 	for(loop.y=1; loop.y<=LINE_MAX;loop.y++){
 		for(loop.x=1; loop.x<=LINE_MAX;loop.x++){
 			// orginal table copy 2 work table
-			// ‚±‚±‚ðŽÀs‚·‚é‚ÆƒAƒvƒŠ‚ªŒÅ‚Ü‚éHI
+			// ã“ã“ã‚’å®Ÿè¡Œã™ã‚‹ã¨ã‚¢ãƒ—ãƒªãŒå›ºã¾ã‚‹ï¼Ÿï¼
 //			::memcpy(Table,OrgTable,sizeof(Table)) ;
 			::memset(&put_stone, 0, sizeof(put_stone)) ;
 

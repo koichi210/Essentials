@@ -1,4 +1,4 @@
-#include "stdafx.h"
+ï»¿#include "stdafx.h"
 #include "othelloDef.h"
 #include "othellobase.h"
 
@@ -27,7 +27,7 @@ void COthelloBase::BaseInit()
 }
 
 // +-+-+-+- copy of Table +-+-+-+-+-
-//int	m_Table[LINE_MAX][LINE_MAX]	æ“¾æTable(OUT)
+//int	m_Table[LINE_MAX][LINE_MAX]	å–å¾—å…ˆTable(OUT)
 void COthelloBase::GetTable(char m_Table[LINE_MAX][LINE_MAX])
 {
 	::memcpy(m_Table, Table, sizeof(Table)) ;
@@ -114,7 +114,7 @@ void COthelloBase::CntStone(int * black_num, int * white_num)
 	for(y=0; y<LINE_MAX; y++){
 		for(x=0; x<LINE_MAX; x++){
 			if(Table[y][x] == BLACK){
-				// *black_num ++ ‚ÍNGBCŒ¾Œê‚Ì‚¨ì–@‚Å‚·B
+				// *black_num ++ ã¯NGã€‚Cè¨€èªã®ãŠä½œæ³•ã§ã™ã€‚
 				*black_num += 1 ;
 			}else if(Table[y][x] == WHITE){
 				*white_num += 1 ;

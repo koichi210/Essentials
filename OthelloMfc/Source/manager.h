@@ -1,4 +1,4 @@
-// save each setting value class
+﻿// save each setting value class
 typedef struct tagKihuTable{
 	CPoint	zahyo ;						// put matrix
 	short color ;						// put color black or white

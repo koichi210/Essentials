@@ -1,4 +1,4 @@
-#include "stdafx.h"
+ï»¿#include "stdafx.h"
 #include "othelloDef.h"
 #include "othellobase.h"
 #include "manager.h"
@@ -101,7 +101,7 @@ int CManager::GetKihuFile(CString path, int *color)
 // CPoint	put_map		matrix of put stone(IN)
 void CManager::UpDateKihu(CPoint put_map, int put_stone[ORIENT_MAX])
 {
-	// memory table íœŒó•â
+	// memory table å‰Šé™¤å€™è£œ
 	::memcpy(KihuTable[turn_cnt].Table, Table, sizeof(Table)) ;
 
 	// memory matrinx
@@ -110,7 +110,7 @@ void CManager::UpDateKihu(CPoint put_map, int put_stone[ORIENT_MAX])
 	// memory color
 	KihuTable[turn_cnt].color = color ;
 
-	// memory orient Ì—pŒó•â
+	// memory orient æ¡ç”¨å€™è£œ
 	if(put_stone){
 		::memcpy(KihuTable[turn_cnt].put_stone, put_stone, sizeof(put_stone) * ORIENT_MAX) ;
 	}
@@ -140,7 +140,7 @@ void CManager::GetKihu(int attrib, CString path)
 #if ENGLISH
 		sprintf(kihu_wk, "***** KIHU ***** \n") ;
 #else
-		sprintf(kihu_wk, "***** Šû•ˆ ***** \n") ;
+		sprintf(kihu_wk, "***** æ£‹è­œ ***** \n") ;
 #endif
 	for(i=1; i<TURN_MAX+1;i++){
 		if(KihuTable[i].color == 0){

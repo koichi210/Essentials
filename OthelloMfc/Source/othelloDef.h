@@ -1,4 +1,4 @@
-// �v���W�F�N�g�Ŏg�p����萔��`
+﻿// プロジェクトで使用する定数定義
 
 #include<stdio.h>
 #include<stdlib.h>
@@ -7,125 +7,125 @@
 // language
 #define ENGLISH			(0)
 
-//�f�o�b�O��`
+//デバッグ定義
 #define TOOLBAR_USE		(1)
 #define ALLSTEAL_USE	(0)
 
-// ��{�萔
-#define STR_BUFF			(256)	// ������ő�o�b�t�@
-#define START_STONE			(4)		// �X�^�[�g���̐΂̐�
-#define WIN_MIN_SIZE		(250)	// �E�B���h�E�\���̂̍ŏ��l
-#define TEXT_OFFSET			(100)	// ���Ԃ�\�����Ă���e�L�X�g�̉���
-#define FRAME_OFFSET		(25)	// ��ʒ[����g�܂ł̋���
-#define NUM_OFFSET			(5)		// ��ʒ[����g�ԍ��܂ł̋���
-#define FRAME2TEXT_OFFSET	(20)	// ��՘g�ƃe�L�X�g�g�Ƃ̋���
-#define TEXT2TEXT_OFFSET	(40)	// ���Ɣ��̋���
-#define SCORE_OFFSET		(60)	// �X�R�A�\���̋���
-#define TIME2TEXT_OFFSET	(20)	// �F���Ǝ��ԂƂ̋���
-#define DEFAULT_TIME_POS_X	(181)	// ���ԕ\���iX���W�j��DEFAULT�l
-#define DEFAULT_TIME_POS_Y	(60)	// ���ԕ\���iY���W�j��DEFAULT�l
-#define TIME_OUT			(1)		// �^�C���A�E�g
+// 基本定数
+#define STR_BUFF			(256)	// 文字列最大バッファ
+#define START_STONE			(4)		// スタート時の石の数
+#define WIN_MIN_SIZE		(250)	// ウィンドウ表示のの最小値
+#define TEXT_OFFSET			(100)	// 時間を表示しているテキストの横幅
+#define FRAME_OFFSET		(25)	// 画面端から枠までの距離
+#define NUM_OFFSET			(5)		// 画面端から枠番号までの距離
+#define FRAME2TEXT_OFFSET	(20)	// 基盤枠とテキスト枠との距離
+#define TEXT2TEXT_OFFSET	(40)	// 黒と白の距離
+#define SCORE_OFFSET		(60)	// スコア表示の距離
+#define TIME2TEXT_OFFSET	(20)	// 色名と時間との距離
+#define DEFAULT_TIME_POS_X	(181)	// 時間表示（X座標）のDEFAULT値
+#define DEFAULT_TIME_POS_Y	(60)	// 時間表示（Y座標）のDEFAULT値
+#define TIME_OUT			(1)		// タイムアウト
 
-// ���ʎq
-#define EMY					(1)		// ����
-#define ENEMY				(2)		// �G
+// 識別子
+#define EMY					(1)		// 自分
+#define ENEMY				(2)		// 敵
 
-// �^�C�}ID
-#define COM_TIMER_ID		(1)		// COM �̓����^�C�}ID
-#define BLACK_TIMER_ID		(2)		// �� �̓����^�C�}ID
-#define WHITE_TIMER_ID		(3)		// �� �̓����^�C�}ID
+// タイマID
+#define COM_TIMER_ID		(1)		// COM の動くタイマID
+#define BLACK_TIMER_ID		(2)		// 黒 の動くタイマID
+#define WHITE_TIMER_ID		(3)		// 白 の動くタイマID
 
-// �^�C�}
-#define VS_MODE_INTERVAL	(10)	// PLAYER VS COM ���̃C���^�[�o��(10ms���炢���ȁH)
-#define COM_MODE_INTERVAL	(10)	// COM VS COM ���̃C���^�[�o��
-#define COUNT_DOWN_CYC		(100)	// �J�E���g�_�E������
+// タイマ
+#define VS_MODE_INTERVAL	(10)	// PLAYER VS COM 時のインターバル(10msくらいかな？)
+#define COM_MODE_INTERVAL	(10)	// COM VS COM 時のインターバル
+#define COUNT_DOWN_CYC		(100)	// カウントダウン周期
 
-// �F
-#define UNKNOWN				(0)		// �s��
-#define BLACK				(1)		// ��
-#define WHITE				(2)		// ��
-#define BLACK_NAME			"��"	// ���̖��O
-#define WHITE_NAME			"��"	// ���̖��O
+// 色
+#define UNKNOWN				(0)		// 不定
+#define BLACK				(1)		// 黒
+#define WHITE				(2)		// 白
+#define BLACK_NAME			"黒"	// 黒の名前
+#define WHITE_NAME			"白"	// 白の名前
 
-// �}�X
-#define LINE_MIN		(1)						// �P�ӂ̃}�X�̍ŏ��l
-#define LINE_MAX		(8)						// �P�ӂ̃}�X�̍ő�l
-#define	MAS_MAX			(LINE_MAX * LINE_MAX)	// �}�X�̍ő�l
-#define TURN_MAX		(MAS_MAX-START_STONE)	// �^�[���̍ő吔
+// マス
+#define LINE_MIN		(1)						// １辺のマスの最小値
+#define LINE_MAX		(8)						// １辺のマスの最大値
+#define	MAS_MAX			(LINE_MAX * LINE_MAX)	// マスの最大値
+#define TURN_MAX		(MAS_MAX-START_STONE)	// ターンの最大数
 
-// ����
-#define ORIENT_MAX		(8)	// �����ő吔
-#define LEFT			(1)	// �i�ޕ����i���j
-#define RIGHT			(2)	// �i�ޕ����i�E�j
-#define UP				(3)	// �i�ޕ����i��j
-#define DOWN			(4)	// �i�ޕ����i���j
-#define LEFT_UP			(5)	// �i�ޕ����i����j
-#define LEFT_DOWN		(6)	// �i�ޕ����i�����j
-#define RIGHT_UP		(7)	// �i�ޕ����i�E��j
-#define RIGHT_DOWN		(8)	// �i�ޕ����i�E���j
+// 方向
+#define ORIENT_MAX		(8)	// 方向最大数
+#define LEFT			(1)	// 進む方向（左）
+#define RIGHT			(2)	// 進む方向（右）
+#define UP				(3)	// 進む方向（上）
+#define DOWN			(4)	// 進む方向（下）
+#define LEFT_UP			(5)	// 進む方向（左上）
+#define LEFT_DOWN		(6)	// 進む方向（左下）
+#define RIGHT_UP		(7)	// 進む方向（右上）
+#define RIGHT_DOWN		(8)	// 進む方向（右下）
 
-// �����̑���߂�
-#define VERS			(1)	// ��著��
-#define REVERS			(2)	// ���߂�
+// 棋譜の送り戻し
+#define VERS			(1)	// 一手送る
+#define REVERS			(2)	// 一手戻す
 
-// �^�[��
+// ターン
 #define	PLAYER			(1)	// PLAYER
 #define	COM				(2)	// COMPUTER
 
 // VS
-#define	PLAYER_PLAYER	(1)	// �l VS �l
-#define	PLAYER_COM		(2)	// �l VS COM
-#define	COM_PLAYER		(3)	// COM VS �l
+#define	PLAYER_PLAYER	(1)	// 人 VS 人
+#define	PLAYER_COM		(2)	// 人 VS COM
+#define	COM_PLAYER		(3)	// COM VS 人
 #define	COM_COM			(4)	// COM VS COM
 
-// �Q�[���X�e�[�^�X
-#define GAME_INIT		(1)	// �Q�[���J�n�O
-#define GAME_PLAY		(2)	// �Q�[����
-#define GAME_STOP		(3)	// �Q�[����~
-#define GAME_END		(4)	// �Q�[���I��
+// ゲームステータス
+#define GAME_INIT		(1)	// ゲーム開始前
+#define GAME_PLAY		(2)	// ゲーム中
+#define GAME_STOP		(3)	// ゲーム停止
+#define GAME_END		(4)	// ゲーム終了
 
 // manager
 #define	PUT_ERROR		(-1)	// PutCheck ERROR
 #define	PUT_NORMAL		(0)		// PutCheck NORMAL
-#define	NORMAL_RETURN	(0)		// ���탊�^�[��
-#define ERROR_RETURN	(-1)	// �ُ탊�^�[��
-#define CHK_ON			(1)		// �`�F�b�N�̂݁iPutCheck)
-#define PUT_ON			(2)		// �u����ꏊ���T�[�`�iPutCheck)
+#define	NORMAL_RETURN	(0)		// 正常リターン
+#define ERROR_RETURN	(-1)	// 異常リターン
+#define CHK_ON			(1)		// チェックのみ（PutCheck)
+#define PUT_ON			(2)		// 置ける場所をサーチ（PutCheck)
 
-// ����
-#define KIHU_DIR		"�I�Z������\\"
+// 棋譜
+#define KIHU_DIR		"オセロ棋譜\\"
 #define KIHU_NAME		"DATE"
-#define SHOW			(1)	// ����������
-#define SAVE			(2)	// ������ۑ�
+#define SHOW			(1)	// 棋譜を見る
+#define SAVE			(2)	// 棋譜を保存
 
 // COM
-#define	STARTER			(1)	// ����(COM)
-#define	CENTER			(2)	// ����(COM)
-#define	FINISHER		(3)	// �I��(COM)
+#define	STARTER			(1)	// 序盤(COM)
+#define	CENTER			(2)	// 中盤(COM)
+#define	FINISHER		(3)	// 終盤(COM)
 
-// �ݒ�l�̏��
+// 設定値の状態
 #define ON				(1)
 #define OFF				(0)
 
-// ���j���[�o�[�ݒ�l
+// メニューバー設定値
 #define	ENABLE			(1)
 #define	CHECK			(2)
 
-// COM�p �Ԃ�l
-#define COM_ERROR		(-1)	// COM�ُ�I��
-#define COM_NORMAL		(0)		// COM����I��
-#define STEAL			(3)		// �����
-#define NOT_STEAL		(4)		// ����Ȃ�
-#define STAR			(5)		// �u���Ƃ���͐�
-#define	NOT_STAR		(6)		// ���ł͂Ȃ�
-#define NSTAR			(7)		// �u���Ƃ���͐��̗�
-#define	NOT_NSTAR		(8)		// ���̋߂��ł͂Ȃ�
+// COM用 返り値
+#define COM_ERROR		(-1)	// COM異常終了
+#define COM_NORMAL		(0)		// COM正常終了
+#define STEAL			(3)		// 取られる
+#define NOT_STEAL		(4)		// 取られない
+#define STAR			(5)		// 置くところは星
+#define	NOT_STAR		(6)		// 星ではない
+#define NSTAR			(7)		// 置くところは星の隣
+#define	NOT_NSTAR		(8)		// 星の近くではない
 
-#define STR_WEIGHT		(15)	// ������
-#define STR_HEIGHT		(15)	// ��������
+#define STR_WEIGHT		(15)	// 文字幅
+#define STR_HEIGHT		(15)	// 文字高さ
 
-// �e�p�����[�^�̏����l
+// 各パラメータの初期値
 #define DEFAULT_PLAY_MODE	PLAYER_COM
-#define DEFAULT_TIME		(-1)	// �������ԁi�b�j
+#define DEFAULT_TIME		(-1)	// 持ち時間（秒）
 #define DEFAULT_COM_LEVEL	(3)
 #define DEFAULT_PUT_NOTICE	ON

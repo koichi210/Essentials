@@ -1,4 +1,4 @@
-// COM think routin class
+﻿// COM think routin class
 
 class CComProc : public COthelloBase
 {

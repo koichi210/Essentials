@@ -1,4 +1,4 @@
-// othelloDlg.cpp : ƒCƒ“ƒvƒŠƒƒ“ƒe[ƒVƒ‡ƒ“ ƒtƒ@ƒCƒ‹
+ï»¿// othelloDlg.cpp : ã‚¤ãƒ³ãƒ—ãƒªãƒ¡ãƒ³ãƒ†ãƒ¼ã‚·ãƒ§ãƒ³ ãƒ•ã‚¡ã‚¤ãƒ«
 //
 
 #include "stdafx.h"
@@ -16,25 +16,25 @@ static char THIS_FILE[] = __FILE__;
 #endif
 
 /////////////////////////////////////////////////////////////////////////////
-// ƒAƒvƒŠƒP[ƒVƒ‡ƒ“‚Ìƒo[ƒWƒ‡ƒ“î•ñ‚Åg‚í‚ê‚Ä‚¢‚é CAboutDlg ƒ_ƒCƒAƒƒO
+// ã‚¢ãƒ—ãƒªã‚±ãƒ¼ã‚·ãƒ§ãƒ³ã®ãƒãƒ¼ã‚¸ãƒ§ãƒ³æƒ…å ±ã§ä½¿ã‚ã‚Œã¦ã„ã‚‹ CAboutDlg ãƒ€ã‚¤ã‚¢ãƒ­ã‚°
 
 class CAboutDlg : public CDialog
 {
 public:
 	CAboutDlg();
 
-// ƒ_ƒCƒAƒƒO ƒf[ƒ^
+// ãƒ€ã‚¤ã‚¢ãƒ­ã‚° ãƒ‡ãƒ¼ã‚¿
 	//{{AFX_DATA(CAboutDlg)
 	enum { IDD = IDD_ABOUTBOX };
 	//}}AFX_DATA
 
-	// ClassWizard ‚Í‰¼‘zŠÖ”‚ÌƒI[ƒo[ƒ‰ƒCƒh‚ğ¶¬‚µ‚Ü‚·
+	// ClassWizard ã¯ä»®æƒ³é–¢æ•°ã®ã‚ªãƒ¼ãƒãƒ¼ãƒ©ã‚¤ãƒ‰ã‚’ç”Ÿæˆã—ã¾ã™
 	//{{AFX_VIRTUAL(CAboutDlg)
 	protected:
-	virtual void DoDataExchange(CDataExchange* pDX);    // DDX/DDV ‚ÌƒTƒ|[ƒg
+	virtual void DoDataExchange(CDataExchange* pDX);    // DDX/DDV ã®ã‚µãƒãƒ¼ãƒˆ
 	//}}AFX_VIRTUAL
 
-// ƒCƒ“ƒvƒŠƒƒ“ƒe[ƒVƒ‡ƒ“
+// ã‚¤ãƒ³ãƒ—ãƒªãƒ¡ãƒ³ãƒ†ãƒ¼ã‚·ãƒ§ãƒ³
 protected:
 	//{{AFX_MSG(CAboutDlg)
 	//}}AFX_MSG
@@ -56,21 +56,21 @@ void CAboutDlg::DoDataExchange(CDataExchange* pDX)
 
 BEGIN_MESSAGE_MAP(CAboutDlg, CDialog)
 	//{{AFX_MSG_MAP(CAboutDlg)
-		// ƒƒbƒZ[ƒW ƒnƒ“ƒhƒ‰‚ª‚ ‚è‚Ü‚¹‚ñB
+		// ãƒ¡ãƒƒã‚»ãƒ¼ã‚¸ ãƒãƒ³ãƒ‰ãƒ©ãŒã‚ã‚Šã¾ã›ã‚“ã€‚
 	//}}AFX_MSG_MAP
 END_MESSAGE_MAP()
 
 /////////////////////////////////////////////////////////////////////////////
-// COthelloDlg ƒ_ƒCƒAƒƒO
+// COthelloDlg ãƒ€ã‚¤ã‚¢ãƒ­ã‚°
 
 // construct
 COthelloDlg::COthelloDlg(CWnd* pParent /*=NULL*/)
 	: CDialog(COthelloDlg::IDD, pParent)
 {
 	//{{AFX_DATA_INIT(COthelloDlg)
-		// ƒƒ‚: ‚±‚ÌˆÊ’u‚É ClassWizard ‚É‚æ‚Á‚Äƒƒ“ƒo‚Ì‰Šú‰»‚ª’Ç‰Á‚³‚ê‚Ü‚·B
+		// ãƒ¡ãƒ¢: ã“ã®ä½ç½®ã« ClassWizard ã«ã‚ˆã£ã¦ãƒ¡ãƒ³ãƒã®åˆæœŸåŒ–ãŒè¿½åŠ ã•ã‚Œã¾ã™ã€‚
 	//}}AFX_DATA_INIT
-	// ƒƒ‚: LoadIcon ‚Í Win32 ‚Ì DestroyIcon ‚ÌƒTƒuƒV[ƒPƒ“ƒX‚ğ—v‹‚µ‚Ü‚¹‚ñB
+	// ãƒ¡ãƒ¢: LoadIcon ã¯ Win32 ã® DestroyIcon ã®ã‚µãƒ–ã‚·ãƒ¼ã‚±ãƒ³ã‚¹ã‚’è¦æ±‚ã—ã¾ã›ã‚“ã€‚
 	m_hIcon = AfxGetApp()->LoadIcon(IDR_MAINFRAME);
 }
 
@@ -78,7 +78,7 @@ void COthelloDlg::DoDataExchange(CDataExchange* pDX)
 {
 	CDialog::DoDataExchange(pDX);
 	//{{AFX_DATA_MAP(COthelloDlg)
-		// ƒƒ‚: ‚±‚ÌêŠ‚É‚Í ClassWizard ‚É‚æ‚Á‚Ä DDX ‚Æ DDV ‚ÌŒÄ‚Ño‚µ‚ª’Ç‰Á‚³‚ê‚Ü‚·B
+		// ãƒ¡ãƒ¢: ã“ã®å ´æ‰€ã«ã¯ ClassWizard ã«ã‚ˆã£ã¦ DDX ã¨ DDV ã®å‘¼ã³å‡ºã—ãŒè¿½åŠ ã•ã‚Œã¾ã™ã€‚
 	//}}AFX_DATA_MAP
 }
 
@@ -125,15 +125,15 @@ BEGIN_MESSAGE_MAP(COthelloDlg, CDialog)
 END_MESSAGE_MAP()
 
 /////////////////////////////////////////////////////////////////////////////
-// COthelloDlg ƒƒbƒZ[ƒW ƒnƒ“ƒhƒ‰
+// COthelloDlg ãƒ¡ãƒƒã‚»ãƒ¼ã‚¸ ãƒãƒ³ãƒ‰ãƒ©
 
 BOOL COthelloDlg::OnInitDialog()
 {
 	CDialog::OnInitDialog();
 
-	// "ƒo[ƒWƒ‡ƒ“î•ñ..." ƒƒjƒ…[€–Ú‚ğƒVƒXƒeƒ€ ƒƒjƒ…[‚Ö’Ç‰Á‚µ‚Ü‚·B
+	// "ãƒãƒ¼ã‚¸ãƒ§ãƒ³æƒ…å ±..." ãƒ¡ãƒ‹ãƒ¥ãƒ¼é …ç›®ã‚’ã‚·ã‚¹ãƒ†ãƒ  ãƒ¡ãƒ‹ãƒ¥ãƒ¼ã¸è¿½åŠ ã—ã¾ã™ã€‚
 
-	// IDM_ABOUTBOX ‚ÍƒRƒ}ƒ“ƒh ƒƒjƒ…[‚Ì”ÍˆÍ‚Å‚È‚¯‚ê‚Î‚È‚è‚Ü‚¹‚ñB
+	// IDM_ABOUTBOX ã¯ã‚³ãƒãƒ³ãƒ‰ ãƒ¡ãƒ‹ãƒ¥ãƒ¼ã®ç¯„å›²ã§ãªã‘ã‚Œã°ãªã‚Šã¾ã›ã‚“ã€‚
 	ASSERT((IDM_ABOUTBOX & 0xFFF0) == IDM_ABOUTBOX);
 	ASSERT(IDM_ABOUTBOX < 0xF000);
 
@@ -149,10 +149,10 @@ BOOL COthelloDlg::OnInitDialog()
 		}
 	}
 
-	// ‚±‚Ìƒ_ƒCƒAƒƒO—p‚ÌƒAƒCƒRƒ“‚ğİ’è‚µ‚Ü‚·BƒtƒŒ[ƒ€ƒ[ƒN‚ÍƒAƒvƒŠƒP[ƒVƒ‡ƒ“‚ÌƒƒCƒ“
-	// ƒEƒBƒ“ƒhƒE‚ªƒ_ƒCƒAƒƒO‚Å‚È‚¢‚Í©“®“I‚Éİ’è‚µ‚Ü‚¹‚ñB
-	SetIcon(m_hIcon, TRUE);			// ‘å‚«‚¢ƒAƒCƒRƒ“‚ğİ’è
-	SetIcon(m_hIcon, FALSE);		// ¬‚³‚¢ƒAƒCƒRƒ“‚ğİ’è
+	// ã“ã®ãƒ€ã‚¤ã‚¢ãƒ­ã‚°ç”¨ã®ã‚¢ã‚¤ã‚³ãƒ³ã‚’è¨­å®šã—ã¾ã™ã€‚ãƒ•ãƒ¬ãƒ¼ãƒ ãƒ¯ãƒ¼ã‚¯ã¯ã‚¢ãƒ—ãƒªã‚±ãƒ¼ã‚·ãƒ§ãƒ³ã®ãƒ¡ã‚¤ãƒ³
+	// ã‚¦ã‚£ãƒ³ãƒ‰ã‚¦ãŒãƒ€ã‚¤ã‚¢ãƒ­ã‚°ã§ãªã„æ™‚ã¯è‡ªå‹•çš„ã«è¨­å®šã—ã¾ã›ã‚“ã€‚
+	SetIcon(m_hIcon, TRUE);			// å¤§ãã„ã‚¢ã‚¤ã‚³ãƒ³ã‚’è¨­å®š
+	SetIcon(m_hIcon, FALSE);		// å°ã•ã„ã‚¢ã‚¤ã‚³ãƒ³ã‚’è¨­å®š
 	
 	// instance 2 class
 	manager = new CManager ;
@@ -161,7 +161,7 @@ BOOL COthelloDlg::OnInitDialog()
 	// Initialize
 	AppInit() ;
 
-	return TRUE;  // TRUE ‚ğ•Ô‚·‚ÆƒRƒ“ƒgƒ[ƒ‹‚Éİ’è‚µ‚½ƒtƒH[ƒJƒX‚Í¸‚í‚ê‚Ü‚¹‚ñB
+	return TRUE;  // TRUE ã‚’è¿”ã™ã¨ã‚³ãƒ³ãƒˆãƒ­ãƒ¼ãƒ«ã«è¨­å®šã—ãŸãƒ•ã‚©ãƒ¼ã‚«ã‚¹ã¯å¤±ã‚ã‚Œã¾ã›ã‚“ã€‚
 }
 
 // +-+-+-+- resize 2 dialog +-+-+-+-+-
@@ -185,7 +185,7 @@ void COthelloDlg::OnDestroy()
 	delete com ;
 }
 
-//ƒEƒBƒ“ƒhƒE‚Ì¶ã‚ğƒNƒŠƒbƒN‚µ‚½‚Æ‚«
+//ã‚¦ã‚£ãƒ³ãƒ‰ã‚¦ã®å·¦ä¸Šã‚’ã‚¯ãƒªãƒƒã‚¯ã—ãŸã¨ã
 void COthelloDlg::OnSysCommand(UINT nID, LPARAM lParam)
 {
 	if ((nID & 0xFFF0) == IDM_ABOUTBOX)
@@ -199,8 +199,8 @@ void COthelloDlg::OnSysCommand(UINT nID, LPARAM lParam)
 	}
 }
 
-// ƒVƒXƒeƒ€‚ÍAƒ†[ƒU[‚ªÅ¬‰»ƒEƒBƒ“ƒhƒE‚ğƒhƒ‰ƒbƒO‚µ‚Ä‚¢‚éŠÔA
-// ƒJ[ƒ\ƒ‹‚ğ•\¦‚·‚é‚½‚ß‚É‚±‚±‚ğŒÄ‚Ño‚µ‚Ü‚·B
+// ã‚·ã‚¹ãƒ†ãƒ ã¯ã€ãƒ¦ãƒ¼ã‚¶ãƒ¼ãŒæœ€å°åŒ–ã‚¦ã‚£ãƒ³ãƒ‰ã‚¦ã‚’ãƒ‰ãƒ©ãƒƒã‚°ã—ã¦ã„ã‚‹é–“ã€
+// ã‚«ãƒ¼ã‚½ãƒ«ã‚’è¡¨ç¤ºã™ã‚‹ãŸã‚ã«ã“ã“ã‚’å‘¼ã³å‡ºã—ã¾ã™ã€‚
 HCURSOR COthelloDlg::OnQueryDragIcon()
 {
 	return (HCURSOR) m_hIcon;
@@ -219,10 +219,10 @@ void COthelloDlg::OnGetMinMaxInfo(MINMAXINFO FAR* lpMMI)
 	CDialog::OnGetMinMaxInfo(lpMMI);
 }
 
-// ‚à‚µƒ_ƒCƒAƒƒOƒ{ƒbƒNƒX‚ÉÅ¬‰»ƒ{ƒ^ƒ“‚ğ’Ç‰Á‚·‚é‚È‚ç‚ÎAƒAƒCƒRƒ“‚ğ•`‰æ‚·‚é
-// ƒR[ƒh‚ğˆÈ‰º‚É‹Lq‚·‚é•K—v‚ª‚ ‚è‚Ü‚·BMFC ƒAƒvƒŠƒP[ƒVƒ‡ƒ“‚Í document/view
-// ƒ‚ƒfƒ‹‚ğg‚Á‚Ä‚¢‚é‚Ì‚ÅA‚±‚Ìˆ—‚ÍƒtƒŒ[ƒ€ƒ[ƒN‚É‚æ‚è©“®“I‚Éˆ—‚³‚ê‚Ü‚·B
-// ƒ_ƒCƒAƒƒOÄ•`‰æ
+// ã‚‚ã—ãƒ€ã‚¤ã‚¢ãƒ­ã‚°ãƒœãƒƒã‚¯ã‚¹ã«æœ€å°åŒ–ãƒœã‚¿ãƒ³ã‚’è¿½åŠ ã™ã‚‹ãªã‚‰ã°ã€ã‚¢ã‚¤ã‚³ãƒ³ã‚’æç”»ã™ã‚‹
+// ã‚³ãƒ¼ãƒ‰ã‚’ä»¥ä¸‹ã«è¨˜è¿°ã™ã‚‹å¿…è¦ãŒã‚ã‚Šã¾ã™ã€‚MFC ã‚¢ãƒ—ãƒªã‚±ãƒ¼ã‚·ãƒ§ãƒ³ã¯ document/view
+// ãƒ¢ãƒ‡ãƒ«ã‚’ä½¿ã£ã¦ã„ã‚‹ã®ã§ã€ã“ã®å‡¦ç†ã¯ãƒ•ãƒ¬ãƒ¼ãƒ ãƒ¯ãƒ¼ã‚¯ã«ã‚ˆã‚Šè‡ªå‹•çš„ã«å‡¦ç†ã•ã‚Œã¾ã™ã€‚
+// ãƒ€ã‚¤ã‚¢ãƒ­ã‚°å†æç”»
 void COthelloDlg::OnPaint() 
 {
 	CPaintDC dc(this); // device context from draw
@@ -245,7 +245,7 @@ void COthelloDlg::OnPaint()
 	}
 	else
 	{
-		// •\¦ˆÊ’uC³ (ƒzƒ“ƒg‚ÍOnSize‚Ì’†‚Å‚â‚è‚½‚¢‚¯‚ÇA‰Šú‹N“®‚ÍGetRect‚Å‚«‚È‚¢‚Ì‚ÅBBj
+		// è¡¨ç¤ºä½ç½®ä¿®æ­£ (ãƒ›ãƒ³ãƒˆã¯OnSizeã®ä¸­ã§ã‚„ã‚ŠãŸã„ã‘ã©ã€åˆæœŸèµ·å‹•æ™‚ã¯GetRectã§ããªã„ã®ã§ã€‚ã€‚ï¼‰
 		// update position
 		UpdatePos() ;
 
@@ -300,13 +300,13 @@ void COthelloDlg::DrawTable(CDC * pDC)
 
 	// draw length line
 	for(z.x=0; z.x<=LINE_MAX; z.x++){
-		pDC->MoveTo(z.x * cellsize + FRAME_OFFSET, FRAME_OFFSET);		// ‚±‚±‚Éƒyƒ“‚ğ’u‚¢‚Ä
-		pDC->LineTo(z.x * cellsize + FRAME_OFFSET, LINE_MAX * cellsize + FRAME_OFFSET) ;	// ‚±‚±‚Ü‚Å‘‚­
+		pDC->MoveTo(z.x * cellsize + FRAME_OFFSET, FRAME_OFFSET);		// ã“ã“ã«ãƒšãƒ³ã‚’ç½®ã„ã¦
+		pDC->LineTo(z.x * cellsize + FRAME_OFFSET, LINE_MAX * cellsize + FRAME_OFFSET) ;	// ã“ã“ã¾ã§æ›¸ã
 	}
 	// width line
 	for(z.y=0; z.y<=LINE_MAX; z.y++){
-		pDC->MoveTo(FRAME_OFFSET, z.y * cellsize + FRAME_OFFSET);					// ‚±‚±‚Éƒyƒ“‚ğ’u‚¢‚Ä
-		pDC->LineTo(LINE_MAX * cellsize + FRAME_OFFSET,z.y * cellsize + FRAME_OFFSET) ;	// ‚±‚±‚Ü‚Å‘‚­
+		pDC->MoveTo(FRAME_OFFSET, z.y * cellsize + FRAME_OFFSET);					// ã“ã“ã«ãƒšãƒ³ã‚’ç½®ã„ã¦
+		pDC->LineTo(LINE_MAX * cellsize + FRAME_OFFSET,z.y * cellsize + FRAME_OFFSET) ;	// ã“ã“ã¾ã§æ›¸ã
 	}
 
 	// return pen
@@ -347,7 +347,7 @@ void COthelloDlg::DrawNumber(CDC * pDC, CPoint z)
 	str_pos.x = z.x * cellsize ;
 	str_pos.y = z.y * cellsize ;
 
-	// 4 ‚Æ‚© 9 ‚Í”÷’²®‚Ì‚½‚ß‰Â•Ï‚¾‚È‚âBB
+	// 4 ã¨ã‹ 9 ã¯å¾®èª¿æ•´ã®ãŸã‚å¯å¤‰ã ãªã‚„ã€‚ã€‚
 	// 4 and 9 is flacture that need ajust
 	if(z.x != 0 || z.y != 0){
 		if(z.x != 0){
@@ -455,8 +455,8 @@ void COthelloDlg::DrawNotice(CDC * pDC, int turn)
 	black.DeleteObject() ;
 }
 
-//////////  ‚Ù‚ÚŠù‘¶ˆ—iWindowsƒCƒxƒ“ƒgŠÖŒWj ª  ///////////
-//////////  almost existing proc(Windows event relationjª  ///////////
+//////////  ã»ã¼æ—¢å­˜å‡¦ç†ï¼ˆWindowsã‚¤ãƒ™ãƒ³ãƒˆé–¢ä¿‚ï¼‰ â†‘  ///////////
+//////////  almost existing proc(Windows event relationï¼‰â†‘  ///////////
 
 // *****************  MENU  ******************* 
 // +-+-+-+- reset from toolbar +-+-+-+-+-
@@ -688,7 +688,7 @@ void COthelloDlg::OnMenuitemKihuSave()
 #if ENGLISH
 	CFileDialog fd(FALSE, "*.rkf", NULL, OFN_HIDEREADONLY | OFN_OVERWRITEPROMPT, "Othello kifu Files (*.txt)|*.txt|All Files (*.*)|*.*||");
 #else
-	CFileDialog fd(FALSE, "*.rkf", NULL, OFN_HIDEREADONLY | OFN_OVERWRITEPROMPT, "ƒIƒZƒŠû•ˆƒtƒ@ƒCƒ‹ (*.rkf)|*.rkf|All Files (*.*)|*.*||");
+	CFileDialog fd(FALSE, "*.rkf", NULL, OFN_HIDEREADONLY | OFN_OVERWRITEPROMPT, "ã‚ªã‚»ãƒ­æ£‹è­œãƒ•ã‚¡ã‚¤ãƒ« (*.rkf)|*.rkf|All Files (*.*)|*.*||");
 #endif
 	if (fd.DoModal() == IDOK){
 		path = fd.GetPathName();
@@ -732,9 +732,9 @@ void COthelloDlg::OnMenuitemHowtoplay()
 {
 	char str[STR_BUFF] ;
 #if ENGLISH
-	sprintf(str, "this is normal reversi(¡-_-¡)") ;
+	sprintf(str, "this is normal reversi(ï½¡-_-ï½¡)") ;
 #else
-	sprintf(str, "•’Ê‚ÌƒIƒZƒ‚Å‚·(¡-_-¡)") ;
+	sprintf(str, "æ™®é€šã®ã‚ªã‚»ãƒ­ã§ã™(ï½¡-_-ï½¡)") ;
 #endif
 	AfxMessageBox(str) ;
 	
@@ -906,7 +906,7 @@ int COthelloDlg::OthelloProc(CPoint z)
 #if ENGLISH
 			AfxMessageBox("matrix put stone is illegal") ;
 #else
-			AfxMessageBox("’u‚­‚Æ‚±‚ë•s³") ;
+			AfxMessageBox("ç½®ãã¨ã“ã‚ä¸æ­£") ;
 #endif
 		}
 		return put_rt ;
@@ -1003,7 +1003,7 @@ void COthelloDlg::EndProc(int state)
 #if ENGLISH
 		sprintf(str, "time out\n") ;
 #else
-		sprintf(str, "ƒ^ƒCƒ€ƒAƒEƒg\n") ;
+		sprintf(str, "ã‚¿ã‚¤ãƒ ã‚¢ã‚¦ãƒˆ\n") ;
 #endif
 		if(black_time <= 0){
 			to_clr = BLACK ;
@@ -1014,7 +1014,7 @@ void COthelloDlg::EndProc(int state)
 #if ENGLISH
 		strcat(str, "is lose. and....") ;
 #else
-		strcat(str, "‚Ì•‰‚¯‚Å‚·B\n\n‚¿‚È‚İ‚ÉEEE") ;
+		strcat(str, "ã®è² ã‘ã§ã™ã€‚\n\nã¡ãªã¿ã«ãƒ»ãƒ»ãƒ»") ;
 #endif
 		AfxMessageBox(str) ;
 	}
@@ -1026,7 +1026,7 @@ void COthelloDlg::EndProc(int state)
 #if ENGLISH
 	sprintf(str, "black:%d  white:%d\n game set",black_num,white_num) ;
 #else
-	sprintf(str, "•F%d@”’F%d\n ƒQ[ƒ€I—¹",black_num,white_num) ;
+	sprintf(str, "é»’ï¼š%dã€€ç™½ï¼š%d\n ã‚²ãƒ¼ãƒ çµ‚äº†",black_num,white_num) ;
 #endif
 	AfxMessageBox(str) ;
 
@@ -1034,7 +1034,7 @@ void COthelloDlg::EndProc(int state)
 #if ENGLISH
 	title_str.Format("othello  end");
 #else
-	title_str.Format("othello  I—¹");
+	title_str.Format("othello  çµ‚äº†");
 #endif
 	SetWindowText(title_str);
 }
@@ -1060,7 +1060,7 @@ int COthelloDlg::ComRoutin()
 #if ENGLISH
 			sprintf(str, "COM is illegal(x=%d y=%d)",com_put.x,com_put.y) ;
 #else
-			sprintf(str, "COM ’u‚­‚Æ‚±‚ë•s³(x=%d y=%d)",com_put.x,com_put.y) ;
+			sprintf(str, "COM ç½®ãã¨ã“ã‚ä¸æ­£(x=%d y=%d)",com_put.x,com_put.y) ;
 #endif
 			AfxMessageBox(str) ;
 		}else{
@@ -1075,7 +1075,7 @@ int COthelloDlg::ComRoutin()
 // +-+-+-+- timer event +-+-+-+-+-
 void COthelloDlg::OnTimer(UINT nIDEvent) 
 {
-//	CString tl_str ;	// time limit ŠÔ”
+//	CString tl_str ;	// time limit æ™‚é–“æ•°
 	int time ;
 	int id ;
 
@@ -1154,7 +1154,7 @@ void COthelloDlg::SetTimerString()
 	time = black_time / 1000 ;
 	min = time / 60 ;
 	sec = time % 60 ;
-	str.Format("%02d •ª %02d •b",min,sec) ;
+	str.Format("%02d åˆ† %02d ç§’",min,sec) ;
 	GetDlgItem(IDC_BLACK_TIME)->SetWindowText(str);
 
 	// set white timer
@@ -1162,7 +1162,7 @@ void COthelloDlg::SetTimerString()
 	min = time / 60 ;
 	sec = time % 60 ;
 		
-	str.Format("%02d •ª %02d •b",min,sec) ;
+	str.Format("%02d åˆ† %02d ç§’",min,sec) ;
 	GetDlgItem(IDC_WHITE_TIME)->SetWindowText(str);
 }
 
@@ -1229,7 +1229,7 @@ void COthelloDlg::ChangeColor(int new_color)
 #if ENGLISH
 		strcat(str, "is not move") ;
 #else
-		strcat(str, "‚Í’u‚­‚Æ‚±‚ë‚ª‚ ‚è‚Ü‚¹‚ñB") ;
+		strcat(str, "ã¯ç½®ãã¨ã“ã‚ãŒã‚ã‚Šã¾ã›ã‚“ã€‚") ;
 #endif
 		if(time_limit != -1){
 			this->KillTimer(stimer_id);
@@ -1322,7 +1322,7 @@ void COthelloDlg::UpdateRect()
 	cell.x = rect.right - rect.left ;
 	cell.y = rect.bottom - rect.top ;
 
-	// calculate (XAY) matrix
+	// calculate (Xã€Y) matrix
 	cell.x = cell.x - (cell.x % LINE_MAX) ;	// save client area(can be divided by LINE_MAX)
 	cell.y = cell.y - (cell.y % LINE_MAX) ;	// save client area(can be divided by LINE_MAX)
 
@@ -1395,8 +1395,8 @@ void COthelloDlg::AppInit()
 	{
 		TRACE0("Failed to create toolbar\n");
 	}else{
-		// TODO: ƒc[ƒ‹ ƒo[‚ğƒhƒbƒLƒ“ƒO‰Â”\‚É‚µ‚È‚¢ê‡‚ÍˆÈ‰º‚Ì‚Rs‚ğíœ
-		//       ‚µ‚Ä‚­‚¾‚³‚¢B
+		// TODO: ãƒ„ãƒ¼ãƒ« ãƒãƒ¼ã‚’ãƒ‰ãƒƒã‚­ãƒ³ã‚°å¯èƒ½ã«ã—ãªã„å ´åˆã¯ä»¥ä¸‹ã®ï¼“è¡Œã‚’å‰Šé™¤
+		//       ã—ã¦ãã ã•ã„ã€‚
 //		othebar.EnableDocking(CBRS_ALIGN_ANY);
 //		EnableDocking(CBRS_ALIGN_ANY);
 //		othebar.DockControlBar(&toolbar);
@@ -1431,9 +1431,9 @@ void COthelloDlg::AppInit()
 }
 
 // +-+-+-+- set menu status +-+-+-+-+-
-//	int	attrib	‘®«
+//	int	attrib	å±æ€§
 //	int	id		ID
-//	int	value	’l
+//	int	value	å€¤
 void COthelloDlg::SetMenuStatus(int attrib, int id, int value)
 {
 	// Menu pinter
@@ -1464,18 +1464,18 @@ void COthelloDlg::UpdateScore()
 	// view which turn
 	manager->GetColorName(manager->color, wk) ;
 #if ENGLISH
-	sprintf(str, " yturn : %sz",wk) ;
+	sprintf(str, " ã€turn : %sã€‘",wk) ;
 #else
-	sprintf(str, " y%s‚Ì”Ôz",wk) ;
+	sprintf(str, " ã€%sã®ç•ªã€‘",wk) ;
 #endif
 	GetDlgItem(IDC_TURN_TEXT)->SetWindowText(str) ;
 
 	// view stone number
 	manager->CntStone(&black_num, &white_num) ;
 #if ENGLISH
-	sprintf(str, "blackF%2d  whiteF%2d ",black_num,white_num) ;
+	sprintf(str, "blackï¼š%2d  whiteï¼š%2d ",black_num,white_num) ;
 #else
-	sprintf(str, "•F%2d@”’F%2d ",black_num,white_num) ;
+	sprintf(str, "é»’ï¼š%2dã€€ç™½ï¼š%2d ",black_num,white_num) ;
 #endif
 	GetDlgItem(IDC_SCORE)->SetWindowText(str) ;
 }
@@ -1489,7 +1489,7 @@ void COthelloDlg::OnMenuitemKihuRead()
 #if ENGLISH
 	CFileDialog fd(TRUE, "*.rkf", NULL, OFN_HIDEREADONLY, "othello KIHU file (*.rkf)|*.rkf|All Files (*.*)|*.*||");
 #else
-	CFileDialog fd(TRUE, "*.rkf", NULL, OFN_HIDEREADONLY, "ƒIƒZƒŠû•ˆƒtƒ@ƒCƒ‹ (*.rkf)|*.rkf|All Files (*.*)|*.*||");
+	CFileDialog fd(TRUE, "*.rkf", NULL, OFN_HIDEREADONLY, "ã‚ªã‚»ãƒ­æ£‹è­œãƒ•ã‚¡ã‚¤ãƒ« (*.rkf)|*.rkf|All Files (*.*)|*.*||");
 #endif
 	if (fd.DoModal() == IDOK)
 	{
@@ -1519,7 +1519,7 @@ void COthelloDlg::OnMenuitemKihuRead()
 #if ENGLISH
 			AfxMessageBox("read file error") ;
 #else
-			AfxMessageBox("ƒtƒ@ƒCƒ‹“Ç‚İ‚İƒGƒ‰[") ;
+			AfxMessageBox("ãƒ•ã‚¡ã‚¤ãƒ«èª­ã¿è¾¼ã¿ã‚¨ãƒ©ãƒ¼") ;
 #endif
 			GameInit() ;
 		}

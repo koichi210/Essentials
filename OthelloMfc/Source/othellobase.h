@@ -1,4 +1,4 @@
-// othello base and put judge class
+﻿// othello base and put judge class
 
 class COthelloBase
 {
