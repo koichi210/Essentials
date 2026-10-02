@@ -102,6 +102,7 @@
     <Compile Include="Profile.cs" />
     <Compile Include="AppSettings.cs" />
     <Compile Include="HotkeyDefaults.cs" />
+    <Compile Include="SessionGuard.cs" />
     <Compile Include="EventRowMapper.cs" />
     <Compile Include="EventRow.cs" />
     <Compile Include="EventRules.cs" />

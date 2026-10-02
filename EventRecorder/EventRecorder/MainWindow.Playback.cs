@@ -30,7 +30,8 @@ namespace EventRecorder
                 return;
             }
 
-            if (isRecording)
+            // 終了処理中は新しく再生を始めない
+            if (isRecording || isExiting)
             {
                 return;
             }
@@ -80,7 +81,7 @@ namespace EventRecorder
             UpdateTitle();
             MinimizeIfRequested();
 
-            Task.Run(() => PlayLoop(rows, loopCount));
+            playbackTask = Task.Run(() => PlayLoop(rows, loopCount));
         }
 
         // ループ回数の入力値を数値にする(0以下・数値以外は1回扱い)。単発再生・プレイリストの全体ループ/各行で共通
@@ -133,7 +134,7 @@ namespace EventRecorder
                 // 途中で例外が起きても、必ず「再生中」状態を解除する(isPlayingがtrueのまま固まらないように)
                 isPlaying = false;
                 stopPlayRequested = false;
-                Dispatcher.Invoke(() =>
+                InvokeOnUi(() =>
                 {
                     UpdatePlayButton();
                     UpdateTitle();
@@ -146,7 +147,34 @@ namespace EventRecorder
         // 再生スレッド(Task.Run)内の例外はどこにも通知されずに消えるため、UIスレッドへ投げ直して共通のエラー通知に乗せる
         private void ReportPlaybackError(Exception ex)
         {
+            if (Dispatcher.HasShutdownStarted)
+            {
+                // アプリの終了と入れ違いの場合は知らせる先が無いので諦める
+                return;
+            }
+
             Dispatcher.BeginInvoke(new Action(() => { throw new InvalidOperationException("再生中にエラーが発生したよ", ex); }));
+        }
+
+        // 再生スレッドからUIスレッドの処理を呼ぶ。シャットダウン等でUIスレッドが先に終了していた場合は、
+        // 例外にせず何もしないで、再生そのものも止める(画面が無いのに入力だけ送り続けないように)。
+        // action自体が投げた例外はそのまま呼び出し元へ伝える
+        internal void InvokeOnUi(Action action)
+        {
+            if (Dispatcher.HasShutdownStarted)
+            {
+                stopPlayRequested = true;
+                return;
+            }
+
+            try
+            {
+                Dispatcher.Invoke(action);
+            }
+            catch (OperationCanceledException) when (Dispatcher.HasShutdownStarted)
+            {
+                stopPlayRequested = true;
+            }
         }
 
         // rowsをloopCount回再生する処理そのもの(前後の状態管理は呼び出し元の責務)。単発再生・プレイリスト再生の両方から使う
@@ -178,11 +206,16 @@ namespace EventRecorder
                     String[] values = rows[idx];
 
                     int rowIndex = idx;
-                    Dispatcher.Invoke(() =>
+                    InvokeOnUi(() =>
                     {
                         HighlightEventRow(rowIndex);
                         UpdateTitle();
                     });
+
+                    if (stopPlayRequested)
+                    {
+                        return;
+                    }
 
                     int wait = util.GetInteger(values[4]);
                     if (wait > 0)

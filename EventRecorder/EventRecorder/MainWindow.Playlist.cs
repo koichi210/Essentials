@@ -602,7 +602,7 @@ namespace EventRecorder
             UpdateTitle();
             MinimizeIfRequested();
 
-            Task.Run(() => PlaylistPlayLoop(entries, overallLoopCount));
+            playbackTask = Task.Run(() => PlaylistPlayLoop(entries, overallLoopCount));
         }
 
         // プレイリスト全体をoverallLoopCount回繰り返す。各周回の中で、
@@ -622,7 +622,7 @@ namespace EventRecorder
                         int fileNo = i + 1;
                         List<String[]> rows = null;
 
-                        Dispatcher.Invoke(() =>
+                        InvokeOnUi(() =>
                         {
                             label_PlaylistStatus.Text = "実行中(全体" + loopDisplayNo + "/" + overallLoopCount + "): "
                                 + entry.FileName + " (" + fileNo + "/" + entries.Count + ")";
@@ -661,7 +661,7 @@ namespace EventRecorder
                 // 途中で例外が起きても、必ず「再生中」状態を解除する
                 isPlaying = false;
                 stopPlayRequested = false;
-                Dispatcher.Invoke(() =>
+                InvokeOnUi(() =>
                 {
                     UpdatePlayButton();
                     label_PlaylistStatus.Text = "";

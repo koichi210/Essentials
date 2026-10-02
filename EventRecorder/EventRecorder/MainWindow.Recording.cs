@@ -68,7 +68,8 @@ namespace EventRecorder
                 return;
             }
 
-            if (isPlaying)
+            // 終了処理中は新しく記録を始めない
+            if (isPlaying || isExiting)
             {
                 return;
             }

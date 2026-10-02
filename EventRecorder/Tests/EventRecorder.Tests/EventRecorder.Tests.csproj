@@ -66,6 +66,7 @@
     <Compile Include="MainWindowTests.cs" />
     <Compile Include="ProfileCompatibilityTests.cs" />
     <Compile Include="TempFolder.cs" />
+    <Compile Include="SessionGuardTests.cs" />
     <Compile Include="..\..\..\_Common\Wpf\Tests\StaRunner.cs">
       <Link>StaRunner.cs</Link>
     </Compile>

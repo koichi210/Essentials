@@ -4,6 +4,7 @@ using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.IO;
 using System.Runtime.InteropServices;
+using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Input;
 using System.Windows.Interop;
@@ -30,6 +31,13 @@ namespace EventRecorder
         private volatile Boolean isRecording = false;
         private volatile Boolean isPlaying = false;
         private volatile Boolean stopPlayRequested = false;
+
+        // 実行中の再生スレッド(単発再生/プレイリスト実行のTask.Run)。終了時に停止を伝えた後、
+        // 本当に止まるまで待つために持っておく(止まる前に終了すると、再生スレッドが閉店後の店内で動き回る)
+        private Task playbackTask;
+
+        // 終了処理(PrepareForExit)に入ったらtrue。以後は記録/再生を新しく始めない
+        private Boolean isExiting = false;
 
         // タイトルバーに表示する再生中のループ進捗(WinForms版と同じ。再生スレッドから書き込み、UIはUpdateTitleで読むだけ)
         private int playbackOverallLoopNo = 0;
@@ -145,6 +153,17 @@ namespace EventRecorder
 
             Closing += MainWindow_Closing;
             Closed += MainWindow_Closed;
+
+            // 画面ロック・サインイン(セッション切替)と、シャットダウン/再起動/サインアウトの通知。
+            // テスト用のコンストラクタ(フック無し)では、テスト実行中のPCの状態に反応しないよう購読しない
+            if (isHookEnabled)
+            {
+                Microsoft.Win32.SystemEvents.SessionSwitch += SystemEvents_SessionSwitch;
+                if (Application.Current != null)
+                {
+                    Application.Current.SessionEnding += Application_SessionEnding;
+                }
+            }
             Loaded += MainWindow_Loaded;
             StateChanged += (s, e) => UpdateTaskbarVisibility();
 
@@ -484,16 +503,168 @@ namespace EventRecorder
 
         private void MainWindow_Closing(object sender, CancelEventArgs e)
         {
+            PrepareForExit();
+        }
+
+        // Windowsのシャットダウン/再起動/サインアウト。WPFはこの時Window.Closingを呼ばずに終了するため
+        // (Window.Closingのドキュメントに明記されている仕様)、ここからも同じ終了処理を呼ぶ
+        private void Application_SessionEnding(object sender, SessionEndingCancelEventArgs e)
+        {
+            PrepareForExit();
+        }
+
+        // 終了処理。閉じるボタン・トレイの「終了」(Closing)と、シャットダウン等(SessionEnding)の両方から呼ばれる。
+        // 以前は記録/再生を止めずに終了していたため、再生スレッドが終了後も入力を送り続けたり、
+        // 止まったUIスレッドへDispatcher.Invokeしたりしていた。
+        // 「店じまい」の順番: ①ホットキーを受け付けない ②記録を止める ③再生に停止を伝えて止まるまで待つ
+        // ④設定を保存 ⑤タイマー・フックを片付ける。2回目以降の呼び出しは何もしない
+        internal void PrepareForExit()
+        {
+            if (isExiting)
+            {
+                return;
+            }
+            isExiting = true;
+
+            // ①止めている最中にホットキーで記録/再生が再開されないよう、先にキーボードフックを外す
+            GlobalHook.KeyboardHook.Stop();
+
+            // ②記録中なら、溜まっている行を表へ反映してから止める(マウスフックもここで外れる)
+            if (isRecording)
+            {
+                ToggleRecording();
+            }
+
+            // ③再生中なら停止を伝え、再生スレッドが後片付け(押しっぱなしのキーを離す等)を終えるまで待つ
+            if (isPlaying)
+            {
+                stopPlayRequested = true;
+                Task task = playbackTask;
+                if (task != null)
+                {
+                    SessionGuard.WaitWhilePumping(() => task.IsCompleted, PumpDispatcher, SessionGuard.ExitWaitTimeoutMs);
+                }
+            }
+
+            // ④
             SaveAppSettings();
 
+            // ⑤
             gridFlushTimer.Stop();
             mousePosTimer.Stop();
             GlobalHook.MouseHook.Stop();
             GlobalHook.KeyboardHook.Stop();
         }
 
+        // UIスレッドに溜まっている処理(再生スレッドからのDispatcher.Invoke等)を、優先度の高いものから実行させる。
+        // WinFormsのApplication.DoEvents相当
+        private void PumpDispatcher()
+        {
+            try
+            {
+                Dispatcher.Invoke(DispatcherPriority.Background, new Action(() => { }));
+            }
+            catch (InvalidOperationException)
+            {
+                // Dispatcherの処理が一時停止中で回せない時は、メッセージを処理せずに待つだけにする(時間切れで抜ける)
+            }
+        }
+
+        // *******************************************************************************
+        // 画面ロック・サインイン(セッション切替)
+
+        private void SystemEvents_SessionSwitch(object sender, Microsoft.Win32.SessionSwitchEventArgs e)
+        {
+            SessionChange change = SessionGuard.Classify(e.Reason);
+            if (isExiting || Dispatcher.HasShutdownStarted)
+            {
+                return;
+            }
+
+            // 通常はUIスレッドで通知されるが、念のため別スレッドから来た場合はUIスレッドへ回す
+            if (!Dispatcher.CheckAccess())
+            {
+                Dispatcher.BeginInvoke(new Action(() => HandleSessionChange(change)));
+                return;
+            }
+
+            HandleSessionChange(change);
+        }
+
+        internal void HandleSessionChange(SessionChange change)
+        {
+            if (isExiting)
+            {
+                return;
+            }
+
+            switch (change)
+            {
+                case SessionChange.Suspend:
+                    SuspendForSessionLock();
+                    break;
+                case SessionChange.Resume:
+                    ResumeAfterSessionUnlock();
+                    break;
+            }
+        }
+
+        // 画面ロック等でこのセッションの画面から離れる時、記録/再生を止める(WinForms版と同じ)。
+        // ・再生: ロック中のSendInputはロック画面(別デスクトップ)に届かず空振りする上、ロック解除した瞬間に
+        //   途中の行から勝手に再開してしまうため、ここで停止する(押しっぱなしのキーは再生スレッドが離す)
+        // ・記録: ロック中は入力がフックに来ず、ロック操作(Win+L等)のKeyUpも取りこぼして
+        //   「押しっぱなし」扱いのキーが残るため、ここで記録を終える(記録済みの行はそのまま残る)
+        private void SuspendForSessionLock()
+        {
+            if (isRecording)
+            {
+                ToggleRecording();
+            }
+
+            if (isPlaying)
+            {
+                stopPlayRequested = true;
+            }
+
+            pressedHotkeys.Clear();
+        }
+
+        // ロック解除・サインインでこのセッションの画面に戻ってきた時の立て直し(WinForms版と同じ)。
+        // ・ロック直前に押したホットキーのKeyUpを取りこぼしていると、次の1回が「リピート」扱いで無視されるため押下状態を消す
+        // ・低レベルキーボードフックは、コールバックが一定時間内に戻らないとWindowsに黙って外される
+        //   (ロック解除直後は画面の再描画などでUIスレッドが詰まりやすい)。外れたかどうかは知る手段が無いので張り直す
+        private void ResumeAfterSessionUnlock()
+        {
+            pressedHotkeys.Clear();
+
+            if (!isHookEnabled)
+            {
+                return;
+            }
+
+            try
+            {
+                GlobalHook.KeyboardHook.Stop();
+                GlobalHook.KeyboardHook.ClearEvent();
+                GlobalHook.KeyboardHook.AddEvent(OnKeyboardEvent);
+                GlobalHook.KeyboardHook.Start();
+            }
+            catch (Win32Exception)
+            {
+                // 張り直しに失敗してもエラー表示はしない(ロック解除のたびにダイアログが出るのを避ける)。
+                // ホットキーは効かなくなるが、ボタン操作は使えるし、次のロック解除でもう一度張り直しを試みる
+            }
+        }
+
         private void MainWindow_Closed(object sender, EventArgs e)
         {
+            // SystemEvents・Applicationのイベントは閉じた後も残るので、閉じたウィンドウへ通知が来ないよう解除する
+            Microsoft.Win32.SystemEvents.SessionSwitch -= SystemEvents_SessionSwitch;
+            if (Application.Current != null)
+            {
+                Application.Current.SessionEnding -= Application_SessionEnding;
+            }
+
             // 残しておくと、終了後もタスクトレイにアイコンの抜け殻が残ってしまう
             if (notifyIcon_Tray != null)
             {
