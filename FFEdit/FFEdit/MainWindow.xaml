@@ -25,6 +25,7 @@
             </Grid.ColumnDefinitions>
             <Label Grid.Column="0" Content="対象フォルダ" Padding="0" VerticalAlignment="Center" Margin="0,0,6,0" />
             <stc:ComboBoxEx Grid.Column="1" x:Name="comboBox_TargetDir" VerticalAlignment="Center"
+                            ToolTip="処理対象のフォルダ。Enterキーでこのフォルダを開く"
                             PreviewKeyDown="comboBox_TargetDir_PreviewKeyDown" />
             <Button Grid.Column="2" x:Name="button_Listup" Content="リストアップ" Width="75" Height="23" Margin="8,0,0,0"
                     Click="button_Listup_Click" />
@@ -49,11 +50,13 @@
                         </Grid.ColumnDefinitions>
                         <Label Grid.Column="0" Content="フィルター" Padding="0" VerticalAlignment="Center" HorizontalAlignment="Right" Margin="0,0,3,0" />
                         <stc:TextBoxEx Grid.Column="1" x:Name="textBox_Target_Extension" stc:Placeholder.Text="例: *.jpg" VerticalAlignment="Center"
+                                       ToolTip="一覧に出す名前の絞り込み(ワイルドカード可)。空欄なら全件。Enterキーで一覧を更新する"
                                        KeyUp="textBox_Target_Extension_KeyUp" />
                     </Grid>
                     <CheckBox x:Name="checkBox_Target_SubDirectory" Content="サブフォルダも表示" Margin="6,4,0,2"
                               Checked="UpdateListBox" Unchecked="UpdateListBox" />
-                    <CheckBox x:Name="checkBox_Target_SelectFile" Content="選択項目のみ" Margin="6,2,0,2" />
+                    <CheckBox x:Name="checkBox_Target_SelectFile" Content="選択項目のみ" Margin="6,2,0,2"
+                              ToolTip="オンなら一覧で選択した項目だけを処理する。オフなら一覧の全項目が対象" />
                 </StackPanel>
             </GroupBox>
 
@@ -61,25 +64,34 @@
                 <TabItem x:Name="tabPage_ChangeName" Header="名称変換">
                     <StackPanel Margin="6,6,6,4">
                         <RadioButton x:Name="radioButton_ChangeNumber" GroupName="ChangeName" Content="通し番号"
+                                     ToolTip="名前を「連番+拡張子」に変える。番号は一覧の並び順で振る"
                                      IsChecked="True" Checked="UpdateNameChangeControl" />
                         <StackPanel Orientation="Horizontal" Margin="17,4,0,0">
                             <Label x:Name="label_ChangeNumber_FirstVal" Content="最初の値" Padding="0" VerticalAlignment="Center" Margin="0,0,3,0" />
                             <stc:TextBoxEx x:Name="textBox_ChangeNumber_FirstVal" stc:Placeholder.Text="例: 1" Text="1" Width="68" TextAlignment="Right"
                                            VerticalAlignment="Center" />
-                            <ComboBox x:Name="comboBox_ChangeNumber_Digit" Width="74" Margin="6,0,0,0" VerticalAlignment="Center" />
+                            <ComboBox x:Name="comboBox_ChangeNumber_Digit" Width="74" Margin="6,0,0,0" VerticalAlignment="Center"
+                                      ToolTip="連番を0埋めする桁数。自動は対象件数の桁数に合わせる" />
                         </StackPanel>
-                        <CheckBox x:Name="checkBox_ChangeNumber_OrgName" Content="もとのファイル名を残す" Margin="19,5,0,0" />
+                        <CheckBox x:Name="checkBox_ChangeNumber_OrgName" Content="もとのファイル名を残す" Margin="19,5,0,0"
+                                  ToolTip="連番の後ろに元の名前(拡張子を除く)を続ける" />
                         <RadioButton x:Name="radioButton_ChangeAddDirName" GroupName="ChangeName" Content="フォルダ名をファイル名に追加"
+                                     ToolTip="対象フォルダからの相対パスの「\」を「_」に置き換えた名前にする(例: sub\a.txt → sub_a.txt)。置き場所は変わらない"
                                      Margin="0,9,0,0" Checked="UpdateNameChangeControl" />
                         <RadioButton x:Name="radioButton_ChangeDelNum" GroupName="ChangeName" Content="指定文字数だけ削除"
+                                     ToolTip="名前の先頭から、または拡張子の手前から、指定した文字数を削除する"
                                      Margin="0,4,0,0" Checked="UpdateNameChangeControl" />
                         <RadioButton x:Name="radioButton_ChangeExt" GroupName="ChangeName" Content="拡張子変更"
+                                     ToolTip="拡張子を指定した文字に変える。「.」は付けずに入力する"
                                      Margin="0,4,0,0" Checked="UpdateNameChangeControl" />
                         <RadioButton x:Name="radioButton_ChangeDelete" GroupName="ChangeName" Content="指定文字の削除"
+                                     ToolTip="指定した文字列を名前から全て取り除く。拡張子部分も対象になる"
                                      Margin="0,4,0,0" Checked="UpdateNameChangeControl" />
                         <RadioButton x:Name="radioButton_ChangeAdd" GroupName="ChangeName" Content="文字の追加"
+                                     ToolTip="先頭欄の文字を名前の頭に、後方欄の文字を拡張子の手前に追加する"
                                      Margin="0,4,0,0" Checked="UpdateNameChangeControl" />
                         <RadioButton x:Name="radioButton_ChangeReplace" GroupName="ChangeName" Content="文字の置換"
+                                     ToolTip="置換前の文字列を全て置換後の文字列に置き換える。拡張子部分も対象になる"
                                      Margin="0,4,0,0" Checked="UpdateNameChangeControl" />
                         <Grid Margin="0,9,0,0">
                             <Grid.ColumnDefinitions>
@@ -105,6 +117,7 @@
                     <StackPanel Margin="6,6,6,4">
                         <Label Content="基準日" Padding="0" />
                         <DatePicker x:Name="dateTimePicker_Days" Margin="3,4,0,0"
+                                    ToolTip="1件目に設定する日付。空欄なら今日の日付を使う"
                                     DisplayDateStart="1980-01-01" DisplayDateEnd="3000-12-31" />
                         <Grid Margin="3,4,0,0">
                             <Grid.ColumnDefinitions>
@@ -112,6 +125,7 @@
                                 <ColumnDefinition Width="Auto" />
                             </Grid.ColumnDefinitions>
                             <TextBox Grid.Column="0" x:Name="textBox_Time" VerticalContentAlignment="Center"
+                                     ToolTip="1件目に設定する時刻(時:分:秒)。↑↓キーか右の▲▼で、カーソルがある欄の値を増減する。不正な入力は直前の時刻に戻る"
                                      PreviewKeyDown="textBox_Time_PreviewKeyDown" LostKeyboardFocus="textBox_Time_LostKeyboardFocus" />
                             <StackPanel Grid.Column="1" Width="17">
                                 <RepeatButton x:Name="button_TimeUp" Height="11" Padding="0" FontSize="6" Content="▲"
@@ -121,7 +135,8 @@
                             </StackPanel>
                         </Grid>
                         <Label Content="加算間隔" Padding="0" Margin="0,16,0,0" />
-                        <ComboBox x:Name="comboBox_TimeSpan" Margin="3,3,0,0" />
+                        <ComboBox x:Name="comboBox_TimeSpan" Margin="3,3,0,0"
+                                  ToolTip="2件目以降は1件ごとにこの単位で1ずつ日時を進める。無しなら全件同じ日時" />
                         <GroupBox Header="更新対象" Margin="2,18,0,0" Padding="4,2,4,4">
                             <StackPanel Margin="14,2,0,0">
                                 <CheckBox x:Name="checkBox_CreationTime" Content="作成日時" IsChecked="True" Margin="0,2,0,3" />
@@ -135,14 +150,19 @@
                 <TabItem x:Name="tabPage_Function" Header="機能">
                     <StackPanel Margin="6,6,6,4">
                         <RadioButton x:Name="radioButton_Delete_BlankDir" GroupName="Function" Content="空のフォルダを削除"
+                                     ToolTip="一覧の各フォルダの配下にある空のサブフォルダを削除する。元に戻せない"
                                      IsChecked="True" Checked="UpdateFunctionControl" />
                         <RadioButton x:Name="radioButton_Move_Target" GroupName="Function" Content="移動"
+                                     ToolTip="対象を移動する。サブフォルダ内の項目も移動先の直下にまとめて置く"
                                      Margin="0,5,0,0" Checked="UpdateFunctionControl" />
                         <RadioButton x:Name="radioButton_Copy_Target" GroupName="Function" Content="コピー"
+                                     ToolTip="対象ファイルをコピーする。コピー先に同名ファイルがあると失敗する。フォルダのコピーは未対応"
                                      Margin="0,5,0,0" Checked="UpdateFunctionControl" />
                         <CheckBox x:Name="checkBox_Operation_AnyDir" Content="フォルダを指定する" IsEnabled="False"
+                                  ToolTip="オンなら移動/コピー先を入力欄のフォルダにする。オフなら対象フォルダ直下"
                                   Margin="16,5,0,0" Checked="UpdateFunctionControl" Unchecked="UpdateFunctionControl" />
                         <stc:TextBoxEx x:Name="textBox_Function_Any_Directory" stc:Placeholder.Text="例: C:\Work" IsEnabled="False" Margin="31,4,0,0"
+                                       ToolTip="移動/コピー先のフォルダ。存在しなければ作成する"
                                        GotKeyboardFocus="textBox_Function_Any_Directory_GotKeyboardFocus"
                                        PreviewMouseLeftButtonUp="textBox_Function_Any_Directory_PreviewMouseLeftButtonUp" />
                     </StackPanel>
@@ -153,15 +173,19 @@
         <!-- 2段目右: 一覧(上下左右に伸びる) -->
         <ListBox Grid.Row="1" Grid.Column="1" x:Name="listBox" Margin="4,6,0,0" SelectionMode="Extended"
                  ScrollViewer.HorizontalScrollBarVisibility="Auto"
+                 ToolTip="Ctrl+A: 全選択、Ctrl+C: 表示名をコピー、Ctrl+Shift+C: フルパスでコピー、Delete: 選択項目を削除(ごみ箱を経由せず元に戻せない)"
                  SelectionChanged="listBox_SelectionChanged" PreviewKeyDown="listBox_PreviewKeyDown" />
 
         <!-- 3段目: 左下にステータス、右下にボタン -->
         <stc:TextBoxEx Grid.Row="2" Grid.Column="0" x:Name="textBox_StatusBar" IsReadOnly="True" TextAlignment="Right"
                        Width="236" HorizontalAlignment="Left" VerticalAlignment="Center" Margin="0,8,0,0" />
         <StackPanel Grid.Row="2" Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,8,0,0">
-            <Button x:Name="button_SaveSetting" Content="設定保存" Width="84" Height="23" Click="button_SaveSetting_Click" />
-            <Button x:Name="button_Restore" Content="復元" Width="65" Height="23" Margin="5,0,0,0" Click="button_Restore_Click" />
-            <Button x:Name="button_Execute" Content="実行" Width="65" Height="23" Margin="4,0,0,0" Click="button_Execute_Click" />
+            <Button x:Name="button_SaveSetting" Content="設定保存" Width="84" Height="23" Click="button_SaveSetting_Click"
+                    ToolTip="現在の入力内容を設定ファイルに保存する(Ctrl+Sでも可)" />
+            <Button x:Name="button_Restore" Content="復元" Width="65" Height="23" Margin="5,0,0,0" Click="button_Restore_Click"
+                    ToolTip="名称変換・移動の直前の実行を1回分ずつ元に戻す。タイムスタンプ変更・コピー・空フォルダ削除は戻せない。履歴はアプリ終了で消える" />
+            <Button x:Name="button_Execute" Content="実行" Width="65" Height="23" Margin="4,0,0,0" Click="button_Execute_Click"
+                    ToolTip="表示中のタブ(名称変換/タイムスタンプ/機能)の処理を対象項目に実行する" />
         </StackPanel>
     </Grid>
 </Window>

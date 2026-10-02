@@ -53,18 +53,24 @@
 
                     <Label Grid.Row="0" Grid.Column="0" Content="フォルダパス：" Style="{StaticResource RowLabel}" />
                     <stc:TextBoxEx Grid.Row="0" Grid.Column="1" x:Name="cw_TextBox_SavePath" stc:Placeholder.Text="例: C:\Capture" VerticalAlignment="Center" Margin="0,2"
+                                   ToolTip="キャプチャ画像の保存先(無ければ自動で作成)。手入力すると他タブのフォルダ欄にも同じパスが入る(DistOrientの移動先は末尾に_port/_landを付けたもの)"
                                    KeyDown="cw_TextBox_SavePath_KeyDown" KeyUp="cw_TextBox_SavePath_KeyUp" />
                     <Label Grid.Row="1" Grid.Column="0" Content="ファイル名プリフィックス：" Style="{StaticResource RowLabel}" />
-                    <stc:TextBoxEx Grid.Row="1" Grid.Column="1" x:Name="cw_TextBox_SaveFilePrefix" stc:Placeholder.Text="例: capture_" VerticalAlignment="Center" Margin="0,2" />
+                    <stc:TextBoxEx Grid.Row="1" Grid.Column="1" x:Name="cw_TextBox_SaveFilePrefix" stc:Placeholder.Text="例: capture_" VerticalAlignment="Center" Margin="0,2"
+                                   ToolTip="保存ファイル名の先頭に付ける文字列。ファイル名は「接頭辞_[タイムスタンプ_]繰り返し番号4桁_撮影番号.png」になる" />
                     <CheckBox Grid.Row="2" Grid.Column="1" x:Name="cw_checkBox_AddTimeStamp" Content="ファイル名にタイムスタンプを使用する"
-                              Margin="8,3" VerticalAlignment="Center" />
+                              Margin="8,3" VerticalAlignment="Center"
+                              ToolTip="ファイル名の接頭辞の後に、Capture開始時刻(yyyy_MM_dd_HH_mm_ss)を付ける" />
 
                     <GroupBox Grid.Row="3" Grid.Column="0" x:Name="cw_GroupBox_CaptureTarget" Header="Capture対象"
                               Margin="8,4,6,4" Padding="4,2">
                         <StackPanel>
-                            <RadioButton x:Name="cw_Radio_FullScreen" Content="FullScreen" IsChecked="True" Margin="0,2" />
-                            <RadioButton x:Name="cw_Radio_CurrentScreen" Content="CurrentScreen" Margin="0,2" />
-                            <RadioButton x:Name="cw_Radio_CurrentWindow" Content="CurrentWindow" Margin="0,2" />
+                            <RadioButton x:Name="cw_Radio_FullScreen" Content="FullScreen" IsChecked="True" Margin="0,2"
+                                         ToolTip="Ctrl+PrintScreenで画面全体を撮る" />
+                            <RadioButton x:Name="cw_Radio_CurrentScreen" Content="CurrentScreen" Margin="0,2"
+                                         ToolTip="このウィンドウが表示されているモニタ1枚だけを撮る" />
+                            <RadioButton x:Name="cw_Radio_CurrentWindow" Content="CurrentWindow" Margin="0,2"
+                                         ToolTip="Alt+PrintScreenで、撮影時点でアクティブなウィンドウを撮る" />
                         </StackPanel>
                     </GroupBox>
 
@@ -78,34 +84,69 @@
                             </Style>
                         </DataGrid.CellStyle>
                         <DataGrid.Columns>
-                            <DataGridTextColumn Width="*" Binding="{Binding Sleep, UpdateSourceTrigger=PropertyChanged}" />
-                            <DataGridTextColumn Width="*" Binding="{Binding MouseX, UpdateSourceTrigger=PropertyChanged}" />
-                            <DataGridTextColumn Width="*" Binding="{Binding MouseY, UpdateSourceTrigger=PropertyChanged}" />
+                            <DataGridTextColumn Width="*" Binding="{Binding Sleep, UpdateSourceTrigger=PropertyChanged}">
+                                <DataGridTextColumn.HeaderStyle>
+                                    <Style TargetType="{x:Type DataGridColumnHeader}">
+                                        <Setter Property="ToolTip" Value="マウス操作の後、キャプチャ前に待つ時間(ミリ秒、1秒単位に切り上げ)。空欄なら直前に使った待ち時間を引き継ぐ" />
+                                    </Style>
+                                </DataGridTextColumn.HeaderStyle>
+                            </DataGridTextColumn>
+                            <DataGridTextColumn Width="*" Binding="{Binding MouseX, UpdateSourceTrigger=PropertyChanged}">
+                                <DataGridTextColumn.HeaderStyle>
+                                    <Style TargetType="{x:Type DataGridColumnHeader}">
+                                        <Setter Property="ToolTip" Value="マウスを動かす先のX座標(画面座標、px)。MouseX/MouseYのどちらかが空欄ならマウス操作をしない" />
+                                    </Style>
+                                </DataGridTextColumn.HeaderStyle>
+                            </DataGridTextColumn>
+                            <DataGridTextColumn Width="*" Binding="{Binding MouseY, UpdateSourceTrigger=PropertyChanged}">
+                                <DataGridTextColumn.HeaderStyle>
+                                    <Style TargetType="{x:Type DataGridColumnHeader}">
+                                        <Setter Property="ToolTip" Value="マウスを動かす先のY座標(画面座標、px)。MouseX/MouseYのどちらかが空欄ならマウス操作をしない" />
+                                    </Style>
+                                </DataGridTextColumn.HeaderStyle>
+                            </DataGridTextColumn>
                             <DataGridComboBoxColumn Width="*"
                                                     SelectedItemBinding="{Binding MouseAction, UpdateSourceTrigger=PropertyChanged}"
-                                                    EditingElementStyle="{StaticResource DropDownEditing}" />
+                                                    EditingElementStyle="{StaticResource DropDownEditing}">
+                                <DataGridComboBoxColumn.HeaderStyle>
+                                    <Style TargetType="{x:Type DataGridColumnHeader}">
+                                        <Setter Property="ToolTip" Value="Move: 移動だけ。LeftDown(未設定も含む): 移動して左クリック(押して離す)" />
+                                    </Style>
+                                </DataGridComboBoxColumn.HeaderStyle>
+                            </DataGridComboBoxColumn>
                             <DataGridComboBoxColumn Width="*"
                                                     SelectedItemBinding="{Binding Capture, UpdateSourceTrigger=PropertyChanged}"
-                                                    EditingElementStyle="{StaticResource DropDownEditing}" />
+                                                    EditingElementStyle="{StaticResource DropDownEditing}">
+                                <DataGridComboBoxColumn.HeaderStyle>
+                                    <Style TargetType="{x:Type DataGridColumnHeader}">
+                                        <Setter Property="ToolTip" Value="〇の行だけSleepの後にキャプチャする(×・未設定は撮らない)" />
+                                    </Style>
+                                </DataGridComboBoxColumn.HeaderStyle>
+                            </DataGridComboBoxColumn>
                         </DataGrid.Columns>
                     </DataGrid>
 
                     <Label Grid.Row="4" Grid.Column="0" Content="Sleep（msec）：" HorizontalAlignment="Left" Margin="4,0,0,0" Padding="2,0" VerticalAlignment="Center" />
                     <stc:TextBoxEx Grid.Row="4" Grid.Column="0" x:Name="cw_TextBox_Sleep" stc:Placeholder.Text="例: 2000" Style="{StaticResource NumberBox}"
-                                   Width="50" HorizontalAlignment="Right" Margin="0,2,6,2" />
+                                   Width="50" HorizontalAlignment="Right" Margin="0,2,6,2"
+                                   ToolTip="Capture開始前に待つ時間(ミリ秒)。空欄なら待たない。実際は1秒単位に切り上げて待つ" />
                     <Label Grid.Row="5" Grid.Column="0" Content="繰り返し数：" HorizontalAlignment="Left" Margin="18,0,0,0" Padding="2,0" VerticalAlignment="Center" />
                     <stc:TextBoxEx Grid.Row="5" Grid.Column="0" x:Name="cw_TextBox_Loop" stc:Placeholder.Text="例: 2" Style="{StaticResource NumberBox}"
-                                   Width="50" HorizontalAlignment="Right" Margin="0,2,6,2" EnableUpDownIncrement="True" />
+                                   Width="50" HorizontalAlignment="Right" Margin="0,2,6,2" EnableUpDownIncrement="True"
+                                   ToolTip="グリッドの全行を繰り返す回数。空欄なら1回。↑↓キーで1ずつ増減できる" />
 
                     <stc:TextBoxEx Grid.Row="7" Grid.Column="0" x:Name="cw_TextBox_Status" IsReadOnly="True" TextAlignment="Right"
-                                   Margin="35,0,6,0" VerticalAlignment="Center" />
+                                   Margin="35,0,6,0" VerticalAlignment="Center"
+                                   ToolTip="このタブ上でマウスを動かすと、現在のマウス座標(画面座標)を表示する" />
                     <DockPanel Grid.Row="7" Grid.Column="1" LastChildFill="False">
                         <Button DockPanel.Dock="Left" x:Name="cw_Button_AddLine" Content="一行追加" Width="65" Height="23" Margin="0,0,2,0"
-                                Click="cw_Button_AddLine_Click" />
+                                Click="cw_Button_AddLine_Click"
+                                ToolTip="選択中の行の下に1行挿入する(MouseAction=Move、Capture=×)" />
                         <Button DockPanel.Dock="Left" x:Name="cw_Button_DelLine" Content="一行削除" Width="65" Height="23"
                                 Click="cw_Button_DelLine_Click" />
                         <Button DockPanel.Dock="Right" x:Name="cw_Button_Capture" Content="Capture" Width="60" Height="23"
-                                Click="Button_Capture_Click" />
+                                Click="Button_Capture_Click"
+                                ToolTip="グリッドの各行を上から順に実行(マウス操作→Sleep→キャプチャ)し、それを繰り返し数だけ行う。終了後はマウスカーソルを押した時の位置へ戻す" />
                     </DockPanel>
                 </Grid>
             </TabItem>
@@ -125,10 +166,10 @@
 
                     <DockPanel Grid.Row="0" Grid.ColumnSpan="2" Margin="0,0,0,4">
                         <Label DockPanel.Dock="Left" x:Name="pt_Label_SourceFolderPath" Content="フォルダパス：" Width="74"
-                               Padding="2,0" VerticalAlignment="Center" MouseDoubleClick="UpdateReadOnly" />
+                               Padding="2,0" VerticalAlignment="Center" MouseDoubleClick="UpdateReadOnly" ToolTip="ダブルクリックで右の欄の直接編集を切り替える" />
                         <Button DockPanel.Dock="Right" x:Name="pt_Button_Listup" Content="リストアップ" Width="84" Height="23" Margin="6,0,0,0"
                                 Click="Button_TrimListup_Click" />
-                        <stc:TextBoxEx x:Name="pt_SourceFolderPath" IsReadOnly="True" VerticalAlignment="Center" KeyDown="ExecutePath" />
+                        <stc:TextBoxEx x:Name="pt_SourceFolderPath" IsReadOnly="True" VerticalAlignment="Center" KeyDown="ExecutePath" ToolTip="フォルダのドラッグ&amp;ドロップで設定する。左のラベルをダブルクリックすると直接編集できる。Enterでフォルダを開く" />
                     </DockPanel>
 
                     <Grid Grid.Row="1" Grid.Column="0">
@@ -147,25 +188,33 @@
                             <RowDefinition Height="*" />
                         </Grid.RowDefinitions>
                         <Label Grid.Row="0" Content="原点(X)：" Style="{StaticResource RowLabel}" />
-                        <stc:TextBoxEx Grid.Row="0" Grid.Column="1" x:Name="pt_BaseX" stc:Placeholder.Text="例: 0" Style="{StaticResource NumberBox}" Margin="0,2" />
+                        <stc:TextBoxEx Grid.Row="0" Grid.Column="1" x:Name="pt_BaseX" stc:Placeholder.Text="例: 0" Style="{StaticResource NumberBox}" Margin="0,2"
+                                       ToolTip="切り取る範囲の左上のX座標(px)" />
                         <Label Grid.Row="1" Content="原点(Y)：" Style="{StaticResource RowLabel}" />
-                        <stc:TextBoxEx Grid.Row="1" Grid.Column="1" x:Name="pt_BaseY" stc:Placeholder.Text="例: 0" Style="{StaticResource NumberBox}" Margin="0,2" />
+                        <stc:TextBoxEx Grid.Row="1" Grid.Column="1" x:Name="pt_BaseY" stc:Placeholder.Text="例: 0" Style="{StaticResource NumberBox}" Margin="0,2"
+                                       ToolTip="切り取る範囲の左上のY座標(px)" />
                         <RadioButton Grid.Row="2" Grid.ColumnSpan="3" x:Name="pt_Radio_SelectPointOfEnd" Content="終点を座標で指定"
-                                     IsChecked="True" Margin="18,14,0,2" Click="pt_Radio_SelectPointOfEnd_Click" />
+                                     IsChecked="True" Margin="18,14,0,2" Click="pt_Radio_SelectPointOfEnd_Click"
+                                     ToolTip="下のX/Yを右下の座標(px、その位置自体は含まない)として扱う。切り替えると入力中の値を換算し直す" />
                         <RadioButton Grid.Row="3" Grid.ColumnSpan="3" x:Name="pt_Radio_SelectSizeOfEnd" Content="終点をサイズで指定"
-                                     Margin="18,2,0,2" Click="pt_Radio_SelectSizeOfEnd_Click" />
+                                     Margin="18,2,0,2" Click="pt_Radio_SelectSizeOfEnd_Click"
+                                     ToolTip="下のX/Yを切り取る幅/高さ(px)として扱う。切り替えると入力中の値を換算し直す" />
                         <Label Grid.Row="4" Content="X：" Style="{StaticResource RowLabel}" />
-                        <stc:TextBoxEx Grid.Row="4" Grid.Column="1" x:Name="pt_TargetX" stc:Placeholder.Text="例: 1920" Style="{StaticResource NumberBox}" Margin="0,2" />
+                        <stc:TextBoxEx Grid.Row="4" Grid.Column="1" x:Name="pt_TargetX" stc:Placeholder.Text="例: 1920" Style="{StaticResource NumberBox}" Margin="0,2"
+                                       ToolTip="「座標で指定」なら右端のX座標、「サイズで指定」なら幅(px)" />
                         <Label Grid.Row="5" Content="Y：" Style="{StaticResource RowLabel}" />
-                        <stc:TextBoxEx Grid.Row="5" Grid.Column="1" x:Name="pt_TargetY" stc:Placeholder.Text="例: 1080" Style="{StaticResource NumberBox}" Margin="0,2" />
+                        <stc:TextBoxEx Grid.Row="5" Grid.Column="1" x:Name="pt_TargetY" stc:Placeholder.Text="例: 1080" Style="{StaticResource NumberBox}" Margin="0,2"
+                                       ToolTip="「座標で指定」なら下端のY座標、「サイズで指定」なら高さ(px)" />
                     </Grid>
 
                     <ListBox Grid.Row="1" Grid.Column="1" x:Name="pt_ListBox_ListUp" Style="{StaticResource ListUp}"
-                             SelectionChanged="pt_ListBox_ListUp_SelectedIndexChanged" MouseDoubleClick="pt_ListBox_ListUp_DoubleClick" />
+                             SelectionChanged="pt_ListBox_ListUp_SelectedIndexChanged" MouseDoubleClick="pt_ListBox_ListUp_DoubleClick"
+                             ToolTip="選択したファイルだけが処理対象(Ctrl+Aで全選択)。ダブルクリックで選択中のファイルを開く" />
 
                     <DockPanel Grid.Row="2" Grid.Column="1" Margin="0,4,0,0">
                         <Button DockPanel.Dock="Right" x:Name="pt_Button_Trim" Content="切り取り" Width="60" Height="23" Margin="6,0,0,0"
-                                Click="Button_Trim_Click" />
+                                Click="Button_Trim_Click"
+                                ToolTip="選択したファイルを切り取って上書き保存する。元ファイルはフォルダ内のBk_Trimへコピーしておく。処理中に押すと中断" />
                         <stc:TextBoxEx x:Name="pt_TextBox_Status" IsReadOnly="True" TextAlignment="Right" VerticalAlignment="Center" />
                     </DockPanel>
                 </Grid>
@@ -186,10 +235,10 @@
 
                     <DockPanel Grid.Row="0" Grid.ColumnSpan="2" Margin="0,0,0,4">
                         <Label DockPanel.Dock="Left" x:Name="pr_Label_SourceFolderPath" Content="フォルダパス：" Width="74"
-                               Padding="2,0" VerticalAlignment="Center" MouseDoubleClick="UpdateReadOnly" />
+                               Padding="2,0" VerticalAlignment="Center" MouseDoubleClick="UpdateReadOnly" ToolTip="ダブルクリックで右の欄の直接編集を切り替える" />
                         <Button DockPanel.Dock="Right" x:Name="pr_Button_Listup" Content="リストアップ" Width="84" Height="23" Margin="6,0,0,0"
                                 Click="pr_Button_Listup_Click" />
-                        <stc:TextBoxEx x:Name="pr_SourceFolderPath" IsReadOnly="True" VerticalAlignment="Center" KeyDown="ExecutePath" />
+                        <stc:TextBoxEx x:Name="pr_SourceFolderPath" IsReadOnly="True" VerticalAlignment="Center" KeyDown="ExecutePath" ToolTip="フォルダのドラッグ&amp;ドロップで設定する。左のラベルをダブルクリックすると直接編集できる。Enterでフォルダを開く" />
                     </DockPanel>
 
                     <Grid Grid.Row="1" Grid.Column="0">
@@ -206,20 +255,26 @@
                             <RowDefinition Height="*" />
                         </Grid.RowDefinitions>
                         <Label Grid.Row="0" Content="原点(X)：" Style="{StaticResource RowLabel}" />
-                        <stc:TextBoxEx Grid.Row="0" Grid.Column="1" x:Name="pr_BaseX" stc:Placeholder.Text="例: 0" Style="{StaticResource NumberBox}" Margin="0,2" />
+                        <stc:TextBoxEx Grid.Row="0" Grid.Column="1" x:Name="pr_BaseX" stc:Placeholder.Text="例: 0" Style="{StaticResource NumberBox}" Margin="0,2"
+                                       ToolTip="回転後の画像で、元画像の左上隅を置くX座標(px)。この点を中心に回転する" />
                         <Label Grid.Row="1" Content="原点(Y)：" Style="{StaticResource RowLabel}" />
-                        <stc:TextBoxEx Grid.Row="1" Grid.Column="1" x:Name="pr_BaseY" stc:Placeholder.Text="例: 0" Style="{StaticResource NumberBox}" Margin="0,2" />
+                        <stc:TextBoxEx Grid.Row="1" Grid.Column="1" x:Name="pr_BaseY" stc:Placeholder.Text="例: 0" Style="{StaticResource NumberBox}" Margin="0,2"
+                                       ToolTip="回転後の画像で、元画像の左上隅を置くY座標(px)。この点を中心に回転する" />
                         <Label Grid.Row="2" Content="角度：" Style="{StaticResource RowLabel}" />
-                        <stc:TextBoxEx Grid.Row="2" Grid.Column="1" x:Name="pr_Angle" stc:Placeholder.Text="例: 90" Style="{StaticResource NumberBox}" Margin="0,2" />
+                        <stc:TextBoxEx Grid.Row="2" Grid.Column="1" x:Name="pr_Angle" stc:Placeholder.Text="例: 90" Style="{StaticResource NumberBox}" Margin="0,2"
+                                       ToolTip="回転角度(度、整数)。正の値で時計回り" />
                         <Button Grid.Row="3" Grid.ColumnSpan="2" x:Name="pr_Button_RotationPreview" Content="プレビュー" Width="84" Height="23"
-                                HorizontalAlignment="Right" Margin="0,4,0,0" Click="pr_Button_RotationPreview_Click" />
+                                HorizontalAlignment="Right" Margin="0,4,0,0" Click="pr_Button_RotationPreview_Click"
+                                ToolTip="画像を読み込んで原点・角度を試せるプレビューを開く。OKで閉じるとその値をこの画面に反映する" />
                     </Grid>
 
-                    <ListBox Grid.Row="1" Grid.Column="1" x:Name="pr_ListBox_ListUp" Style="{StaticResource ListUp}" />
+                    <ListBox Grid.Row="1" Grid.Column="1" x:Name="pr_ListBox_ListUp" Style="{StaticResource ListUp}"
+                             ToolTip="選択したファイルだけが処理対象(Ctrl+Aで全選択)" />
 
                     <DockPanel Grid.Row="2" Grid.Column="1" Margin="0,4,0,0">
                         <Button DockPanel.Dock="Right" x:Name="pr_Button_Rotation" Content="回転実行" Width="61" Height="23" Margin="6,0,0,0"
-                                Click="pr_Button_Rotation_Click" />
+                                Click="pr_Button_Rotation_Click"
+                                ToolTip="選択したファイルを回転して上書き保存する(画像サイズは元画像の対角線長の正方形になる)。元ファイルはBk_Rotateへコピーしておく。処理中に押すと中断" />
                         <stc:TextBoxEx x:Name="pr_TextBox_Status" IsReadOnly="True" TextAlignment="Right" VerticalAlignment="Center" />
                     </DockPanel>
                 </Grid>
@@ -244,20 +299,21 @@
                     </Grid.RowDefinitions>
 
                     <Label Grid.Row="0" x:Name="do_Label_SourceFolderPath" Content="移動元：" Style="{StaticResource RowLabel}"
-                           MouseDoubleClick="UpdateReadOnly" />
+                           MouseDoubleClick="UpdateReadOnly" ToolTip="ダブルクリックで右の欄の直接編集を切り替える" />
                     <stc:TextBoxEx Grid.Row="0" Grid.Column="1" x:Name="do_SourceFolderPath" IsReadOnly="True" VerticalAlignment="Center"
-                                   Margin="0,2" KeyDown="ExecutePath" />
+                                   Margin="0,2" KeyDown="ExecutePath" ToolTip="フォルダのドラッグ&amp;ドロップで設定する。左のラベルをダブルクリックすると直接編集できる。Enterでフォルダを開く" />
                     <Label Grid.Row="1" x:Name="do_Label_DestPortFolderPath" Content="移動先[縦]：" Style="{StaticResource RowLabel}"
-                           MouseDoubleClick="UpdateReadOnly" />
+                           MouseDoubleClick="UpdateReadOnly" ToolTip="ダブルクリックで右の欄の直接編集を切り替える" />
                     <stc:TextBoxEx Grid.Row="1" Grid.Column="1" x:Name="do_DestPortFolderPath" IsReadOnly="True" VerticalAlignment="Center"
-                                   Margin="0,2" KeyDown="ExecutePath" />
+                                   Margin="0,2" KeyDown="ExecutePath" ToolTip="縦と判定した画像の移動先。フォルダのドラッグ&amp;ドロップで設定する。左のラベルをダブルクリックすると直接編集できる。Enterでフォルダを開く" />
                     <Label Grid.Row="2" x:Name="do_Label_DestLandFolderPath" Content="移動先[横]：" Style="{StaticResource RowLabel}"
-                           MouseDoubleClick="UpdateReadOnly" />
+                           MouseDoubleClick="UpdateReadOnly" ToolTip="ダブルクリックで右の欄の直接編集を切り替える" />
                     <stc:TextBoxEx Grid.Row="2" Grid.Column="1" x:Name="do_DestLandFolderPath" IsReadOnly="True" VerticalAlignment="Center"
-                                   Margin="0,2" KeyDown="ExecutePath" />
+                                   Margin="0,2" KeyDown="ExecutePath" ToolTip="横と判定した画像の移動先。フォルダのドラッグ&amp;ドロップで設定する。左のラベルをダブルクリックすると直接編集できる。Enterでフォルダを開く" />
                     <Label Grid.Row="3" Content="対象ファイル：" Style="{StaticResource RowLabel}" />
                     <stc:TextBoxEx Grid.Row="3" Grid.Column="1" x:Name="do_TargetFileName" stc:Placeholder.Text="例: *.jpg" FolderPathOnly="False" VerticalAlignment="Center"
-                                   Margin="0,2" />
+                                   Margin="0,2"
+                                   ToolTip="振り分けるファイルの検索パターン(*や?が使える)。移動元フォルダの直下だけが対象" />
                     <Label Grid.Row="4" Content="白判定の長さ：" Style="{StaticResource RowLabel}" />
                     <Grid Grid.Row="4" Grid.Column="1">
                         <Grid.ColumnDefinitions>
@@ -266,12 +322,15 @@
                             <ColumnDefinition Width="Auto" />
                             <ColumnDefinition Width="*" MinWidth="60" />
                         </Grid.ColumnDefinitions>
-                        <stc:TextBoxEx Grid.Column="0" x:Name="do_WhiteLength" stc:Placeholder.Text="例: 10" Style="{StaticResource NumberBox}" Margin="0,2" />
+                        <stc:TextBoxEx Grid.Column="0" x:Name="do_WhiteLength" stc:Placeholder.Text="例: 10" Style="{StaticResource NumberBox}" Margin="0,2"
+                                       ToolTip="白フチかどうかを調べる、画像の左右両端の帯の幅(px)。画像の幅より大きい場合は画像の幅になる" />
                         <Label Grid.Column="2" Content="白判定の係数：" Style="{StaticResource RowLabel}" />
-                        <stc:TextBoxEx Grid.Column="3" x:Name="do_WhiteCoef" stc:Placeholder.Text="例: 30" Style="{StaticResource NumberBox}" Margin="0,2" />
+                        <stc:TextBoxEx Grid.Column="3" x:Name="do_WhiteCoef" stc:Placeholder.Text="例: 30" Style="{StaticResource NumberBox}" Margin="0,2"
+                                       ToolTip="白と見なすしきい値の係数(既定30)。しきい値=帯の幅×画像の高さ÷係数で、大きいほど白と判定されにくく横に振り分けられやすい" />
                     </Grid>
                     <Button Grid.Row="5" Grid.Column="1" x:Name="do_Distribute" Content="振り分け" Width="60" Height="23"
-                            HorizontalAlignment="Right" Margin="0,4" Click="do_Distribute_Click" />
+                            HorizontalAlignment="Right" Margin="0,4" Click="do_Distribute_Click"
+                            ToolTip="左右両端の帯をPNGにした時のサイズが両方ともしきい値以下(白フチあり)なら縦、そうでなければ横の移動先へファイルを移動する" />
 
                     <GroupBox Grid.Row="6" Grid.ColumnSpan="2" Header="Sample" Margin="14,0,0,0" Padding="4">
                         <Grid>
@@ -285,9 +344,11 @@
                             </Grid.RowDefinitions>
                             <Label Grid.Row="0" Content="ファイル名：" Style="{StaticResource RowLabel}" />
                             <stc:TextBoxEx Grid.Row="0" Grid.Column="1" x:Name="do_SampleFilePath" stc:Placeholder.Text="例: C:\Sample\001.jpg" FolderPathOnly="False"
-                                           VerticalAlignment="Center" Margin="0,2" />
+                                           VerticalAlignment="Center" Margin="0,2"
+                                           ToolTip="長さ/係数を試すための画像ファイルのパス" />
                             <Button Grid.Row="1" Grid.Column="1" x:Name="do_GetSampleParam" Content="取得" Width="60" Height="23"
-                                    HorizontalAlignment="Right" Margin="0,4,0,0" Click="do_GetSampleParam_Click" />
+                                    HorizontalAlignment="Right" Margin="0,4,0,0" Click="do_GetSampleParam_Click"
+                                    ToolTip="サンプル画像を今の長さ/係数で判定し、結果・しきい値・左右の帯のサイズを表示する(ファイルは移動しない)" />
                         </Grid>
                     </GroupBox>
                 </Grid>
@@ -308,10 +369,10 @@
 
                     <DockPanel Grid.Row="0" Grid.ColumnSpan="2" Margin="0,0,0,4">
                         <Label DockPanel.Dock="Left" x:Name="pm_Label_SourceFolderPath" Content="フォルダパス：" Width="74"
-                               Padding="2,0" VerticalAlignment="Center" MouseDoubleClick="UpdateReadOnly" />
+                               Padding="2,0" VerticalAlignment="Center" MouseDoubleClick="UpdateReadOnly" ToolTip="ダブルクリックで右の欄の直接編集を切り替える" />
                         <Button DockPanel.Dock="Right" x:Name="pm_Button_Listup" Content="リストアップ" Width="84" Height="23" Margin="6,0,0,0"
                                 Click="Button_MergeListup_Click" />
-                        <stc:TextBoxEx x:Name="pm_SourceFolderPath" IsReadOnly="True" VerticalAlignment="Center" KeyDown="ExecutePath" />
+                        <stc:TextBoxEx x:Name="pm_SourceFolderPath" IsReadOnly="True" VerticalAlignment="Center" KeyDown="ExecutePath" ToolTip="フォルダのドラッグ&amp;ドロップで設定する。左のラベルをダブルクリックすると直接編集できる。Enterでフォルダを開く" />
                     </DockPanel>
 
                     <Grid Grid.Row="1" Grid.RowSpan="2" Grid.Column="0" Margin="0,0,6,0">
@@ -326,21 +387,26 @@
                             <RowDefinition Height="*" />
                         </Grid.RowDefinitions>
                         <Label Grid.Row="0" Content="マージ先の識別子：" Style="{StaticResource RowLabel}" />
-                        <stc:TextBoxEx Grid.Row="0" Grid.Column="1" x:Name="pm_SourceFile1Prefix" stc:Placeholder.Text="例: _1" Style="{StaticResource NumberBox}" Margin="0,2" />
+                        <stc:TextBoxEx Grid.Row="0" Grid.Column="1" x:Name="pm_SourceFile1Prefix" stc:Placeholder.Text="例: _1" Style="{StaticResource NumberBox}" Margin="0,2"
+                                       ToolTip="結合先のファイルを見分ける、拡張子の直前の文字列(例: 001_1.jpgなら_1)。このファイルに上書き保存し、元はBk_Mergeへコピーしておく" />
                         <Label Grid.Row="1" Content="マージ元の識別子：" Style="{StaticResource RowLabel}" />
-                        <stc:TextBoxEx Grid.Row="1" Grid.Column="1" x:Name="pm_SourceFile2Prefix" stc:Placeholder.Text="例: _2" Style="{StaticResource NumberBox}" Margin="0,2" />
+                        <stc:TextBoxEx Grid.Row="1" Grid.Column="1" x:Name="pm_SourceFile2Prefix" stc:Placeholder.Text="例: _2" Style="{StaticResource NumberBox}" Margin="0,2"
+                                       ToolTip="切り出し元のファイルを見分ける、拡張子の直前の文字列。結合先の名前のこの部分を置き換えたファイルを使い、結合後はBk_Mergeへ移動する" />
                         <Label Grid.Row="2" Content="切取る高さの範囲：" Style="{StaticResource RowLabel}" VerticalAlignment="Top" Margin="0,4,0,0" />
                         <stc:TextBoxEx Grid.Row="2" Grid.Column="1" x:Name="pm_TrimmingHeight" TextAlignment="Right" Margin="0,2,0,0"
                                        AcceptsReturn="True" TextWrapping="NoWrap"
-                                       VerticalScrollBarVisibility="Visible" HorizontalScrollBarVisibility="Visible" />
+                                       VerticalScrollBarVisibility="Visible" HorizontalScrollBarVisibility="Visible"
+                                       ToolTip="マージ元から結合先の同じ位置へ写す縦の範囲(px)を、1行に1つ「開始,終了」で書く。「-」は開始なら0、終了なら画像の下端の意味" />
                     </Grid>
 
                     <ListBox Grid.Row="1" Grid.Column="1" x:Name="pm_ListBox_ListUp" Style="{StaticResource ListUp}"
-                             SelectionChanged="pm_ListBox_ListUp_SelectedIndexChanged" MouseDoubleClick="pm_ListBox_ListUp_DoubleClick" />
+                             SelectionChanged="pm_ListBox_ListUp_SelectedIndexChanged" MouseDoubleClick="pm_ListBox_ListUp_DoubleClick"
+                             ToolTip="選択したファイルのうち、マージ先の識別子を含むものだけ処理する(Ctrl+Aで全選択)。ダブルクリックで選択中のファイルを開く" />
 
                     <DockPanel Grid.Row="2" Grid.Column="1" Margin="0,4,0,0">
                         <Button DockPanel.Dock="Right" x:Name="pm_Button_Merge" Content="結合" Width="60" Height="23" Margin="6,0,0,0"
-                                Click="MergeExec_Click" />
+                                Click="MergeExec_Click"
+                                ToolTip="選択したファイルを結合する。処理中に押すと中断" />
                         <stc:TextBoxEx x:Name="pm_TextBox_Status" IsReadOnly="True" TextAlignment="Right" VerticalAlignment="Center" />
                     </DockPanel>
                 </Grid>
@@ -361,17 +427,19 @@
                         <RowDefinition Height="*" />
                     </Grid.RowDefinitions>
                     <Label Grid.Row="0" x:Name="fc_Label_SourceFolderPath" Content="移動元：" Style="{StaticResource RowLabel}"
-                           MouseDoubleClick="UpdateReadOnly" />
+                           MouseDoubleClick="UpdateReadOnly" ToolTip="ダブルクリックで右の欄の直接編集を切り替える" />
                     <stc:TextBoxEx Grid.Row="0" Grid.Column="1" x:Name="fc_SourceFolderPath" IsReadOnly="True" VerticalAlignment="Center"
-                                   Margin="0,2" KeyDown="ExecutePath" />
+                                   Margin="0,2" KeyDown="ExecutePath" ToolTip="フォルダのドラッグ&amp;ドロップで設定する。左のラベルをダブルクリックすると直接編集できる。Enterでフォルダを開く" />
                     <Label Grid.Row="1" Content="移動先：" Style="{StaticResource RowLabel}" />
                     <stc:TextBoxEx Grid.Row="1" Grid.Column="1" x:Name="fc_DestFolderPath" stc:Placeholder.Text="例: C:\Collect" VerticalAlignment="Center"
                                    Margin="0,2" KeyDown="ExecutePath" />
                     <Label Grid.Row="2" Content="対象ファイル：" Style="{StaticResource RowLabel}" />
                     <stc:TextBoxEx Grid.Row="2" Grid.Column="1" x:Name="fc_TargetFileName" stc:Placeholder.Text="例: *.png" FolderPathOnly="False" VerticalAlignment="Center"
-                                   Margin="0,2" />
+                                   Margin="0,2"
+                                   ToolTip="移動するファイルの検索パターン(*や?が使える)。移動元フォルダの直下だけが対象" />
                     <Button Grid.Row="3" Grid.Column="1" x:Name="fc_MoveFile" Content="移動" Width="141" Height="23"
-                            HorizontalAlignment="Right" Margin="0,4" Click="fc_Button_Collect_Click" />
+                            HorizontalAlignment="Right" Margin="0,4" Click="fc_Button_Collect_Click"
+                            ToolTip="移動元直下の対象ファイルを移動先へ移動する(コピーではない)。移動先が無ければ作成するか確認する" />
                 </Grid>
             </TabItem>
         </TabControl>
@@ -411,8 +479,10 @@
                 <ColumnDefinition Width="Auto" />
             </Grid.ColumnDefinitions>
             <stc:ComboBoxEx Grid.Column="0" x:Name="Profile" IsEditable="False" Margin="0,0,9,0" VerticalAlignment="Center"
-                            SelectionChanged="Profile_SelectedIndexChanged" />
-            <Button Grid.Column="1" x:Name="Button_ProfileSave" Content="設定値保存" Width="75" Height="23" Click="ProfileSave_Click" />
+                            SelectionChanged="Profile_SelectedIndexChanged"
+                            ToolTip="選ぶとその設定ファイルを読み込む" />
+            <Button Grid.Column="1" x:Name="Button_ProfileSave" Content="設定値保存" Width="75" Height="23" Click="ProfileSave_Click"
+                    ToolTip="現在の設定をファイルに保存する(Ctrl+Sでも可)。プロファイル選択中なら、まずそのファイルへ上書きするか確認する" />
         </Grid>
     </Grid>
 </Window>

@@ -8,9 +8,9 @@
              Menuの幅がウィンドウの初期幅(盤面200+余白24)を押し広げないよう、初期幅を224に固定する(Loaded後に解除) -->
         <Menu x:Name="menuStrip1" DockPanel.Dock="Top" Width="224">
             <MenuItem x:Name="menuItem_Game" Header="ゲーム(_G)">
-                <MenuItem x:Name="menuItem_Start" Header="開始(_S)" Click="menuItem_Start_Click" />
-                <MenuItem x:Name="menuItem_Undo" Header="一手戻す(_U)" Click="menuItem_Undo_Click" />
-                <MenuItem x:Name="menuItem_Redo" Header="一手進める(_R)" Click="menuItem_Redo_Click" />
+                <MenuItem x:Name="menuItem_Start" ToolTip="確認なしで初期局面から新しい対局を始める。対戦モード・COMレベル・持ち時間の設定はそのまま" Header="開始(_S)" Click="menuItem_Start_Click" />
+                <MenuItem x:Name="menuItem_Undo" ToolTip="直前の1手を取り消す。戻した結果がCOMの手番なら、COMがすぐに打ち直す" Header="一手戻す(_U)" Click="menuItem_Undo_Click" />
+                <MenuItem x:Name="menuItem_Redo" ToolTip="「一手戻す」で取り消した手を1手やり直す" Header="一手進める(_R)" Click="menuItem_Redo_Click" />
                 <Separator x:Name="toolStripSeparator1" />
                 <MenuItem x:Name="menuItem_Exit" Header="終了(_X)" Click="menuItem_Exit_Click" />
                 <Separator x:Name="toolStripSeparator2" />
@@ -18,17 +18,17 @@
                 <MenuItem x:Name="menuItem_Version" Header="バージョン情報(_A)" Click="menuItem_Version_Click" />
             </MenuItem>
             <MenuItem x:Name="menuItem_PlayMode" Header="対戦モード(_P)">
-                <MenuItem x:Name="menuItem_PP" Header="人 vs 人" IsCheckable="True" IsChecked="True" Click="menuItem_PlayMode_Click" />
-                <MenuItem x:Name="menuItem_PC" Header="人 vs COM" IsCheckable="True" Click="menuItem_PlayMode_Click" />
-                <MenuItem x:Name="menuItem_CP" Header="COM vs 人" IsCheckable="True" Click="menuItem_PlayMode_Click" />
-                <MenuItem x:Name="menuItem_CC" Header="COM vs COM" IsCheckable="True" Click="menuItem_PlayMode_Click" />
+                <MenuItem x:Name="menuItem_PP" ToolTip="選ぶと新しい対局になる" Header="人 vs 人" IsCheckable="True" IsChecked="True" Click="menuItem_PlayMode_Click" />
+                <MenuItem x:Name="menuItem_PC" ToolTip="人が黒(先手)、COMが白。選ぶと新しい対局になる" Header="人 vs COM" IsCheckable="True" Click="menuItem_PlayMode_Click" />
+                <MenuItem x:Name="menuItem_CP" ToolTip="COMが黒(先手)、人が白。選ぶと新しい対局になる" Header="COM vs 人" IsCheckable="True" Click="menuItem_PlayMode_Click" />
+                <MenuItem x:Name="menuItem_CC" ToolTip="選ぶと新しい対局になる" Header="COM vs COM" IsCheckable="True" Click="menuItem_PlayMode_Click" />
             </MenuItem>
             <MenuItem x:Name="menuItem_ComLevel" Header="COMレベル(_L)">
-                <MenuItem x:Name="menuItem_ComLevel1" Header="レベル1" IsCheckable="True" IsChecked="True" Click="menuItem_ComLevel_Click" />
-                <MenuItem x:Name="menuItem_ComLevel2" Header="レベル2" IsCheckable="True" Click="menuItem_ComLevel_Click" />
-                <MenuItem x:Name="menuItem_ComLevel3" Header="レベル3" IsCheckable="True" Click="menuItem_ComLevel_Click" />
+                <MenuItem x:Name="menuItem_ComLevel1" ToolTip="盤の中心に近い手を優先する" Header="レベル1" IsCheckable="True" IsChecked="True" Click="menuItem_ComLevel_Click" />
+                <MenuItem x:Name="menuItem_ComLevel2" ToolTip="序盤は中心寄り、中盤は返す石が少ない手、終盤は多い手を優先する" Header="レベル2" IsCheckable="True" Click="menuItem_ComLevel_Click" />
+                <MenuItem x:Name="menuItem_ComLevel3" ToolTip="打った後に周りの空きマスが少ない(開放度が低い)手を優先する" Header="レベル3" IsCheckable="True" Click="menuItem_ComLevel_Click" />
             </MenuItem>
-            <MenuItem x:Name="menuItem_TimeLimit" Header="持ち時間(_T)">
+            <MenuItem x:Name="menuItem_TimeLimit" ToolTip="黒白それぞれの1局全体の持ち時間。先に0になった側の負け。選ぶと新しい対局になる" Header="持ち時間(_T)">
                 <MenuItem x:Name="menuItem_TimeNone" Header="なし" IsCheckable="True" IsChecked="True" Click="menuItem_TimeLimit_Click" />
                 <MenuItem x:Name="menuItem_Time30s" Header="30秒" IsCheckable="True" Click="menuItem_TimeLimit_Click" />
                 <MenuItem x:Name="menuItem_Time1m" Header="1分" IsCheckable="True" Click="menuItem_TimeLimit_Click" />
@@ -40,8 +40,8 @@
             </MenuItem>
             <MenuItem x:Name="menuItem_Kihu" Header="棋譜(_K)">
                 <MenuItem x:Name="menuItem_KihuShow" Header="表示(_V)" Click="menuItem_KihuShow_Click" />
-                <MenuItem x:Name="menuItem_KihuSave" Header="保存(_S)..." Click="menuItem_KihuSave_Click" />
-                <MenuItem x:Name="menuItem_KihuLoad" Header="読込(_L)..." Click="menuItem_KihuLoad_Click" />
+                <MenuItem x:Name="menuItem_KihuSave" ToolTip="手順を「手数 : 列.行 色」形式(例: 1 : C.4 黒)のテキストで保存する。一手戻した手も、やり直せる間は含まれる" Header="保存(_S)..." Click="menuItem_KihuSave_Click" />
+                <MenuItem x:Name="menuItem_KihuLoad" ToolTip="棋譜テキストを最初から再生した局面にする。置けない手があればそこで打ち切る" Header="読込(_L)..." Click="menuItem_KihuLoad_Click" />
             </MenuItem>
         </Menu>
 
@@ -66,7 +66,7 @@
                 <!-- 持ち時間「なし」の間は非表示(WinForms版と同じく場所は空けたまま) -->
                 <TextBlock x:Name="label_Time" Grid.Row="2" Width="200" Height="18"
                            HorizontalAlignment="Left" Text="" Visibility="Hidden" />
-                <Button x:Name="button_ReStart" Grid.Row="3" Content="ReStart" Width="75" Height="23" Margin="125,6,0,0"
+                <Button x:Name="button_ReStart" ToolTip="確認のうえ初期局面に戻す。対戦モード・COMレベル・持ち時間の設定はそのまま" Grid.Row="3" Content="ReStart" Width="75" Height="23" Margin="125,6,0,0"
                         HorizontalAlignment="Left" Click="button_ReStart_Click" />
             </Grid>
         </Border>

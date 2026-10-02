@@ -20,6 +20,7 @@
                 </Grid.ColumnDefinitions>
                 <Label Grid.Column="0" Content="ブラウザパス：" HorizontalAlignment="Right" />
                 <stc:TextBoxEx Grid.Column="1" x:Name="textBox_BrowserPath" stc:Placeholder.Text="例: chrome.exe" VerticalAlignment="Center"
+                               ToolTip="Gmailの作成画面を開くブラウザのexe。PATHが通っていればファイル名だけでも可。Enterキーで起動する"
                                KeyDown="textBox_BrowserPath_KeyDown" />
             </Grid>
         </GroupBox>
@@ -44,9 +45,11 @@
                 <Label Grid.Row="2" Content="Bcc：" HorizontalAlignment="Right" />
                 <stc:TextBoxEx Grid.Row="2" Grid.Column="1" x:Name="textBox_MailBcc" stc:Placeholder.Text="例: bcc@example.com" VerticalAlignment="Center" Margin="0,2" />
                 <Label Grid.Row="3" Content="件名：" HorizontalAlignment="Right" />
-                <stc:TextBoxEx Grid.Row="3" Grid.Column="1" x:Name="textBox_MailSubject" stc:Placeholder.Text="例: 日報 %%USERSDAY%%" VerticalAlignment="Center" Margin="0,2" />
+                <stc:TextBoxEx Grid.Row="3" Grid.Column="1" x:Name="textBox_MailSubject" stc:Placeholder.Text="例: 日報 %%USERSDAY%%" VerticalAlignment="Center" Margin="0,2"
+                               ToolTip="%%today%% %%tomorrow%% %%weekend%%(今週の金曜)は実行日、%%usersday%% %%dayofweek%%は起点日の日付・曜日に置き換わる。大文字で書くと年付きの日付/曜日の正式名になる" />
                 <Label Grid.Row="4" Content="本文：" HorizontalAlignment="Right" VerticalAlignment="Top" />
                 <stc:TextBoxEx Grid.Row="4" Grid.Column="1" x:Name="textBox_MailBody" Margin="0,4,0,2"
+                               ToolTip="件名の置換記号(%%today%%等)は本文では置き換わらない"
                                AcceptsReturn="True" TextWrapping="NoWrap"
                                VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto" />
             </Grid>
@@ -71,18 +74,24 @@
                         <RowDefinition Height="Auto" />
                     </Grid.RowDefinitions>
                     <Label Grid.Row="0" Grid.Column="0" Content="起点日：" HorizontalAlignment="Right" />
-                    <DatePicker Grid.Row="0" Grid.Column="1" x:Name="dateTimePicker_Calendar" VerticalAlignment="Center" />
+                    <DatePicker Grid.Row="0" Grid.Column="1" x:Name="dateTimePicker_Calendar" VerticalAlignment="Center"
+                                ToolTip="%%usersday%%と%%dayofweek%%の基準日。一括表示では1通目がこの日で、以降1日ずつ進む。空欄なら今日" />
                     <Label Grid.Row="0" Grid.Column="2" Content="生成数：" HorizontalAlignment="Right" />
-                    <stc:TextBoxEx Grid.Row="0" Grid.Column="3" x:Name="textBox_CreateNum" stc:Placeholder.Text="例: 5" Text="5" VerticalAlignment="Center" />
-                    <CheckBox Grid.Row="1" Grid.Column="1" x:Name="checkBox_Reverse" Content="Reverse" IsChecked="True" VerticalAlignment="Center" />
+                    <stc:TextBoxEx Grid.Row="0" Grid.Column="3" x:Name="textBox_CreateNum" stc:Placeholder.Text="例: 5" Text="5" VerticalAlignment="Center"
+                                   ToolTip="一括表示で開く通数(=日数)" />
+                    <CheckBox Grid.Row="1" Grid.Column="1" x:Name="checkBox_Reverse" Content="Reverse" IsChecked="True" VerticalAlignment="Center"
+                              ToolTip="オンなら一括表示を日付の遅い順に開く" />
                     <Label Grid.Row="1" Grid.Column="2" Content="インターバル(msec)：" HorizontalAlignment="Right" />
-                    <stc:TextBoxEx Grid.Row="1" Grid.Column="3" x:Name="textBox_IntervalMsec" stc:Placeholder.Text="例: 5000" Text="5000" VerticalAlignment="Center" />
+                    <stc:TextBoxEx Grid.Row="1" Grid.Column="3" x:Name="textBox_IntervalMsec" stc:Placeholder.Text="例: 5000" Text="5000" VerticalAlignment="Center"
+                                   ToolTip="一括表示で1通開くごとに待つ時間。待っている間は画面を操作できない" />
                     <Button Grid.Row="0" Grid.RowSpan="2" Grid.Column="4" x:Name="button_OpenBrowse_OneWeek" Content="一括表示"
-                            Width="145" Margin="8,2,0,2" Click="button_OpenBrowse_OneWeek_Click" />
+                            Width="145" Margin="8,2,0,2" Click="button_OpenBrowse_OneWeek_Click"
+                            ToolTip="起点日から生成数の日数分、日付をずらした作成画面を順に開く" />
                 </Grid>
             </GroupBox>
             <StackPanel Grid.Column="1" VerticalAlignment="Bottom">
-                <Button x:Name="button_OpenBrowse" Content="ブラウザで表示" Width="90" Height="23" Margin="0,0,0,3" Click="button_OpenBrowse_Click" />
+                <Button x:Name="button_OpenBrowse" Content="ブラウザで表示" Width="90" Height="23" Margin="0,0,0,3" Click="button_OpenBrowse_Click"
+                        ToolTip="入力内容を埋めたGmailの新規作成画面をブラウザで開く。送信まではしない" />
                 <Button x:Name="button_Help" Content="ヘルプ" Width="90" Height="23" Click="button_Help_Click" />
             </StackPanel>
         </Grid>
@@ -93,7 +102,8 @@
                 <ColumnDefinition Width="Auto" />
             </Grid.ColumnDefinitions>
             <ComboBox Grid.Column="0" x:Name="comboBox_LoadSetting" Margin="0,0,3,0" VerticalAlignment="Center"
-                      SelectionChanged="comboBox_LoadSetting_SelectionChanged" />
+                      SelectionChanged="comboBox_LoadSetting_SelectionChanged"
+                      ToolTip="保存済みのプロファイル。選ぶとその内容を読み込む" />
             <Button Grid.Column="1" x:Name="button_SaveSetting" Content="設定保存" Width="90" Height="23" Click="button_SaveSetting_Click" />
         </Grid>
     </Grid>

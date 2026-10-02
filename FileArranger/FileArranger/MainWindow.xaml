@@ -61,19 +61,23 @@
 
                     <Label Grid.Row="1" Grid.Column="0" Content="リファレンスフォルダ：" HorizontalAlignment="Right" />
                     <stc:TextBoxEx Grid.Row="1" Grid.Column="1" x:Name="cmn_textBox_Reference" stc:Placeholder.Text="例: C:\Reference"
-                                   TextChanged="cmn_textBox_Reference_TextChanged" />
+                                   TextChanged="cmn_textBox_Reference_TextChanged"
+                                   ToolTip="振り分け・リネームの候補になるフォルダが並んでいる親フォルダ。入力するとRenameDir/PartitionFileタブのフォルダ格納先にも同じパスが入る" />
                     <Button Grid.Row="1" Grid.Column="2" x:Name="cmn_button_Listup" Content="リストアップ" Margin="6,0,0,0"
-                            Click="cmn_button_Listup_Click" />
+                            Click="cmn_button_Listup_Click"
+                            ToolTip="リファレンスフォルダ直下のフォルダと新規追加リストを候補として読み込み、RenameDirの結合文字・PartitionFileの移動後名称のプルダウンを更新する" />
 
                     <Label Grid.Row="2" Grid.Column="0" Content="新規追加リスト：" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,4,0,0" />
                     <stc:TextBoxEx Grid.Row="2" Grid.Column="1" Grid.ColumnSpan="2" x:Name="cmn_textBox_AddList"
                                    Height="Auto" Margin="0,4,0,4" VerticalContentAlignment="Top"
                                    AcceptsReturn="True" TextWrapping="NoWrap"
                                    VerticalScrollBarVisibility="Visible" HorizontalScrollBarVisibility="Auto"
-                                   KeyDown="cmn_textBox_AddList_KeyDown" />
+                                   KeyDown="cmn_textBox_AddList_KeyDown"
+                                   ToolTip="リファレンスフォルダにまだ無いフォルダ名を1行に1つ書く。リストアップ時に候補へ加える(既存フォルダのパスに含まれる名前は除く)。フォルダはここでは作られない" />
 
                     <Label Grid.Row="3" Grid.Column="0" Content="新規追加Suffix：" HorizontalAlignment="Right" />
-                    <stc:TextBoxEx Grid.Row="3" Grid.Column="1" Grid.ColumnSpan="2" x:Name="cmn_textBox_AddListSuffix" stc:Placeholder.Text="例: _new" />
+                    <stc:TextBoxEx Grid.Row="3" Grid.Column="1" Grid.ColumnSpan="2" x:Name="cmn_textBox_AddListSuffix" stc:Placeholder.Text="例: _new"
+                                   ToolTip="新規追加リストの各名前の末尾に付ける文字列。PartitionFileでフォルダを新規作成する時の名前にも付く" />
                 </Grid>
             </TabItem>
 
@@ -102,14 +106,16 @@
 
                     <Label Grid.Row="2" Grid.Column="0" Content="フォルダ格納先：" />
                     <stc:ComboBoxEx Grid.Row="2" Grid.Column="1" Grid.ColumnSpan="2" x:Name="md_comboBox_TargetDir"
-                                    KeyDown="md_comboBox_TargetDir_KeyDown" />
+                                    KeyDown="md_comboBox_TargetDir_KeyDown"
+                                    ToolTip="移動先のフォルダ。設定値保存の時に、今の値がプルダウンの履歴に追加される。Enterでフォルダを開く" />
 
                     <ListBox Grid.Row="3" Grid.ColumnSpan="3" x:Name="md_listBox_Listup" Margin="0,4,0,4"
                              SelectionMode="Extended"
                              ScrollViewer.HorizontalScrollBarVisibility="Auto"
                              SelectionChanged="md_listBox_Listup_SelectedIndexChanged"
                              KeyDown="md_listBox_Listup_KeyDown"
-                             MouseDoubleClick="md_listBox_Listup_MouseDoubleClick" />
+                             MouseDoubleClick="md_listBox_Listup_MouseDoubleClick"
+                             ToolTip="格納元以下(サブフォルダも含む)で、直下にファイルがあるフォルダの一覧。Ctrl+Aで全選択、Enterでサブディレクトリを移動、ダブルクリックでフォルダを開く" />
 
                     <Grid Grid.Row="4" Grid.ColumnSpan="3">
                         <Grid.ColumnDefinitions>
@@ -122,11 +128,14 @@
                         </StackPanel>
                         <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Bottom">
                             <Button x:Name="md_button_MoveTopDir" Content="トップディレクトリを移動" Width="137"
-                                    Click="md_button_MoveTopDir_Click" />
+                                    Click="md_button_MoveTopDir_Click"
+                                    ToolTip="選択したフォルダを、格納元直下の最上位フォルダごと格納先へ移動する。格納先に同名フォルダがあれば、名前の末尾に「_Cnt番号_日時」を付ける" />
                             <Button x:Name="md_button_MoveSubDir" Content="サブディレクトリを移動" Width="137" Margin="6,0,0,0"
-                                    Click="md_button_MoveSubDir_Click" />
+                                    Click="md_button_MoveSubDir_Click"
+                                    ToolTip="選択したフォルダそのものを格納先の直下へ移動する(途中の階層は持っていかない)。格納先に同名フォルダがあれば、名前の末尾に「_Cnt番号_日時」を付ける" />
                             <Button x:Name="md_button_Delete" Content="削除" Width="100" Margin="6,0,0,0"
-                                    Click="md_button_Delete_Click" />
+                                    Click="md_button_Delete_Click"
+                                    ToolTip="選択したフォルダを中身ごと削除する。確認は出ず、ごみ箱にも入らない" />
                         </StackPanel>
                     </Grid>
                 </Grid>
@@ -153,16 +162,20 @@
 
                     <Label Grid.Row="1" Grid.Column="0" Content="フォルダ格納元：" />
                     <stc:ComboBoxEx Grid.Row="1" Grid.Column="1" x:Name="rd_comboBox_RenameDir"
-                                    KeyDown="rd_comboBox_RenameDir_KeyDown" />
+                                    KeyDown="rd_comboBox_RenameDir_KeyDown"
+                                    ToolTip="リネームするフォルダが並んでいる親フォルダ(直下のフォルダが対象)。設定値保存の時に、今の値がプルダウンの履歴に追加される。Enterでフォルダを開く" />
                     <Button Grid.Row="1" Grid.Column="2" x:Name="rd_button_Listup_Target" Content="リストアップ" Margin="6,0,0,0"
                             Click="rd_button_Listup_Target_Click" />
 
                     <Label Grid.Row="2" Grid.Column="0" x:Name="rd_label_ExistItemDir" Content="フォルダ格納先："
-                           MouseDoubleClick="rd_label_ExistItemDir_DoubleClick" />
+                           MouseDoubleClick="rd_label_ExistItemDir_DoubleClick"
+                           ToolTip="ダブルクリックで右の欄の直接編集を切り替える" />
                     <stc:TextBoxEx Grid.Row="2" Grid.Column="1" x:Name="rd_textBox_ExistItemDir" IsReadOnly="True"
-                                   KeyDown="rd_textBox_ExistItemDir_KeyDown" />
+                                   KeyDown="rd_textBox_ExistItemDir_KeyDown"
+                                   ToolTip="Commonのリファレンスフォルダと連動する欄。結合文字の候補は、候補フォルダのパスからこの部分を除いた名前になる。左のラベルをダブルクリックすると直接編集できる。Enterでフォルダを開く" />
                     <Button Grid.Row="2" Grid.Column="2" x:Name="rd_button_Listup_Item" Content="リストアップ" Margin="6,0,0,0"
-                            Click="cmn_button_Listup_Click" />
+                            Click="cmn_button_Listup_Click"
+                            ToolTip="リファレンスフォルダ直下のフォルダと新規追加リストを候補として読み込み、RenameDirの結合文字・PartitionFileの移動後名称のプルダウンを更新する" />
 
                     <Grid Grid.Row="3" Grid.ColumnSpan="3" Margin="0,4,0,0">
                         <Grid.ColumnDefinitions>
@@ -180,34 +193,41 @@
                         <StackPanel Grid.Row="0" Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right">
                             <Label Content="区切り文字：" />
                             <stc:TextBoxEx x:Name="rd_textBox_SplitWord3" stc:Placeholder.Text="例: _" Width="62"
-                                           TextChanged="rd_textBox_TextChanged" KeyDown="rd_comboBox_MergeWord_KeyDown" />
+                                           TextChanged="rd_textBox_TextChanged" KeyDown="rd_comboBox_MergeWord_KeyDown"
+                                           ToolTip="結合文字の候補を作る時、リファレンスのフォルダ名をこの文字の最後の出現位置で切る" />
                         </StackPanel>
                         <Label Grid.Row="0" Grid.Column="2" Content="番号前に追加：" Margin="8,0,0,0" />
                         <stc:TextBoxEx Grid.Row="0" Grid.Column="3" x:Name="rd_textBox_AddTitlePreWord" stc:Placeholder.Text="例: 第"
                                        TextChanged="rd_textBox_TextChanged" KeyDown="rd_comboBox_MergeWord_KeyDown" />
                         <Label Grid.Row="0" Grid.Column="4" Content="番号検索の後部：" Margin="8,0,0,0" HorizontalAlignment="Right" />
                         <stc:TextBoxEx Grid.Row="0" Grid.Column="5" x:Name="rd_textBox_SearchTitleLine" stc:Placeholder.Text="例: 3"
-                                       TextChanged="rd_textBox_TextChanged" KeyDown="rd_comboBox_MergeWord_KeyDown" />
+                                       TextChanged="rd_textBox_TextChanged" KeyDown="rd_comboBox_MergeWord_KeyDown"
+                                       ToolTip="元のフォルダ名から番号を探し始める位置を、名前の末尾から数えた文字数で指定する。空欄なら先頭から(全角数字は半角とみなす)" />
 
                         <Label Grid.Row="1" Grid.Column="0" Content="結合文字：" HorizontalAlignment="Right" />
                         <stc:ComboBoxEx Grid.Row="1" Grid.Column="1" x:Name="rd_comboBox_MergeWord"
-                                        DropDownOpened="rd_comboBox_MergeWord_DropDown" KeyDown="rd_comboBox_MergeWord_KeyDown" />
+                                        DropDownOpened="rd_comboBox_MergeWord_DropDown" KeyDown="rd_comboBox_MergeWord_KeyDown"
+                                        ToolTip="変更後の名前の先頭部分。プルダウンには、リファレンスのフォルダ名(最後の区切り文字より前)のうち入力中の文字を含むものが出る" />
                         <Label Grid.Row="1" Grid.Column="2" Content="番号後に追加：" Margin="8,0,0,0" />
                         <stc:ComboBoxEx Grid.Row="1" Grid.Column="3" x:Name="rd_comboBox_AddTitlePostWord"
-                                        KeyDown="rd_comboBox_MergeWord_KeyDown" />
+                                        KeyDown="rd_comboBox_MergeWord_KeyDown"
+                                        ToolTip="番号の後ろに付ける文字列。設定値保存の時に、今の値がプルダウンの履歴に追加される" />
                         <Label Grid.Row="1" Grid.Column="4" Content="番号の検索長：" Margin="8,0,0,0" HorizontalAlignment="Right" />
                         <stc:TextBoxEx Grid.Row="1" Grid.Column="5" x:Name="rd_textBox_SearchTitleLength" stc:Placeholder.Text="例: 2"
-                                       TextChanged="rd_textBox_TextChanged" KeyDown="rd_comboBox_MergeWord_KeyDown" />
+                                       TextChanged="rd_textBox_TextChanged" KeyDown="rd_comboBox_MergeWord_KeyDown"
+                                       ToolTip="探し始めた位置から何文字を番号として読むか(中の数字だけを使う)。空欄なら末尾まで。数字が無ければ1になる" />
                     </Grid>
 
                     <CheckBox Grid.Row="4" Grid.ColumnSpan="3" x:Name="rd_checkBox_FileOpen" Content="フォルダ内の先頭ファイルを開く"
-                              Margin="2,6,0,4" HorizontalAlignment="Left" />
+                              Margin="2,6,0,4" HorizontalAlignment="Left"
+                              ToolTip="オンの時、一覧をダブルクリックするとフォルダではなく、中の先頭ファイル(サブフォルダも含めて最初に見つかったもの)を開く" />
 
                     <ListView Grid.Row="5" Grid.ColumnSpan="3" x:Name="rd_listView_Target" Margin="0,0,0,4"
                               SelectionMode="Extended"
                               SelectionChanged="rd_listView_Rename_SelectedIndexChanged"
                               KeyDown="rd_listView_Target_KeyDown"
-                              SizeChanged="rd_listView_Target_SizeChanged">
+                              SizeChanged="rd_listView_Target_SizeChanged"
+                              ToolTip="選択したフォルダの変更後の名前が[変更後]に表示される。Ctrl+Enterでリネーム実行、Ctrl+Cでフォルダ名をコピー、ダブルクリックでフォルダを開く">
                         <ListView.Resources>
                             <Style TargetType="ListViewItem" BasedOn="{StaticResource GridLineItem}">
                                 <EventSetter Event="MouseDoubleClick" Handler="rd_listView_Rename_DoubleClick" />
@@ -232,9 +252,11 @@
                         </StackPanel>
                         <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Bottom">
                             <Button x:Name="rd_button_RenameDirRestore" Content="復元" Width="100"
-                                    Click="rd_button_RenameFolderRestore_Click" />
+                                    Click="rd_button_RenameFolderRestore_Click"
+                                    ToolTip="直前のリネームを元に戻す。押すたびに1回分さかのぼる(アプリを閉じると戻せない)" />
                             <Button x:Name="rd_button_RenameDir" Content="リネーム実行" Width="100" Margin="6,0,0,0"
-                                    Click="rd_button_Execute_Rename_Click" />
+                                    Click="rd_button_Execute_Rename_Click"
+                                    ToolTip="選択したフォルダを「結合文字+番号前に追加+番号(2桁以上にゼロ埋め)+番号後に追加」にリネームする。同名があれば末尾に「_Cnt番号_日時」を付ける。各入力欄でCtrl+Enterでも実行" />
                         </StackPanel>
                     </Grid>
                 </Grid>
@@ -266,7 +288,8 @@
                              SelectionMode="Extended"
                              ScrollViewer.HorizontalScrollBarVisibility="Auto"
                              SelectionChanged="sf_listBox_Target_SelectedIndexChanged"
-                             KeyDown="sf_listBox_Target_KeyDown" />
+                             KeyDown="sf_listBox_Target_KeyDown"
+                             ToolTip="格納元直下のフォルダの一覧。Ctrl+Aで全選択、Enterでソート実行" />
 
                     <Grid Grid.Row="3" Grid.ColumnSpan="3">
                         <Grid.ColumnDefinitions>
@@ -279,9 +302,11 @@
                         </StackPanel>
                         <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Bottom">
                             <Button x:Name="sf_button_SortRestore" Content="復元" Width="100"
-                                    Click="sf_button_Sort_Restore_Click" />
+                                    Click="sf_button_Sort_Restore_Click"
+                                    ToolTip="直前のソートを元の名前に戻す。押すたびに1回分さかのぼる(アプリを閉じると戻せない)" />
                             <Button x:Name="sf_button_Sort" Content="ソート" Width="100" Margin="6,0,0,0"
-                                    Click="sf_button_SortFileRename_Click" />
+                                    Click="sf_button_SortFileRename_Click"
+                                    ToolTip="選択したフォルダ内のファイル(サブフォルダ内は対象外)を、000、001…の3桁の連番名にリネームする(拡張子はそのまま)" />
                         </StackPanel>
                     </Grid>
                 </Grid>
@@ -365,36 +390,44 @@
                             Click="pf_button_Listup_Target_Click" />
 
                     <Label Grid.Row="2" Grid.Column="0" x:Name="pf_label_ReferenceFile" Content="ファイル格納先："
-                           MouseDoubleClick="pf_label_ReferenceFile_DoubleClick" />
+                           MouseDoubleClick="pf_label_ReferenceFile_DoubleClick"
+                           ToolTip="ダブルクリックで右の欄の直接編集を切り替える" />
                     <stc:TextBoxEx Grid.Row="2" Grid.Column="1" Grid.ColumnSpan="3" x:Name="pf_textBox_ReferenceFile" IsReadOnly="True"
-                                   KeyDown="pf_textBox_ReferenceFile_KeyDown" />
+                                   KeyDown="pf_textBox_ReferenceFile_KeyDown"
+                                   ToolTip="振り分け先のフォルダが並んでいる親フォルダ(Commonのリファレンスフォルダと連動)。左のラベルをダブルクリックすると直接編集できる。Enterでフォルダを開く" />
                     <Button Grid.Row="2" Grid.Column="4" x:Name="pf_button_Listup_Reference" Content="リストアップ" Margin="6,0,0,0"
-                            Click="cmn_button_Listup_Click" />
+                            Click="cmn_button_Listup_Click"
+                            ToolTip="リファレンスフォルダ直下のフォルダと新規追加リストを候補として読み込み、RenameDirの結合文字・PartitionFileの移動後名称のプルダウンを更新する" />
 
                     <Label Grid.Row="3" Grid.Column="0" Content="フォルダ格納先：" />
                     <stc:ComboBoxEx Grid.Row="3" Grid.Column="1" x:Name="pf_comboBox_MoveDestDirName"
                                     DropDownOpened="pf_comboBox_MoveDestDirName_DropDown"
-                                    KeyUp="pf_comboBox_MoveDestDirName_KeyUp" />
+                                    KeyUp="pf_comboBox_MoveDestDirName_KeyUp"
+                                    ToolTip="キー入力すると、選択中の全行の移動後名称をこの値にする。Ctrl+Enterでファイル移動" />
                     <StackPanel Grid.Row="3" Grid.Column="2" Grid.ColumnSpan="3" Orientation="Horizontal" HorizontalAlignment="Right">
                         <Label Content="番号検索の後部：" />
                         <stc:TextBoxEx x:Name="pf_textBox_SearchTitleLine" stc:Placeholder.Text="例: 3" Width="46"
-                                       KeyDown="pf_textBox_SearchTitleLine_KeyDown" />
+                                       KeyDown="pf_textBox_SearchTitleLine_KeyDown"
+                                       ToolTip="振り分け先のフォルダ名から番号を探し始める位置を、名前の末尾から数えた文字数で指定する。空欄なら先頭から。Ctrl+Enterでファイル移動" />
                     </StackPanel>
 
                     <CheckBox Grid.Row="4" Grid.Column="1" x:Name="pf_checkBox_CreateNewDir" Content="フォルダを新規作成"
                               VerticalAlignment="Center"
-                              Checked="pf_checkBox_CreateNewDir_CheckedChanged" Unchecked="pf_checkBox_CreateNewDir_CheckedChanged" />
+                              Checked="pf_checkBox_CreateNewDir_CheckedChanged" Unchecked="pf_checkBox_CreateNewDir_CheckedChanged"
+                              ToolTip="オンの時、候補に一致するフォルダが無いファイルには、ファイル名(区切り文字より前)+新規追加Suffixを元にした新しいフォルダ名を移動後名称に入れる。切り替えると一覧を読み直す" />
                     <StackPanel Grid.Row="4" Grid.Column="2" Grid.ColumnSpan="3" Orientation="Horizontal" HorizontalAlignment="Right">
                         <Label Content="番号の検索長：" />
                         <stc:TextBoxEx x:Name="pf_textBox_SearchTitleLength" stc:Placeholder.Text="例: 2" Width="46"
-                                       KeyDown="pf_textBox_SearchTitleLine_KeyDown" />
+                                       KeyDown="pf_textBox_SearchTitleLine_KeyDown"
+                                       ToolTip="探し始めた位置から何文字を番号として読むか(中の数字だけを使う)。空欄なら末尾まで。Ctrl+Enterでファイル移動" />
                     </StackPanel>
 
                     <ListView Grid.Row="5" Grid.ColumnSpan="5" x:Name="pf_listView_Target" Margin="0,4,0,4"
                               SelectionMode="Extended"
                               SelectionChanged="pf_listView_Target_SelectedIndexChanged"
                               KeyDown="pf_listView_Target_KeyDown"
-                              SizeChanged="pf_listView_Target_SizeChanged">
+                              SizeChanged="pf_listView_Target_SizeChanged"
+                              ToolTip="選択したファイルに移動前/移動後名称が自動で入る(移動後はフォルダ名の番号に、同じ名前で選択中のファイル数を足したもの)。Enterでファイル移動、Deleteで移動後名称を空に、ダブルクリックで移動前フォルダを開く">
                         <ListView.Resources>
                             <Style TargetType="ListViewItem" BasedOn="{StaticResource GridLineItem}">
                                 <EventSetter Event="MouseDoubleClick" Handler="pf_listView_Target_DoubleClick" />
@@ -420,9 +453,11 @@
                         </StackPanel>
                         <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Bottom">
                             <Button x:Name="pf_button_ClearSelect" Content="選択クリア" Width="100"
-                                    Click="pf_button_ClearSelect_Click" />
+                                    Click="pf_button_ClearSelect_Click"
+                                    ToolTip="全行の移動前/移動後名称を空にする(一覧の選択状態はそのまま)" />
                             <Button x:Name="pf_button_CreateFolderAndMoveFile" Content="ファイル移動" Width="100" Margin="6,0,0,0"
-                                    Click="pf_button_CreateFolderExecute_Click" />
+                                    Click="pf_button_CreateFolderExecute_Click"
+                                    ToolTip="選択した行のうち移動後名称がある行について、移動前名称のフォルダを移動後名称にリネーム(無ければ新規作成)してから、ファイルをそこへ移動する。同名ファイルがあればスキップする" />
                         </StackPanel>
                     </Grid>
                 </Grid>
@@ -439,8 +474,10 @@
             <stc:TextBoxEx Grid.Column="0" x:Name="progressText" IsReadOnly="True" Margin="0" />
             <ProgressBar Grid.Column="1" x:Name="progressBar" Height="20" Margin="6,0,0,0" />
             <ComboBox Grid.Column="2" x:Name="comboBox_LoadSetting" Margin="12,0,6,0" VerticalAlignment="Center"
-                      SelectionChanged="comboBox_LoadSetting_SelectionChanged" />
-            <Button Grid.Column="3" x:Name="SaveSetting" Content="設定値保存" Width="85" Click="SaveSetting_Click" />
+                      SelectionChanged="comboBox_LoadSetting_SelectionChanged"
+                      ToolTip="選ぶとその設定ファイルを読み込む" />
+            <Button Grid.Column="3" x:Name="SaveSetting" Content="設定値保存" Width="85" Click="SaveSetting_Click"
+                    ToolTip="現在の設定をファイルに保存する(Ctrl+Sでも可)。プロファイル選択中なら、まずそのファイルへ上書きするか確認する" />
         </Grid>
     </Grid>
 </Window>

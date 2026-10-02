@@ -74,8 +74,10 @@
         <!-- 上段: モード切替ラジオボタン+マウス座標 -->
         <StackPanel Grid.Row="0" Orientation="Horizontal" VerticalAlignment="Center" Margin="11,0,0,0">
             <RadioButton x:Name="radioButton_Record" Content="レコード" GroupName="Mode" TabIndex="0"
+                         ToolTip="再生ボタン(ホットキー)で、左の記録データを再生するモード"
                          Checked="radioButton_Mode_CheckedChanged" Unchecked="radioButton_Mode_CheckedChanged" />
             <RadioButton x:Name="radioButton_Playback" Content="プレイバック" GroupName="Mode" Margin="36,0,0,0" TabIndex="1"
+                         ToolTip="再生ボタン(ホットキー)で、右のプレイリストを上から順に再生するモード"
                          Checked="radioButton_Mode_CheckedChanged" Unchecked="radioButton_Mode_CheckedChanged" />
         </StackPanel>
         <TextBlock Grid.Row="0" x:Name="label_MousePos" Text="Mouse: -1234, -1234"
@@ -111,24 +113,45 @@
                                   ContextMenuOpening="dataGrid_Events_ContextMenuOpening">
                             <DataGrid.Columns>
                                 <DataGridTextColumn x:Name="col_Type" Header="Event" Width="87" SortMemberPath="Type"
-                                                    Binding="{Binding Type}" />
+                                                    Binding="{Binding Type}">
+                                    <DataGridTextColumn.HeaderStyle>
+                                        <Style TargetType="DataGridColumnHeader">
+                                            <Setter Property="ToolTip" Value="操作の種類(LEFT_DOWN、KEY_DOWN等)。WAIT_MSは待機するだけの行" />
+                                        </Style>
+                                    </DataGridTextColumn.HeaderStyle>
+                                </DataGridTextColumn>
                                 <DataGridTextColumn x:Name="col_Detail" Header="Detail" Width="72" SortMemberPath="Detail"
-                                                    Binding="{Binding Detail}" CellStyle="{StaticResource DetailCellStyle}" />
+                                                    Binding="{Binding Detail}" CellStyle="{StaticResource DetailCellStyle}">
+                                    <DataGridTextColumn.HeaderStyle>
+                                        <Style TargetType="DataGridColumnHeader">
+                                            <Setter Property="ToolTip" Value="マウスは「X:123 Y:456」(画面座標)、キーは「Key:A」、WAIT_MS行は待機時間(ミリ秒)。直接編集できる" />
+                                        </Style>
+                                    </DataGridTextColumn.HeaderStyle>
+                                </DataGridTextColumn>
                                 <DataGridTextColumn x:Name="col_Remarks" Header="備考" Width="*" SortMemberPath="Remarks"
-                                                    Binding="{Binding Remarks}" />
+                                                    Binding="{Binding Remarks}">
+                                    <DataGridTextColumn.HeaderStyle>
+                                        <Style TargetType="DataGridColumnHeader">
+                                            <Setter Property="ToolTip" Value="自由に書けるメモ。記録・再生には使わない" />
+                                        </Style>
+                                    </DataGridTextColumn.HeaderStyle>
+                                </DataGridTextColumn>
                             </DataGrid.Columns>
                             <DataGrid.ContextMenu>
                                 <ContextMenu>
                                     <MenuItem x:Name="menuItem_AddRow" Header="行の追加(_A)" Click="menuItem_AddRow_Click" />
-                                    <MenuItem x:Name="menuItem_DeleteRow" Header="行の削除(_D)" Click="menuItem_DeleteRow_Click" />
+                                    <MenuItem x:Name="menuItem_DeleteRow" Header="行の削除(_D)" Click="menuItem_DeleteRow_Click"
+                                              ToolTip="KEY_DOWN/SYSKEY_DOWNの行を消すと、対応するKEY_UP/SYSKEY_UPの行も一緒に消える" />
                                     <Separator />
                                     <MenuItem x:Name="menuItem_BulkChangeEventWait" Header="WAIT時間を一括変更(_W)..."
+                                              ToolTip="指定したイベントの直前にあるWAIT_MS行の待機時間をまとめて変更する"
                                               Click="menuItem_BulkChangeEventWait_Click" />
                                 </ContextMenu>
                             </DataGrid.ContextMenu>
                         </DataGrid>
                         <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,8,0,4">
-                            <Button x:Name="button_Record" Content="記録" Width="80" Height="27" TabIndex="1" Click="button_Record_Click" />
+                            <Button x:Name="button_Record" Content="記録" Width="80" Height="27" TabIndex="1" Click="button_Record_Click"
+                                    ToolTip="記録の開始/停止。既存の行の後ろに追記する。ホットキー(既定F1)でも切り替えられ、ボタンで止めるとそのクリックも記録される。キーはウィンドウ左上のアイコンのメニュー「キーバインドを設定」で変更できる" />
                             <Button x:Name="button_Clear" Content="クリア" Width="80" Height="27" Margin="6,0,0,0" TabIndex="2" Click="button_Clear_Click" />
                         </StackPanel>
                     </Grid>
@@ -162,6 +185,11 @@
                                   ContextMenuOpening="dataGrid_Playlist_ContextMenuOpening">
                             <DataGrid.Columns>
                                 <DataGridTemplateColumn x:Name="col_PlaylistEnabled" Header="実行" Width="40" SortMemberPath="Enabled">
+                                    <DataGridTemplateColumn.HeaderStyle>
+                                        <Style TargetType="DataGridColumnHeader">
+                                            <Setter Property="ToolTip" Value="チェックした行だけ再生する" />
+                                        </Style>
+                                    </DataGridTemplateColumn.HeaderStyle>
                                     <DataGridTemplateColumn.CellTemplate>
                                         <DataTemplate>
                                             <CheckBox IsChecked="{Binding Enabled, UpdateSourceTrigger=PropertyChanged}"
@@ -171,6 +199,11 @@
                                 </DataGridTemplateColumn>
                                 <DataGridTemplateColumn x:Name="col_PlaylistFile" Header="プレイリスト" Width="*" SortMemberPath="FileName"
                                                         CellStyle="{StaticResource PlaylistFileCellStyle}">
+                                    <DataGridTemplateColumn.HeaderStyle>
+                                        <Style TargetType="DataGridColumnHeader">
+                                            <Setter Property="ToolTip" Value="再生するファイル(プロファイル一覧と同じもの)。見つからないファイルはピンクで表示する。行はドラッグで並び替えできる" />
+                                        </Style>
+                                    </DataGridTemplateColumn.HeaderStyle>
                                     <DataGridTemplateColumn.CellTemplate>
                                         <DataTemplate>
                                             <DockPanel LastChildFill="True">
@@ -189,13 +222,20 @@
                                     </DataGridTemplateColumn.CellEditingTemplate>
                                 </DataGridTemplateColumn>
                                 <DataGridTextColumn x:Name="col_PlaylistLoopCount" Header="ループ数" Width="56" SortMemberPath="LoopCount"
-                                                    Binding="{Binding LoopCount}" />
+                                                    Binding="{Binding LoopCount}">
+                                    <DataGridTextColumn.HeaderStyle>
+                                        <Style TargetType="DataGridColumnHeader">
+                                            <Setter Property="ToolTip" Value="このファイルを続けて再生する回数。ファイル自身に保存されたループ数より優先する(ファイルを選んだ時に初期値として入る)。↑↓キーで増減できる" />
+                                        </Style>
+                                    </DataGridTextColumn.HeaderStyle>
+                                </DataGridTextColumn>
                             </DataGrid.Columns>
                             <DataGrid.ContextMenu>
                                 <ContextMenu>
                                     <MenuItem x:Name="menuItem_PlaylistOpenFile" Header="ファイルを開く" Click="menuItem_PlaylistOpenFile_Click" />
                                     <Separator />
-                                    <MenuItem x:Name="menuItem_PlaylistRefresh" Header="プレイリストを更新" Click="menuItem_PlaylistRefresh_Click" />
+                                    <MenuItem x:Name="menuItem_PlaylistRefresh" Header="プレイリストを更新" Click="menuItem_PlaylistRefresh_Click"
+                                              ToolTip="プロファイル一覧にあってプレイリストに無いファイルを末尾に追加する(既存の行はそのまま残す)" />
                                     <MenuItem x:Name="menuItem_PlaylistAddRow" Header="行の追加" Click="menuItem_PlaylistAddRow_Click" />
                                     <MenuItem x:Name="menuItem_PlaylistDeleteRow" Header="行の削除" Click="menuItem_PlaylistDeleteRow_Click" />
                                     <Separator />
@@ -217,10 +257,13 @@
         <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="7,7,0,0">
             <TextBlock x:Name="label_Loop" Text="ループ数" VerticalAlignment="Center" />
             <stc:TextBoxEx x:Name="textBox_Loop" stc:Placeholder.Text="例: 1" Text="1" Width="48" Margin="16,0,0,0" VerticalAlignment="Center"
-                           EnableUpDownIncrement="True" TabIndex="5" />
-            <Button x:Name="button_Play" Content="再生" Width="80" Height="27" Margin="8,0,0,0" TabIndex="6" Click="button_Play_Click" />
+                           EnableUpDownIncrement="True" TabIndex="5"
+                           ToolTip="レコードモード: 記録データを繰り返す回数。プレイバックモード: プレイリスト全体を繰り返す回数(各ファイルの回数は表のループ数)。空欄・0以下は1回。↑↓キーで増減できる" />
+            <Button x:Name="button_Play" Content="再生" Width="80" Height="27" Margin="8,0,0,0" TabIndex="6" Click="button_Play_Click"
+                    ToolTip="レコードモードなら記録データ、プレイバックモードならプレイリストを再生する。再生中に押すと停止。ホットキー(既定は変換キー)でも開始/停止できる。キーはウィンドウ左上のアイコンのメニュー「キーバインドを設定」で変更できる" />
             <CheckBox x:Name="checkBox_MinimizeOnPlay" Content="実行時にウィンドウを最小化する" Margin="10,0,0,0" VerticalAlignment="Center"
-                      TabIndex="7" Checked="checkBox_MinimizeOnPlay_CheckedChanged" Unchecked="checkBox_MinimizeOnPlay_CheckedChanged" />
+                      TabIndex="7" Checked="checkBox_MinimizeOnPlay_CheckedChanged" Unchecked="checkBox_MinimizeOnPlay_CheckedChanged"
+                      ToolTip="再生開始時にこのウィンドウを最小化し、終了したら元に戻す。オンの間は最小化中にタスクバーから消え、通知領域のアイコン(ダブルクリックで復元)になる" />
         </StackPanel>
 
         <!-- 下段2: プロファイル選択+保存 -->
@@ -230,9 +273,11 @@
                 <ColumnDefinition Width="Auto" />
             </Grid.ColumnDefinitions>
             <stc:ComboBoxEx Grid.Column="0" x:Name="comboBox_Profile" IsEditable="False" Margin="0,0,6,0" VerticalAlignment="Center"
-                            TabIndex="8" SelectionChanged="comboBox_Profile_SelectionChanged" />
+                            TabIndex="8" SelectionChanged="comboBox_Profile_SelectionChanged"
+                            ToolTip="選ぶとそのファイル(記録データ・ループ数・プレイリスト・モード等)を読み込み、今の表の内容を置き換える" />
             <Button Grid.Column="1" x:Name="button_ProfileSave" Content="プロファイル保存" Width="108" Height="23" TabIndex="9"
-                    Click="button_ProfileSave_Click" />
+                    Click="button_ProfileSave_Click"
+                    ToolTip="記録データ・ループ数・プレイリスト・モード等をまとめて1つのファイルに保存する(Ctrl+Sでも可)。プルダウンで選択中なら、まずそのファイルへ上書きするか確認する" />
         </Grid>
     </Grid>
 </Window>

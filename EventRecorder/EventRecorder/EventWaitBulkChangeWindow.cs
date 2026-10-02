@@ -67,6 +67,7 @@ namespace EventRecorder
                 Margin = new Thickness(10, 34, 0, 0),
                 HorizontalAlignment = HorizontalAlignment.Left,
                 VerticalAlignment = VerticalAlignment.Top,
+                ToolTip = "Event列の名前(例: LEFT_DOWN、KEY_DOWN)。大文字/小文字は区別しない。直前がWAIT_MS行でない行は変更されない",
             };
 
             TextBlock waitLabel = new TextBlock

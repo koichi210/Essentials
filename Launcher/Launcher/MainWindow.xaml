@@ -13,9 +13,12 @@
         <!-- 上部ツールバー -->
         <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,8">
             <Button x:Name="AddSectionButton" Content="＋ セクション追加" Padding="8,4" Margin="0,0,6,0" Click="AddSectionButton_Click"/>
-            <Button x:Name="ReloadButton" Content="再読み込み" Padding="8,4" Margin="0,0,6,0" Click="ReloadButton_Click"/>
-            <Button x:Name="OpenConfigButton" Content="設定ファイルを開く" Padding="8,4" Margin="0,0,6,0" Click="OpenConfigButton_Click"/>
-            <Button x:Name="ChangeDataFolderButton" Content="保存先フォルダを変更..." Padding="8,4" Click="ChangeDataFolderButton_Click"/>
+            <Button x:Name="ReloadButton" Content="再読み込み" Padding="8,4" Margin="0,0,6,0" Click="ReloadButton_Click"
+                    ToolTip="設定ファイル(config.json)を読み直して画面に反映する。他の方法で手動編集した内容を取り込みたい時に使う"/>
+            <Button x:Name="OpenConfigButton" Content="設定ファイルを開く" Padding="8,4" Margin="0,0,6,0" Click="OpenConfigButton_Click"
+                    ToolTip="今の内容を保存してから、設定ファイル(config.json)を関連付けられたエディタ(メモ帳等)で開く。直接編集したい時用"/>
+            <Button x:Name="ChangeDataFolderButton" Content="保存先フォルダを変更..." Padding="8,4" Click="ChangeDataFolderButton_Click"
+                    ToolTip="設定ファイルの保存先フォルダを選び直す。選んだ先に既存のconfig.jsonが無ければ今のファイルを移動し、次回以降もそのフォルダを使う"/>
         </StackPanel>
 
         <!-- 現在の保存先フォルダ表示 -->
