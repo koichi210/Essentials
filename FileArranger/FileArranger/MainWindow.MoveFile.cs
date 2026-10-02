@@ -111,8 +111,11 @@ namespace FileArranger
                 String sourcePath = param.SourceDir + @"\" + targetName;
                 String targetPath = param.TargetDir + @"\" + fio.GetLastPathName(targetName);
 
-                // 移動先にすでにフォルダがある場合は重複回避
-                util.AvoidFolderNameConflict(ref targetPath, i);
+                // 移動先に同名のファイルがある場合は重複回避
+                // (targetPathはファイルパスなので、フォルダの有無しか見ないAvoidFolderNameConflictでは
+                //  同名ファイルの存在を検知できず、Move処理に失敗してしまう。AvoidFileNameConflictで
+                //  ファイル/フォルダ両方の存在をチェックしてリネームする)
+                util.AvoidFileNameConflict(ref targetPath, i);
                 fio.MoveDirectory(sourcePath, targetPath);
 
                 worker.ReportProgress(i);      // ⇒ProgressChanged()
