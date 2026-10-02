@@ -14,6 +14,8 @@
     <!-- 保存先フォルダの管理（ポインタファイル方式）とフォルダ選択ダイアログはCheetos/FFEdit/FileArranger等と共通のロジックを使う -->
     <Compile Include="..\..\_Common\UserDataLocation.cs" Link="Common\UserDataLocation.cs" />
     <Compile Include="..\..\_Common\DataFolderChooser.cs" Link="Common\DataFolderChooser.cs" />
+    <!-- 入力欄が空の時に入力例を薄く表示する添付プロパティ(Placeholder.Text) -->
+    <Compile Include="..\..\_Common\Wpf\WpfPlaceholder.cs" Link="Common\WpfPlaceholder.cs" />
   </ItemGroup>
 
   <ItemGroup>

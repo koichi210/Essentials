@@ -216,7 +216,7 @@
         <!-- 下段1: ループ数・再生・最小化(単発再生とプレイリスト実行の共通項目) -->
         <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="7,7,0,0">
             <TextBlock x:Name="label_Loop" Text="ループ数" VerticalAlignment="Center" />
-            <stc:TextBoxEx x:Name="textBox_Loop" Text="1" Width="48" Margin="16,0,0,0" VerticalAlignment="Center"
+            <stc:TextBoxEx x:Name="textBox_Loop" stc:Placeholder.Text="例: 1" Text="1" Width="48" Margin="16,0,0,0" VerticalAlignment="Center"
                            EnableUpDownIncrement="True" TabIndex="5" />
             <Button x:Name="button_Play" Content="再生" Width="80" Height="27" Margin="8,0,0,0" TabIndex="6" Click="button_Play_Click" />
             <CheckBox x:Name="checkBox_MinimizeOnPlay" Content="実行時にウィンドウを最小化する" Margin="10,0,0,0" VerticalAlignment="Center"

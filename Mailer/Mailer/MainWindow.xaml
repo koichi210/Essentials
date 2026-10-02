@@ -19,7 +19,7 @@
                     <ColumnDefinition Width="*" />
                 </Grid.ColumnDefinitions>
                 <Label Grid.Column="0" Content="ブラウザパス：" HorizontalAlignment="Right" />
-                <stc:TextBoxEx Grid.Column="1" x:Name="textBox_BrowserPath" VerticalAlignment="Center"
+                <stc:TextBoxEx Grid.Column="1" x:Name="textBox_BrowserPath" stc:Placeholder.Text="例: chrome.exe" VerticalAlignment="Center"
                                KeyDown="textBox_BrowserPath_KeyDown" />
             </Grid>
         </GroupBox>
@@ -38,13 +38,13 @@
                     <RowDefinition Height="*" />
                 </Grid.RowDefinitions>
                 <Label Grid.Row="0" Content="To：" HorizontalAlignment="Right" />
-                <stc:TextBoxEx Grid.Row="0" Grid.Column="1" x:Name="textBox_MailTo" VerticalAlignment="Center" Margin="0,2" />
+                <stc:TextBoxEx Grid.Row="0" Grid.Column="1" x:Name="textBox_MailTo" stc:Placeholder.Text="例: user@example.com" VerticalAlignment="Center" Margin="0,2" />
                 <Label Grid.Row="1" Content="Cc：" HorizontalAlignment="Right" />
-                <stc:TextBoxEx Grid.Row="1" Grid.Column="1" x:Name="textBox_MailCc" VerticalAlignment="Center" Margin="0,2" />
+                <stc:TextBoxEx Grid.Row="1" Grid.Column="1" x:Name="textBox_MailCc" stc:Placeholder.Text="例: cc@example.com" VerticalAlignment="Center" Margin="0,2" />
                 <Label Grid.Row="2" Content="Bcc：" HorizontalAlignment="Right" />
-                <stc:TextBoxEx Grid.Row="2" Grid.Column="1" x:Name="textBox_MailBcc" VerticalAlignment="Center" Margin="0,2" />
+                <stc:TextBoxEx Grid.Row="2" Grid.Column="1" x:Name="textBox_MailBcc" stc:Placeholder.Text="例: bcc@example.com" VerticalAlignment="Center" Margin="0,2" />
                 <Label Grid.Row="3" Content="件名：" HorizontalAlignment="Right" />
-                <stc:TextBoxEx Grid.Row="3" Grid.Column="1" x:Name="textBox_MailSubject" VerticalAlignment="Center" Margin="0,2" />
+                <stc:TextBoxEx Grid.Row="3" Grid.Column="1" x:Name="textBox_MailSubject" stc:Placeholder.Text="例: 日報 %%USERSDAY%%" VerticalAlignment="Center" Margin="0,2" />
                 <Label Grid.Row="4" Content="本文：" HorizontalAlignment="Right" VerticalAlignment="Top" />
                 <stc:TextBoxEx Grid.Row="4" Grid.Column="1" x:Name="textBox_MailBody" Margin="0,4,0,2"
                                AcceptsReturn="True" TextWrapping="NoWrap"
@@ -73,10 +73,10 @@
                     <Label Grid.Row="0" Grid.Column="0" Content="起点日：" HorizontalAlignment="Right" />
                     <DatePicker Grid.Row="0" Grid.Column="1" x:Name="dateTimePicker_Calendar" VerticalAlignment="Center" />
                     <Label Grid.Row="0" Grid.Column="2" Content="生成数：" HorizontalAlignment="Right" />
-                    <stc:TextBoxEx Grid.Row="0" Grid.Column="3" x:Name="textBox_CreateNum" Text="5" VerticalAlignment="Center" />
+                    <stc:TextBoxEx Grid.Row="0" Grid.Column="3" x:Name="textBox_CreateNum" stc:Placeholder.Text="例: 5" Text="5" VerticalAlignment="Center" />
                     <CheckBox Grid.Row="1" Grid.Column="1" x:Name="checkBox_Reverse" Content="Reverse" IsChecked="True" VerticalAlignment="Center" />
                     <Label Grid.Row="1" Grid.Column="2" Content="インターバル(msec)：" HorizontalAlignment="Right" />
-                    <stc:TextBoxEx Grid.Row="1" Grid.Column="3" x:Name="textBox_IntervalMsec" Text="5000" VerticalAlignment="Center" />
+                    <stc:TextBoxEx Grid.Row="1" Grid.Column="3" x:Name="textBox_IntervalMsec" stc:Placeholder.Text="例: 5000" Text="5000" VerticalAlignment="Center" />
                     <Button Grid.Row="0" Grid.RowSpan="2" Grid.Column="4" x:Name="button_OpenBrowse_OneWeek" Content="一括表示"
                             Width="145" Margin="8,2,0,2" Click="button_OpenBrowse_OneWeek_Click" />
                 </Grid>

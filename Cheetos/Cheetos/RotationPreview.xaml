@@ -21,7 +21,7 @@
                 <ColumnDefinition Width="Auto" />
             </Grid.ColumnDefinitions>
             <Label Grid.Column="0" Content="ファイルパス" Padding="2,0" Margin="0,0,4,0" VerticalAlignment="Center" />
-            <stc:TextBoxEx Grid.Column="1" x:Name="textBox_LoadFilePath" FolderPathOnly="False" VerticalAlignment="Center" />
+            <stc:TextBoxEx Grid.Column="1" x:Name="textBox_LoadFilePath" stc:Placeholder.Text="例: C:\Sample\001.jpg" FolderPathOnly="False" VerticalAlignment="Center" />
             <Button Grid.Column="2" x:Name="button_draw" Content="load" Width="75" Height="23" Margin="6,0,0,0" Click="button_ClickDraw" />
             <Button Grid.Column="4" x:Name="buttonOk" Content="OK" Width="75" Height="23" Click="buttonOk_Click" />
         </Grid>
@@ -39,13 +39,13 @@
                 <ColumnDefinition Width="Auto" />
             </Grid.ColumnDefinitions>
             <Label Grid.Column="1" Content="原点X" Padding="2,0" Margin="0,0,4,0" VerticalAlignment="Center" />
-            <stc:TextBoxEx Grid.Column="2" x:Name="textBox_OriginX" Text="0" VerticalAlignment="Center"
+            <stc:TextBoxEx Grid.Column="2" x:Name="textBox_OriginX" stc:Placeholder.Text="例: 0" Text="0" VerticalAlignment="Center"
                            PreviewKeyDown="textBox_OriginX_KeyDown" TextChanged="textBox_Param_TextChanged" />
             <Label Grid.Column="3" Content="原点Y" Padding="2,0" Margin="6,0,4,0" VerticalAlignment="Center" />
-            <stc:TextBoxEx Grid.Column="4" x:Name="textBox_OriginY" Text="0" VerticalAlignment="Center"
+            <stc:TextBoxEx Grid.Column="4" x:Name="textBox_OriginY" stc:Placeholder.Text="例: 0" Text="0" VerticalAlignment="Center"
                            PreviewKeyDown="textBox_OriginY_KeyDown" TextChanged="textBox_Param_TextChanged" />
             <Label Grid.Column="5" Content="角度" Padding="2,0" Margin="6,0,4,0" VerticalAlignment="Center" />
-            <stc:TextBoxEx Grid.Column="6" x:Name="textBox_angle" Text="0" VerticalAlignment="Center"
+            <stc:TextBoxEx Grid.Column="6" x:Name="textBox_angle" stc:Placeholder.Text="例: 90" Text="0" VerticalAlignment="Center"
                            PreviewKeyDown="textBox_Angle_KeyDown" TextChanged="textBox_Param_TextChanged" />
             <Button Grid.Column="8" x:Name="buttonCancel" Content="Cancel" Width="75" Height="23" Click="buttonCancel_Click" />
         </Grid>

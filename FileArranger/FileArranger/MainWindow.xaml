@@ -60,7 +60,7 @@
                     <TextBlock Grid.Row="0" Grid.ColumnSpan="3" Text="共通設定" Style="{StaticResource HeaderText}" />
 
                     <Label Grid.Row="1" Grid.Column="0" Content="リファレンスフォルダ：" HorizontalAlignment="Right" />
-                    <stc:TextBoxEx Grid.Row="1" Grid.Column="1" x:Name="cmn_textBox_Reference"
+                    <stc:TextBoxEx Grid.Row="1" Grid.Column="1" x:Name="cmn_textBox_Reference" stc:Placeholder.Text="例: C:\Reference"
                                    TextChanged="cmn_textBox_Reference_TextChanged" />
                     <Button Grid.Row="1" Grid.Column="2" x:Name="cmn_button_Listup" Content="リストアップ" Margin="6,0,0,0"
                             Click="cmn_button_Listup_Click" />
@@ -73,7 +73,7 @@
                                    KeyDown="cmn_textBox_AddList_KeyDown" />
 
                     <Label Grid.Row="3" Grid.Column="0" Content="新規追加Suffix：" HorizontalAlignment="Right" />
-                    <stc:TextBoxEx Grid.Row="3" Grid.Column="1" Grid.ColumnSpan="2" x:Name="cmn_textBox_AddListSuffix" />
+                    <stc:TextBoxEx Grid.Row="3" Grid.Column="1" Grid.ColumnSpan="2" x:Name="cmn_textBox_AddListSuffix" stc:Placeholder.Text="例: _new" />
                 </Grid>
             </TabItem>
 
@@ -95,7 +95,7 @@
                     <TextBlock Grid.Row="0" Grid.ColumnSpan="3" Text="ファイルが存在するフォルダを表示" Style="{StaticResource HeaderText}" />
 
                     <Label Grid.Row="1" Grid.Column="0" Content="フォルダ格納元：" />
-                    <stc:TextBoxEx Grid.Row="1" Grid.Column="1" x:Name="md_textBox_SourceDir"
+                    <stc:TextBoxEx Grid.Row="1" Grid.Column="1" x:Name="md_textBox_SourceDir" stc:Placeholder.Text="例: C:\Work"
                                    KeyDown="md_textBox_SourceDir_KeyDown" />
                     <Button Grid.Row="1" Grid.Column="2" x:Name="md_button_Listup" Content="リストアップ" Margin="6,0,0,0"
                             Click="md_button_Listup_Click" />
@@ -179,14 +179,14 @@
                         </Grid.RowDefinitions>
                         <StackPanel Grid.Row="0" Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right">
                             <Label Content="区切り文字：" />
-                            <stc:TextBoxEx x:Name="rd_textBox_SplitWord3" Width="62"
+                            <stc:TextBoxEx x:Name="rd_textBox_SplitWord3" stc:Placeholder.Text="例: _" Width="62"
                                            TextChanged="rd_textBox_TextChanged" KeyDown="rd_comboBox_MergeWord_KeyDown" />
                         </StackPanel>
                         <Label Grid.Row="0" Grid.Column="2" Content="番号前に追加：" Margin="8,0,0,0" />
-                        <stc:TextBoxEx Grid.Row="0" Grid.Column="3" x:Name="rd_textBox_AddTitlePreWord"
+                        <stc:TextBoxEx Grid.Row="0" Grid.Column="3" x:Name="rd_textBox_AddTitlePreWord" stc:Placeholder.Text="例: 第"
                                        TextChanged="rd_textBox_TextChanged" KeyDown="rd_comboBox_MergeWord_KeyDown" />
                         <Label Grid.Row="0" Grid.Column="4" Content="番号検索の後部：" Margin="8,0,0,0" HorizontalAlignment="Right" />
-                        <stc:TextBoxEx Grid.Row="0" Grid.Column="5" x:Name="rd_textBox_SearchTitleLine"
+                        <stc:TextBoxEx Grid.Row="0" Grid.Column="5" x:Name="rd_textBox_SearchTitleLine" stc:Placeholder.Text="例: 3"
                                        TextChanged="rd_textBox_TextChanged" KeyDown="rd_comboBox_MergeWord_KeyDown" />
 
                         <Label Grid.Row="1" Grid.Column="0" Content="結合文字：" HorizontalAlignment="Right" />
@@ -196,7 +196,7 @@
                         <stc:ComboBoxEx Grid.Row="1" Grid.Column="3" x:Name="rd_comboBox_AddTitlePostWord"
                                         KeyDown="rd_comboBox_MergeWord_KeyDown" />
                         <Label Grid.Row="1" Grid.Column="4" Content="番号の検索長：" Margin="8,0,0,0" HorizontalAlignment="Right" />
-                        <stc:TextBoxEx Grid.Row="1" Grid.Column="5" x:Name="rd_textBox_SearchTitleLength"
+                        <stc:TextBoxEx Grid.Row="1" Grid.Column="5" x:Name="rd_textBox_SearchTitleLength" stc:Placeholder.Text="例: 2"
                                        TextChanged="rd_textBox_TextChanged" KeyDown="rd_comboBox_MergeWord_KeyDown" />
                     </Grid>
 
@@ -257,7 +257,7 @@
                     <TextBlock Grid.Row="0" Grid.ColumnSpan="3" Text="指定フォルダ以下のファイル名をリネーム（ソート）" Style="{StaticResource HeaderText}" />
 
                     <Label Grid.Row="1" Grid.Column="0" Content="ファイル格納元：" />
-                    <stc:TextBoxEx Grid.Row="1" Grid.Column="1" x:Name="sf_textBox_TargetFile"
+                    <stc:TextBoxEx Grid.Row="1" Grid.Column="1" x:Name="sf_textBox_TargetFile" stc:Placeholder.Text="例: C:\Work"
                                    KeyDown="sf_textBox_TargetFile_KeyDown" />
                     <Button Grid.Row="1" Grid.Column="2" x:Name="sf_button_Listup" Content="リストアップ" Margin="6,0,0,0"
                             Click="sf_button_Listup_TargetFile_Click" />
@@ -305,13 +305,13 @@
                     <TextBlock Grid.Row="0" Grid.ColumnSpan="3" Text="ファイル移動" Style="{StaticResource HeaderText}" />
 
                     <Label Grid.Row="1" Grid.Column="0" Content="ファイル移動元：" />
-                    <stc:TextBoxEx Grid.Row="1" Grid.Column="1" x:Name="mf_textBox_SourceDir"
+                    <stc:TextBoxEx Grid.Row="1" Grid.Column="1" x:Name="mf_textBox_SourceDir" stc:Placeholder.Text="例: C:\Work\From"
                                    KeyDown="mf_textBox_SourceDir_KeyDown" />
                     <Button Grid.Row="1" Grid.Column="2" x:Name="mf_button_Listup" Content="リストアップ" Margin="6,0,0,0"
                             Click="mf_button_Listup_Click" />
 
                     <Label Grid.Row="2" Grid.Column="0" Content="ファイル移動先：" />
-                    <stc:TextBoxEx Grid.Row="2" Grid.Column="1" Grid.ColumnSpan="2" x:Name="mf_textBox_TargetDir"
+                    <stc:TextBoxEx Grid.Row="2" Grid.Column="1" Grid.ColumnSpan="2" x:Name="mf_textBox_TargetDir" stc:Placeholder.Text="例: C:\Work\To"
                                    KeyDown="mf_textBox_TargetDir_KeyDown" />
 
                     <ListBox Grid.Row="3" Grid.ColumnSpan="3" x:Name="mf_listBox_Target" Margin="0,4,0,4"
@@ -357,10 +357,10 @@
                     <TextBlock Grid.Row="0" Grid.ColumnSpan="5" Text="ファイル振り分け" Style="{StaticResource HeaderText}" />
 
                     <Label Grid.Row="1" Grid.Column="0" Content="ファイル格納元：" />
-                    <stc:TextBoxEx Grid.Row="1" Grid.Column="1" x:Name="pf_textBox_TargetFile"
+                    <stc:TextBoxEx Grid.Row="1" Grid.Column="1" x:Name="pf_textBox_TargetFile" stc:Placeholder.Text="例: C:\Work"
                                    KeyDown="pf_textBox_TargetFile_KeyDown" />
                     <Label Grid.Row="1" Grid.Column="2" Content="区切り文字：" Margin="8,0,0,0" HorizontalAlignment="Right" />
-                    <stc:TextBoxEx Grid.Row="1" Grid.Column="3" x:Name="pf_textBox_TargetSeparator" />
+                    <stc:TextBoxEx Grid.Row="1" Grid.Column="3" x:Name="pf_textBox_TargetSeparator" stc:Placeholder.Text="例: _" />
                     <Button Grid.Row="1" Grid.Column="4" x:Name="pf_button_Listup_Target" Content="リストアップ" Margin="6,0,0,0"
                             Click="pf_button_Listup_Target_Click" />
 
@@ -377,7 +377,7 @@
                                     KeyUp="pf_comboBox_MoveDestDirName_KeyUp" />
                     <StackPanel Grid.Row="3" Grid.Column="2" Grid.ColumnSpan="3" Orientation="Horizontal" HorizontalAlignment="Right">
                         <Label Content="番号検索の後部：" />
-                        <stc:TextBoxEx x:Name="pf_textBox_SearchTitleLine" Width="46"
+                        <stc:TextBoxEx x:Name="pf_textBox_SearchTitleLine" stc:Placeholder.Text="例: 3" Width="46"
                                        KeyDown="pf_textBox_SearchTitleLine_KeyDown" />
                     </StackPanel>
 
@@ -386,7 +386,7 @@
                               Checked="pf_checkBox_CreateNewDir_CheckedChanged" Unchecked="pf_checkBox_CreateNewDir_CheckedChanged" />
                     <StackPanel Grid.Row="4" Grid.Column="2" Grid.ColumnSpan="3" Orientation="Horizontal" HorizontalAlignment="Right">
                         <Label Content="番号の検索長：" />
-                        <stc:TextBoxEx x:Name="pf_textBox_SearchTitleLength" Width="46"
+                        <stc:TextBoxEx x:Name="pf_textBox_SearchTitleLength" stc:Placeholder.Text="例: 2" Width="46"
                                        KeyDown="pf_textBox_SearchTitleLine_KeyDown" />
                     </StackPanel>
 

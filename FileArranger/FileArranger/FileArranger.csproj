@@ -134,6 +134,9 @@
     <Compile Include="..\..\_Common\Wpf\WpfPathDropControls.cs">
       <Link>_Common\Wpf\WpfPathDropControls.cs</Link>
     </Compile>
+    <Compile Include="..\..\_Common\Wpf\WpfPlaceholder.cs">
+      <Link>_Common\Wpf\WpfPlaceholder.cs</Link>
+    </Compile>
     <Compile Include="..\..\_Common\Wpf\WpfDataFolderMenu.cs">
       <Link>_Common\Wpf\WpfDataFolderMenu.cs</Link>
     </Compile>

@@ -48,7 +48,7 @@
                             <ColumnDefinition Width="*" />
                         </Grid.ColumnDefinitions>
                         <Label Grid.Column="0" Content="フィルター" Padding="0" VerticalAlignment="Center" HorizontalAlignment="Right" Margin="0,0,3,0" />
-                        <stc:TextBoxEx Grid.Column="1" x:Name="textBox_Target_Extension" VerticalAlignment="Center"
+                        <stc:TextBoxEx Grid.Column="1" x:Name="textBox_Target_Extension" stc:Placeholder.Text="例: *.jpg" VerticalAlignment="Center"
                                        KeyUp="textBox_Target_Extension_KeyUp" />
                     </Grid>
                     <CheckBox x:Name="checkBox_Target_SubDirectory" Content="サブフォルダも表示" Margin="6,4,0,2"
@@ -64,7 +64,7 @@
                                      IsChecked="True" Checked="UpdateNameChangeControl" />
                         <StackPanel Orientation="Horizontal" Margin="17,4,0,0">
                             <Label x:Name="label_ChangeNumber_FirstVal" Content="最初の値" Padding="0" VerticalAlignment="Center" Margin="0,0,3,0" />
-                            <stc:TextBoxEx x:Name="textBox_ChangeNumber_FirstVal" Text="1" Width="68" TextAlignment="Right"
+                            <stc:TextBoxEx x:Name="textBox_ChangeNumber_FirstVal" stc:Placeholder.Text="例: 1" Text="1" Width="68" TextAlignment="Right"
                                            VerticalAlignment="Center" />
                             <ComboBox x:Name="comboBox_ChangeNumber_Digit" Width="74" Margin="6,0,0,0" VerticalAlignment="Center" />
                         </StackPanel>
@@ -142,7 +142,7 @@
                                      Margin="0,5,0,0" Checked="UpdateFunctionControl" />
                         <CheckBox x:Name="checkBox_Operation_AnyDir" Content="フォルダを指定する" IsEnabled="False"
                                   Margin="16,5,0,0" Checked="UpdateFunctionControl" Unchecked="UpdateFunctionControl" />
-                        <stc:TextBoxEx x:Name="textBox_Function_Any_Directory" IsEnabled="False" Margin="31,4,0,0"
+                        <stc:TextBoxEx x:Name="textBox_Function_Any_Directory" stc:Placeholder.Text="例: C:\Work" IsEnabled="False" Margin="31,4,0,0"
                                        GotKeyboardFocus="textBox_Function_Any_Directory_GotKeyboardFocus"
                                        PreviewMouseLeftButtonUp="textBox_Function_Any_Directory_PreviewMouseLeftButtonUp" />
                     </StackPanel>

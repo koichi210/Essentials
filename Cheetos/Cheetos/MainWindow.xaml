@@ -52,10 +52,10 @@
                     </Grid.RowDefinitions>
 
                     <Label Grid.Row="0" Grid.Column="0" Content="フォルダパス：" Style="{StaticResource RowLabel}" />
-                    <stc:TextBoxEx Grid.Row="0" Grid.Column="1" x:Name="cw_TextBox_SavePath" VerticalAlignment="Center" Margin="0,2"
+                    <stc:TextBoxEx Grid.Row="0" Grid.Column="1" x:Name="cw_TextBox_SavePath" stc:Placeholder.Text="例: C:\Capture" VerticalAlignment="Center" Margin="0,2"
                                    KeyDown="cw_TextBox_SavePath_KeyDown" KeyUp="cw_TextBox_SavePath_KeyUp" />
                     <Label Grid.Row="1" Grid.Column="0" Content="ファイル名プリフィックス：" Style="{StaticResource RowLabel}" />
-                    <stc:TextBoxEx Grid.Row="1" Grid.Column="1" x:Name="cw_TextBox_SaveFilePrefix" VerticalAlignment="Center" Margin="0,2" />
+                    <stc:TextBoxEx Grid.Row="1" Grid.Column="1" x:Name="cw_TextBox_SaveFilePrefix" stc:Placeholder.Text="例: capture_" VerticalAlignment="Center" Margin="0,2" />
                     <CheckBox Grid.Row="2" Grid.Column="1" x:Name="cw_checkBox_AddTimeStamp" Content="ファイル名にタイムスタンプを使用する"
                               Margin="8,3" VerticalAlignment="Center" />
 
@@ -91,10 +91,10 @@
                     </DataGrid>
 
                     <Label Grid.Row="4" Grid.Column="0" Content="Sleep（msec）：" HorizontalAlignment="Left" Margin="4,0,0,0" Padding="2,0" VerticalAlignment="Center" />
-                    <stc:TextBoxEx Grid.Row="4" Grid.Column="0" x:Name="cw_TextBox_Sleep" Style="{StaticResource NumberBox}"
+                    <stc:TextBoxEx Grid.Row="4" Grid.Column="0" x:Name="cw_TextBox_Sleep" stc:Placeholder.Text="例: 2000" Style="{StaticResource NumberBox}"
                                    Width="50" HorizontalAlignment="Right" Margin="0,2,6,2" />
                     <Label Grid.Row="5" Grid.Column="0" Content="繰り返し数：" HorizontalAlignment="Left" Margin="18,0,0,0" Padding="2,0" VerticalAlignment="Center" />
-                    <stc:TextBoxEx Grid.Row="5" Grid.Column="0" x:Name="cw_TextBox_Loop" Style="{StaticResource NumberBox}"
+                    <stc:TextBoxEx Grid.Row="5" Grid.Column="0" x:Name="cw_TextBox_Loop" stc:Placeholder.Text="例: 2" Style="{StaticResource NumberBox}"
                                    Width="50" HorizontalAlignment="Right" Margin="0,2,6,2" EnableUpDownIncrement="True" />
 
                     <stc:TextBoxEx Grid.Row="7" Grid.Column="0" x:Name="cw_TextBox_Status" IsReadOnly="True" TextAlignment="Right"
@@ -147,17 +147,17 @@
                             <RowDefinition Height="*" />
                         </Grid.RowDefinitions>
                         <Label Grid.Row="0" Content="原点(X)：" Style="{StaticResource RowLabel}" />
-                        <stc:TextBoxEx Grid.Row="0" Grid.Column="1" x:Name="pt_BaseX" Style="{StaticResource NumberBox}" Margin="0,2" />
+                        <stc:TextBoxEx Grid.Row="0" Grid.Column="1" x:Name="pt_BaseX" stc:Placeholder.Text="例: 0" Style="{StaticResource NumberBox}" Margin="0,2" />
                         <Label Grid.Row="1" Content="原点(Y)：" Style="{StaticResource RowLabel}" />
-                        <stc:TextBoxEx Grid.Row="1" Grid.Column="1" x:Name="pt_BaseY" Style="{StaticResource NumberBox}" Margin="0,2" />
+                        <stc:TextBoxEx Grid.Row="1" Grid.Column="1" x:Name="pt_BaseY" stc:Placeholder.Text="例: 0" Style="{StaticResource NumberBox}" Margin="0,2" />
                         <RadioButton Grid.Row="2" Grid.ColumnSpan="3" x:Name="pt_Radio_SelectPointOfEnd" Content="終点を座標で指定"
                                      IsChecked="True" Margin="18,14,0,2" Click="pt_Radio_SelectPointOfEnd_Click" />
                         <RadioButton Grid.Row="3" Grid.ColumnSpan="3" x:Name="pt_Radio_SelectSizeOfEnd" Content="終点をサイズで指定"
                                      Margin="18,2,0,2" Click="pt_Radio_SelectSizeOfEnd_Click" />
                         <Label Grid.Row="4" Content="X：" Style="{StaticResource RowLabel}" />
-                        <stc:TextBoxEx Grid.Row="4" Grid.Column="1" x:Name="pt_TargetX" Style="{StaticResource NumberBox}" Margin="0,2" />
+                        <stc:TextBoxEx Grid.Row="4" Grid.Column="1" x:Name="pt_TargetX" stc:Placeholder.Text="例: 1920" Style="{StaticResource NumberBox}" Margin="0,2" />
                         <Label Grid.Row="5" Content="Y：" Style="{StaticResource RowLabel}" />
-                        <stc:TextBoxEx Grid.Row="5" Grid.Column="1" x:Name="pt_TargetY" Style="{StaticResource NumberBox}" Margin="0,2" />
+                        <stc:TextBoxEx Grid.Row="5" Grid.Column="1" x:Name="pt_TargetY" stc:Placeholder.Text="例: 1080" Style="{StaticResource NumberBox}" Margin="0,2" />
                     </Grid>
 
                     <ListBox Grid.Row="1" Grid.Column="1" x:Name="pt_ListBox_ListUp" Style="{StaticResource ListUp}"
@@ -206,11 +206,11 @@
                             <RowDefinition Height="*" />
                         </Grid.RowDefinitions>
                         <Label Grid.Row="0" Content="原点(X)：" Style="{StaticResource RowLabel}" />
-                        <stc:TextBoxEx Grid.Row="0" Grid.Column="1" x:Name="pr_BaseX" Style="{StaticResource NumberBox}" Margin="0,2" />
+                        <stc:TextBoxEx Grid.Row="0" Grid.Column="1" x:Name="pr_BaseX" stc:Placeholder.Text="例: 0" Style="{StaticResource NumberBox}" Margin="0,2" />
                         <Label Grid.Row="1" Content="原点(Y)：" Style="{StaticResource RowLabel}" />
-                        <stc:TextBoxEx Grid.Row="1" Grid.Column="1" x:Name="pr_BaseY" Style="{StaticResource NumberBox}" Margin="0,2" />
+                        <stc:TextBoxEx Grid.Row="1" Grid.Column="1" x:Name="pr_BaseY" stc:Placeholder.Text="例: 0" Style="{StaticResource NumberBox}" Margin="0,2" />
                         <Label Grid.Row="2" Content="角度：" Style="{StaticResource RowLabel}" />
-                        <stc:TextBoxEx Grid.Row="2" Grid.Column="1" x:Name="pr_Angle" Style="{StaticResource NumberBox}" Margin="0,2" />
+                        <stc:TextBoxEx Grid.Row="2" Grid.Column="1" x:Name="pr_Angle" stc:Placeholder.Text="例: 90" Style="{StaticResource NumberBox}" Margin="0,2" />
                         <Button Grid.Row="3" Grid.ColumnSpan="2" x:Name="pr_Button_RotationPreview" Content="プレビュー" Width="84" Height="23"
                                 HorizontalAlignment="Right" Margin="0,4,0,0" Click="pr_Button_RotationPreview_Click" />
                     </Grid>
@@ -256,7 +256,7 @@
                     <stc:TextBoxEx Grid.Row="2" Grid.Column="1" x:Name="do_DestLandFolderPath" IsReadOnly="True" VerticalAlignment="Center"
                                    Margin="0,2" KeyDown="ExecutePath" />
                     <Label Grid.Row="3" Content="対象ファイル：" Style="{StaticResource RowLabel}" />
-                    <stc:TextBoxEx Grid.Row="3" Grid.Column="1" x:Name="do_TargetFileName" FolderPathOnly="False" VerticalAlignment="Center"
+                    <stc:TextBoxEx Grid.Row="3" Grid.Column="1" x:Name="do_TargetFileName" stc:Placeholder.Text="例: *.jpg" FolderPathOnly="False" VerticalAlignment="Center"
                                    Margin="0,2" />
                     <Label Grid.Row="4" Content="白判定の長さ：" Style="{StaticResource RowLabel}" />
                     <Grid Grid.Row="4" Grid.Column="1">
@@ -266,9 +266,9 @@
                             <ColumnDefinition Width="Auto" />
                             <ColumnDefinition Width="*" MinWidth="60" />
                         </Grid.ColumnDefinitions>
-                        <stc:TextBoxEx Grid.Column="0" x:Name="do_WhiteLength" Style="{StaticResource NumberBox}" Margin="0,2" />
+                        <stc:TextBoxEx Grid.Column="0" x:Name="do_WhiteLength" stc:Placeholder.Text="例: 10" Style="{StaticResource NumberBox}" Margin="0,2" />
                         <Label Grid.Column="2" Content="白判定の係数：" Style="{StaticResource RowLabel}" />
-                        <stc:TextBoxEx Grid.Column="3" x:Name="do_WhiteCoef" Style="{StaticResource NumberBox}" Margin="0,2" />
+                        <stc:TextBoxEx Grid.Column="3" x:Name="do_WhiteCoef" stc:Placeholder.Text="例: 30" Style="{StaticResource NumberBox}" Margin="0,2" />
                     </Grid>
                     <Button Grid.Row="5" Grid.Column="1" x:Name="do_Distribute" Content="振り分け" Width="60" Height="23"
                             HorizontalAlignment="Right" Margin="0,4" Click="do_Distribute_Click" />
@@ -284,7 +284,7 @@
                                 <RowDefinition Height="Auto" />
                             </Grid.RowDefinitions>
                             <Label Grid.Row="0" Content="ファイル名：" Style="{StaticResource RowLabel}" />
-                            <stc:TextBoxEx Grid.Row="0" Grid.Column="1" x:Name="do_SampleFilePath" FolderPathOnly="False"
+                            <stc:TextBoxEx Grid.Row="0" Grid.Column="1" x:Name="do_SampleFilePath" stc:Placeholder.Text="例: C:\Sample\001.jpg" FolderPathOnly="False"
                                            VerticalAlignment="Center" Margin="0,2" />
                             <Button Grid.Row="1" Grid.Column="1" x:Name="do_GetSampleParam" Content="取得" Width="60" Height="23"
                                     HorizontalAlignment="Right" Margin="0,4,0,0" Click="do_GetSampleParam_Click" />
@@ -326,9 +326,9 @@
                             <RowDefinition Height="*" />
                         </Grid.RowDefinitions>
                         <Label Grid.Row="0" Content="マージ先の識別子：" Style="{StaticResource RowLabel}" />
-                        <stc:TextBoxEx Grid.Row="0" Grid.Column="1" x:Name="pm_SourceFile1Prefix" Style="{StaticResource NumberBox}" Margin="0,2" />
+                        <stc:TextBoxEx Grid.Row="0" Grid.Column="1" x:Name="pm_SourceFile1Prefix" stc:Placeholder.Text="例: _1" Style="{StaticResource NumberBox}" Margin="0,2" />
                         <Label Grid.Row="1" Content="マージ元の識別子：" Style="{StaticResource RowLabel}" />
-                        <stc:TextBoxEx Grid.Row="1" Grid.Column="1" x:Name="pm_SourceFile2Prefix" Style="{StaticResource NumberBox}" Margin="0,2" />
+                        <stc:TextBoxEx Grid.Row="1" Grid.Column="1" x:Name="pm_SourceFile2Prefix" stc:Placeholder.Text="例: _2" Style="{StaticResource NumberBox}" Margin="0,2" />
                         <Label Grid.Row="2" Content="切取る高さの範囲：" Style="{StaticResource RowLabel}" VerticalAlignment="Top" Margin="0,4,0,0" />
                         <stc:TextBoxEx Grid.Row="2" Grid.Column="1" x:Name="pm_TrimmingHeight" TextAlignment="Right" Margin="0,2,0,0"
                                        AcceptsReturn="True" TextWrapping="NoWrap"
@@ -365,10 +365,10 @@
                     <stc:TextBoxEx Grid.Row="0" Grid.Column="1" x:Name="fc_SourceFolderPath" IsReadOnly="True" VerticalAlignment="Center"
                                    Margin="0,2" KeyDown="ExecutePath" />
                     <Label Grid.Row="1" Content="移動先：" Style="{StaticResource RowLabel}" />
-                    <stc:TextBoxEx Grid.Row="1" Grid.Column="1" x:Name="fc_DestFolderPath" VerticalAlignment="Center"
+                    <stc:TextBoxEx Grid.Row="1" Grid.Column="1" x:Name="fc_DestFolderPath" stc:Placeholder.Text="例: C:\Collect" VerticalAlignment="Center"
                                    Margin="0,2" KeyDown="ExecutePath" />
                     <Label Grid.Row="2" Content="対象ファイル：" Style="{StaticResource RowLabel}" />
-                    <stc:TextBoxEx Grid.Row="2" Grid.Column="1" x:Name="fc_TargetFileName" FolderPathOnly="False" VerticalAlignment="Center"
+                    <stc:TextBoxEx Grid.Row="2" Grid.Column="1" x:Name="fc_TargetFileName" stc:Placeholder.Text="例: *.png" FolderPathOnly="False" VerticalAlignment="Center"
                                    Margin="0,2" />
                     <Button Grid.Row="3" Grid.Column="1" x:Name="fc_MoveFile" Content="移動" Width="141" Height="23"
                             HorizontalAlignment="Right" Margin="0,4" Click="fc_Button_Collect_Click" />
