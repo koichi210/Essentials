@@ -253,18 +253,15 @@ namespace EventRecorder
             return indexesToRemove.OrderByDescending(x => x).ToList();
         }
 
-        // LEFT_UP、RIGHT_UPの各行について、直前がWAIT_MS行ならその待機時間をまとめて指定値に変更する。
+        // eventTypeに指定したイベントの各行について、直前がWAIT_MS行ならその待機時間をまとめて指定値に変更する。
         // 直前がWAIT_MS行でない(=待機無しで連続している)行はSKIPする
-        public static void BulkChangeMouseUpWait(IList<EventRow> rows, int waitMs)
+        public static void BulkChangeEventWait(IList<EventRow> rows, String eventType, int waitMs)
         {
             String waitText = waitMs.ToString();
-            String leftUpType = GlobalHook.MouseHook.Stroke.LEFT_UP.ToString();
-            String rightUpType = GlobalHook.MouseHook.Stroke.RIGHT_UP.ToString();
 
             for (int i = 1; i < rows.Count; i++)
             {
-                String type = rows[i].Type;
-                if (type != leftUpType && type != rightUpType)
+                if (rows[i].Type != eventType)
                 {
                     continue;
                 }

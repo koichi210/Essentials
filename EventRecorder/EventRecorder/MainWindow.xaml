@@ -122,8 +122,8 @@
                                     <MenuItem x:Name="menuItem_AddRow" Header="行の追加(_A)" Click="menuItem_AddRow_Click" />
                                     <MenuItem x:Name="menuItem_DeleteRow" Header="行の削除(_D)" Click="menuItem_DeleteRow_Click" />
                                     <Separator />
-                                    <MenuItem x:Name="menuItem_BulkChangeMouseUpWait" Header="MOUSE_UP時間を一括変更(_W)..."
-                                              Click="menuItem_BulkChangeMouseUpWait_Click" />
+                                    <MenuItem x:Name="menuItem_BulkChangeEventWait" Header="WAIT時間を一括変更(_W)..."
+                                              Click="menuItem_BulkChangeEventWait_Click" />
                                 </ContextMenu>
                             </DataGrid.ContextMenu>
                         </DataGrid>

@@ -98,7 +98,7 @@
     <Compile Include="DialogWindowBase.cs" />
     <Compile Include="FindReplaceWindow.cs" />
     <Compile Include="FindReplaceEngine.cs" />
-    <Compile Include="MouseUpWaitBulkChangeWindow.cs" />
+    <Compile Include="EventWaitBulkChangeWindow.cs" />
     <Compile Include="Profile.cs" />
     <Compile Include="AppSettings.cs" />
     <Compile Include="HotkeyDefaults.cs" />

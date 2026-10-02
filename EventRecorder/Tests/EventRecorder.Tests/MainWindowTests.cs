@@ -216,7 +216,7 @@ namespace EventRecorder.Tests
         }
 
         [TestMethod]
-        public void MOUSE_UP時間の一括変更は1回のUndoで戻る()
+        public void WAIT時間の一括変更は1回のUndoで戻る()
         {
             StaRunner.Run(() =>
             {
@@ -226,7 +226,7 @@ namespace EventRecorder.Tests
                 window.eventRows.Add(EventRow.FromData("WAIT_MS", "", "", "", "20", ""));
                 window.eventRows.Add(EventRow.FromData("RIGHT_UP", "1", "1", "", "0", ""));
 
-                window.BulkChangeMouseUpWait(300);
+                window.BulkChangeEventWait("LEFT_UP", 300);
                 Assert.AreEqual("300", window.eventRows[0].Wait);
                 Assert.AreEqual("300", window.eventRows[2].Detail);
 

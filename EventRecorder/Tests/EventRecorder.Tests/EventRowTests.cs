@@ -126,7 +126,7 @@ namespace EventRecorder.Tests
         }
 
         [TestMethod]
-        public void MOUSE_UP時間の一括変更は直前がWAIT_MS行の時だけ変える()
+        public void WAIT時間の一括変更は指定イベントの直前がWAIT_MS行の時だけ変える()
         {
             List<EventRow> rows = new List<EventRow>
             {
@@ -139,12 +139,28 @@ namespace EventRecorder.Tests
                 EventRow.FromData("RIGHT_UP", "1", "1", "", "0", ""),
             };
 
-            EventRules.BulkChangeMouseUpWait(rows, 77);
+            EventRules.BulkChangeEventWait(rows, "RIGHT_UP", 77);
 
-            Assert.AreEqual("77", rows[0].Wait);
+            Assert.AreEqual("10", rows[0].Wait, "LEFT_UPは対象外");
             Assert.AreEqual("20", rows[2].Wait, "直後がLEFT_DOWNなので変えない");
             Assert.AreEqual("77", rows[5].Wait);
             Assert.AreEqual("77", rows[5].Detail, "Detail表示も追従する");
+
+            EventRules.BulkChangeEventWait(rows, "LEFT_DOWN", 5);
+            Assert.AreEqual("5", rows[2].Wait, "LEFT_DOWN直前のWAIT_MSも指定すれば変えられる");
+        }
+
+        [TestMethod]
+        public void 一括変更の対象イベント名は大文字小文字を問わず正規化し不正な名前は弾く()
+        {
+            String name;
+            Assert.IsTrue(EventWaitBulkChangeWindow.TryNormalizeEventName(" left_up ", out name));
+            Assert.AreEqual("LEFT_UP", name);
+            Assert.IsTrue(EventWaitBulkChangeWindow.TryNormalizeEventName("KEY_DOWN", out name));
+            Assert.AreEqual("KEY_DOWN", name);
+            Assert.IsFalse(EventWaitBulkChangeWindow.TryNormalizeEventName("WAIT_MS", out name));
+            Assert.IsFalse(EventWaitBulkChangeWindow.TryNormalizeEventName("UNKNOWN", out name));
+            Assert.IsFalse(EventWaitBulkChangeWindow.TryNormalizeEventName("", out name));
         }
     }
 }
