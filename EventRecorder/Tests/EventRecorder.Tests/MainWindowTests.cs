@@ -228,7 +228,7 @@ namespace EventRecorder.Tests
 
                 window.BulkChangeEventWait("LEFT_UP", 300);
                 Assert.AreEqual("300", window.eventRows[0].Wait);
-                Assert.AreEqual("300", window.eventRows[2].Detail);
+                Assert.AreEqual("20", window.eventRows[2].Wait, "対象はLEFT_UPだけなので、RIGHT_UP直前のWAITは変わらない");
 
                 window.eventsUndo.Undo();
                 Assert.AreEqual("10", window.eventRows[0].Wait);
