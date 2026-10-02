@@ -788,7 +788,10 @@ void COthelloDlg::OnLButtonDown(UINT nFlags, CPoint point)
 	click.y = (point.y - FRAME_OFFSET) / cellsize + 1 ;
 
 	// if clicked matrix is cell then memories cell
-	if( (click.x >= LINE_MIN) &&
+	// （盤の左・上の余白は割り算が0方向に丸められて1列目扱いになるので除外）
+	if( (point.x >= FRAME_OFFSET) &&
+		(point.y >= FRAME_OFFSET) &&
+		(click.x >= LINE_MIN) &&
 		(click.x <= LINE_MAX) &&
 		(click.y >= LINE_MIN) &&
 		(click.y <= LINE_MAX) ){
@@ -1010,7 +1013,8 @@ void COthelloDlg::EndProc(int state)
 		}else{
 			to_clr = WHITE ;
 		}
-		manager->GetColorName(to_clr, str) ;
+		// GetColorName は strcpy するので、"タイムアウト" を消さないよう後ろに書き込む
+		manager->GetColorName(to_clr, str + strlen(str)) ;
 #if ENGLISH
 		strcat(str, "is lose. and....") ;
 #else

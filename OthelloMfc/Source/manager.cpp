@@ -49,7 +49,7 @@ int CManager::GetKihuFile(CString path, int *color)
 	char x_str ;
 	char y_str ;
 	char clr[STR_BUFF] ;
-	int put_clr ;
+	int put_clr = BLACK ;
 
 	::memset(&str, 0, sizeof(str)) ;
 	::memset(&black_name, 0, sizeof(black_name)) ;
@@ -61,11 +61,14 @@ int CManager::GetKihuFile(CString path, int *color)
 
 		// read data to end of file
 		while(fgets(str, STR_BUFF, fp) != NULL){
-			sscanf(str, "%d : %c.%c %s",&number,&x_str,&y_str,clr) ;
+			// 見出し行など書式に合わない行は読み飛ばす
+			if(sscanf(str, "%d : %c.%c %255s",&number,&x_str,&y_str,clr) != 4){
+				continue ;
+			}
 			// validate judge to value
 			if(1 <= number && number <= TURN_MAX){
 				put_map.x = x_str - 0x40 ;
-				put_map.y = atoi(&y_str) ;
+				put_map.y = y_str - '0' ;
 				if((put_map.x >= LINE_MIN && put_map.x <= LINE_MAX) &&
 					(put_map.y >= LINE_MIN && put_map.y <= LINE_MAX) ){
 					// validate value
@@ -80,6 +83,8 @@ int CManager::GetKihuFile(CString path, int *color)
 						rt = ERROR_RETURN ;
 						break ;
 					}else{
+						// UpDateKihu は color メンバを打った色として記録する
+						this->color = put_clr ;
 						PutStone(put_map, put_stone, put_clr) ;
 						UpDateKihu(put_map, put_stone) ;
 					}
@@ -112,7 +117,7 @@ void CManager::UpDateKihu(CPoint put_map, int put_stone[ORIENT_MAX])
 
 	// memory orient 採用候補
 	if(put_stone){
-		::memcpy(KihuTable[turn_cnt].put_stone, put_stone, sizeof(put_stone) * ORIENT_MAX) ;
+		::memcpy(KihuTable[turn_cnt].put_stone, put_stone, sizeof(int) * ORIENT_MAX) ;
 	}
 
 	// incliment to point
@@ -142,14 +147,11 @@ void CManager::GetKihu(int attrib, CString path)
 #else
 		sprintf(kihu_wk, "***** 棋譜 ***** \n") ;
 #endif
-	for(i=1; i<TURN_MAX+1;i++){
-		if(KihuTable[i].color == 0){
-			break ; 
-		}
-
+	// 棋譜は0番から格納されている。turning_point より先は「待った」後に打ち直されて無効になった手
+	for(i=0; i<turning_point;i++){
 		GetColorName(KihuTable[i].color, color) ;
 		sprintf(temp, "%2d : %c.%d %s\n",
-			i,
+			i + 1,
 			0x40 + KihuTable[i].zahyo.x,
 			KihuTable[i].zahyo.y,
 			color) ;

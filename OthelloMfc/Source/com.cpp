@@ -798,23 +798,22 @@ int CComProc::Kaiho(CPoint z, int put_stone[ORIENT_MAX])
 // int	y		COM put matrix(Y) (IN)
 int CComProc::KaihoSub(int x, int y)
 {
-	int orient = 0 ;	// orientation
 	int num = 0 ;		// number
 	int i,j ;			// loop counter
-
-	x -- ;
-	y -- ;
+	int cx,cy ;			// check matrix
 
 	// calculation put each matrix
-	for(i=0;i<3;i++){
-		for(j=0;j<3;j++){
-			if(i == 1 && j == 1){
+	for(i=-1;i<=1;i++){
+		for(j=-1;j<=1;j++){
+			cx = x + j ;
+			cy = y + i ;
+			if(i == 0 && j == 0){
 				// put matrix in now
 				continue ;
-			}else if(x < 0 || y < 0){
-				// outside in table
+			}else if(cx < 0 || cx >= LINE_MAX || cy < 0 || cy >= LINE_MAX){
+				// outside in table（1マスずつ判定しないと端のマスで配列外を読む）
 				continue ;
-			}else if(Table[y+i][x+j] == 0){
+			}else if(Table[cy][cx] == 0){
 				// empty way of put stone
 				num++ ;
 			}

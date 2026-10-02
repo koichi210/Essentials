@@ -296,12 +296,12 @@ int COthelloBase::PutCheck(CPoint in, int color, int attrib, int put_stone[ORIEN
 // CPoint	zahyo	put matrix
 void COthelloBase::GetPutNotice(int clr, CPoint zahyo[MAS_MAX])
 {
-	CPoint o_z[LINE_MAX*LINE_MAX] ;
 	CPoint z ;
 	int rt ;
 	int cnt = 0 ;
 
-	::memset(zahyo, 0, sizeof(zahyo)) ;
+	// zahyo は配列引数＝ポインタなので sizeof(zahyo) では全体をクリアできない
+	::memset(zahyo, 0, sizeof(CPoint) * MAS_MAX) ;
 
 	for(z.x=1;z.x<=LINE_MAX;z.x++){
 		for(z.y=1;z.y<=LINE_MAX;z.y++){
