@@ -171,8 +171,8 @@ int	CheckDate(tm *t_time)
 	int rt = ERROR ;
 
 	memcpy(&tmp_time, t_time, sizeof(tmp_time));
-	tmp_time.tm_year =+ YEAR_OFFSET;
-	tmp_time.tm_mon =+ MOUNTH_OFFSET;
+	tmp_time.tm_year += YEAR_OFFSET;
+	tmp_time.tm_mon += MOUNTH_OFFSET;
 
 	if(0 < tmp_time.tm_year &&
 		0 < tmp_time.tm_mon && tmp_time.tm_mon <= MAX_MON &&
@@ -199,7 +199,7 @@ int CheckUpDateTime(tm * o_time, tm * n_time, int cyc)
 	old_time = mktime(o_time) ;
 
 	diff_time = new_time - (old_time + cyc * MAX_SEC);
-	abs(diff_time);
+	diff_time = abs(diff_time);
 	if(diff_time > DIFFER){
 		// time lag is DIFFER(10) sec over
 		rt = FALSE ;
@@ -221,7 +221,10 @@ void CLoginHistoryDlg::OnBnClickedExec()
 	UpdateData();
 
 	// load ini file
-	LoadIniFile(INI_FILE_NAME, &cycle) ;
+	// （ログファイル名は画面の指定を使うので、ini の FileName は読み捨てる）
+	char ini_fname[STR_BUFF] ;
+	memset(ini_fname, 0, sizeof(ini_fname)) ;
+	LoadIniFile(ini_fname, &cycle) ;
 
 	// Get time as long integer.
 	time( &now ) ;
@@ -239,6 +242,7 @@ void CLoginHistoryDlg::OnBnClickedExec()
 
 		GetTimeString(time_str, n_time);
 		o_time = (tm *)malloc(sizeof(tm));
+		memset(o_time, 0, sizeof(tm));
 		GetLastUpDate(fp, o_time) ;
 		if(CheckUpDateTime(o_time, n_time, cycle) == FALSE){
 			strcat(time_str,WARM);
