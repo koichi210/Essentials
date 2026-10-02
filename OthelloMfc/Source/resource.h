@@ -8,7 +8,6 @@
 #define IDD_OTHELLO_DIALOG              102
 #define IDR_MAINFRAME                   128
 #define IDR_MENU1                       129
-#define IDR_TOOLBAR1                    130
 #define IDC_BLACK_TIME_NAME             1003
 #define IDC_WHITE_TIME_NAME             1004
 #define IDC_BLACK_TIME                  1005

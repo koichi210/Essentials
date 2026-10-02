@@ -15,19 +15,19 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="com.cpp">
+    <ClCompile Include="Board.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="manager.cpp">
+    <ClCompile Include="ComPlayer.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="othello.cpp">
+    <ClCompile Include="GameManager.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="othellobase.cpp">
+    <ClCompile Include="Othello.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="othelloDlg.cpp">
+    <ClCompile Include="OthelloDlg.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="StdAfx.cpp">
@@ -35,30 +35,25 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ResourceCompile Include="othello.rc">
-      <Filter>Source Files</Filter>
-    </ResourceCompile>
-  </ItemGroup>
-  <ItemGroup>
-    <ClInclude Include="com.h">
+    <ClInclude Include="Board.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="manager.h">
+    <ClInclude Include="ComPlayer.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="othello.h">
+    <ClInclude Include="GameManager.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="othellobase.h">
+    <ClInclude Include="Othello.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="othelloDef.h">
+    <ClInclude Include="OthelloDefs.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="othelloDlg.h">
+    <ClInclude Include="OthelloDlg.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Resource.h">
+    <ClInclude Include="resource.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="StdAfx.h">
@@ -66,22 +61,13 @@
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <CustomBuild Include="res\icon1.ico">
+    <ResourceCompile Include="othello.rc">
       <Filter>Resource Files</Filter>
-    </CustomBuild>
-    <CustomBuild Include="res\idr_main.ico">
+    </ResourceCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <Image Include="res\othello.ico">
       <Filter>Resource Files</Filter>
-    </CustomBuild>
-    <CustomBuild Include="res\othello.ico">
-      <Filter>Resource Files</Filter>
-    </CustomBuild>
-    <CustomBuild Include="res\othello.rc2">
-      <Filter>Resource Files</Filter>
-    </CustomBuild>
-    <CustomBuild Include="res\toolbar1.bmp">
-      <Filter>Resource Files</Filter>
-    </CustomBuild>
-    <CustomBuild Include="..\information\othello\cheet.txt" />
-    <CustomBuild Include="ReadMe.txt" />
+    </Image>
   </ItemGroup>
 </Project>

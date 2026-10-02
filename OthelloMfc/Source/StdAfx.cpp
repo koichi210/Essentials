@@ -1,8 +1,3 @@
-﻿// stdafx.cpp : 標準インクルードファイルを含むソース ファイル
-//              othello.pch : 生成されるプリコンパイル済ヘッダー
-//              stdafx.obj : 生成されるプリコンパイル済タイプ情報
+﻿// StdAfx.cpp : プリコンパイル済みヘッダーを生成するためのソース
 
-#include "stdafx.h"
-
-
-
+#include "StdAfx.h"
