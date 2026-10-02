@@ -146,7 +146,7 @@
                                 Click="cw_Button_DelLine_Click" />
                         <Button DockPanel.Dock="Right" x:Name="cw_Button_Capture" Content="Capture" Width="60" Height="23"
                                 Click="Button_Capture_Click"
-                                ToolTip="グリッドの各行を上から順に実行(マウス操作→Sleep→キャプチャ)し、それを繰り返し数だけ行う。終了後はマウスカーソルを押した時の位置へ戻す" />
+                                ToolTip="グリッドの各行を上から順に実行(マウス操作→Sleep→キャプチャ)し、それを繰り返し数だけ行う。終了後はマウスカーソルを押した時の位置へ戻す。処理中に押すと中断" />
                     </DockPanel>
                 </Grid>
             </TabItem>
@@ -330,7 +330,7 @@
                     </Grid>
                     <Button Grid.Row="5" Grid.Column="1" x:Name="do_Distribute" Content="振り分け" Width="60" Height="23"
                             HorizontalAlignment="Right" Margin="0,4" Click="do_Distribute_Click"
-                            ToolTip="左右両端の帯をPNGにした時のサイズが両方ともしきい値以下(白フチあり)なら縦、そうでなければ横の移動先へファイルを移動する" />
+                            ToolTip="左右両端の帯をPNGにした時のサイズが両方ともしきい値以下(白フチあり)なら縦、そうでなければ横の移動先へファイルを移動する。処理中に押すと中断" />
 
                     <GroupBox Grid.Row="6" Grid.ColumnSpan="2" Header="Sample" Margin="14,0,0,0" Padding="4">
                         <Grid>

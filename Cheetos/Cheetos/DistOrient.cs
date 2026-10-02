@@ -10,6 +10,14 @@ namespace Cheetos
     {
         private void do_Distribute_Click(object sender, RoutedEventArgs e)
         {
+            // キャンセル(他タブのBackgroundWorkerと同じ「もう一度押すと中断」。IsBusyを
+            // 見ずにRunWorkerAsync()していたため、処理中に押すとInvalidOperationExceptionで落ちていた)
+            if (bkgWorkerOrient.IsBusy)
+            {
+                bkgWorkerOrient.CancelAsync();
+                return;
+            }
+
             if (!Directory.Exists(do_SourceFolderPath.Text))
             {
                 MessageBox.Show("フォルダパスが不正です");
