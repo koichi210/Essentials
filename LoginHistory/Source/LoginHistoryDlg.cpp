@@ -1,21 +1,134 @@
-﻿
-// LoginHistoryDlg.cpp : 実装ファイル
-//
+﻿// LoginHistoryDlg.cpp : メインダイアログ
 
 #include "stdafx.h"
 #include "LoginHistory.h"
 #include "LoginHistoryDlg.h"
 #include "afxdialogex.h"
 
+#include <share.h>
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
+#include <ctime>
+
 #ifdef _DEBUG
 #define new DEBUG_NEW
 #endif
 
+namespace
+{
+	constexpr char kIniFileName[] = "set.ini";
+	constexpr char kDefaultLogFileName[] = "C:\\Alive.log";
+	constexpr char kIniKeyCycle[] = "Cycle";
+	constexpr char kIniComment[] = ";";
+	constexpr char kWarningMark[] = " !";		// 間隔がずれた記録の行末に付ける印
 
-// CLoginHistoryDlg ダイアログ
-CLoginHistoryDlg::CLoginHistoryDlg(CWnd* pParent /*=NULL*/)
+	constexpr int kDefaultCycleMinutes = 60;	// 記録間隔（分）
+	constexpr int kAllowableLagSeconds = 10;	// 記録間隔のずれの許容量（秒）
+	constexpr int kLineBufferSize = 30;			// 1行の読み込みバッファ
+	constexpr int kSecondsPerMinute = 60;
+	constexpr int kMonthOffset = 1;				// tm_mon は 0 始まり
+	constexpr int kYearOffset = 1900;			// tm_year は 1900 年からの年数
+
+	// fopen と同じく他プロセスと共有可能なモードで開く
+	FILE* OpenFile(LPCSTR fileName, LPCSTR mode)
+	{
+		return _fsopen(fileName, mode, _SH_DENYNO);
+	}
+
+	// set.ini から記録間隔（分）を読む。
+	// FileName 行もあるが、ログファイル名は画面の指定を使うので読まない
+	int LoadCycleFromIni(int defaultCycle)
+	{
+		int cycle = defaultCycle;
+		FILE* fp = OpenFile(kIniFileName, "r");
+		if (fp == nullptr)
+		{
+			return cycle;
+		}
+
+		char buff[kLineBufferSize] = {};
+		while (fgets(buff, sizeof(buff), fp))
+		{
+			if (strncmp(buff, kIniComment, strlen(kIniComment)) == 0)
+			{
+				continue;
+			}
+			if (strncmp(buff, kIniKeyCycle, strlen(kIniKeyCycle)) == 0)
+			{
+				sscanf_s(buff, "Cycle=%d", &cycle);
+			}
+		}
+		fclose(fp);
+		return cycle;
+	}
+
+	// ログ1行分の日時文字列 "YYYY.MM.DD_hh:mm:ss"
+	CStringA FormatTime(const tm& t)
+	{
+		CStringA text;
+		text.Format("%04d.%02d.%02d_%02d:%02d:%02d",
+			t.tm_year + kYearOffset,
+			t.tm_mon + kMonthOffset,
+			t.tm_mday,
+			t.tm_hour,
+			t.tm_min,
+			t.tm_sec);
+		return text;
+	}
+
+	bool IsValidDate(const tm& t)
+	{
+		const int year = t.tm_year + kYearOffset;
+		const int month = t.tm_mon + kMonthOffset;
+		return 0 < year
+			&& 0 < month && month <= 12
+			&& 0 < t.tm_mday && t.tm_mday <= 31
+			&& 0 <= t.tm_hour && t.tm_hour < 24
+			&& 0 <= t.tm_min && t.tm_min < 60
+			&& 0 <= t.tm_sec && t.tm_sec < 60;
+	}
+
+	// ログ末尾付近を読み、最後の有効な日時を返す（無ければ 0 初期化のまま）
+	tm ReadLastTime(FILE* fp)
+	{
+		tm last = {};
+		tm parsed = {};
+		char buff[kLineBufferSize] = {};
+
+		fseek(fp, -kLineBufferSize, SEEK_END);
+		while (fgets(buff, sizeof(buff), fp))
+		{
+			sscanf_s(buff, "%d.%02d.%02d_%02d:%02d:%02d",
+				&parsed.tm_year,
+				&parsed.tm_mon,
+				&parsed.tm_mday,
+				&parsed.tm_hour,
+				&parsed.tm_min,
+				&parsed.tm_sec);
+			parsed.tm_mon -= kMonthOffset;
+			parsed.tm_year -= kYearOffset;
+
+			if (IsValidDate(parsed))
+			{
+				last = parsed;
+			}
+		}
+		return last;
+	}
+
+	// 前回の記録から「記録間隔 ± 許容量」の範囲で実行されたか
+	bool IsOnSchedule(tm lastTime, tm nowTime, int cycleMinutes)
+	{
+		const long long now = mktime(&nowTime);
+		const long long last = mktime(&lastTime);
+		const long long lag = llabs(now - (last + static_cast<long long>(cycleMinutes) * kSecondsPerMinute));
+		return lag <= kAllowableLagSeconds;
+	}
+}
+
+CLoginHistoryDlg::CLoginHistoryDlg(CWnd* pParent /*=nullptr*/)
 	: CDialogEx(CLoginHistoryDlg::IDD, pParent)
-	, m_Logname(_T(""))
 {
 	m_hIcon = AfxGetApp()->LoadIcon(IDR_MAINFRAME);
 }
@@ -23,7 +136,7 @@ CLoginHistoryDlg::CLoginHistoryDlg(CWnd* pParent /*=NULL*/)
 void CLoginHistoryDlg::DoDataExchange(CDataExchange* pDX)
 {
 	CDialogEx::DoDataExchange(pDX);
-	DDX_Text(pDX, IDET_LOGNAME, m_Logname);
+	DDX_Text(pDX, IDET_LOGNAME, m_strLogName);
 }
 
 BEGIN_MESSAGE_MAP(CLoginHistoryDlg, CDialogEx)
@@ -32,46 +145,35 @@ BEGIN_MESSAGE_MAP(CLoginHistoryDlg, CDialogEx)
 	ON_BN_CLICKED(IDBT_EXEC, &CLoginHistoryDlg::OnBnClickedExec)
 END_MESSAGE_MAP()
 
-
-// CLoginHistoryDlg メッセージ ハンドラー
-
 BOOL CLoginHistoryDlg::OnInitDialog()
 {
 	CDialogEx::OnInitDialog();
 
-	// このダイアログのアイコンを設定します。アプリケーションのメイン ウィンドウがダイアログでない場合、
-	//  Framework は、この設定を自動的に行います。
-	SetIcon(m_hIcon, TRUE);			// 大きいアイコンの設定
-	SetIcon(m_hIcon, FALSE);		// 小さいアイコンの設定
+	SetIcon(m_hIcon, TRUE);
+	SetIcon(m_hIcon, FALSE);
 
-	// TODO: 初期化をここに追加します。
-	m_Logname = LOG_FILE_NAME;
+	m_strLogName = kDefaultLogFileName;
 	UpdateData(FALSE);
 
-	return TRUE;  // フォーカスをコントロールに設定した場合を除き、TRUE を返します。
+	return TRUE;
 }
 
-// ダイアログに最小化ボタンを追加する場合、アイコンを描画するための
-//  下のコードが必要です。ドキュメント/ビュー モデルを使う MFC アプリケーションの場合、
-//  これは、Framework によって自動的に設定されます。
-
+// 最小化時のアイコン描画（ダイアログはフレームワークが描いてくれないため）
 void CLoginHistoryDlg::OnPaint()
 {
 	if (IsIconic())
 	{
-		CPaintDC dc(this); // 描画のデバイス コンテキスト
+		CPaintDC dc(this);
 
 		SendMessage(WM_ICONERASEBKGND, reinterpret_cast<WPARAM>(dc.GetSafeHdc()), 0);
 
-		// クライアントの四角形領域内の中央
-		int cxIcon = GetSystemMetrics(SM_CXICON);
-		int cyIcon = GetSystemMetrics(SM_CYICON);
+		const int cxIcon = GetSystemMetrics(SM_CXICON);
+		const int cyIcon = GetSystemMetrics(SM_CYICON);
 		CRect rect;
 		GetClientRect(&rect);
-		int x = (rect.Width() - cxIcon + 1) / 2;
-		int y = (rect.Height() - cyIcon + 1) / 2;
+		const int x = (rect.Width() - cxIcon + 1) / 2;
+		const int y = (rect.Height() - cyIcon + 1) / 2;
 
-		// アイコンの描画
 		dc.DrawIcon(x, y, m_hIcon);
 	}
 	else
@@ -80,177 +182,43 @@ void CLoginHistoryDlg::OnPaint()
 	}
 }
 
-// ユーザーが最小化したウィンドウをドラッグしているときに表示するカーソルを取得するために、
-//  システムがこの関数を呼び出します。
 HCURSOR CLoginHistoryDlg::OnQueryDragIcon()
 {
 	return static_cast<HCURSOR>(m_hIcon);
 }
 
-void LoadIniFile(char * fname, int * cyc)
-{
-	FILE *fp ;
-	char buff[STR_BUFF] ;
-
-	memset(buff, 0 ,sizeof(buff)) ;
-
-	fp = fopen(INI_FILE_NAME, "r") ;
-	if(fp != NULL){
-		while(fgets(buff, sizeof(buff), fp)){
-			if(strncmp(buff, COMENT, strlen(COMENT)) == 0){
-				continue;
-			}else if(strncmp(buff, FILE_NAME, strlen(FILE_NAME)) == 0){
-				sscanf(buff, "FileName=%s", fname) ;
-			}else if(strncmp(buff, CYCLE, strlen(CYCLE)) == 0){
-				sscanf(buff, "Cycle=%d", cyc) ;
-			}
-		}
-		fclose(fp) ;
-	}
-}
-
-void CreateFile(char * fname, tm * time)
-{
-	FILE * fp ;
-	char time_str[STR_BUFF];
-
-	memset(time_str, 0, sizeof(time_str));
-
-	GetTimeString(time_str, time);
-	fp = fopen(fname, "w") ;
-	if(fp != NULL){
-		fprintf(fp,"%s\n",time_str);
-		fclose(fp) ;
-	}
-}
-
-int GetTimeString(char * time_str, tm *time)
-{
-	sprintf(time_str, "%04d.%02d.%02d_%02d:%02d:%02d",
-		time->tm_year + YEAR_OFFSET,
-		time->tm_mon + MOUNTH_OFFSET,
-		time->tm_mday,
-		time->tm_hour,
-		time->tm_min,
-		time->tm_sec) ;
-
-	return CheckDate(time) ;
-}
-
-void GetLastUpDate(FILE * fp, tm * time)
-{
-	tm tt;
-	int rt;
-	char buff[STR_BUFF] ;
-
-	memset(buff, 0, sizeof(buff));
-	memset(&tt, 0, sizeof(tt));
-
-	fseek(fp,-(STR_BUFF),SEEK_END);
-	while(fgets(buff, sizeof(buff), fp)){
-		sscanf(buff, "%d.%02d.%02d_%02d:%02d:%02d",
-			&tt.tm_year,
-			&tt.tm_mon,
-			&tt.tm_mday,
-			&tt.tm_hour,
-			&tt.tm_min,
-			&tt.tm_sec) ;
-		tt.tm_mon -= MOUNTH_OFFSET ;
-		tt.tm_year -= YEAR_OFFSET ;
-
-		rt = CheckDate(&tt) ;
-		if(rt == NORMAL){
-			*time = tt ;
-		}
-	}
-}
-
-int	CheckDate(tm *t_time)
-{
-	tm tmp_time ;
-	int rt = ERROR ;
-
-	memcpy(&tmp_time, t_time, sizeof(tmp_time));
-	tmp_time.tm_year += YEAR_OFFSET;
-	tmp_time.tm_mon += MOUNTH_OFFSET;
-
-	if(0 < tmp_time.tm_year &&
-		0 < tmp_time.tm_mon && tmp_time.tm_mon <= MAX_MON &&
-		0 < tmp_time.tm_mday && tmp_time.tm_mday <= MAX_DAY &&
-		0 <= tmp_time.tm_hour && tmp_time.tm_hour < MAX_HOUR &&
-		0 <= tmp_time.tm_min && tmp_time.tm_min < MAX_MIN &&
-		0 <= tmp_time.tm_sec && tmp_time.tm_sec < MAX_SEC )
-		rt = NORMAL ;
-
-	return rt;
-}
-
-int CheckUpDateTime(tm * o_time, tm * n_time, int cyc)
-{
-	tm wk_time;
-	int rt = TRUE ;
-	int new_time ;
-	int old_time ;
-	int diff_time;
-
-	memcpy(&wk_time,n_time,sizeof(tm));
-	// check time
-	new_time = mktime(n_time) ;
-	old_time = mktime(o_time) ;
-
-	diff_time = new_time - (old_time + cyc * MAX_SEC);
-	diff_time = abs(diff_time);
-	if(diff_time > DIFFER){
-		// time lag is DIFFER(10) sec over
-		rt = FALSE ;
-	}
-
-	return rt ;
-}
-
-
-
+// 現在日時をログに追記する。前回からの間隔が設定とずれていたら行末に印を付ける
 void CLoginHistoryDlg::OnBnClickedExec()
 {
-	FILE * fp ;						// file pointer
-    tm * o_time = NULL ;			// old time(sec)
-    tm * n_time = NULL ;			// new time(sec)
-	time_t now = 0 ;				// now time
-	int cycle  = UPDATE_CYC ;		// update cycle
-
 	UpdateData();
 
-	// load ini file
-	// （ログファイル名は画面の指定を使うので、ini の FileName は読み捨てる）
-	char ini_fname[STR_BUFF] ;
-	memset(ini_fname, 0, sizeof(ini_fname)) ;
-	LoadIniFile(ini_fname, &cycle) ;
+	const int cycle = LoadCycleFromIni(kDefaultCycleMinutes);
 
-	// Get time as long integer.
-	time( &now ) ;
-    n_time = localtime( &now ) ;
+	const time_t now = time(nullptr);
+	tm nowTime = {};
+	localtime_s(&nowTime, &now);
 
-	// opend update file
-	fp = fopen(m_Logname, "r+") ;
-	if(fp == NULL){
-		// create new file
-		CreateFile((LPTSTR)(LPCTSTR)m_Logname, n_time) ;
-	}else{
-		// write file
-		char time_str[STR_BUFF];
-		memset(time_str, 0, sizeof(time_str));
-
-		GetTimeString(time_str, n_time);
-		o_time = (tm *)malloc(sizeof(tm));
-		memset(o_time, 0, sizeof(tm));
-		GetLastUpDate(fp, o_time) ;
-		if(CheckUpDateTime(o_time, n_time, cycle) == FALSE){
-			strcat(time_str,WARM);
+	FILE* fp = OpenFile(m_strLogName, "r+");
+	if (fp == nullptr)
+	{
+		// 初回はファイルを作って現在日時だけを書く
+		fp = OpenFile(m_strLogName, "w");
+		if (fp != nullptr)
+		{
+			fprintf(fp, "%s\n", static_cast<LPCSTR>(FormatTime(nowTime)));
+			fclose(fp);
 		}
-		free(o_time);
-
-		fseek(fp,0,SEEK_END);
-		fprintf(fp,"%s\n",time_str);
-		fclose(fp);
+		return;
 	}
+
+	CStringA line = FormatTime(nowTime);
+	if (!IsOnSchedule(ReadLastTime(fp), nowTime, cycle))
+	{
+		line += kWarningMark;
+	}
+
+	// 読み込みから書き込みに切り替えるときは fseek が必要
+	fseek(fp, 0, SEEK_END);
+	fprintf(fp, "%s\n", static_cast<LPCSTR>(line));
+	fclose(fp);
 }

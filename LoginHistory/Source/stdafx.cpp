@@ -1,8 +1,3 @@
-﻿
-// stdafx.cpp : 標準インクルード LoginHistory.pch のみを
-// 含むソース ファイルは、プリコンパイル済みヘッダーになります。
-// stdafx.obj にはプリコンパイルされた型情報が含まれます。
+﻿// stdafx.cpp : プリコンパイル済みヘッダーを生成するためのソース
 
 #include "stdafx.h"
-
-
