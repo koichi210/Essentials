@@ -8,10 +8,10 @@
 
 #include "resource.h"
 
-class CLoginHistoryApp : public CWinApp
+class LoginHistoryApp : public CWinApp
 {
 public:
-	CLoginHistoryApp();
+	LoginHistoryApp();
 
 	virtual BOOL InitInstance() override;
 

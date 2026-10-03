@@ -31,16 +31,16 @@ namespace
 	constexpr int kYearOffset = 1900;			// tm_year は 1900 年からの年数
 
 	// fopen と同じく他プロセスと共有可能なモードで開く
-	FILE* OpenFile(LPCSTR fileName, LPCSTR mode)
+	FILE* OpenFile(LPCSTR file_name, LPCSTR mode)
 	{
-		return _fsopen(fileName, mode, _SH_DENYNO);
+		return _fsopen(file_name, mode, _SH_DENYNO);
 	}
 
 	// set.ini から記録間隔（分）を読む。
 	// FileName 行もあるが、ログファイル名は画面の指定を使うので読まない
-	int LoadCycleFromIni(int defaultCycle)
+	int LoadCycleFromIni(int default_cycle)
 	{
-		int cycle = defaultCycle;
+		int cycle = default_cycle;
 		FILE* fp = OpenFile(kIniFileName, "r");
 		if (fp == nullptr)
 		{
@@ -118,48 +118,48 @@ namespace
 	}
 
 	// 前回の記録から「記録間隔 ± 許容量」の範囲で実行されたか
-	bool IsOnSchedule(tm lastTime, tm nowTime, int cycleMinutes)
+	bool IsOnSchedule(tm last_time, tm now_time, int cycle_minutes)
 	{
-		const long long now = mktime(&nowTime);
-		const long long last = mktime(&lastTime);
-		const long long lag = llabs(now - (last + static_cast<long long>(cycleMinutes) * kSecondsPerMinute));
+		const long long now = mktime(&now_time);
+		const long long last = mktime(&last_time);
+		const long long lag = llabs(now - (last + static_cast<long long>(cycle_minutes) * kSecondsPerMinute));
 		return lag <= kAllowableLagSeconds;
 	}
 }
 
-CLoginHistoryDlg::CLoginHistoryDlg(CWnd* pParent /*=nullptr*/)
-	: CDialogEx(CLoginHistoryDlg::IDD, pParent)
+LoginHistoryDlg::LoginHistoryDlg(CWnd* parent /*=nullptr*/)
+	: CDialogEx(LoginHistoryDlg::IDD, parent)
 {
-	m_hIcon = AfxGetApp()->LoadIcon(IDR_MAINFRAME);
+	icon_ = AfxGetApp()->LoadIcon(IDR_MAINFRAME);
 }
 
-void CLoginHistoryDlg::DoDataExchange(CDataExchange* pDX)
+void LoginHistoryDlg::DoDataExchange(CDataExchange* dx)
 {
-	CDialogEx::DoDataExchange(pDX);
-	DDX_Text(pDX, IDET_LOGNAME, m_strLogName);
+	CDialogEx::DoDataExchange(dx);
+	DDX_Text(dx, IDET_LOGNAME, log_name_);
 }
 
-BEGIN_MESSAGE_MAP(CLoginHistoryDlg, CDialogEx)
+BEGIN_MESSAGE_MAP(LoginHistoryDlg, CDialogEx)
 	ON_WM_PAINT()
 	ON_WM_QUERYDRAGICON()
-	ON_BN_CLICKED(IDBT_EXEC, &CLoginHistoryDlg::OnBnClickedExec)
+	ON_BN_CLICKED(IDBT_EXEC, &LoginHistoryDlg::OnBnClickedExec)
 END_MESSAGE_MAP()
 
-BOOL CLoginHistoryDlg::OnInitDialog()
+BOOL LoginHistoryDlg::OnInitDialog()
 {
 	CDialogEx::OnInitDialog();
 
-	SetIcon(m_hIcon, TRUE);
-	SetIcon(m_hIcon, FALSE);
+	SetIcon(icon_, TRUE);
+	SetIcon(icon_, FALSE);
 
-	m_strLogName = kDefaultLogFileName;
+	log_name_ = kDefaultLogFileName;
 	UpdateData(FALSE);
 
 	return TRUE;
 }
 
 // 最小化時のアイコン描画（ダイアログはフレームワークが描いてくれないため）
-void CLoginHistoryDlg::OnPaint()
+void LoginHistoryDlg::OnPaint()
 {
 	if (IsIconic())
 	{
@@ -167,14 +167,14 @@ void CLoginHistoryDlg::OnPaint()
 
 		SendMessage(WM_ICONERASEBKGND, reinterpret_cast<WPARAM>(dc.GetSafeHdc()), 0);
 
-		const int cxIcon = GetSystemMetrics(SM_CXICON);
-		const int cyIcon = GetSystemMetrics(SM_CYICON);
+		const int icon_width = GetSystemMetrics(SM_CXICON);
+		const int icon_height = GetSystemMetrics(SM_CYICON);
 		CRect rect;
 		GetClientRect(&rect);
-		const int x = (rect.Width() - cxIcon + 1) / 2;
-		const int y = (rect.Height() - cyIcon + 1) / 2;
+		const int x = (rect.Width() - icon_width + 1) / 2;
+		const int y = (rect.Height() - icon_height + 1) / 2;
 
-		dc.DrawIcon(x, y, m_hIcon);
+		dc.DrawIcon(x, y, icon_);
 	}
 	else
 	{
@@ -182,37 +182,37 @@ void CLoginHistoryDlg::OnPaint()
 	}
 }
 
-HCURSOR CLoginHistoryDlg::OnQueryDragIcon()
+HCURSOR LoginHistoryDlg::OnQueryDragIcon()
 {
-	return static_cast<HCURSOR>(m_hIcon);
+	return static_cast<HCURSOR>(icon_);
 }
 
 // 現在日時をログに追記する。前回からの間隔が設定とずれていたら行末に印を付ける
-void CLoginHistoryDlg::OnBnClickedExec()
+void LoginHistoryDlg::OnBnClickedExec()
 {
 	UpdateData();
 
 	const int cycle = LoadCycleFromIni(kDefaultCycleMinutes);
 
 	const time_t now = time(nullptr);
-	tm nowTime = {};
-	localtime_s(&nowTime, &now);
+	tm now_time = {};
+	localtime_s(&now_time, &now);
 
-	FILE* fp = OpenFile(m_strLogName, "r+");
+	FILE* fp = OpenFile(log_name_, "r+");
 	if (fp == nullptr)
 	{
 		// 初回はファイルを作って現在日時だけを書く
-		fp = OpenFile(m_strLogName, "w");
+		fp = OpenFile(log_name_, "w");
 		if (fp != nullptr)
 		{
-			fprintf(fp, "%s\n", static_cast<LPCSTR>(FormatTime(nowTime)));
+			fprintf(fp, "%s\n", static_cast<LPCSTR>(FormatTime(now_time)));
 			fclose(fp);
 		}
 		return;
 	}
 
-	CStringA line = FormatTime(nowTime);
-	if (!IsOnSchedule(ReadLastTime(fp), nowTime, cycle))
+	CStringA line = FormatTime(now_time);
+	if (!IsOnSchedule(ReadLastTime(fp), now_time, cycle))
 	{
 		line += kWarningMark;
 	}

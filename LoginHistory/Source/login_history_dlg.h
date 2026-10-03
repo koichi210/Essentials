@@ -2,15 +2,15 @@
 
 #pragma once
 
-class CLoginHistoryDlg : public CDialogEx
+class LoginHistoryDlg : public CDialogEx
 {
 public:
-	explicit CLoginHistoryDlg(CWnd* pParent = nullptr);
+	explicit LoginHistoryDlg(CWnd* parent = nullptr);
 
 	enum { IDD = IDD_LOGINHISTORY_DIALOG };
 
 protected:
-	virtual void DoDataExchange(CDataExchange* pDX) override;
+	virtual void DoDataExchange(CDataExchange* dx) override;
 	virtual BOOL OnInitDialog() override;
 
 	afx_msg void OnPaint();
@@ -19,6 +19,6 @@ protected:
 	DECLARE_MESSAGE_MAP()
 
 private:
-	HICON m_hIcon;
-	CString m_strLogName;
+	HICON icon_;
+	CString log_name_;
 };
