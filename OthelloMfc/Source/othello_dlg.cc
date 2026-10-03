@@ -34,7 +34,7 @@ namespace
 	const int kNoTimeLimit = -1;
 	const struct
 	{
-		UINT	menuId;
+		UINT	menu_id;
 		int		seconds;
 	} kTimeLimitMenus[] =
 	{
@@ -51,8 +51,8 @@ namespace
 	// 手番・スコア・残り時間ラベルの並び（直前のラベルからの縦の間隔）
 	const struct
 	{
-		int		ctrlId;
-		int		gapY;
+		int		ctrl_id;
+		int		gap_y;
 	} kInfoLabels[] =
 	{
 		{ IDC_TURN_TEXT,		0 },
@@ -364,7 +364,7 @@ void OthelloDlg::OnTimeLimit(UINT id)
 {
 	for (const auto& menu : kTimeLimitMenus)
 	{
-		if (menu.menuId == id)
+		if (menu.menu_id == id)
 		{
 			SetTimeLimit(menu.seconds, id);
 			return;
@@ -648,8 +648,8 @@ void OthelloDlg::UpdateLabelPositions()
 
 	for (const auto& label : kInfoLabels)
 	{
-		pos.y += label.gapY;
-		GetDlgItem(label.ctrlId)->SetWindowPos(nullptr, pos.x, pos.y, 0, 0, SWP_NOSIZE | SWP_NOZORDER);
+		pos.y += label.gap_y;
+		GetDlgItem(label.ctrl_id)->SetWindowPos(nullptr, pos.x, pos.y, 0, 0, SWP_NOSIZE | SWP_NOZORDER);
 	}
 }
 
@@ -683,7 +683,7 @@ void OthelloDlg::EnableTimeLimitMenus(bool enable)
 {
 	for (const auto& menu : kTimeLimitMenus)
 	{
-		EnableMenu(menu.menuId, enable);
+		EnableMenu(menu.menu_id, enable);
 	}
 }
 
