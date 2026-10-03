@@ -1,6 +1,7 @@
 ﻿// othello.h : アプリケーションクラス
 
-#pragma once
+#ifndef OTHELLO_SOURCE_OTHELLO_H_
+#define OTHELLO_SOURCE_OTHELLO_H_
 
 #ifndef __AFXWIN_H__
 	#error "PCH に対してこのファイルをインクルードする前に 'StdAfx.h' をインクルードしてください"
@@ -15,3 +16,5 @@ public:
 
 	DECLARE_MESSAGE_MAP()
 };
+
+#endif  // OTHELLO_SOURCE_OTHELLO_H_

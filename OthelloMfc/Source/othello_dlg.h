@@ -1,6 +1,7 @@
 ﻿// othello_dlg.h : メインダイアログ（盤面の描画と操作）
 
-#pragma once
+#ifndef OTHELLO_SOURCE_OTHELLO_DLG_H_
+#define OTHELLO_SOURCE_OTHELLO_DLG_H_
 
 #include "game_manager.h"
 #include "com_player.h"
@@ -84,3 +85,5 @@ private:
 	int				black_remain_ms_;	// 黒の残り時間(ms)
 	int				white_remain_ms_;	// 白の残り時間(ms)
 };
+
+#endif  // OTHELLO_SOURCE_OTHELLO_DLG_H_

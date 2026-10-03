@@ -1,6 +1,7 @@
 ﻿// LoginHistoryDlg.h : メインダイアログ（実行した日時をログファイルに追記する）
 
-#pragma once
+#ifndef LOGINHISTORY_SOURCE_LOGIN_HISTORY_DLG_H_
+#define LOGINHISTORY_SOURCE_LOGIN_HISTORY_DLG_H_
 
 class LoginHistoryDlg : public CDialogEx
 {
@@ -22,3 +23,5 @@ private:
 	HICON icon_;
 	CString log_name_;
 };
+
+#endif  // LOGINHISTORY_SOURCE_LOGIN_HISTORY_DLG_H_

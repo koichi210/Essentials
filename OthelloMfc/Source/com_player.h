@@ -1,6 +1,7 @@
 ﻿// com_player.h : COMの思考ルーチン
 
-#pragma once
+#ifndef OTHELLO_SOURCE_COM_PLAYER_H_
+#define OTHELLO_SOURCE_COM_PLAYER_H_
 
 #include "board.h"
 
@@ -39,3 +40,5 @@ private:
 	int				move_count_;	// 現在の手数
 	std::mt19937	random_;
 };
+
+#endif  // OTHELLO_SOURCE_COM_PLAYER_H_

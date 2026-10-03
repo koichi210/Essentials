@@ -1,6 +1,7 @@
 ﻿// othello_defs.h : 盤面・ゲーム進行で共通に使う定数と型
 
-#pragma once
+#ifndef OTHELLO_SOURCE_OTHELLO_DEFS_H_
+#define OTHELLO_SOURCE_OTHELLO_DEFS_H_
 
 // 盤面
 constexpr int kBoardSize		= 8;							// 1辺のマス数
@@ -48,3 +49,5 @@ enum class GameState
 	kStop,	// 一時停止
 	kEnd,	// 終局
 };
+
+#endif  // OTHELLO_SOURCE_OTHELLO_DEFS_H_

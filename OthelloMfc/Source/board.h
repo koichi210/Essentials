@@ -1,6 +1,7 @@
 ﻿// board.h : 盤面の保持と着手判定
 
-#pragma once
+#ifndef OTHELLO_SOURCE_BOARD_H_
+#define OTHELLO_SOURCE_BOARD_H_
 
 #include "othello_defs.h"
 
@@ -35,3 +36,5 @@ private:
 
 	Stone cells_[kBoardSize][kBoardSize];
 };
+
+#endif  // OTHELLO_SOURCE_BOARD_H_

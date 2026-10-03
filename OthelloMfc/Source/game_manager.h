@@ -1,6 +1,7 @@
 ﻿// game_manager.h : 対局の進行・設定・棋譜の管理
 
-#pragma once
+#ifndef OTHELLO_SOURCE_GAME_MANAGER_H_
+#define OTHELLO_SOURCE_GAME_MANAGER_H_
 
 #include "board.h"
 
@@ -59,3 +60,5 @@ private:
 	int		record_count_;			// 棋譜に記録済みの手数（一手戻した分を含む）
 	std::array<KifuRecord, kMaxMoves> kifu_;
 };
+
+#endif  // OTHELLO_SOURCE_GAME_MANAGER_H_
