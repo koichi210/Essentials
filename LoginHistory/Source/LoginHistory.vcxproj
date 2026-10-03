@@ -108,15 +108,15 @@
     <None Include="res\LoginHistory.rc2" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="LoginHistory.h" />
-    <ClInclude Include="LoginHistoryDlg.h" />
+    <ClInclude Include="login_history.h" />
+    <ClInclude Include="login_history_dlg.h" />
     <ClInclude Include="Resource.h" />
     <ClInclude Include="stdafx.h" />
     <ClInclude Include="targetver.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="LoginHistory.cpp" />
-    <ClCompile Include="LoginHistoryDlg.cpp" />
+    <ClCompile Include="login_history.cc" />
+    <ClCompile Include="login_history_dlg.cc" />
     <ClCompile Include="stdafx.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Create</PrecompiledHeader>

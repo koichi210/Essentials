@@ -1,8 +1,8 @@
 ﻿// LoginHistory.cpp : アプリケーションクラス
 
 #include "stdafx.h"
-#include "LoginHistory.h"
-#include "LoginHistoryDlg.h"
+#include "login_history.h"
+#include "login_history_dlg.h"
 
 #ifdef _DEBUG
 #define new DEBUG_NEW

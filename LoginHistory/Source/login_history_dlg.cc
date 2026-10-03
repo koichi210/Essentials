@@ -1,8 +1,8 @@
 ﻿// LoginHistoryDlg.cpp : メインダイアログ
 
 #include "stdafx.h"
-#include "LoginHistory.h"
-#include "LoginHistoryDlg.h"
+#include "login_history.h"
+#include "login_history_dlg.h"
 #include "afxdialogex.h"
 
 #include <share.h>
