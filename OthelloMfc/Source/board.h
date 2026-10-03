@@ -1,8 +1,8 @@
-﻿// Board.h : 盤面の保持と着手判定
+﻿// board.h : 盤面の保持と着手判定
 
 #pragma once
 
-#include "OthelloDefs.h"
+#include "othello_defs.h"
 
 // 盤面クラス
 // 座標は棋譜表記と合わせて 1〜kBoardSize の1始まりで扱う

@@ -1,4 +1,4 @@
-﻿// OthelloDefs.h : 盤面・ゲーム進行で共通に使う定数と型
+﻿// othello_defs.h : 盤面・ゲーム進行で共通に使う定数と型
 
 #pragma once
 

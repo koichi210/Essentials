@@ -1,7 +1,7 @@
-﻿// GameManager.cpp : 対局の進行・設定・棋譜の管理
+﻿// game_manager.cc : 対局の進行・設定・棋譜の管理
 
 #include "StdAfx.h"
-#include "GameManager.h"
+#include "game_manager.h"
 
 namespace
 {

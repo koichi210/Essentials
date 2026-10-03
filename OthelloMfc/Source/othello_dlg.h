@@ -1,9 +1,9 @@
-﻿// OthelloDlg.h : メインダイアログ（盤面の描画と操作）
+﻿// othello_dlg.h : メインダイアログ（盤面の描画と操作）
 
 #pragma once
 
-#include "GameManager.h"
-#include "ComPlayer.h"
+#include "game_manager.h"
+#include "com_player.h"
 
 class COthelloDlg : public CDialog
 {

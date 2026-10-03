@@ -1,7 +1,7 @@
-﻿// Board.cpp : 盤面の保持と着手判定
+﻿// board.cc : 盤面の保持と着手判定
 
 #include "StdAfx.h"
-#include "Board.h"
+#include "board.h"
 
 // 左, 右, 上, 下, 左上, 左下, 右上, 右下
 const CPoint CBoard::kDirections[kDirectionCount] =

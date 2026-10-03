@@ -1,7 +1,7 @@
-﻿// ComPlayer.cpp : COMの思考ルーチン
+﻿// com_player.cc : COMの思考ルーチン
 
 #include "StdAfx.h"
-#include "ComPlayer.h"
+#include "com_player.h"
 
 namespace
 {

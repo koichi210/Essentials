@@ -83,22 +83,22 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="Board.cpp" />
-    <ClCompile Include="ComPlayer.cpp" />
-    <ClCompile Include="GameManager.cpp" />
-    <ClCompile Include="Othello.cpp" />
-    <ClCompile Include="OthelloDlg.cpp" />
+    <ClCompile Include="board.cc" />
+    <ClCompile Include="com_player.cc" />
+    <ClCompile Include="game_manager.cc" />
+    <ClCompile Include="othello.cc" />
+    <ClCompile Include="othello_dlg.cc" />
     <ClCompile Include="StdAfx.cpp">
       <PrecompiledHeader>Create</PrecompiledHeader>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="Board.h" />
-    <ClInclude Include="ComPlayer.h" />
-    <ClInclude Include="GameManager.h" />
-    <ClInclude Include="Othello.h" />
-    <ClInclude Include="OthelloDefs.h" />
-    <ClInclude Include="OthelloDlg.h" />
+    <ClInclude Include="board.h" />
+    <ClInclude Include="com_player.h" />
+    <ClInclude Include="game_manager.h" />
+    <ClInclude Include="othello.h" />
+    <ClInclude Include="othello_defs.h" />
+    <ClInclude Include="othello_dlg.h" />
     <ClInclude Include="resource.h" />
     <ClInclude Include="StdAfx.h" />
   </ItemGroup>

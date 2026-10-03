@@ -1,8 +1,8 @@
-﻿// GameManager.h : 対局の進行・設定・棋譜の管理
+﻿// game_manager.h : 対局の進行・設定・棋譜の管理
 
 #pragma once
 
-#include "Board.h"
+#include "board.h"
 
 // 棋譜1手分
 struct KifuRecord

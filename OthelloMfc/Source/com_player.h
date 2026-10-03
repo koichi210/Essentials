@@ -1,8 +1,8 @@
-﻿// ComPlayer.h : COMの思考ルーチン
+﻿// com_player.h : COMの思考ルーチン
 
 #pragma once
 
-#include "Board.h"
+#include "board.h"
 
 class CComPlayer
 {

@@ -1,4 +1,4 @@
-﻿// Othello.h : アプリケーションクラス
+﻿// othello.h : アプリケーションクラス
 
 #pragma once
 

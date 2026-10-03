@@ -1,8 +1,8 @@
-﻿// Othello.cpp : アプリケーションクラス
+﻿// othello.cc : アプリケーションクラス
 
 #include "StdAfx.h"
-#include "Othello.h"
-#include "OthelloDlg.h"
+#include "othello.h"
+#include "othello_dlg.h"
 
 #ifdef _DEBUG
 #define new DEBUG_NEW

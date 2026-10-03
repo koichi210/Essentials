@@ -1,8 +1,8 @@
-﻿// OthelloDlg.cpp : メインダイアログ（盤面の描画と操作）
+﻿// othello_dlg.cc : メインダイアログ（盤面の描画と操作）
 
 #include "StdAfx.h"
-#include "Othello.h"
-#include "OthelloDlg.h"
+#include "othello.h"
+#include "othello_dlg.h"
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
