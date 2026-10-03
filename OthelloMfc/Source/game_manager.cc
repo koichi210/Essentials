@@ -14,87 +14,87 @@ namespace
 	}
 }
 
-CGameManager::CGameManager()
-	: m_gameState(GameState::Init)
-	, m_playMode(PlayMode::PlayerVsCom)
-	, m_comLevel(3)
-	, m_showMovable(true)
+GameManager::GameManager()
+	: game_state_(GameState::kInit)
+	, play_mode_(PlayMode::kPlayerVsCom)
+	, com_level_(3)
+	, show_movable_(true)
 {
 	NewGame();
 }
 
-void CGameManager::NewGame()
+void GameManager::NewGame()
 {
-	m_board.Reset();
-	m_turn = Stone::Black;
-	m_moveCount = 0;
-	m_recordCount = 0;
-	m_kifu = {};
-	m_gameState = GameState::Init;
+	board_.Reset();
+	turn_ = Stone::kBlack;
+	move_count_ = 0;
+	record_count_ = 0;
+	kifu_ = {};
+	game_state_ = GameState::kInit;
 }
 
-bool CGameManager::IsComTurn() const
+bool GameManager::IsComTurn() const
 {
-	switch (m_playMode)
+	switch (play_mode_)
 	{
-	case PlayMode::PlayerVsCom:	return m_turn == Stone::White;
-	case PlayMode::ComVsPlayer:	return m_turn == Stone::Black;
-	case PlayMode::ComVsCom:	return true;
+	case PlayMode::kPlayerVsCom:	return turn_ == Stone::kWhite;
+	case PlayMode::kComVsPlayer:	return turn_ == Stone::kBlack;
+	case PlayMode::kComVsCom:	return true;
 	default:					return false;
 	}
 }
 
-bool CGameManager::PlayMove(CPoint pos)
+bool GameManager::PlayMove(CPoint pos)
 {
 	FlipCounts flips;
-	if (!m_board.GetFlips(pos, m_turn, flips))
+	if (!board_.GetFlips(pos, turn_, flips))
 	{
 		return false;
 	}
 
-	m_board.Put(pos, flips, m_turn);
+	board_.Put(pos, flips, turn_);
 
 	// 新しい手を打ったら、一手戻していた先の棋譜は無効になる
-	m_kifu[m_moveCount] = { pos, m_turn, flips };
-	m_moveCount++;
-	m_recordCount = m_moveCount;
+	kifu_[move_count_] = { pos, turn_, flips };
+	move_count_++;
+	record_count_ = move_count_;
 	return true;
 }
 
-void CGameManager::Undo()
+void GameManager::Undo()
 {
 	if (!CanUndo())
 	{
 		return;
 	}
 
-	m_moveCount--;
-	const KifuRecord& record = m_kifu[m_moveCount];
-	m_board.Undo(record.pos, record.flips, record.color);
-	m_turn = record.color;
+	move_count_--;
+	const KifuRecord& record = kifu_[move_count_];
+	board_.Undo(record.pos, record.flips, record.color);
+	turn_ = record.color;
 }
 
-void CGameManager::Redo()
+void GameManager::Redo()
 {
 	if (!CanRedo())
 	{
 		return;
 	}
 
-	const KifuRecord& record = m_kifu[m_moveCount];
-	m_moveCount++;
-	m_board.Put(record.pos, record.flips, record.color);
-	m_turn = Opponent(record.color);
+	const KifuRecord& record = kifu_[move_count_];
+	move_count_++;
+	board_.Put(record.pos, record.flips, record.color);
+	turn_ = Opponent(record.color);
 }
 
 // 書式: " 1 : F.5 黒"（手番号 : 列.行 色名）
-CString CGameManager::GetKifuText() const
+CString GameManager::GetKifuText() const
 {
 	CString text = kKifuHeader;
 
-	for (int i = 0; i < m_recordCount; i++)
+	for (int i = 0; i < record_count_; i++)
 	{
-		const KifuRecord& record = m_kifu[i];
+		const KifuRecord& record = kifu_[i];
 		CString line;
 		line.Format(_T("%2d : %c.%d %s\n"), i + 1, ToColumnChar(record.pos.x), record.pos.y, ColorName(record.color));
 		text += line;
@@ -103,7 +103,7 @@ CString CGameManager::GetKifuText() const
 	return text;
 }
 
-bool CGameManager::SaveKifu(LPCTSTR path) const
+bool GameManager::SaveKifu(LPCTSTR path) const
 {
 	CStdioFile file;
 	if (!file.Open(path, CFile::modeCreate | CFile::modeWrite | CFile::typeText))
@@ -116,7 +116,7 @@ bool CGameManager::SaveKifu(LPCTSTR path) const
 }
 
 // 書式に合わない行（見出しなど）は読み飛ばし、打てない手が出てきたら失敗とする
-bool CGameManager::LoadKifu(LPCTSTR path)
+bool GameManager::LoadKifu(LPCTSTR path)
 {
 	CStdioFile file;
 	if (!file.Open(path, CFile::modeRead | CFile::typeText))
@@ -137,12 +137,12 @@ bool CGameManager::LoadKifu(LPCTSTR path)
 		}
 
 		const CPoint pos(column - _T('A') + 1, row - _T('0'));
-		if (number < 1 || kMaxMoves < number || !CBoard::IsInside(pos))
+		if (number < 1 || kMaxMoves < number || !Board::IsInside(pos))
 		{
 			continue;
 		}
 
-		m_turn = (_tcscmp(name, ColorName(Stone::Black)) == 0) ? Stone::Black : Stone::White;
+		turn_ = (_tcscmp(name, ColorName(Stone::kBlack)) == 0) ? Stone::kBlack : Stone::kWhite;
 		if (!PlayMove(pos))
 		{
 			return false;

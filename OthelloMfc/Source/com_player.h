@@ -4,13 +4,13 @@
 
 #include "board.h"
 
-class CComPlayer
+class ComPlayer
 {
 public:
-	CComPlayer();
+	ComPlayer();
 
 	// 盤面と手番から打つ座標を決める（置ける場所がなければ false）
-	bool Think(const CBoard& board, Stone color, int level, int moveCount, CPoint& result);
+	bool Think(const Board& board, Stone color, int level, int moveCount, CPoint& result);
 
 private:
 	// 候補手と評価値
@@ -34,8 +34,8 @@ private:
 	static bool IsXSquare(CPoint pos);			// 角の斜め隣（星）
 	static bool IsCSquare(CPoint pos);			// 角の縦横隣
 
-	CBoard			m_board;		// 思考対象の盤面
-	Stone			m_color;		// COMの色
-	int				m_moveCount;	// 現在の手数
-	std::mt19937	m_random;
+	Board			board_;		// 思考対象の盤面
+	Stone			color_;		// COMの色
+	int				move_count_;	// 現在の手数
+	std::mt19937	random_;
 };

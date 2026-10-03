@@ -8,7 +8,7 @@
 
 #include "resource.h"
 
-class COthelloApp : public CWinApp
+class OthelloApp : public CWinApp
 {
 public:
 	virtual BOOL InitInstance() override;

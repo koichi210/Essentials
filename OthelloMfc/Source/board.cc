@@ -4,67 +4,67 @@
 #include "board.h"
 
 // 左, 右, 上, 下, 左上, 左下, 右上, 右下
-const CPoint CBoard::kDirections[kDirectionCount] =
+const CPoint Board::kDirections[kDirectionCount] =
 {
 	CPoint(-1,  0), CPoint( 1,  0), CPoint( 0, -1), CPoint( 0,  1),
 	CPoint(-1, -1), CPoint(-1,  1), CPoint( 1, -1), CPoint( 1,  1),
 };
 
-CBoard::CBoard()
+Board::Board()
 {
 	Reset();
 }
 
-void CBoard::Reset()
+void Board::Reset()
 {
-	for (auto& row : m_cells)
+	for (auto& row : cells_)
 	{
 		for (auto& cell : row)
 		{
-			cell = Stone::None;
+			cell = Stone::kNone;
 		}
 	}
 
 	const int center = kBoardSize / 2;
-	At(CPoint(center,     center))     = Stone::White;
-	At(CPoint(center + 1, center))     = Stone::Black;
-	At(CPoint(center,     center + 1)) = Stone::Black;
-	At(CPoint(center + 1, center + 1)) = Stone::White;
+	At(CPoint(center,     center))     = Stone::kWhite;
+	At(CPoint(center + 1, center))     = Stone::kBlack;
+	At(CPoint(center,     center + 1)) = Stone::kBlack;
+	At(CPoint(center + 1, center + 1)) = Stone::kWhite;
 }
 
-bool CBoard::IsInside(CPoint pos)
+bool Board::IsInside(CPoint pos)
 {
 	return (1 <= pos.x && pos.x <= kBoardSize && 1 <= pos.y && pos.y <= kBoardSize);
 }
 
-Stone CBoard::GetAt(CPoint pos) const
+Stone Board::GetAt(CPoint pos) const
 {
-	return m_cells[pos.y - 1][pos.x - 1];
+	return cells_[pos.y - 1][pos.x - 1];
 }
 
-Stone& CBoard::At(CPoint pos)
+Stone& Board::At(CPoint pos)
 {
-	return m_cells[pos.y - 1][pos.x - 1];
+	return cells_[pos.y - 1][pos.x - 1];
 }
 
-bool CBoard::CanPut(CPoint pos, Stone color) const
+bool Board::CanPut(CPoint pos, Stone color) const
 {
 	FlipCounts flips;
 	return GetFlips(pos, color, flips);
 }
 
 // 方向ごとに、相手の石が続いた先に自分の石があれば、その間の数だけ裏返せる
-bool CBoard::GetFlips(CPoint pos, Stone color, FlipCounts& flips) const
+bool Board::GetFlips(CPoint pos, Stone color, FlipCounts& flips) const
 {
 	flips.fill(0);
 
-	if (!IsInside(pos) || GetAt(pos) != Stone::None)
+	if (!IsInside(pos) || GetAt(pos) != Stone::kNone)
 	{
 		return false;
 	}
 
 	const Stone enemy = Opponent(color);
-	bool canPut = false;
+	bool can_put = false;
 
 	for (int dir = 0; dir < kDirectionCount; dir++)
 	{
@@ -80,14 +80,14 @@ bool CBoard::GetFlips(CPoint pos, Stone color, FlipCounts& flips) const
 		if (count > 0 && IsInside(cur) && GetAt(cur) == color)
 		{
 			flips[dir] = count;
-			canPut = true;
+			can_put = true;
 		}
 	}
 
-	return canPut;
+	return can_put;
 }
 
-std::vector<CPoint> CBoard::GetMovablePositions(Stone color) const
+std::vector<CPoint> Board::GetMovablePositions(Stone color) const
 {
 	std::vector<CPoint> positions;
 
@@ -105,7 +105,7 @@ std::vector<CPoint> CBoard::GetMovablePositions(Stone color) const
 	return positions;
 }
 
-bool CBoard::HasMovablePosition(Stone color) const
+bool Board::HasMovablePosition(Stone color) const
 {
 	for (int y = 1; y <= kBoardSize; y++)
 	{
@@ -122,7 +122,7 @@ bool CBoard::HasMovablePosition(Stone color) const
 }
 
 // 相手が置ければ相手、相手が置けず自分が置ければ自分（相手はパス）、どちらも置けなければ終局
-Stone CBoard::GetNextTurn(Stone mover) const
+Stone Board::GetNextTurn(Stone mover) const
 {
 	const Stone enemy = Opponent(mover);
 
@@ -134,22 +134,22 @@ Stone CBoard::GetNextTurn(Stone mover) const
 	{
 		return mover;
 	}
-	return Stone::None;
+	return Stone::kNone;
 }
 
-void CBoard::Put(CPoint pos, const FlipCounts& flips, Stone color)
+void Board::Put(CPoint pos, const FlipCounts& flips, Stone color)
 {
 	At(pos) = color;
 	Flip(pos, flips, color);
 }
 
-void CBoard::Undo(CPoint pos, const FlipCounts& flips, Stone mover)
+void Board::Undo(CPoint pos, const FlipCounts& flips, Stone mover)
 {
-	At(pos) = Stone::None;
+	At(pos) = Stone::kNone;
 	Flip(pos, flips, Opponent(mover));
 }
 
-void CBoard::Flip(CPoint pos, const FlipCounts& flips, Stone color)
+void Board::Flip(CPoint pos, const FlipCounts& flips, Stone color)
 {
 	for (int dir = 0; dir < kDirectionCount; dir++)
 	{
@@ -162,20 +162,20 @@ void CBoard::Flip(CPoint pos, const FlipCounts& flips, Stone color)
 	}
 }
 
-void CBoard::CountStones(int& black, int& white) const
+void Board::CountStones(int& black, int& white) const
 {
 	black = 0;
 	white = 0;
 
-	for (const auto& row : m_cells)
+	for (const auto& row : cells_)
 	{
 		for (Stone cell : row)
 		{
-			if (cell == Stone::Black)
+			if (cell == Stone::kBlack)
 			{
 				black++;
 			}
-			else if (cell == Stone::White)
+			else if (cell == Stone::kWhite)
 			{
 				white++;
 			}

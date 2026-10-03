@@ -69,12 +69,12 @@ namespace
 
 	UINT_PTR CountDownTimerId(Stone color)
 	{
-		return (color == Stone::Black) ? kBlackTimerId : kWhiteTimerId;
+		return (color == Stone::kBlack) ? kBlackTimerId : kWhiteTimerId;
 	}
 
-	CString FormatRemainTime(int remainMs)
+	CString FormatRemainTime(int remain_ms)
 	{
-		const int seconds = remainMs / 1000;
+		const int seconds = remain_ms / 1000;
 		CString text;
 		text.Format(_T("%02d 分 %02d 秒"), seconds / 60, seconds % 60);
 		return text;
@@ -82,30 +82,30 @@ namespace
 }
 
 /////////////////////////////////////////////////////////////////////////////
-// CAboutDlg : バージョン情報
+// AboutDlg : バージョン情報
 
-class CAboutDlg : public CDialog
+class AboutDlg : public CDialog
 {
 public:
-	CAboutDlg() : CDialog(IDD_ABOUTBOX) {}
+	AboutDlg() : CDialog(IDD_ABOUTBOX) {}
 };
 
 /////////////////////////////////////////////////////////////////////////////
-// COthelloDlg
+// OthelloDlg
 
-COthelloDlg::COthelloDlg(CWnd* pParent)
-	: CDialog(IDD, pParent)
-	, m_hIcon(AfxGetApp()->LoadIcon(IDR_MAINFRAME))
-	, m_pressedCell(0, 0)
-	, m_infoPos(0, 0)
-	, m_cellSize(0)
-	, m_timeLimitSec(kNoTimeLimit)
-	, m_blackRemainMs(0)
-	, m_whiteRemainMs(0)
+OthelloDlg::OthelloDlg(CWnd* parent)
+	: CDialog(IDD, parent)
+	, icon_(AfxGetApp()->LoadIcon(IDR_MAINFRAME))
+	, pressed_cell_(0, 0)
+	, info_pos_(0, 0)
+	, cell_size_(0)
+	, time_limit_sec_(kNoTimeLimit)
+	, black_remain_ms_(0)
+	, white_remain_ms_(0)
 {
 }
 
-BEGIN_MESSAGE_MAP(COthelloDlg, CDialog)
+BEGIN_MESSAGE_MAP(OthelloDlg, CDialog)
 	ON_WM_SYSCOMMAND()
 	ON_WM_QUERYDRAGICON()
 	ON_WM_PAINT()
@@ -114,71 +114,71 @@ BEGIN_MESSAGE_MAP(COthelloDlg, CDialog)
 	ON_WM_TIMER()
 	ON_WM_LBUTTONDOWN()
 	ON_WM_LBUTTONUP()
-	ON_COMMAND(ID_MENUITEM_START, &COthelloDlg::OnGameStart)
-	ON_COMMAND(ID_MENUITEM_STOP, &COthelloDlg::OnGameStop)
-	ON_COMMAND(ID_MENUITEM_RESET, &COthelloDlg::OnGameReset)
-	ON_COMMAND(ID_MENUITEM_EXIT, &COthelloDlg::OnGameExit)
-	ON_COMMAND(ID_MENUITEM_PUT_NOTICE, &COthelloDlg::OnToggleShowMovable)
-	ON_COMMAND_RANGE(ID_MENUITEM_PLAYMD_PP, ID_MENUITEM_PLAYMD_CC, &COthelloDlg::OnPlayMode)
-	ON_COMMAND_RANGE(ID_MENUITEM_ComLevel1, ID_MENUITEM_ComLevel3, &COthelloDlg::OnComLevel)
-	ON_COMMAND_RANGE(ID_MENUITEM_TIME_NONE, ID_MENUITEM_TIME_15, &COthelloDlg::OnTimeLimit)
-	ON_COMMAND(ID_MENUITEM_KIHU_SHOW, &COthelloDlg::OnKifuShow)
-	ON_COMMAND(ID_MENUITEM_KIHU_SAVE, &COthelloDlg::OnKifuSave)
-	ON_COMMAND(ID_MENUITEM_KIHU_READ, &COthelloDlg::OnKifuRead)
-	ON_COMMAND(ID_MENUITEM_VERS, &COthelloDlg::OnRedo)
-	ON_COMMAND(ID_MENUITEM_REVERS, &COthelloDlg::OnUndo)
-	ON_COMMAND(ID_MENUITEM_Version, &COthelloDlg::OnVersion)
-	ON_COMMAND(ID_MENUITEM_HOWTOPLAY, &COthelloDlg::OnHowToPlay)
+	ON_COMMAND(ID_MENUITEM_START, &OthelloDlg::OnGameStart)
+	ON_COMMAND(ID_MENUITEM_STOP, &OthelloDlg::OnGameStop)
+	ON_COMMAND(ID_MENUITEM_RESET, &OthelloDlg::OnGameReset)
+	ON_COMMAND(ID_MENUITEM_EXIT, &OthelloDlg::OnGameExit)
+	ON_COMMAND(ID_MENUITEM_PUT_NOTICE, &OthelloDlg::OnToggleShowMovable)
+	ON_COMMAND_RANGE(ID_MENUITEM_PLAYMD_PP, ID_MENUITEM_PLAYMD_CC, &OthelloDlg::OnPlayMode)
+	ON_COMMAND_RANGE(ID_MENUITEM_ComLevel1, ID_MENUITEM_ComLevel3, &OthelloDlg::OnComLevel)
+	ON_COMMAND_RANGE(ID_MENUITEM_TIME_NONE, ID_MENUITEM_TIME_15, &OthelloDlg::OnTimeLimit)
+	ON_COMMAND(ID_MENUITEM_KIHU_SHOW, &OthelloDlg::OnKifuShow)
+	ON_COMMAND(ID_MENUITEM_KIHU_SAVE, &OthelloDlg::OnKifuSave)
+	ON_COMMAND(ID_MENUITEM_KIHU_READ, &OthelloDlg::OnKifuRead)
+	ON_COMMAND(ID_MENUITEM_VERS, &OthelloDlg::OnRedo)
+	ON_COMMAND(ID_MENUITEM_REVERS, &OthelloDlg::OnUndo)
+	ON_COMMAND(ID_MENUITEM_Version, &OthelloDlg::OnVersion)
+	ON_COMMAND(ID_MENUITEM_HOWTOPLAY, &OthelloDlg::OnHowToPlay)
 END_MESSAGE_MAP()
 
 /////////////////////////////////////////////////////////////////////////////
 // Windows メッセージ
 
-BOOL COthelloDlg::OnInitDialog()
+BOOL OthelloDlg::OnInitDialog()
 {
 	CDialog::OnInitDialog();
 
 	// システムメニューに「バージョン情報」を追加
 	ASSERT((IDM_ABOUTBOX & 0xFFF0) == IDM_ABOUTBOX);
 	ASSERT(IDM_ABOUTBOX < 0xF000);
-	CMenu* pSysMenu = GetSystemMenu(FALSE);
-	if (pSysMenu != nullptr)
+	CMenu* sys_menu = GetSystemMenu(FALSE);
+	if (sys_menu != nullptr)
 	{
-		CString aboutMenu;
-		aboutMenu.LoadString(IDS_ABOUTBOX);
-		if (!aboutMenu.IsEmpty())
+		CString about_menu;
+		about_menu.LoadString(IDS_ABOUTBOX);
+		if (!about_menu.IsEmpty())
 		{
-			pSysMenu->AppendMenu(MF_SEPARATOR);
-			pSysMenu->AppendMenu(MF_STRING, IDM_ABOUTBOX, aboutMenu);
+			sys_menu->AppendMenu(MF_SEPARATOR);
+			sys_menu->AppendMenu(MF_STRING, IDM_ABOUTBOX, about_menu);
 		}
 	}
 
-	SetIcon(m_hIcon, TRUE);
-	SetIcon(m_hIcon, FALSE);
+	SetIcon(icon_, TRUE);
+	SetIcon(icon_, FALSE);
 
 	// メニューの初期チェック
-	CheckMenuInRange(ID_MENUITEM_PLAYMD_PP, ID_MENUITEM_PLAYMD_CC, ID_MENUITEM_PLAYMD_PP + static_cast<UINT>(m_game.m_playMode));
-	CheckMenuInRange(ID_MENUITEM_ComLevel1, ID_MENUITEM_ComLevel3, ID_MENUITEM_ComLevel1 + m_game.m_comLevel - 1);
+	CheckMenuInRange(ID_MENUITEM_PLAYMD_PP, ID_MENUITEM_PLAYMD_CC, ID_MENUITEM_PLAYMD_PP + static_cast<UINT>(game_.GetPlayMode()));
+	CheckMenuInRange(ID_MENUITEM_ComLevel1, ID_MENUITEM_ComLevel3, ID_MENUITEM_ComLevel1 + game_.GetComLevel() - 1);
 	CheckMenuInRange(ID_MENUITEM_TIME_NONE, ID_MENUITEM_TIME_15, ID_MENUITEM_TIME_NONE);
-	CheckMenu(ID_MENUITEM_PUT_NOTICE, m_game.m_showMovable);
+	CheckMenu(ID_MENUITEM_PUT_NOTICE, game_.GetShowMovable());
 
 	// OK/キャンセルボタンは使わない
 	GetDlgItem(IDOK)->ShowWindow(SW_HIDE);
 	GetDlgItem(IDCANCEL)->ShowWindow(SW_HIDE);
 
 	// 手番・スコア表示は大きめのフォントにする
-	LOGFONT logFont = {};
-	logFont.lfCharSet = DEFAULT_CHARSET;
-	logFont.lfWeight = kLabelFontWeight;
-	logFont.lfHeight = kLabelFontHeight;
-	m_labelFont.CreateFontIndirect(&logFont);
-	for (int ctrlId : { IDC_TURN_TEXT, IDC_SCORE })
+	LOGFONT log_font = {};
+	log_font.lfCharSet = DEFAULT_CHARSET;
+	log_font.lfWeight = kLabelFontWeight;
+	log_font.lfHeight = kLabelFontHeight;
+	label_font_.CreateFontIndirect(&log_font);
+	for (int ctrl_id : { IDC_TURN_TEXT, IDC_SCORE })
 	{
-		CWnd* label = GetDlgItem(ctrlId);
+		CWnd* label = GetDlgItem(ctrl_id);
 		CRect rect;
 		label->GetClientRect(&rect);
 		label->SetWindowPos(nullptr, 0, 0, rect.right + kLabelExtraSize, rect.bottom + kLabelExtraSize, SWP_NOMOVE | SWP_NOZORDER);
-		label->SetFont(&m_labelFont);
+		label->SetFont(&label_font_);
 	}
 
 	NewGame();
@@ -189,28 +189,28 @@ BOOL COthelloDlg::OnInitDialog()
 }
 
 // Enter キーでダイアログを閉じない
-void COthelloDlg::OnOK()
+void OthelloDlg::OnOK()
 {
 }
 
-void COthelloDlg::OnSysCommand(UINT nID, LPARAM lParam)
+void OthelloDlg::OnSysCommand(UINT id, LPARAM param)
 {
-	if ((nID & 0xFFF0) == IDM_ABOUTBOX)
+	if ((id & 0xFFF0) == IDM_ABOUTBOX)
 	{
 		OnVersion();
 	}
 	else
 	{
-		CDialog::OnSysCommand(nID, lParam);
+		CDialog::OnSysCommand(id, param);
 	}
 }
 
-HCURSOR COthelloDlg::OnQueryDragIcon()
+HCURSOR OthelloDlg::OnQueryDragIcon()
 {
-	return static_cast<HCURSOR>(m_hIcon);
+	return static_cast<HCURSOR>(icon_);
 }
 
-void COthelloDlg::OnPaint()
+void OthelloDlg::OnPaint()
 {
 	CPaintDC dc(this);
 
@@ -222,7 +222,7 @@ void COthelloDlg::OnPaint()
 		GetClientRect(&rect);
 		const int x = (rect.Width() - GetSystemMetrics(SM_CXICON) + 1) / 2;
 		const int y = (rect.Height() - GetSystemMetrics(SM_CYICON) + 1) / 2;
-		dc.DrawIcon(x, y, m_hIcon);
+		dc.DrawIcon(x, y, icon_);
 		return;
 	}
 
@@ -231,70 +231,70 @@ void COthelloDlg::OnPaint()
 	UpdateTimeLabels();
 
 	DrawBoard(dc);
-	if (m_game.m_showMovable)
+	if (game_.GetShowMovable())
 	{
 		DrawMovableMarks(dc);
 	}
 }
 
-void COthelloDlg::OnGetMinMaxInfo(MINMAXINFO* lpMMI)
+void OthelloDlg::OnGetMinMaxInfo(MINMAXINFO* min_max_info)
 {
-	lpMMI->ptMinTrackSize.x = max(lpMMI->ptMinTrackSize.x, static_cast<LONG>(kWindowMinSize + kInfoAreaWidth));
-	lpMMI->ptMinTrackSize.y = max(lpMMI->ptMinTrackSize.y, static_cast<LONG>(kWindowMinSize));
-	CDialog::OnGetMinMaxInfo(lpMMI);
+	min_max_info->ptMinTrackSize.x = max(min_max_info->ptMinTrackSize.x, static_cast<LONG>(kWindowMinSize + kInfoAreaWidth));
+	min_max_info->ptMinTrackSize.y = max(min_max_info->ptMinTrackSize.y, static_cast<LONG>(kWindowMinSize));
+	CDialog::OnGetMinMaxInfo(min_max_info);
 }
 
-void COthelloDlg::OnSize(UINT nType, int cx, int cy)
+void OthelloDlg::OnSize(UINT type, int cx, int cy)
 {
 	UpdateLayout();
 	Invalidate();
-	CDialog::OnSize(nType, cx, cy);
+	CDialog::OnSize(type, cx, cy);
 }
 
-void COthelloDlg::OnTimer(UINT_PTR nIDEvent)
+void OthelloDlg::OnTimer(UINT_PTR event_id)
 {
-	if (nIDEvent == kComTimerId)
+	if (event_id == kComTimerId)
 	{
 		PlayComTurn();
 	}
-	else if (nIDEvent == kBlackTimerId || nIDEvent == kWhiteTimerId)
+	else if (event_id == kBlackTimerId || event_id == kWhiteTimerId)
 	{
-		int& remainMs = (nIDEvent == kBlackTimerId) ? m_blackRemainMs : m_whiteRemainMs;
-		remainMs -= static_cast<int>(kCountDownCycle);
+		int& remain_ms = (event_id == kBlackTimerId) ? black_remain_ms_ : white_remain_ms_;
+		remain_ms -= static_cast<int>(kCountDownCycle);
 		UpdateTimeLabels();
 
-		if (m_blackRemainMs <= 0 || m_whiteRemainMs <= 0)
+		if (black_remain_ms_ <= 0 || white_remain_ms_ <= 0)
 		{
 			EndGame(true);
 		}
 	}
 
-	CDialog::OnTimer(nIDEvent);
+	CDialog::OnTimer(event_id);
 }
 
-void COthelloDlg::OnLButtonDown(UINT nFlags, CPoint point)
+void OthelloDlg::OnLButtonDown(UINT flags, CPoint point)
 {
-	m_pressedCell = HitTestCell(point);
-	CDialog::OnLButtonDown(nFlags, point);
+	pressed_cell_ = HitTestCell(point);
+	CDialog::OnLButtonDown(flags, point);
 }
 
 // 押したマスと同じマスで離したときだけ打つ
-void COthelloDlg::OnLButtonUp(UINT nFlags, CPoint point)
+void OthelloDlg::OnLButtonUp(UINT flags, CPoint point)
 {
 	const CPoint cell = HitTestCell(point);
 
-	if (m_game.m_gameState != GameState::End
-		&& !m_game.IsComTurn()
-		&& cell == m_pressedCell
-		&& m_game.GetBoard().CanPut(cell, m_game.GetTurn()))
+	if (game_.GetGameState() != GameState::kEnd
+		&& !game_.IsComTurn()
+		&& cell == pressed_cell_
+		&& game_.GetBoard().CanPut(cell, game_.GetTurn()))
 	{
-		if (m_game.m_gameState == GameState::Stop)
+		if (game_.GetGameState() == GameState::kStop)
 		{
 			AfxMessageBox(_T("pls click [START] button on [GAME]"));
 		}
 		else
 		{
-			if (m_game.m_gameState == GameState::Init)
+			if (game_.GetGameState() == GameState::kInit)
 			{
 				StartGame();
 			}
@@ -303,31 +303,31 @@ void COthelloDlg::OnLButtonUp(UINT nFlags, CPoint point)
 		}
 	}
 
-	CDialog::OnLButtonUp(nFlags, point);
+	CDialog::OnLButtonUp(flags, point);
 }
 
 /////////////////////////////////////////////////////////////////////////////
 // メニュー
 
-void COthelloDlg::OnGameStart()
+void OthelloDlg::OnGameStart()
 {
 	StartGame();
 	Invalidate();
 }
 
-void COthelloDlg::OnGameStop()
+void OthelloDlg::OnGameStop()
 {
 	KillAllTimers();
 
-	if (m_game.m_gameState != GameState::End)
+	if (game_.GetGameState() != GameState::kEnd)
 	{
-		m_game.m_gameState = GameState::Stop;
+		game_.SetGameState(GameState::kStop);
 		EnableMenu(ID_MENUITEM_START, true);
 		EnableMenu(ID_MENUITEM_STOP, false);
 	}
 }
 
-void COthelloDlg::OnGameReset()
+void OthelloDlg::OnGameReset()
 {
 	KillAllTimers();
 	EnableTimeLimitMenus(true);
@@ -335,49 +335,49 @@ void COthelloDlg::OnGameReset()
 	UpdateUndoRedoMenus();
 }
 
-void COthelloDlg::OnGameExit()
+void OthelloDlg::OnGameExit()
 {
 	OnCancel();
 }
 
-void COthelloDlg::OnToggleShowMovable()
+void OthelloDlg::OnToggleShowMovable()
 {
-	m_game.m_showMovable = !m_game.m_showMovable;
-	CheckMenu(ID_MENUITEM_PUT_NOTICE, m_game.m_showMovable);
+	game_.SetShowMovable(!game_.GetShowMovable());
+	CheckMenu(ID_MENUITEM_PUT_NOTICE, game_.GetShowMovable());
 	Invalidate();
 }
 
 // メニューIDの並びは PlayMode の並びと同じ
-void COthelloDlg::OnPlayMode(UINT nID)
+void OthelloDlg::OnPlayMode(UINT id)
 {
-	m_game.m_playMode = static_cast<PlayMode>(nID - ID_MENUITEM_PLAYMD_PP);
-	CheckMenuInRange(ID_MENUITEM_PLAYMD_PP, ID_MENUITEM_PLAYMD_CC, nID);
+	game_.SetPlayMode(static_cast<PlayMode>(id - ID_MENUITEM_PLAYMD_PP));
+	CheckMenuInRange(ID_MENUITEM_PLAYMD_PP, ID_MENUITEM_PLAYMD_CC, id);
 }
 
-void COthelloDlg::OnComLevel(UINT nID)
+void OthelloDlg::OnComLevel(UINT id)
 {
-	m_game.m_comLevel = nID - ID_MENUITEM_ComLevel1 + 1;
-	CheckMenuInRange(ID_MENUITEM_ComLevel1, ID_MENUITEM_ComLevel3, nID);
+	game_.SetComLevel(id - ID_MENUITEM_ComLevel1 + 1);
+	CheckMenuInRange(ID_MENUITEM_ComLevel1, ID_MENUITEM_ComLevel3, id);
 }
 
-void COthelloDlg::OnTimeLimit(UINT nID)
+void OthelloDlg::OnTimeLimit(UINT id)
 {
 	for (const auto& menu : kTimeLimitMenus)
 	{
-		if (menu.menuId == nID)
+		if (menu.menuId == id)
 		{
-			SetTimeLimit(menu.seconds, nID);
+			SetTimeLimit(menu.seconds, id);
 			return;
 		}
 	}
 }
 
-void COthelloDlg::OnKifuShow()
+void OthelloDlg::OnKifuShow()
 {
-	AfxMessageBox(m_game.GetKifuText());
+	AfxMessageBox(game_.GetKifuText());
 }
 
-void COthelloDlg::OnKifuSave()
+void OthelloDlg::OnKifuSave()
 {
 	CFileDialog dialog(FALSE, _T("rkf"), nullptr, OFN_HIDEREADONLY | OFN_OVERWRITEPROMPT, kKifuFilter, this);
 	if (dialog.DoModal() != IDOK)
@@ -385,13 +385,13 @@ void COthelloDlg::OnKifuSave()
 		return;
 	}
 
-	if (!m_game.SaveKifu(dialog.GetPathName()))
+	if (!game_.SaveKifu(dialog.GetPathName()))
 	{
 		AfxMessageBox(_T("ファイル書き込みエラー"));
 	}
 }
 
-void COthelloDlg::OnKifuRead()
+void OthelloDlg::OnKifuRead()
 {
 	CFileDialog dialog(TRUE, _T("rkf"), nullptr, OFN_HIDEREADONLY, kKifuFilter, this);
 	if (dialog.DoModal() != IDOK)
@@ -400,7 +400,7 @@ void COthelloDlg::OnKifuRead()
 	}
 
 	NewGame();
-	if (!m_game.LoadKifu(dialog.GetPathName()))
+	if (!game_.LoadKifu(dialog.GetPathName()))
 	{
 		AfxMessageBox(_T("ファイル読み込みエラー"));
 		NewGame();
@@ -408,8 +408,8 @@ void COthelloDlg::OnKifuRead()
 	}
 
 	// 最後に打った色の次の手番から再開
-	const Stone next = m_game.GetBoard().GetNextTurn(m_game.GetTurn());
-	if (next != Stone::None)
+	const Stone next = game_.GetBoard().GetNextTurn(game_.GetTurn());
+	if (next != Stone::kNone)
 	{
 		ChangeTurn(next);
 	}
@@ -420,37 +420,37 @@ void COthelloDlg::OnKifuRead()
 	Invalidate();
 }
 
-void COthelloDlg::OnRedo()
+void OthelloDlg::OnRedo()
 {
-	if (m_game.m_gameState == GameState::Play || m_game.m_gameState == GameState::Stop)
+	if (game_.GetGameState() == GameState::kPlay || game_.GetGameState() == GameState::kStop)
 	{
 		OnGameStop();
-		m_game.Redo();
+		game_.Redo();
 		UpdateScore();
 		UpdateUndoRedoMenus();
 		Invalidate();
 	}
 }
 
-void COthelloDlg::OnUndo()
+void OthelloDlg::OnUndo()
 {
-	if (m_game.m_gameState == GameState::Play || m_game.m_gameState == GameState::Stop)
+	if (game_.GetGameState() == GameState::kPlay || game_.GetGameState() == GameState::kStop)
 	{
 		OnGameStop();
-		m_game.Undo();
+		game_.Undo();
 		UpdateScore();
 		UpdateUndoRedoMenus();
 		Invalidate();
 	}
 }
 
-void COthelloDlg::OnVersion()
+void OthelloDlg::OnVersion()
 {
-	CAboutDlg dialog;
+	AboutDlg dialog;
 	dialog.DoModal();
 }
 
-void COthelloDlg::OnHowToPlay()
+void OthelloDlg::OnHowToPlay()
 {
 	AfxMessageBox(_T("普通のオセロです(｡-_-｡)"));
 }
@@ -458,13 +458,13 @@ void COthelloDlg::OnHowToPlay()
 /////////////////////////////////////////////////////////////////////////////
 // 対局の進行
 
-void COthelloDlg::NewGame()
+void OthelloDlg::NewGame()
 {
-	m_game.NewGame();
+	game_.NewGame();
 	SetWindowText(_T("othello"));
 
-	m_blackRemainMs = m_timeLimitSec * 1000;
-	m_whiteRemainMs = m_timeLimitSec * 1000;
+	black_remain_ms_ = time_limit_sec_ * 1000;
+	white_remain_ms_ = time_limit_sec_ * 1000;
 
 	EnableMenu(ID_MENUITEM_START, true);
 	EnableMenu(ID_MENUITEM_STOP, false);
@@ -473,17 +473,17 @@ void COthelloDlg::NewGame()
 	UpdateScore();
 }
 
-void COthelloDlg::StartGame()
+void OthelloDlg::StartGame()
 {
-	if (m_game.m_gameState == GameState::End)
+	if (game_.GetGameState() == GameState::kEnd)
 	{
 		NewGame();
 	}
-	m_game.m_gameState = GameState::Play;
+	game_.SetGameState(GameState::kPlay);
 
-	if (m_timeLimitSec != kNoTimeLimit)
+	if (time_limit_sec_ != kNoTimeLimit)
 	{
-		SetTimer(CountDownTimerId(m_game.GetTurn()), kCountDownCycle, nullptr);
+		SetTimer(CountDownTimerId(game_.GetTurn()), kCountDownCycle, nullptr);
 	}
 	SetTimer(kComTimerId, kComThinkInterval, nullptr);
 
@@ -492,9 +492,9 @@ void COthelloDlg::StartGame()
 	EnableTimeLimitMenus(false);
 }
 
-void COthelloDlg::EndGame(bool timeout)
+void OthelloDlg::EndGame(bool timeout)
 {
-	m_game.m_gameState = GameState::End;
+	game_.SetGameState(GameState::kEnd);
 	KillAllTimers();
 
 	EnableMenu(ID_MENUITEM_START, true);
@@ -505,14 +505,14 @@ void COthelloDlg::EndGame(bool timeout)
 	CString message;
 	if (timeout)
 	{
-		const Stone loser = (m_blackRemainMs <= 0) ? Stone::Black : Stone::White;
+		const Stone loser = (black_remain_ms_ <= 0) ? Stone::kBlack : Stone::kWhite;
 		message.Format(_T("タイムアウト\n%sの負けです。\n\nちなみに・・・"), ColorName(loser));
 		AfxMessageBox(message);
 	}
 
 	int black = 0;
 	int white = 0;
-	m_game.GetBoard().CountStones(black, white);
+	game_.GetBoard().CountStones(black, white);
 	message.Format(_T("黒：%d　白：%d\n ゲーム終了"), black, white);
 	AfxMessageBox(message);
 
@@ -520,11 +520,11 @@ void COthelloDlg::EndGame(bool timeout)
 }
 
 // 打って手番を進める（打てない場所なら false）
-bool COthelloDlg::PlayMove(CPoint pos)
+bool OthelloDlg::PlayMove(CPoint pos)
 {
-	if (!m_game.PlayMove(pos))
+	if (!game_.PlayMove(pos))
 	{
-		if (m_game.m_playMode != PlayMode::ComVsCom)
+		if (game_.GetPlayMode() != PlayMode::kComVsCom)
 		{
 			AfxMessageBox(_T("置くところ不正"));
 		}
@@ -532,8 +532,8 @@ bool COthelloDlg::PlayMove(CPoint pos)
 	}
 	Invalidate();
 
-	const Stone next = m_game.GetBoard().GetNextTurn(m_game.GetTurn());
-	if (next == Stone::None)
+	const Stone next = game_.GetBoard().GetNextTurn(game_.GetTurn());
+	if (next == Stone::kNone)
 	{
 		EndGame(false);
 	}
@@ -545,15 +545,15 @@ bool COthelloDlg::PlayMove(CPoint pos)
 	return true;
 }
 
-void COthelloDlg::PlayComTurn()
+void OthelloDlg::PlayComTurn()
 {
-	if (!m_game.IsComTurn())
+	if (!game_.IsComTurn())
 	{
 		return;
 	}
 
 	CPoint pos;
-	if (!m_com.Think(m_game.GetBoard(), m_game.GetTurn(), m_game.m_comLevel, m_game.GetMoveCount(), pos))
+	if (!com_.Think(game_.GetBoard(), game_.GetTurn(), game_.GetComLevel(), game_.GetMoveCount(), pos))
 	{
 		KillTimer(kComTimerId);
 		CString message;
@@ -567,12 +567,12 @@ void COthelloDlg::PlayComTurn()
 }
 
 // next が今の手番と同じなら、相手はパス
-void COthelloDlg::ChangeTurn(Stone next)
+void OthelloDlg::ChangeTurn(Stone next)
 {
-	const Stone current = m_game.GetTurn();
+	const Stone current = game_.GetTurn();
 	if (next == current)
 	{
-		if (m_timeLimitSec != kNoTimeLimit)
+		if (time_limit_sec_ != kNoTimeLimit)
 		{
 			KillTimer(CountDownTimerId(current));
 		}
@@ -585,14 +585,14 @@ void COthelloDlg::ChangeTurn(Stone next)
 		SetTimer(kComTimerId, kComThinkInterval, nullptr);
 	}
 
-	m_game.SetTurn(next);
+	game_.SetTurn(next);
 	StartCountDown(next);
 }
 
 // 手番側の持ち時間だけを減らす
-void COthelloDlg::StartCountDown(Stone color)
+void OthelloDlg::StartCountDown(Stone color)
 {
-	if (m_timeLimitSec == kNoTimeLimit)
+	if (time_limit_sec_ == kNoTimeLimit)
 	{
 		return;
 	}
@@ -601,25 +601,25 @@ void COthelloDlg::StartCountDown(Stone color)
 	SetTimer(CountDownTimerId(color), kCountDownCycle, nullptr);
 }
 
-void COthelloDlg::KillAllTimers()
+void OthelloDlg::KillAllTimers()
 {
 	KillTimer(kBlackTimerId);
 	KillTimer(kWhiteTimerId);
 	KillTimer(kComTimerId);
 }
 
-void COthelloDlg::SetTimeLimit(int seconds, UINT menuId)
+void OthelloDlg::SetTimeLimit(int seconds, UINT menu_id)
 {
-	m_timeLimitSec = seconds;
-	m_blackRemainMs = seconds * 1000;
-	m_whiteRemainMs = seconds * 1000;
+	time_limit_sec_ = seconds;
+	black_remain_ms_ = seconds * 1000;
+	white_remain_ms_ = seconds * 1000;
 
-	CheckMenuInRange(ID_MENUITEM_TIME_NONE, ID_MENUITEM_TIME_15, menuId);
+	CheckMenuInRange(ID_MENUITEM_TIME_NONE, ID_MENUITEM_TIME_15, menu_id);
 
 	const int show = (seconds == kNoTimeLimit) ? SW_HIDE : SW_SHOW;
-	for (int ctrlId : kTimeLabelIds)
+	for (int ctrl_id : kTimeLabelIds)
 	{
-		GetDlgItem(ctrlId)->ShowWindow(show);
+		GetDlgItem(ctrl_id)->ShowWindow(show);
 	}
 
 	UpdateTimeLabels();
@@ -629,22 +629,22 @@ void COthelloDlg::SetTimeLimit(int seconds, UINT menuId)
 // 画面の更新
 
 // クライアント領域に収まる最大のマスの大きさを求める
-void COthelloDlg::UpdateLayout()
+void OthelloDlg::UpdateLayout()
 {
 	CRect client;
 	GetClientRect(&client);
 
-	const int boardWidth = client.Width() - kFrameOffset * 2 - kInfoAreaWidth;
-	const int boardHeight = client.Height() - kFrameOffset * 2;
-	m_cellSize = min(boardWidth, boardHeight) / kBoardSize;
+	const int board_width = client.Width() - kFrameOffset * 2 - kInfoAreaWidth;
+	const int board_height = client.Height() - kFrameOffset * 2;
+	cell_size_ = min(board_width, board_height) / kBoardSize;
 
-	m_infoPos.x = m_cellSize * kBoardSize + kFrameOffset + kBoardToInfoGap;
-	m_infoPos.y = m_cellSize;
+	info_pos_.x = cell_size_ * kBoardSize + kFrameOffset + kBoardToInfoGap;
+	info_pos_.y = cell_size_;
 }
 
-void COthelloDlg::UpdateLabelPositions()
+void OthelloDlg::UpdateLabelPositions()
 {
-	CPoint pos = m_infoPos;
+	CPoint pos = info_pos_;
 
 	for (const auto& label : kInfoLabels)
 	{
@@ -653,33 +653,33 @@ void COthelloDlg::UpdateLabelPositions()
 	}
 }
 
-void COthelloDlg::UpdateTimeLabels()
+void OthelloDlg::UpdateTimeLabels()
 {
-	SetDlgItemText(IDC_BLACK_TIME, FormatRemainTime(m_blackRemainMs));
-	SetDlgItemText(IDC_WHITE_TIME, FormatRemainTime(m_whiteRemainMs));
+	SetDlgItemText(IDC_BLACK_TIME, FormatRemainTime(black_remain_ms_));
+	SetDlgItemText(IDC_WHITE_TIME, FormatRemainTime(white_remain_ms_));
 }
 
-void COthelloDlg::UpdateScore()
+void OthelloDlg::UpdateScore()
 {
 	CString text;
-	text.Format(_T(" 【%sの番】"), ColorName(m_game.GetTurn()));
+	text.Format(_T(" 【%sの番】"), ColorName(game_.GetTurn()));
 	SetDlgItemText(IDC_TURN_TEXT, text);
 
 	int black = 0;
 	int white = 0;
-	m_game.GetBoard().CountStones(black, white);
+	game_.GetBoard().CountStones(black, white);
 	text.Format(_T("黒：%2d　白：%2d "), black, white);
 	SetDlgItemText(IDC_SCORE, text);
 }
 
-void COthelloDlg::UpdateUndoRedoMenus()
+void OthelloDlg::UpdateUndoRedoMenus()
 {
-	EnableMenu(ID_MENUITEM_VERS, m_game.CanRedo());
-	EnableMenu(ID_MENUITEM_REVERS, m_game.CanUndo());
+	EnableMenu(ID_MENUITEM_VERS, game_.CanRedo());
+	EnableMenu(ID_MENUITEM_REVERS, game_.CanUndo());
 }
 
 // 対局中は持ち時間を変更させない
-void COthelloDlg::EnableTimeLimitMenus(bool enable)
+void OthelloDlg::EnableTimeLimitMenus(bool enable)
 {
 	for (const auto& menu : kTimeLimitMenus)
 	{
@@ -687,71 +687,71 @@ void COthelloDlg::EnableTimeLimitMenus(bool enable)
 	}
 }
 
-void COthelloDlg::EnableMenu(UINT id, bool enable)
+void OthelloDlg::EnableMenu(UINT id, bool enable)
 {
 	GetMenu()->EnableMenuItem(id, MF_BYCOMMAND | (enable ? MF_ENABLED : MF_GRAYED));
 }
 
-void COthelloDlg::CheckMenu(UINT id, bool check)
+void OthelloDlg::CheckMenu(UINT id, bool check)
 {
 	GetMenu()->CheckMenuItem(id, MF_BYCOMMAND | (check ? MF_CHECKED : MF_UNCHECKED));
 }
 
-void COthelloDlg::CheckMenuInRange(UINT firstId, UINT lastId, UINT checkId)
+void OthelloDlg::CheckMenuInRange(UINT first_id, UINT last_id, UINT check_id)
 {
-	for (UINT id = firstId; id <= lastId; id++)
+	for (UINT id = first_id; id <= last_id; id++)
 	{
-		CheckMenu(id, id == checkId);
+		CheckMenu(id, id == check_id);
 	}
 }
 
 /////////////////////////////////////////////////////////////////////////////
 // 描画
 
-void COthelloDlg::DrawBoard(CDC& dc)
+void OthelloDlg::DrawBoard(CDC& dc)
 {
-	const int boardEnd = kBoardSize * m_cellSize + kFrameOffset;
+	const int board_end = kBoardSize * cell_size_ + kFrameOffset;
 
 	// 背景
-	CBrush boardBrush(kBoardColor);
-	CBrush* oldBrush = dc.SelectObject(&boardBrush);
-	dc.Rectangle(kFrameOffset, kFrameOffset, boardEnd, boardEnd);
-	dc.SelectObject(oldBrush);
+	CBrush board_brush(kBoardColor);
+	CBrush* old_brush = dc.SelectObject(&board_brush);
+	dc.Rectangle(kFrameOffset, kFrameOffset, board_end, board_end);
+	dc.SelectObject(old_brush);
 
 	// 罫線
 	CPen pen(PS_SOLID, 1, RGB(0, 0, 0));
-	CPen* oldPen = dc.SelectObject(&pen);
+	CPen* old_pen = dc.SelectObject(&pen);
 	for (int i = 0; i <= kBoardSize; i++)
 	{
-		const int line = i * m_cellSize + kFrameOffset;
+		const int line = i * cell_size_ + kFrameOffset;
 		dc.MoveTo(line, kFrameOffset);
-		dc.LineTo(line, boardEnd);
+		dc.LineTo(line, board_end);
 		dc.MoveTo(kFrameOffset, line);
-		dc.LineTo(boardEnd, line);
+		dc.LineTo(board_end, line);
 	}
-	dc.SelectObject(oldPen);
+	dc.SelectObject(old_pen);
 
 	// 座標表記（列 A〜H / 行 1〜8）。4 と 9 は文字位置の微調整
-	const int oldBkMode = dc.SetBkMode(TRANSPARENT);
+	const int old_bk_mode = dc.SetBkMode(TRANSPARENT);
 	for (int i = 1; i <= kBoardSize; i++)
 	{
-		const int center = i * m_cellSize + kFrameOffset - m_cellSize / 2;
+		const int center = i * cell_size_ + kFrameOffset - cell_size_ / 2;
 		CString text;
 		text.Format(_T("%c"), _T('A') + i - 1);
 		dc.TextOut(center - 4, kNumberOffset, text);
 		text.Format(_T("%d"), i);
 		dc.TextOut(kNumberOffset, center - 9, text);
 	}
-	dc.SetBkMode(oldBkMode);
+	dc.SetBkMode(old_bk_mode);
 
 	// 石
-	const CBoard& board = m_game.GetBoard();
+	const Board& board = game_.GetBoard();
 	for (int y = 1; y <= kBoardSize; y++)
 	{
 		for (int x = 1; x <= kBoardSize; x++)
 		{
 			const Stone stone = board.GetAt(CPoint(x, y));
-			if (stone != Stone::None)
+			if (stone != Stone::kNone)
 			{
 				DrawStone(dc, CPoint(x, y), stone);
 			}
@@ -759,45 +759,45 @@ void COthelloDlg::DrawBoard(CDC& dc)
 	}
 }
 
-void COthelloDlg::DrawStone(CDC& dc, CPoint cell, Stone color)
+void OthelloDlg::DrawStone(CDC& dc, CPoint cell, Stone color)
 {
 	// 石の直径はマスの約9割
-	const int margin = m_cellSize - m_cellSize * 95 / 100;
+	const int margin = cell_size_ - cell_size_ * 95 / 100;
 	const CRect rect(
-		(cell.x - 1) * m_cellSize + margin + kFrameOffset,
-		(cell.y - 1) * m_cellSize + margin + kFrameOffset,
-		cell.x * m_cellSize - margin + kFrameOffset,
-		cell.y * m_cellSize - margin + kFrameOffset);
+		(cell.x - 1) * cell_size_ + margin + kFrameOffset,
+		(cell.y - 1) * cell_size_ + margin + kFrameOffset,
+		cell.x * cell_size_ - margin + kFrameOffset,
+		cell.y * cell_size_ - margin + kFrameOffset);
 
-	CBrush brush((color == Stone::Black) ? RGB(0, 0, 0) : RGB(255, 255, 255));
-	CBrush* oldBrush = dc.SelectObject(&brush);
+	CBrush brush((color == Stone::kBlack) ? RGB(0, 0, 0) : RGB(255, 255, 255));
+	CBrush* old_brush = dc.SelectObject(&brush);
 	dc.Ellipse(&rect);
-	dc.SelectObject(oldBrush);
+	dc.SelectObject(old_brush);
 }
 
 // 置ける場所に小さな点を描く（人の手番は青、COMの手番は赤）
-void COthelloDlg::DrawMovableMarks(CDC& dc)
+void OthelloDlg::DrawMovableMarks(CDC& dc)
 {
-	CBrush brush(m_game.IsComTurn() ? kComMarkColor : kPlayerMarkColor);
-	CBrush* oldBrush = dc.SelectObject(&brush);
+	CBrush brush(game_.IsComTurn() ? kComMarkColor : kPlayerMarkColor);
+	CBrush* old_brush = dc.SelectObject(&brush);
 
-	for (const CPoint& cell : m_game.GetBoard().GetMovablePositions(m_game.GetTurn()))
+	for (const CPoint& cell : game_.GetBoard().GetMovablePositions(game_.GetTurn()))
 	{
-		const int left = (cell.x - 1) * m_cellSize + m_cellSize / 2 - 2 + kFrameOffset;
-		const int top = (cell.y - 1) * m_cellSize + m_cellSize / 2 - 2 + kFrameOffset;
+		const int left = (cell.x - 1) * cell_size_ + cell_size_ / 2 - 2 + kFrameOffset;
+		const int top = (cell.y - 1) * cell_size_ + cell_size_ / 2 - 2 + kFrameOffset;
 		dc.Ellipse(left, top, left + 4, top + 4);
 	}
 
-	dc.SelectObject(oldBrush);
+	dc.SelectObject(old_brush);
 }
 
-CPoint COthelloDlg::HitTestCell(CPoint point) const
+CPoint OthelloDlg::HitTestCell(CPoint point) const
 {
-	if (m_cellSize <= 0 || point.x < kFrameOffset || point.y < kFrameOffset)
+	if (cell_size_ <= 0 || point.x < kFrameOffset || point.y < kFrameOffset)
 	{
 		return CPoint(0, 0);
 	}
 
-	const CPoint cell((point.x - kFrameOffset) / m_cellSize + 1, (point.y - kFrameOffset) / m_cellSize + 1);
-	return CBoard::IsInside(cell) ? cell : CPoint(0, 0);
+	const CPoint cell((point.x - kFrameOffset) / cell_size_ + 1, (point.y - kFrameOffset) / cell_size_ + 1);
+	return Board::IsInside(cell) ? cell : CPoint(0, 0);
 }

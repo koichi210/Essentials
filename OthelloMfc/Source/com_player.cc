@@ -8,23 +8,23 @@ namespace
 	// 局面の段階（手数で判定）
 	enum class Phase
 	{
-		Opening,	// 序盤
-		Middle,		// 中盤
-		Ending,		// 終盤
+		kOpening,	// 序盤
+		kMiddle,	// 中盤
+		kEnding,	// 終盤
 	};
 
-	Phase GetPhase(int moveCount)
+	Phase GetPhase(int move_count)
 	{
-		const int cellCount = kBoardSize * kBoardSize;
-		if (moveCount < cellCount / 3)
+		const int cell_count = kBoardSize * kBoardSize;
+		if (move_count < cell_count / 3)
 		{
-			return Phase::Opening;
+			return Phase::kOpening;
 		}
-		if (moveCount < cellCount / 3 * 2)
+		if (move_count < cell_count / 3 * 2)
 		{
-			return Phase::Middle;
+			return Phase::kMiddle;
 		}
-		return Phase::Ending;
+		return Phase::kEnding;
 	}
 
 	// 中央から外側へ向かう探索順
@@ -34,25 +34,25 @@ namespace
 	const int kRandomMoveCount = 2;
 }
 
-CComPlayer::CComPlayer()
-	: m_color(Stone::Black)
-	, m_moveCount(0)
-	, m_random(std::random_device()())
+ComPlayer::ComPlayer()
+	: color_(Stone::kBlack)
+	, move_count_(0)
+	, random_(std::random_device()())
 {
 }
 
 // レベル1: 中央寄り / レベル2: 序盤は中央寄り・中盤は少なく返す・終盤は多く返す / レベル3: 開放度
-bool CComPlayer::Think(const CBoard& board, Stone color, int level, int moveCount, CPoint& result)
+bool ComPlayer::Think(const Board& board, Stone color, int level, int move_count, CPoint& result)
 {
 	result = CPoint(0, 0);
-	if (moveCount < 0 || kMaxMoves < moveCount)
+	if (move_count < 0 || kMaxMoves < move_count)
 	{
 		return false;
 	}
 
-	m_board = board;
-	m_color = color;
-	m_moveCount = moveCount;
+	board_ = board;
+	color_ = color;
+	move_count_ = move_count;
 
 	Candidates candidates;
 	switch (level)
@@ -62,10 +62,10 @@ bool CComPlayer::Think(const CBoard& board, Stone color, int level, int moveCoun
 		break;
 
 	case 2:
-		switch (GetPhase(moveCount))
+		switch (GetPhase(move_count))
 		{
-		case Phase::Opening:	candidates = GetCenterCandidates();		break;
-		case Phase::Middle:		candidates = GetFlipCandidates(false);	break;
+		case Phase::kOpening:	candidates = GetCenterCandidates();		break;
+		case Phase::kMiddle:		candidates = GetFlipCandidates(false);	break;
 		default:				candidates = GetFlipCandidates(true);	break;
 		}
 		break;
@@ -77,7 +77,7 @@ bool CComPlayer::Think(const CBoard& board, Stone color, int level, int moveCoun
 	default:
 		{
 			// 想定外のレベルは左上から探して最初に置ける場所
-			const std::vector<CPoint> movable = m_board.GetMovablePositions(m_color);
+			const std::vector<CPoint> movable = board_.GetMovablePositions(color_);
 			if (movable.empty())
 			{
 				return false;
@@ -87,10 +87,10 @@ bool CComPlayer::Think(const CBoard& board, Stone color, int level, int moveCoun
 		}
 	}
 
-	return ChooseFrom(candidates, result) && CBoard::IsInside(result);
+	return ChooseFrom(candidates, result) && Board::IsInside(result);
 }
 
-CComPlayer::Candidates CComPlayer::GetCenterCandidates() const
+ComPlayer::Candidates ComPlayer::GetCenterCandidates() const
 {
 	const int center = kBoardSize / 2;
 	Candidates candidates;
@@ -100,7 +100,7 @@ CComPlayer::Candidates CComPlayer::GetCenterCandidates() const
 		for (int x : kCenterFirstOrder)
 		{
 			const CPoint pos(x, y);
-			if (m_board.CanPut(pos, m_color))
+			if (board_.CanPut(pos, color_))
 			{
 				candidates.push_back({ pos, abs(center - x) + abs(center - y) });
 			}
@@ -111,14 +111,14 @@ CComPlayer::Candidates CComPlayer::GetCenterCandidates() const
 	return candidates;
 }
 
-CComPlayer::Candidates CComPlayer::GetFlipCandidates(bool many) const
+ComPlayer::Candidates ComPlayer::GetFlipCandidates(bool many) const
 {
 	Candidates candidates;
 
-	for (const CPoint& pos : m_board.GetMovablePositions(m_color))
+	for (const CPoint& pos : board_.GetMovablePositions(color_))
 	{
 		FlipCounts flips;
-		m_board.GetFlips(pos, m_color, flips);
+		board_.GetFlips(pos, color_, flips);
 
 		int total = 0;
 		for (int count : flips)
@@ -134,17 +134,17 @@ CComPlayer::Candidates CComPlayer::GetFlipCandidates(bool many) const
 
 // 開放度 = 置いたマスと裏返る石それぞれの周囲にある空きマスの合計
 // 小さいほど相手に打たれる場所を増やさない良い手とみなす
-CComPlayer::Candidates CComPlayer::GetOpennessCandidates() const
+ComPlayer::Candidates ComPlayer::GetOpennessCandidates() const
 {
 	Candidates candidates;
 
-	for (const CPoint& pos : m_board.GetMovablePositions(m_color))
+	for (const CPoint& pos : board_.GetMovablePositions(color_))
 	{
 		FlipCounts flips;
-		m_board.GetFlips(pos, m_color, flips);
+		board_.GetFlips(pos, color_, flips);
 
-		CBoard after = m_board;
-		after.Put(pos, flips, m_color);
+		Board after = board_;
+		after.Put(pos, flips, color_);
 
 		int openness = CountEmptyAround(pos);
 		for (int y = 1; y <= kBoardSize; y++)
@@ -153,7 +153,7 @@ CComPlayer::Candidates CComPlayer::GetOpennessCandidates() const
 			{
 				// 打つ前後で色が変わった石＝裏返る石
 				const CPoint cell(x, y);
-				if (cell != pos && m_board.GetAt(cell) != after.GetAt(cell))
+				if (cell != pos && board_.GetAt(cell) != after.GetAt(cell))
 				{
 					openness += CountEmptyAround(cell);
 				}
@@ -167,7 +167,7 @@ CComPlayer::Candidates CComPlayer::GetOpennessCandidates() const
 }
 
 // 打つ前の盤面で数える
-int CComPlayer::CountEmptyAround(CPoint pos) const
+int ComPlayer::CountEmptyAround(CPoint pos) const
 {
 	int count = 0;
 
@@ -176,7 +176,7 @@ int CComPlayer::CountEmptyAround(CPoint pos) const
 		for (int dx = -1; dx <= 1; dx++)
 		{
 			const CPoint around(pos.x + dx, pos.y + dy);
-			if ((dx != 0 || dy != 0) && CBoard::IsInside(around) && m_board.GetAt(around) == Stone::None)
+			if ((dx != 0 || dy != 0) && Board::IsInside(around) && board_.GetAt(around) == Stone::kNone)
 			{
 				count++;
 			}
@@ -188,17 +188,17 @@ int CComPlayer::CountEmptyAround(CPoint pos) const
 
 // 序盤はランダム。それ以降は候補を評価順に見て、
 // 角 > 無難な手 > 星 > 角の隣 > 相手に角を与える手 の優先度で、各分類の最初の候補を選ぶ
-bool CComPlayer::ChooseFrom(const Candidates& candidates, CPoint& result)
+bool ComPlayer::ChooseFrom(const Candidates& candidates, CPoint& result)
 {
 	if (candidates.empty())
 	{
 		return false;
 	}
 
-	if (m_moveCount <= kRandomMoveCount)
+	if (move_count_ <= kRandomMoveCount)
 	{
 		std::uniform_int_distribution<size_t> dist(0, candidates.size() - 1);
-		result = candidates[dist(m_random)].pos;
+		result = candidates[dist(random_)].pos;
 		return true;
 	}
 
@@ -247,18 +247,18 @@ bool CComPlayer::ChooseFrom(const Candidates& candidates, CPoint& result)
 	return false;
 }
 
-bool CComPlayer::GivesCornerToEnemy(CPoint pos) const
+bool ComPlayer::GivesCornerToEnemy(CPoint pos) const
 {
 	FlipCounts flips;
-	if (!m_board.GetFlips(pos, m_color, flips))
+	if (!board_.GetFlips(pos, color_, flips))
 	{
 		return false;
 	}
 
-	CBoard after = m_board;
-	after.Put(pos, flips, m_color);
+	Board after = board_;
+	after.Put(pos, flips, color_);
 
-	const Stone enemy = Opponent(m_color);
+	const Stone enemy = Opponent(color_);
 	const int edges[] = { 1, kBoardSize };
 	for (int y : edges)
 	{
@@ -274,16 +274,16 @@ bool CComPlayer::GivesCornerToEnemy(CPoint pos) const
 }
 
 // 同点のときの並びを従来どおりに保つため、単純な交換ソートで並べる
-void CComPlayer::SortCandidates(Candidates& candidates, bool ascending)
+void ComPlayer::SortCandidates(Candidates& candidates, bool ascending)
 {
 	for (size_t i = 0; i < candidates.size(); i++)
 	{
 		for (size_t j = i + 1; j < candidates.size(); j++)
 		{
-			const bool needSwap = ascending
+			const bool need_swap = ascending
 				? (candidates[i].score > candidates[j].score)
 				: (candidates[i].score < candidates[j].score);
-			if (needSwap)
+			if (need_swap)
 			{
 				std::swap(candidates[i], candidates[j]);
 			}
@@ -291,25 +291,25 @@ void CComPlayer::SortCandidates(Candidates& candidates, bool ascending)
 	}
 }
 
-bool CComPlayer::IsCorner(CPoint pos)
+bool ComPlayer::IsCorner(CPoint pos)
 {
-	const bool edgeX = (pos.x == 1 || pos.x == kBoardSize);
-	const bool edgeY = (pos.y == 1 || pos.y == kBoardSize);
-	return edgeX && edgeY;
+	const bool edge_x = (pos.x == 1 || pos.x == kBoardSize);
+	const bool edge_y = (pos.y == 1 || pos.y == kBoardSize);
+	return edge_x && edge_y;
 }
 
-bool CComPlayer::IsXSquare(CPoint pos)
+bool ComPlayer::IsXSquare(CPoint pos)
 {
-	const bool nextX = (pos.x == 2 || pos.x == kBoardSize - 1);
-	const bool nextY = (pos.y == 2 || pos.y == kBoardSize - 1);
-	return nextX && nextY;
+	const bool next_x = (pos.x == 2 || pos.x == kBoardSize - 1);
+	const bool next_y = (pos.y == 2 || pos.y == kBoardSize - 1);
+	return next_x && next_y;
 }
 
-bool CComPlayer::IsCSquare(CPoint pos)
+bool ComPlayer::IsCSquare(CPoint pos)
 {
-	const bool edgeX = (pos.x == 1 || pos.x == kBoardSize);
-	const bool edgeY = (pos.y == 1 || pos.y == kBoardSize);
-	const bool nextX = (pos.x == 2 || pos.x == kBoardSize - 1);
-	const bool nextY = (pos.y == 2 || pos.y == kBoardSize - 1);
-	return (edgeX && nextY) || (nextX && edgeY);
+	const bool edge_x = (pos.x == 1 || pos.x == kBoardSize);
+	const bool edge_y = (pos.y == 1 || pos.y == kBoardSize);
+	const bool next_x = (pos.x == 2 || pos.x == kBoardSize - 1);
+	const bool next_y = (pos.y == 2 || pos.y == kBoardSize - 1);
+	return (edge_x && next_y) || (next_x && edge_y);
 }

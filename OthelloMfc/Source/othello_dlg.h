@@ -5,10 +5,10 @@
 #include "game_manager.h"
 #include "com_player.h"
 
-class COthelloDlg : public CDialog
+class OthelloDlg : public CDialog
 {
 public:
-	explicit COthelloDlg(CWnd* pParent = nullptr);
+	explicit OthelloDlg(CWnd* parent = nullptr);
 
 	enum { IDD = IDD_OTHELLO_DIALOG };
 
@@ -17,14 +17,14 @@ protected:
 	virtual void OnOK() override;
 
 	// Windows メッセージ
-	afx_msg void OnSysCommand(UINT nID, LPARAM lParam);
+	afx_msg void OnSysCommand(UINT id, LPARAM param);
 	afx_msg HCURSOR OnQueryDragIcon();
 	afx_msg void OnPaint();
-	afx_msg void OnGetMinMaxInfo(MINMAXINFO* lpMMI);
-	afx_msg void OnSize(UINT nType, int cx, int cy);
-	afx_msg void OnTimer(UINT_PTR nIDEvent);
-	afx_msg void OnLButtonDown(UINT nFlags, CPoint point);
-	afx_msg void OnLButtonUp(UINT nFlags, CPoint point);
+	afx_msg void OnGetMinMaxInfo(MINMAXINFO* min_max_info);
+	afx_msg void OnSize(UINT type, int cx, int cy);
+	afx_msg void OnTimer(UINT_PTR event_id);
+	afx_msg void OnLButtonDown(UINT flags, CPoint point);
+	afx_msg void OnLButtonUp(UINT flags, CPoint point);
 
 	// メニュー
 	afx_msg void OnGameStart();
@@ -32,9 +32,9 @@ protected:
 	afx_msg void OnGameReset();
 	afx_msg void OnGameExit();
 	afx_msg void OnToggleShowMovable();
-	afx_msg void OnPlayMode(UINT nID);
-	afx_msg void OnComLevel(UINT nID);
-	afx_msg void OnTimeLimit(UINT nID);
+	afx_msg void OnPlayMode(UINT id);
+	afx_msg void OnComLevel(UINT id);
+	afx_msg void OnTimeLimit(UINT id);
 	afx_msg void OnKifuShow();
 	afx_msg void OnKifuSave();
 	afx_msg void OnKifuRead();
@@ -73,14 +73,14 @@ private:
 	void DrawMovableMarks(CDC& dc);
 	CPoint HitTestCell(CPoint point) const;		// クリック位置→マス（盤外は (0,0)）
 
-	CGameManager	m_game;
-	CComPlayer		m_com;
-	HICON			m_hIcon;
-	CFont			m_labelFont;
-	CPoint			m_pressedCell;		// 左ボタンを押したマス
-	CPoint			m_infoPos;			// 手番・スコア・残り時間の表示位置
-	int				m_cellSize;			// 1マスの大きさ(px)
-	int				m_timeLimitSec;		// 持ち時間(秒)。kNoTimeLimit なら制限なし
-	int				m_blackRemainMs;	// 黒の残り時間(ms)
-	int				m_whiteRemainMs;	// 白の残り時間(ms)
+	GameManager	game_;
+	ComPlayer		com_;
+	HICON			icon_;
+	CFont			label_font_;
+	CPoint			pressed_cell_;		// 左ボタンを押したマス
+	CPoint			info_pos_;			// 手番・スコア・残り時間の表示位置
+	int				cell_size_;			// 1マスの大きさ(px)
+	int				time_limit_sec_;		// 持ち時間(秒)。kNoTimeLimit なら制限なし
+	int				black_remain_ms_;	// 黒の残り時間(ms)
+	int				white_remain_ms_;	// 白の残り時間(ms)
 };
