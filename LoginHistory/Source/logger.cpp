@@ -2,8 +2,8 @@
 #define LOG_FILE_NAME	"C:\\temp\\Alive.log"
 #define FILE_NAME		"FileName"
 #define CYCLE			"Cycle"
-#define WARM			" !"
-#define COMENT			";"
+#define WARN			" !"
+#define COMMENT			";"
 
 #define UPDATE_CYC		(60)	// min
 #define STR_BUFF		(30)
@@ -19,15 +19,15 @@
 #define	MAX_MIN			(60)
 #define	MAX_SEC			(60)
 #define	DIFFER			(10)
-#define MOUNTH_OFFSET	(1)
+#define MONTH_OFFSET	(1)
 #define YEAR_OFFSET		(1900)
 
 void LoadIniFile(char fname[STR_BUFF], int * cyc) ;
 void CreateFile(char fname[STR_BUFF], tm * time) ;
-void GetLastUpDate(FILE * fp, tm * time) ;
+void GetLastUpdate(FILE * fp, tm * time) ;
 int  GetTimeString(char time_str[STR_BUFF], tm * time) ;
 int  CheckDate(tm * t_time) ;
-int  CheckUpDateTime(tm * o_time, tm * n_time, int cyc) ;
+int  CheckUpdateTime(tm * o_time, tm * n_time, int cyc) ;
 
 int _tmain(int argc, _TCHAR* argv[])
 {
@@ -36,10 +36,8 @@ int _tmain(int argc, _TCHAR* argv[])
     tm * n_time = NULL ;			// new time(sec)
 	time_t now = 0 ;				// now time
 	int cycle  = UPDATE_CYC ;		// update cycle
-	char buff[STR_BUFF] ;			// get data buffer
 	char file_name[STR_BUFF] ;		// set log file name
 
-	memset(buff, 0, sizeof(buff)) ;
 	memset(file_name, 0, sizeof(file_name)) ;
 	strcpy(file_name, LOG_FILE_NAME) ;
 
@@ -50,7 +48,7 @@ int _tmain(int argc, _TCHAR* argv[])
 	time( &now ) ;
     n_time = localtime( &now ) ;
 
-	// opend update file
+	// open update file
 	fp = fopen(file_name, "r+") ;
 	if(fp == NULL){
 		// create new file
@@ -63,14 +61,15 @@ int _tmain(int argc, _TCHAR* argv[])
 		GetTimeString(time_str, n_time);
 		o_time = (tm *)malloc(sizeof(tm));
 		memset(o_time, 0, sizeof(tm));
-		GetLastUpDate(fp, o_time) ;
-		if(CheckUpDateTime(o_time, n_time, cycle) == FALSE){
-			strcat(time_str,WARM);
+		GetLastUpdate(fp, o_time) ;
+		if(CheckUpdateTime(o_time, n_time, cycle) == FALSE){
+			strcat(time_str,WARN);
 		}
 		free(o_time);
 
 		fseek(fp,0,SEEK_END);
 		fprintf(fp,"%s\n",time_str);
+		fclose(fp) ;
 	}
 	
 	return NORMAL ;
@@ -87,7 +86,7 @@ void LoadIniFile(char * fname, int * cyc)
 	fp = fopen(INI_FILE_NAME, "r") ;
 	if(fp != NULL){
 		while(fgets(buff, sizeof(buff), fp)){
-			if(strncmp(buff, COMENT, strlen(COMENT)) == 0){
+			if(strncmp(buff, COMMENT, strlen(COMMENT)) == 0){
 				continue;
 			}else if(strncmp(buff, FILE_NAME, strlen(FILE_NAME)) == 0){
 				sscanf(buff, "FileName=%s", fname) ;
@@ -118,7 +117,7 @@ int GetTimeString(char * time_str, tm *time)
 {
 	sprintf(time_str, "%04d.%02d.%02d_%02d:%02d:%02d",
 		time->tm_year + YEAR_OFFSET,
-		time->tm_mon + MOUNTH_OFFSET,
+		time->tm_mon + MONTH_OFFSET,
 		time->tm_mday,
 		time->tm_hour,
 		time->tm_min,
@@ -127,7 +126,7 @@ int GetTimeString(char * time_str, tm *time)
 	return CheckDate(time) ;
 }
 
-void GetLastUpDate(FILE * fp, tm * time)
+void GetLastUpdate(FILE * fp, tm * time)
 {
 	tm tt;
 	int rt;
@@ -145,7 +144,7 @@ void GetLastUpDate(FILE * fp, tm * time)
 			&tt.tm_hour,
 			&tt.tm_min,
 			&tt.tm_sec) ;
-		tt.tm_mon -= MOUNTH_OFFSET ;
+		tt.tm_mon -= MONTH_OFFSET ;
 		tt.tm_year -= YEAR_OFFSET ;
 
 		rt = CheckDate(&tt) ;
@@ -162,7 +161,7 @@ int	CheckDate(tm *t_time)
 
 	memcpy(&tmp_time, t_time, sizeof(tmp_time));
 	tmp_time.tm_year += YEAR_OFFSET;
-	tmp_time.tm_mon += MOUNTH_OFFSET;
+	tmp_time.tm_mon += MONTH_OFFSET;
 
 	if(0 < tmp_time.tm_year &&
 		0 < tmp_time.tm_mon && tmp_time.tm_mon <= MAX_MON &&
@@ -175,15 +174,13 @@ int	CheckDate(tm *t_time)
 	return rt;
 }
 
-int CheckUpDateTime(tm * o_time, tm * n_time, int cyc)
+int CheckUpdateTime(tm * o_time, tm * n_time, int cyc)
 {
-	tm wk_time;
 	int rt = TRUE ;
 	int new_time ;
 	int old_time ;
 	int diff_time;
 
-	memcpy(&wk_time,n_time,sizeof(tm));
 	// check time
 	new_time = mktime(n_time) ;
 	old_time = mktime(o_time) ;

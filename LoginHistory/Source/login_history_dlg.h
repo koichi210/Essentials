@@ -1,4 +1,4 @@
-﻿// LoginHistoryDlg.h : メインダイアログ（実行した日時をログファイルに追記する）
+﻿// login_history_dlg.h : メインダイアログ（実行した日時をログファイルに追記する）
 
 #ifndef LOGINHISTORY_SOURCE_LOGIN_HISTORY_DLG_H_
 #define LOGINHISTORY_SOURCE_LOGIN_HISTORY_DLG_H_

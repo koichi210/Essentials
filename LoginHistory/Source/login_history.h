@@ -1,4 +1,4 @@
-﻿// LoginHistory.h : アプリケーションクラス
+﻿// login_history.h : アプリケーションクラス
 
 #ifndef LOGINHISTORY_SOURCE_LOGIN_HISTORY_H_
 #define LOGINHISTORY_SOURCE_LOGIN_HISTORY_H_

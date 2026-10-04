@@ -1,4 +1,4 @@
-﻿// LoginHistory.cpp : アプリケーションクラス
+﻿// login_history.cc : アプリケーションクラス
 
 #include "stdafx.h"
 #include "login_history.h"

@@ -1,4 +1,4 @@
-﻿// LoginHistoryDlg.cpp : メインダイアログ
+﻿// login_history_dlg.cc : メインダイアログ
 
 #include "stdafx.h"
 #include "login_history.h"
