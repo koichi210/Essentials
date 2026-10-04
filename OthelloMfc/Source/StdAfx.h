@@ -10,5 +10,6 @@
 #include <afxdlgs.h>		// CFileDialog
 
 #include <array>
+#include <numeric>
 #include <random>
 #include <vector>

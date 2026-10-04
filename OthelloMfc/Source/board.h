@@ -28,10 +28,11 @@ public:
 
 	void CountStones(int& black, int& white) const;	// 石数を数える
 
-private:
-	static const CPoint kDirections[kDirectionCount];	// 方向ごとの移動量
+	static const CPoint kDirections[kDirectionCount];	// 方向ごとの移動量（FlipCounts の並び）
 
+private:
 	Stone& At(CPoint pos);
+	int CountFlipsInDirection(CPoint pos, int dir, Stone color) const;	// dir 方向に裏返る数
 	void Flip(CPoint pos, const FlipCounts& flips, Stone color);	// 裏返る石を color にする
 
 	Stone cells_[kBoardSize][kBoardSize];

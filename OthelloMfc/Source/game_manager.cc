@@ -6,12 +6,6 @@
 namespace
 {
 	const LPCTSTR kKifuHeader = _T("***** 棋譜 ***** \n");
-
-	// 棋譜の列表記（1→'A'）
-	TCHAR ToColumnChar(int x)
-	{
-		return static_cast<TCHAR>(_T('A') + x - 1);
-	}
 }
 
 GameManager::GameManager()
@@ -96,7 +90,7 @@ CString GameManager::GetKifuText() const
 	{
 		const KifuRecord& record = kifu_[i];
 		CString line;
-		line.Format(_T("%2d : %c.%d %s\n"), i + 1, ToColumnChar(record.pos.x), record.pos.y, ColorName(record.color));
+		line.Format(_T("%2d : %c.%d %s\n"), i + 1, ColumnChar(record.pos.x), record.pos.y, ColorName(record.color));
 		text += line;
 	}
 

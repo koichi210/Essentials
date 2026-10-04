@@ -26,6 +26,12 @@ inline Stone Opponent(Stone color)
 	return (color == Stone::kBlack) ? Stone::kWhite : Stone::kBlack;
 }
 
+// 列の表記（1→'A'）。盤の見出しと棋譜で使う
+inline TCHAR ColumnChar(int x)
+{
+	return static_cast<TCHAR>(_T('A') + x - 1);
+}
+
 // 色の表示名（棋譜ファイルにもこの名前で書き出す）
 inline LPCTSTR ColorName(Stone color)
 {

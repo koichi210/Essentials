@@ -736,9 +736,8 @@ void OthelloDlg::DrawBoard(CDC& dc)
 	for (int i = 1; i <= kBoardSize; i++)
 	{
 		const int center = i * cell_size_ + kFrameOffset - cell_size_ / 2;
+		dc.TextOut(center - 4, kNumberOffset, CString(ColumnChar(i)));
 		CString text;
-		text.Format(_T("%c"), _T('A') + i - 1);
-		dc.TextOut(center - 4, kNumberOffset, text);
 		text.Format(_T("%d"), i);
 		dc.TextOut(kNumberOffset, center - 9, text);
 	}

@@ -47,13 +47,40 @@ Stone& Board::At(CPoint pos)
 	return cells_[pos.y - 1][pos.x - 1];
 }
 
-bool Board::CanPut(CPoint pos, Stone color) const
+// 相手の石が続いた先に自分の石があれば、その間の数だけ裏返せる
+int Board::CountFlipsInDirection(CPoint pos, int dir, Stone color) const
 {
-	FlipCounts flips;
-	return GetFlips(pos, color, flips);
+	const Stone enemy = Opponent(color);
+	CPoint cur = pos + kDirections[dir];
+	int count = 0;
+
+	while (IsInside(cur) && GetAt(cur) == enemy)
+	{
+		count++;
+		cur += kDirections[dir];
+	}
+
+	return (count > 0 && IsInside(cur) && GetAt(cur) == color) ? count : 0;
 }
 
-// 方向ごとに、相手の石が続いた先に自分の石があれば、その間の数だけ裏返せる
+// 置けるかどうかだけ知りたいときは、裏返る方向が1つ見つかった時点で打ち切る
+bool Board::CanPut(CPoint pos, Stone color) const
+{
+	if (!IsInside(pos) || GetAt(pos) != Stone::kNone)
+	{
+		return false;
+	}
+
+	for (int dir = 0; dir < kDirectionCount; dir++)
+	{
+		if (CountFlipsInDirection(pos, dir, color) > 0)
+		{
+			return true;
+		}
+	}
+	return false;
+}
+
 bool Board::GetFlips(CPoint pos, Stone color, FlipCounts& flips) const
 {
 	flips.fill(0);
@@ -63,23 +90,12 @@ bool Board::GetFlips(CPoint pos, Stone color, FlipCounts& flips) const
 		return false;
 	}
 
-	const Stone enemy = Opponent(color);
 	bool can_put = false;
-
 	for (int dir = 0; dir < kDirectionCount; dir++)
 	{
-		CPoint cur = pos + kDirections[dir];
-		int count = 0;
-
-		while (IsInside(cur) && GetAt(cur) == enemy)
+		flips[dir] = CountFlipsInDirection(pos, dir, color);
+		if (flips[dir] > 0)
 		{
-			count++;
-			cur += kDirections[dir];
-		}
-
-		if (count > 0 && IsInside(cur) && GetAt(cur) == color)
-		{
-			flips[dir] = count;
 			can_put = true;
 		}
 	}

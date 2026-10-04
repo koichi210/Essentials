@@ -65,7 +65,7 @@ bool ComPlayer::Think(const Board& board, Stone color, int level, int move_count
 		switch (GetPhase(move_count))
 		{
 		case Phase::kOpening:	candidates = GetCenterCandidates();		break;
-		case Phase::kMiddle:		candidates = GetFlipCandidates(false);	break;
+		case Phase::kMiddle:	candidates = GetFlipCandidates(false);	break;
 		default:				candidates = GetFlipCandidates(true);	break;
 		}
 		break;
@@ -119,13 +119,7 @@ ComPlayer::Candidates ComPlayer::GetFlipCandidates(bool many) const
 	{
 		FlipCounts flips;
 		board_.GetFlips(pos, color_, flips);
-
-		int total = 0;
-		for (int count : flips)
-		{
-			total += count;
-		}
-		candidates.push_back({ pos, total });
+		candidates.push_back({ pos, std::accumulate(flips.begin(), flips.end(), 0) });
 	}
 
 	SortCandidates(candidates, !many);
@@ -143,20 +137,15 @@ ComPlayer::Candidates ComPlayer::GetOpennessCandidates() const
 		FlipCounts flips;
 		board_.GetFlips(pos, color_, flips);
 
-		Board after = board_;
-		after.Put(pos, flips, color_);
-
+		// 盤面を写して全マスを比べなくても、裏返る石は方向ごとの数から辿れる
 		int openness = CountEmptyAround(pos);
-		for (int y = 1; y <= kBoardSize; y++)
+		for (int dir = 0; dir < kDirectionCount; dir++)
 		{
-			for (int x = 1; x <= kBoardSize; x++)
+			CPoint cell = pos;
+			for (int i = 0; i < flips[dir]; i++)
 			{
-				// 打つ前後で色が変わった石＝裏返る石
-				const CPoint cell(x, y);
-				if (cell != pos && board_.GetAt(cell) != after.GetAt(cell))
-				{
-					openness += CountEmptyAround(cell);
-				}
+				cell += Board::kDirections[dir];
+				openness += CountEmptyAround(cell);
 			}
 		}
 		candidates.push_back({ pos, openness });

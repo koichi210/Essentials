@@ -55,7 +55,7 @@ private:
 	void ChangeTurn(Stone next);
 	void StartCountDown(Stone color);
 	void KillAllTimers();
-	void SetTimeLimit(int seconds, UINT menuId);
+	void SetTimeLimit(int seconds, UINT menu_id);
 
 	// 画面の更新
 	void UpdateLayout();
@@ -66,7 +66,7 @@ private:
 	void EnableTimeLimitMenus(bool enable);
 	void EnableMenu(UINT id, bool enable);
 	void CheckMenu(UINT id, bool check);
-	void CheckMenuInRange(UINT firstId, UINT lastId, UINT checkId);
+	void CheckMenuInRange(UINT first_id, UINT last_id, UINT check_id);
 
 	// 描画
 	void DrawBoard(CDC& dc);

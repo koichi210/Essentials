@@ -11,7 +11,7 @@ public:
 	ComPlayer();
 
 	// 盤面と手番から打つ座標を決める（置ける場所がなければ false）
-	bool Think(const Board& board, Stone color, int level, int moveCount, CPoint& result);
+	bool Think(const Board& board, Stone color, int level, int move_count, CPoint& result);
 
 private:
 	// 候補手と評価値
