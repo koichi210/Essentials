@@ -68,10 +68,10 @@ namespace Cheetos.Tests
                 writer.cw_TextBox_Loop.Text = "9";
 
                 string path = PathFor("capture");
-                Assert.IsTrue(writer.sr.Save(path), "保存に成功するはず");
+                Assert.IsTrue(writer._sr.Save(path), "保存に成功するはず");
 
                 MainWindow reader = NewWindow();
-                Assert.IsTrue(reader.sr.Load(path), "読み込みに成功するはず");
+                Assert.IsTrue(reader._sr.Load(path), "読み込みに成功するはず");
 
                 Assert.AreEqual(@"C:\capture\out", reader.cw_TextBox_SavePath.Text);
                 Assert.AreEqual("shot_", reader.cw_TextBox_SaveFilePrefix.Text);
@@ -95,10 +95,10 @@ namespace Cheetos.Tests
                 writer.pr_Angle.Text = "45";
 
                 string path = PathFor("rotation");
-                writer.sr.Save(path);
+                writer._sr.Save(path);
 
                 MainWindow reader = NewWindow();
-                reader.sr.Load(path);
+                reader._sr.Load(path);
 
                 Assert.AreEqual(@"D:\photos", reader.pr_SourceFolderPath.Text);
                 Assert.AreEqual("100", reader.pr_BaseX.Text);
@@ -122,10 +122,10 @@ namespace Cheetos.Tests
                 writer.do_SampleFilePath.Text = @"D:\sample.jpg";
 
                 string path = PathFor("distorient");
-                writer.sr.Save(path);
+                writer._sr.Save(path);
 
                 MainWindow reader = NewWindow();
-                reader.sr.Load(path);
+                reader._sr.Load(path);
 
                 Assert.AreEqual(@"D:\src", reader.do_SourceFolderPath.Text);
                 Assert.AreEqual(@"D:\port", reader.do_DestPortFolderPath.Text);
@@ -153,10 +153,10 @@ namespace Cheetos.Tests
                 writer.fc_TargetFileName.Text = "*.png";
 
                 string path = PathFor("merge");
-                writer.sr.Save(path);
+                writer._sr.Save(path);
 
                 MainWindow reader = NewWindow();
-                reader.sr.Load(path);
+                reader._sr.Load(path);
 
                 Assert.AreEqual(@"D:\merge", reader.pm_SourceFolderPath.Text);
                 Assert.AreEqual("left_", reader.pm_SourceFile1Prefix.Text);
@@ -183,10 +183,10 @@ namespace Cheetos.Tests
                 writer.pt_TargetY.Text = "40";
 
                 string path = PathFor("trim");
-                writer.sr.Save(path);
+                writer._sr.Save(path);
 
                 MainWindow reader = NewWindow();
-                reader.sr.Load(path);
+                reader._sr.Load(path);
 
                 Assert.AreEqual(@"D:\trim", reader.pt_SourceFolderPath.Text);
                 Assert.AreEqual("10", reader.pt_BaseX.Text);
@@ -204,16 +204,16 @@ namespace Cheetos.Tests
             StaRunner.Run(() =>
             {
                 MainWindow writer = NewWindow();
-                writer.cw_Rows.Add(new CaptureGridRow());
-                writer.cw_Rows.Add(new CaptureGridRow());
+                writer._cwRows.Add(new CaptureGridRow());
+                writer._cwRows.Add(new CaptureGridRow());
 
                 string path = PathFor("datagrid");
-                writer.sr.Save(path);
+                writer._sr.Save(path);
 
                 MainWindow reader = NewWindow();
-                reader.sr.Load(path);
+                reader._sr.Load(path);
 
-                Assert.AreEqual(3, reader.cw_Rows.Count);
+                Assert.AreEqual(3, reader._cwRows.Count);
             });
         }
 
@@ -233,7 +233,7 @@ namespace Cheetos.Tests
                 writer.cw_TextBox_Loop.Text = "9";
 
                 string path = Path.Combine(tempDirectory, "capture.json");
-                Assert.IsTrue(writer.sr.Save(path), "JSON保存に成功するはず");
+                Assert.IsTrue(writer._sr.Save(path), "JSON保存に成功するはず");
 
                 string json = File.ReadAllText(path, Encoding.UTF8);
                 StringAssert.Contains(json, "\"CaptureWindow|cw_TextBox_SaveFilePrefix\": \"shot_\"");
@@ -241,7 +241,7 @@ namespace Cheetos.Tests
                 StringAssert.Contains(json, "\"DataGrid|Cell\"");
 
                 MainWindow reader = NewWindow();
-                Assert.IsTrue(reader.sr.Load(path), "JSON読み込みに成功するはず");
+                Assert.IsTrue(reader._sr.Load(path), "JSON読み込みに成功するはず");
 
                 Assert.AreEqual(@"C:\capture\out", reader.cw_TextBox_SavePath.Text);
                 Assert.AreEqual("shot_", reader.cw_TextBox_SaveFilePrefix.Text);
@@ -258,22 +258,22 @@ namespace Cheetos.Tests
             StaRunner.Run(() =>
             {
                 MainWindow writer = NewWindow();
-                writer.cw_Rows.Add(new CaptureGridRow());
-                writer.cw_Rows.Add(new CaptureGridRow());
-                writer.cw_Rows[1][0] = "500";
-                writer.cw_Rows[1].MouseAction = "LeftDown";
-                writer.cw_Rows[1].Capture = "〇";
+                writer._cwRows.Add(new CaptureGridRow());
+                writer._cwRows.Add(new CaptureGridRow());
+                writer._cwRows[1][0] = "500";
+                writer._cwRows[1].MouseAction = "LeftDown";
+                writer._cwRows[1].Capture = "〇";
 
                 string path = Path.Combine(tempDirectory, "datagrid.json");
-                Assert.IsTrue(writer.sr.Save(path));
+                Assert.IsTrue(writer._sr.Save(path));
 
                 MainWindow reader = NewWindow();
-                Assert.IsTrue(reader.sr.Load(path));
+                Assert.IsTrue(reader._sr.Load(path));
 
-                Assert.AreEqual(3, reader.cw_Rows.Count);
-                Assert.AreEqual("500", reader.cw_Rows[1].Sleep);
-                Assert.AreEqual("LeftDown", reader.cw_Rows[1].MouseAction);
-                Assert.AreEqual("〇", reader.cw_Rows[1].Capture);
+                Assert.AreEqual(3, reader._cwRows.Count);
+                Assert.AreEqual("500", reader._cwRows[1].Sleep);
+                Assert.AreEqual("LeftDown", reader._cwRows[1].MouseAction);
+                Assert.AreEqual("〇", reader._cwRows[1].Capture);
             });
         }
 
@@ -283,7 +283,7 @@ namespace Cheetos.Tests
             StaRunner.Run(() =>
             {
                 MainWindow window = NewWindow();
-                Assert.IsFalse(window.sr.Load(Path.Combine(tempDirectory, "nothing.json")));
+                Assert.IsFalse(window._sr.Load(Path.Combine(tempDirectory, "nothing.json")));
             });
         }
 
@@ -323,7 +323,7 @@ namespace Cheetos.Tests
                 MainWindow writer = NewWindow();
                 writer.do_WhiteCoef.Text = "99";
                 string path = PathFor("whitecoef");
-                writer.sr.Save(path);
+                writer._sr.Save(path);
 
                 MainWindow reader = NewWindow();
                 reader.do_WhiteCoef.Text = "1";
@@ -396,14 +396,14 @@ namespace Cheetos.Tests
                 Assert.AreEqual("30", window.do_WhiteCoef.Text);
                 Assert.AreEqual("2", window.cw_TextBox_Loop.Text);
 
-                Assert.AreEqual(2, window.cw_Rows.Count);
-                Assert.AreEqual("1000", window.cw_Rows[0].Sleep);
-                Assert.AreEqual("640", window.cw_Rows[0].MouseX);
-                Assert.AreEqual("1660", window.cw_Rows[0].MouseY);
-                Assert.AreEqual("Move", window.cw_Rows[0].MouseAction);
-                Assert.AreEqual("×", window.cw_Rows[0].Capture);
-                Assert.AreEqual("LeftDown", window.cw_Rows[1].MouseAction);
-                Assert.AreEqual("〇", window.cw_Rows[1].Capture);
+                Assert.AreEqual(2, window._cwRows.Count);
+                Assert.AreEqual("1000", window._cwRows[0].Sleep);
+                Assert.AreEqual("640", window._cwRows[0].MouseX);
+                Assert.AreEqual("1660", window._cwRows[0].MouseY);
+                Assert.AreEqual("Move", window._cwRows[0].MouseAction);
+                Assert.AreEqual("×", window._cwRows[0].Capture);
+                Assert.AreEqual("LeftDown", window._cwRows[1].MouseAction);
+                Assert.AreEqual("〇", window._cwRows[1].Capture);
             });
         }
 
@@ -416,15 +416,15 @@ namespace Cheetos.Tests
                 window.cw_TextBox_Sleep.Text = "1";
                 window.cw_TextBox_Loop.Text = "1";
                 window.cw_Radio_CurrentWindow.IsChecked = true;
-                window.cw_Rows.Add(new CaptureGridRow());
+                window._cwRows.Add(new CaptureGridRow());
 
-                window.sr.LoadOrDefault(Path.Combine(tempDirectory, "nothing.json"));
+                window._sr.LoadOrDefault(Path.Combine(tempDirectory, "nothing.json"));
 
                 Assert.AreEqual("2000", window.cw_TextBox_Sleep.Text);
                 Assert.AreEqual("2", window.cw_TextBox_Loop.Text);
                 Assert.AreEqual("30", window.do_WhiteCoef.Text);
                 Assert.IsTrue(window.cw_Radio_FullScreen.IsChecked == true);
-                Assert.AreEqual(1, window.cw_Rows.Count, "DataGridは空の1行に戻る");
+                Assert.AreEqual(1, window._cwRows.Count, "DataGridは空の1行に戻る");
             });
         }
 

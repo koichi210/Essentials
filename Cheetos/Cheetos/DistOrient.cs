@@ -1,6 +1,7 @@
 using System;
 using System.ComponentModel;
 using System.IO;
+using System.Text;
 using System.Windows;
 
 namespace Cheetos
@@ -12,9 +13,9 @@ namespace Cheetos
         {
             // キャンセル(他タブのBackgroundWorkerと同じ「もう一度押すと中断」。IsBusyを
             // 見ずにRunWorkerAsync()していたため、処理中に押すとInvalidOperationExceptionで落ちていた)
-            if (bkgWorkerOrient.IsBusy)
+            if (_bkgWorkerOrient.IsBusy)
             {
-                bkgWorkerOrient.CancelAsync();
+                _bkgWorkerOrient.CancelAsync();
                 return;
             }
 
@@ -24,14 +25,9 @@ namespace Cheetos
                 return;
             }
 
-            if (!fio.EnsureDirectory(do_DestPortFolderPath.Text))
+            if (!EnsureDirectoryWithMessage(do_DestPortFolderPath.Text)
+                || !EnsureDirectoryWithMessage(do_DestLandFolderPath.Text))
             {
-                MessageBox.Show("無効なフォルダパスです。\n" + do_DestPortFolderPath.Text);
-                return;
-            }
-            if (!fio.EnsureDirectory(do_DestLandFolderPath.Text))
-            {
-                MessageBox.Show("無効なフォルダパスです。\n" + do_DestLandFolderPath.Text);
                 return;
             }
 
@@ -50,7 +46,7 @@ namespace Cheetos
 
             SetStartTime();
             do_Distribute.Content = "中断";
-            bkgWorkerOrient.RunWorkerAsync(param);   // ⇒DoWork()
+            _bkgWorkerOrient.RunWorkerAsync(param);   // ⇒DoWork()
         }
 
         private void do_GetSampleParam_Click(object sender, RoutedEventArgs e)
@@ -71,22 +67,22 @@ namespace Cheetos
             // senderの値はbgWorkerの値と同じ
             BackgroundWorker worker = (BackgroundWorker)sender;
 
-            String errorLog = "";
+            StringBuilder errorLog = new StringBuilder();
 
             // このメソッドへのパラメータ
             OrientWorkerParam param = (OrientWorkerParam)e.Argument;
             String[] files = param.Files;
 
-            for (int i = 0; i <= files.Length - 1; i++)
+            for (int i = 0; i < files.Length; i++)
             {
                 String destFolderPath = Logic.IsPortrait(files[i], param.WhiteLength, param.WhiteCoef)
                     ? param.DestPortFolderPath
                     : param.DestLandFolderPath;
                 String destPath = destFolderPath + @"\" + Path.GetFileName(files[i]);
 
-                if (!fio.FileMove(files[i], destPath))
+                if (!_fio.FileMove(files[i], destPath))
                 {
-                    errorLog += "Move " + files[i] + " " + destPath + Environment.NewLine;
+                    errorLog.Append("Move " + files[i] + " " + destPath + Environment.NewLine);
                 }
 
                 // 進捗率の表示
@@ -101,21 +97,12 @@ namespace Cheetos
             }
 
             worker.ReportProgress(files.Length);      // ⇒ProgressChanged()
-            e.Result = errorLog;
+            e.Result = errorLog.ToString();
         }
 
         private void bkgWorkerOrient_RunWorkerCompleted(object sender, RunWorkerCompletedEventArgs e)
         {
-            if (e.Cancelled)
-            {
-                MessageBox.Show("キャンセルされました");
-                // この場合はe.Resultにはアクセスできない
-            }
-            else if (e.Error != null)
-            {
-                MessageBox.Show("エラーが発生しました[" + e.Error.Message + "]");
-            }
-            else
+            if (ShowWorkerCompletion(e))
             {
                 String result = e.Result.ToString();
                 if (result != String.Empty)

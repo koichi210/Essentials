@@ -18,7 +18,7 @@ namespace EventRecorder.Tests
     public class ProfileCompatibilityTests
     {
         // WinForms版(JsonFileStorage.Save = Newtonsoft.Json・インデント付き)が実際に書き出す形そのまま
-        private const String WinFormsProfileJson =
+        private const String _winFormsProfileJson =
             "{\n" +
             "  \"LoopCount\": \"3\",\n" +
             "  \"Events\": [\n" +
@@ -41,7 +41,7 @@ namespace EventRecorder.Tests
         {
             using (TempFolder temp = new TempFolder())
             {
-                temp.Write("a_macro.json", WinFormsProfileJson);
+                temp.Write("a_macro.json", _winFormsProfileJson);
                 temp.Write(@"sub\child.json", "{ \"LoopCount\": \"7\", \"Events\": [], \"Playlist\": [] }");
 
                 StaRunner.Run(() =>
@@ -52,21 +52,21 @@ namespace EventRecorder.Tests
                     Assert.AreEqual("a_macro.json", window.comboBox_Profile.SelectedItem);
                     Assert.AreEqual("3", window.textBox_Loop.Text);
 
-                    Assert.AreEqual(5, window.eventRows.Count);
-                    Assert.AreEqual("250", window.eventRows[0].Detail);
-                    Assert.AreEqual("X:638 Y:503", window.eventRows[1].Detail);
-                    Assert.AreEqual("ボタン", window.eventRows[1].Remarks);
-                    Assert.AreEqual("", window.eventRows[2].Remarks, "nullは空文字として読む(WinForms版のセルと同じ)");
-                    Assert.AreEqual("Key:A", window.eventRows[3].Detail);
+                    Assert.AreEqual(5, window.EventRows.Count);
+                    Assert.AreEqual("250", window.EventRows[0].Detail);
+                    Assert.AreEqual("X:638 Y:503", window.EventRows[1].Detail);
+                    Assert.AreEqual("ボタン", window.EventRows[1].Remarks);
+                    Assert.AreEqual("", window.EventRows[2].Remarks, "nullは空文字として読む(WinForms版のセルと同じ)");
+                    Assert.AreEqual("Key:A", window.EventRows[3].Detail);
                     Assert.AreEqual(5, window.dataGrid_Events.Items.Count, "KeyUp行も隠さず表示する(WinForms版 2026-09-28の修正と同じ)");
 
-                    Assert.AreEqual(2, window.playlistRows.Count);
-                    Assert.IsTrue(window.playlistRows[0].Enabled);
-                    Assert.AreEqual(@"sub\child.json", window.playlistRows[0].FileName);
-                    Assert.AreEqual("2", window.playlistRows[0].LoopCount, "読込時はファイル側のループ回数で上書きしない");
-                    Assert.AreEqual("5", window.playlistRows[1].LoopCount);
-                    CollectionAssert.Contains(window.playlistFileItems, "deleted.json", "消えたファイルも選択肢に残す");
-                    CollectionAssert.Contains(window.playlistFileItems, @"sub\child.json");
+                    Assert.AreEqual(2, window.PlaylistRows.Count);
+                    Assert.IsTrue(window.PlaylistRows[0].Enabled);
+                    Assert.AreEqual(@"sub\child.json", window.PlaylistRows[0].FileName);
+                    Assert.AreEqual("2", window.PlaylistRows[0].LoopCount, "読込時はファイル側のループ回数で上書きしない");
+                    Assert.AreEqual("5", window.PlaylistRows[1].LoopCount);
+                    CollectionAssert.Contains(window.PlaylistFileItems, "deleted.json", "消えたファイルも選択肢に残す");
+                    CollectionAssert.Contains(window.PlaylistFileItems, @"sub\child.json");
 
                     // プロファイルのモードが起動後もそのまま残る(WinForms版 2026-09-28のモード復元の修正と同じ)
                     Assert.IsTrue(window.radioButton_Playback.IsChecked == true);
@@ -74,8 +74,8 @@ namespace EventRecorder.Tests
                     Assert.IsTrue(window.checkBox_MinimizeOnPlay.IsChecked == true);
 
                     // 読込直後はCtrl+Zで読込前に戻せない
-                    Assert.IsFalse(window.eventsUndo.CanUndo);
-                    Assert.IsFalse(window.playlistUndo.CanUndo);
+                    Assert.IsFalse(window.EventsUndo.CanUndo);
+                    Assert.IsFalse(window.PlaylistUndo.CanUndo);
                 });
             }
         }
@@ -85,15 +85,15 @@ namespace EventRecorder.Tests
         {
             using (TempFolder temp = new TempFolder())
             {
-                temp.Write("source.json", WinFormsProfileJson);
+                temp.Write("source.json", _winFormsProfileJson);
                 String savedPath = temp.Combine("saved.json");
 
                 StaRunner.Run(() =>
                 {
                     MainWindow writer = new MainWindow(temp.Path);
-                    writer.eventRows[1].Remarks = "書き換えた";
-                    writer.eventRows.Add(EventRow.FromData("RIGHT_DOWN", "1", "2", "", "0", "追加"));
-                    writer.playlistRows[1].Enabled = true;
+                    writer.EventRows[1].Remarks = "書き換えた";
+                    writer.EventRows.Add(EventRow.FromData("RIGHT_DOWN", "1", "2", "", "0", "追加"));
+                    writer.PlaylistRows[1].Enabled = true;
                     writer.textBox_Loop.Text = "9";
                     writer.radioButton_Record.IsChecked = true;
                     String errorMessage;
@@ -106,8 +106,8 @@ namespace EventRecorder.Tests
                     String actual = Newtonsoft.Json.JsonConvert.SerializeObject(reader.BuildProfileFromGrids());
 
                     Assert.AreEqual(expected, actual);
-                    Assert.AreEqual("書き換えた", reader.eventRows[1].Remarks);
-                    Assert.AreEqual(6, reader.eventRows.Count);
+                    Assert.AreEqual("書き換えた", reader.EventRows[1].Remarks);
+                    Assert.AreEqual(6, reader.EventRows.Count);
                     Assert.IsTrue(reader.radioButton_Record.IsChecked == true);
                 });
 
@@ -139,10 +139,10 @@ namespace EventRecorder.Tests
                 StaRunner.Run(() =>
                 {
                     MainWindow window = new MainWindow(temp.Path);
-                    Assert.AreEqual(2, window.eventRows.Count);
-                    Assert.AreEqual("WAIT_MS", window.eventRows[0].Type);
-                    Assert.AreEqual("400", window.eventRows[0].Wait);
-                    Assert.AreEqual("0", window.eventRows[1].Wait);
+                    Assert.AreEqual(2, window.EventRows.Count);
+                    Assert.AreEqual("WAIT_MS", window.EventRows[0].Type);
+                    Assert.AreEqual("400", window.EventRows[0].Wait);
+                    Assert.AreEqual("0", window.EventRows[1].Wait);
                     // プロファイルにIsRecordModeが無ければ既定値(レコード)
                     Assert.IsTrue(window.radioButton_Record.IsChecked == true);
                 });
@@ -213,10 +213,10 @@ namespace EventRecorder.Tests
                 {
                     MainWindow window = new MainWindow(temp.Path);
                     Assert.IsTrue(window.radioButton_Record.IsChecked == true);
-                    Assert.AreEqual(0, window.eventRows.Count);
-                    Assert.AreEqual(2, window.playlistRows.Count);
-                    Assert.IsFalse(window.playlistRows[0].Enabled);
-                    Assert.AreEqual("1", window.playlistRows[0].LoopCount);
+                    Assert.AreEqual(0, window.EventRows.Count);
+                    Assert.AreEqual(2, window.PlaylistRows.Count);
+                    Assert.IsFalse(window.PlaylistRows[0].Enabled);
+                    Assert.AreEqual("1", window.PlaylistRows[0].LoopCount);
                     Assert.AreEqual("EventRecorder", window.Title);
                 });
             }

@@ -7,14 +7,14 @@ using System.Windows.Threading;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using StandardTemplate.Wpf.Tests;
 
-namespace othello.Tests
+namespace Othello.Tests
 {
     /// <summary>
     /// MainWindow（WinForms版Form1相当の、オセロ盤面のウィンドウ）のテスト。
     ///
     /// ⚠️ button_ReStart_Click / 遊び方 / バージョン情報 / 棋譜の保存・読込ダイアログは
     /// MessageBoxやファイルダイアログを出すため、テスト対象から除外する
-    /// (読込後の処理はLoadKihuTextで検証する)。
+    /// (読込後の処理はLoadKifuTextで検証する)。
     /// </summary>
     [TestClass]
     public class MainWindowTests
@@ -305,15 +305,15 @@ namespace othello.Tests
                 original.Initialize();
                 original.TryPut(2, 3);
                 original.TryPut(2, 2);
-                string text = Kihu.ToText(original.History);
+                string text = Kifu.ToText(original.History);
 
                 var window = new MainWindow();
-                Assert.IsTrue(window.LoadKihuText(text, false));
+                Assert.IsTrue(window.LoadKifuText(text, false));
                 Assert.AreEqual(2, window.GameMaster.History.Count);
                 Assert.AreEqual("黒の番 (黒:3 白:3)", window.label_Status.Text);
                 Assert.IsTrue(window.menuItem_Undo.IsEnabled);
 
-                Assert.IsFalse(window.LoadKihuText("でたらめ", false));
+                Assert.IsFalse(window.LoadKifuText("でたらめ", false));
                 window.Close();
             });
         }

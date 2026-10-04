@@ -4,6 +4,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using InputSim = InputSimulation.InputSimulator;
 using Keys = System.Windows.Forms.Keys;
 
 namespace EventRecorder
@@ -92,8 +93,8 @@ namespace EventRecorder
         // (PlayOneEventはEvent列でマウス/キーボードを判定するので、この場合Key列は再生時に無視される)
         public static Boolean IsKeyIgnoredOnMouseRow(String eventType, String keyValue, out String message)
         {
-            InputSimulation.InputSimulator.MouseStroke mouseStroke;
-            Boolean isMouseRow = Enum.TryParse<InputSimulation.InputSimulator.MouseStroke>(eventType, out mouseStroke);
+            InputSim.MouseStroke mouseStroke;
+            Boolean isMouseRow = Enum.TryParse<InputSim.MouseStroke>(eventType, out mouseStroke);
 
             if (isMouseRow && !String.IsNullOrEmpty(keyValue))
             {
@@ -124,8 +125,8 @@ namespace EventRecorder
                 return false;
             }
 
-            InputSimulation.InputSimulator.MouseStroke mouseStroke;
-            if (Enum.TryParse<InputSimulation.InputSimulator.MouseStroke>(type, out mouseStroke))
+            InputSim.MouseStroke mouseStroke;
+            if (Enum.TryParse<InputSim.MouseStroke>(type, out mouseStroke))
             {
                 int xValue, yValue;
                 if (!int.TryParse(x, out xValue) || !int.TryParse(y, out yValue))
@@ -138,8 +139,8 @@ namespace EventRecorder
                 return false;
             }
 
-            InputSimulation.InputSimulator.KeyboardStroke keyStroke;
-            if (Enum.TryParse<InputSimulation.InputSimulator.KeyboardStroke>(type, out keyStroke))
+            InputSim.KeyboardStroke keyStroke;
+            if (Enum.TryParse<InputSim.KeyboardStroke>(type, out keyStroke))
             {
                 Keys keyCode;
                 if (!Enum.TryParse<Keys>(key, out keyCode))

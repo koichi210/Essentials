@@ -12,18 +12,18 @@ namespace Mailer
     {
         // データ保存先はWinForms版Mailerと同じ(%LOCALAPPDATA%\Mailer\)。保存キーも同じにしてあるので、
         // WinForms版で保存したプロファイルをそのまま読める
-        private const String AppName = "Mailer";
-        private const String SettingFileName = "Mailer.json";
-        private static readonly String[] ProfileExtensions = { "*.json" };
+        private const String _appName = "Mailer";
+        private const String _settingFileName = "Mailer.json";
+        private static readonly String[] _profileExtensions = { "*.json" };
 
-        private const String MailUrl = @"https://mail.google.com/mail/?view=cm&fs=1";
+        private const String _mailUrl = @"https://mail.google.com/mail/?view=cm&fs=1";
 
-        private readonly String userDataFolder = UserDataLocation.GetUserDataFolder(AppName);
-        private readonly StcUtils util = new StcUtils();
-        private readonly StcFileInputOutput fio = new StcFileInputOutput();
+        private readonly String _userDataFolder = UserDataLocation.GetUserDataFolder(_appName);
+        private readonly StcUtils _util = new StcUtils();
+        private readonly StcFileInputOutput _fio = new StcFileInputOutput();
         internal WpfSaveRestore SaveRestore { get; } = new WpfSaveRestore();
 
-        private readonly ExecParam param = new ExecParam();
+        private readonly ExecParam _param = new ExecParam();
 
         private class ExecParam
         {
@@ -35,15 +35,15 @@ namespace Mailer
         public MainWindow()
         {
             InitializeComponent();
-            util.SetCurrentDirectory();
+            _util.SetCurrentDirectory();
             dateTimePicker_Calendar.SelectedDate = DateTime.Today;
 
             RegisterSettingItems();
-            SaveRestore.LoadOrDefault(Path.Combine(userDataFolder, SettingFileName));
-            WpfProfile.UpdateProfileList(comboBox_LoadSetting, ProfileExtensions, "", userDataFolder);
+            SaveRestore.LoadOrDefault(Path.Combine(_userDataFolder, _settingFileName));
+            WpfProfile.UpdateProfileList(comboBox_LoadSetting, _profileExtensions, "", _userDataFolder);
 
-            WpfDataFolderMenu.Attach(this, () => DataFolderMenu.ChangeDataFolder(AppName, userDataFolder,
-                (oldFolder, newFolder) => DataFolderMenu.MoveProfiles(oldFolder, newFolder, AppName)));
+            WpfDataFolderMenu.Attach(this, () => DataFolderMenu.ChangeDataFolder(_appName, _userDataFolder,
+                (oldFolder, newFolder) => DataFolderMenu.MoveProfiles(oldFolder, newFolder, _appName)));
         }
 
         internal void RegisterSettingItems()
@@ -64,17 +64,17 @@ namespace Mailer
             {
                 return;
             }
-            SaveRestore.Load(Path.Combine(userDataFolder, comboBox_LoadSetting.SelectedItem.ToString()));
+            SaveRestore.Load(Path.Combine(_userDataFolder, comboBox_LoadSetting.SelectedItem.ToString()));
         }
 
         private void button_SaveSetting_Click(object sender, RoutedEventArgs e)
         {
-            WpfProfile.SaveProfileWithDialog(fio, comboBox_LoadSetting, ProfileExtensions, SaveRestore.Save, userDataFolder, SettingFileName);
+            WpfProfile.SaveProfileWithDialog(_fio, comboBox_LoadSetting, _profileExtensions, SaveRestore.Save, _userDataFolder, _settingFileName);
         }
 
         private void button_OpenBrowse_Click(object sender, RoutedEventArgs e)
         {
-            if (!TryGetUIParam())
+            if (!TryGetUiParam())
             {
                 return;
             }
@@ -84,21 +84,21 @@ namespace Mailer
 
         private void button_OpenBrowse_OneWeek_Click(object sender, RoutedEventArgs e)
         {
-            if (!TryGetUIParam())
+            if (!TryGetUiParam())
             {
                 return;
             }
-            var offsets = Logic.GetDayOffsetList(param.CreateNum, checkBox_Reverse.IsChecked == true);
+            var offsets = Logic.GetDayOffsetList(_param.CreateNum, checkBox_Reverse.IsChecked == true);
             foreach (var offset in offsets)
             {
                 OpenBrowser(offset);
-                System.Threading.Thread.Sleep(param.IntervalMsec);
+                System.Threading.Thread.Sleep(_param.IntervalMsec);
             }
         }
 
         private void OpenBrowser(int daysOffset = 0)
         {
-            String browseUrl = MailUrl;
+            String browseUrl = _mailUrl;
             if (textBox_MailTo.Text != String.Empty)
             {
                 browseUrl += "&to=" + textBox_MailTo.Text;
@@ -114,7 +114,7 @@ namespace Mailer
 
             if (textBox_MailSubject.Text != String.Empty)
             {
-                DateTime userDate = param.UserDate.AddDays(daysOffset);
+                DateTime userDate = _param.UserDate.AddDays(daysOffset);
                 String chromeFormatText = textBox_MailSubject.Text.Replace(" ", "+");
                 browseUrl += "&su=" + Logic.ReplaceDatePlaceholders(chromeFormatText, userDate);
             }
@@ -124,24 +124,24 @@ namespace Mailer
                 browseUrl += "&body=" + textBox_MailBody.Text.Replace("\r\n", "%0D%0A").Replace(" ", "+");
             }
 
-            util.ExecuteProcess(textBox_BrowserPath.Text, browseUrl);
+            _util.ExecuteProcess(textBox_BrowserPath.Text, browseUrl);
         }
 
-        private Boolean TryGetUIParam()
+        private Boolean TryGetUiParam()
         {
-            if (!util.IsExistFileNameInEnvironment(textBox_BrowserPath.Text))
+            if (!_util.IsExistFileNameInEnvironment(textBox_BrowserPath.Text))
             {
                 MessageBox.Show("ファイルが存在しません" + Environment.NewLine + textBox_BrowserPath.Text);
                 return false;
             }
 
-            int.TryParse(textBox_CreateNum.Text, out param.CreateNum);
-            int.TryParse(textBox_IntervalMsec.Text, out param.IntervalMsec);
+            int.TryParse(textBox_CreateNum.Text, out _param.CreateNum);
+            int.TryParse(textBox_IntervalMsec.Text, out _param.IntervalMsec);
 
             // WinForms版のDateTimePickerは起動時刻の時分秒を持っていたので、それに合わせて今の時刻を付ける
             DateTime date = dateTimePicker_Calendar.SelectedDate ?? DateTime.Today;
             DateTime now = DateTime.Now;
-            param.UserDate = new DateTime(date.Year, date.Month, date.Day, now.Hour, now.Minute, now.Second, 0);
+            _param.UserDate = new DateTime(date.Year, date.Month, date.Day, now.Hour, now.Minute, now.Second, 0);
             return true;
         }
 
@@ -149,7 +149,7 @@ namespace Mailer
         {
             if (e.Key == Key.Enter)
             {
-                util.ExecutePath(textBox_BrowserPath.Text);
+                _util.ExecutePath(textBox_BrowserPath.Text);
             }
         }
 

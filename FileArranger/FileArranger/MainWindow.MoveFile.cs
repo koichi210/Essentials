@@ -31,12 +31,7 @@ namespace FileArranger
             // 移動元フォルダをリストアップ
             String[] files = Directory.GetFiles(mf_textBox_SourceDir.Text);
             mf_listBox_Target.Items.Clear();
-            List<String> names = new List<String>();
-            foreach (String file in files)
-            {
-                names.Add(GetDisplayName(file, mf_textBox_SourceDir.Text));
-            }
-            foreach (String fileName in SortedByName(names))
+            foreach (String fileName in GetSortedDisplayNames(files, mf_textBox_SourceDir.Text))
             {
                 mf_listBox_Target.Items.Add(fileName);
             }
@@ -55,7 +50,7 @@ namespace FileArranger
 
         private void mf_button_MoveFile_Click(object sender, RoutedEventArgs e)
         {
-            if (!fio.EnsureDirectory(mf_textBox_TargetDir.Text))
+            if (!_fio.EnsureDirectory(mf_textBox_TargetDir.Text))
             {
                 return;
             }
@@ -69,14 +64,12 @@ namespace FileArranger
 
             // WinForms版のBackgroundWorkerは実行中に再度RunWorkerAsyncすると例外になっていた。
             // WPF版でも同じ動作にするため、実行中なら何もしない(二重実行の防止)
-            if (bgWorkerMove.IsBusy)
+            if (_bgWorkerMove.IsBusy)
             {
                 return;
             }
 
-            progressBar.Maximum = selectedItems.Count;
-            progressBar.Minimum = 0;
-            progressBar.Value = 0;
+            ResetProgress(selectedItems.Count);
 
             // 別スレッドを非同期実行
             MoveFileWorkerParam param = new MoveFileWorkerParam
@@ -89,7 +82,7 @@ namespace FileArranger
                 param.TargetNames.Add(item.ToString());
             }
 
-            bgWorkerMove.RunWorkerAsync(param);   // ⇒bgWorkerMove_DoWork()
+            _bgWorkerMove.RunWorkerAsync(param);   // ⇒bgWorkerMove_DoWork()
         }
 
         private void mf_textBox_SourceDir_KeyDown(object sender, KeyEventArgs e)
@@ -109,14 +102,14 @@ namespace FileArranger
             {
                 String targetName = param.TargetNames[i];
                 String sourcePath = param.SourceDir + @"\" + targetName;
-                String targetPath = param.TargetDir + @"\" + fio.GetLastPathName(targetName);
+                String targetPath = param.TargetDir + @"\" + _fio.GetLastPathName(targetName);
 
                 // 移動先に同名のファイルがある場合は重複回避
                 // (targetPathはファイルパスなので、フォルダの有無しか見ないAvoidFolderNameConflictでは
                 //  同名ファイルの存在を検知できず、Move処理に失敗してしまう。AvoidFileNameConflictで
                 //  ファイル/フォルダ両方の存在をチェックしてリネームする)
-                util.AvoidFileNameConflict(ref targetPath, i);
-                fio.MoveDirectory(sourcePath, targetPath);
+                _util.AvoidFileNameConflict(ref targetPath, i);
+                _fio.MoveDirectory(sourcePath, targetPath);
 
                 worker.ReportProgress(i);      // ⇒ProgressChanged()
             }
@@ -130,9 +123,7 @@ namespace FileArranger
 
         private void bgWorkerMove_ProgressChanged(object sender, ProgressChangedEventArgs e)
         {
-            // 進捗率の表示
-            progressText.Text = e.ProgressPercentage + "/" + progressBar.Maximum + " 完了";
-            progressBar.Value = e.ProgressPercentage;
+            ShowProgress(e.ProgressPercentage);
         }
 
         private void bgWorkerMove_RunWorkerCompleted(object sender, RunWorkerCompletedEventArgs e)

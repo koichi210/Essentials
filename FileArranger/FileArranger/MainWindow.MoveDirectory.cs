@@ -50,7 +50,7 @@ namespace FileArranger
             if (selectedItems.Count > 0)
             {
                 String targetPath = md_textBox_SourceDir.Text + @"\" + selectedItems[0].ToString();
-                util.ExecutePath(targetPath);
+                _util.ExecutePath(targetPath);
             }
         }
 
@@ -61,7 +61,7 @@ namespace FileArranger
 
         private void md_button_Delete_Click(object sender, RoutedEventArgs e)
         {
-            if (!fio.EnsureDirectory(md_comboBox_TargetDir.Text))
+            if (!_fio.EnsureDirectory(md_comboBox_TargetDir.Text))
             {
                 return;
             }
@@ -92,7 +92,7 @@ namespace FileArranger
         // isMoveTopDir=trueなら最上位のフォルダごと、falseなら末端のフォルダだけを移動する
         private void MoveSelectedDirectories(Boolean isMoveTopDir)
         {
-            if (!fio.EnsureDirectory(md_comboBox_TargetDir.Text))
+            if (!_fio.EnsureDirectory(md_comboBox_TargetDir.Text))
             {
                 return;
             }
@@ -110,13 +110,13 @@ namespace FileArranger
                 String destTargetName;
                 if (isMoveTopDir)
                 {
-                    sourceTargetName = fio.GetFirstPathName(selectedItems[i].ToString());
+                    sourceTargetName = _fio.GetFirstPathName(selectedItems[i].ToString());
                     destTargetName = sourceTargetName;
                 }
                 else
                 {
                     sourceTargetName = selectedItems[i].ToString();
-                    destTargetName = fio.GetLastPathName(selectedItems[i].ToString());
+                    destTargetName = _fio.GetLastPathName(selectedItems[i].ToString());
                 }
 
                 String sourcePath = md_textBox_SourceDir.Text + @"\" + sourceTargetName;
@@ -129,9 +129,9 @@ namespace FileArranger
                 }
 
                 // 移動先にすでにフォルダがある場合は重複回避
-                util.AvoidFolderNameConflict(ref destPath, i);
+                _util.AvoidFolderNameConflict(ref destPath, i);
 
-                fio.MoveDirectory(sourcePath, destPath);
+                _fio.MoveDirectory(sourcePath, destPath);
             }
 
             // リストを更新
@@ -156,17 +156,12 @@ namespace FileArranger
                 scrollBarPos = scroller.VerticalOffset;
             }
             md_listBox_Listup.Items.Clear();
-            String[] dirs = Directory.GetDirectories(md_textBox_SourceDir.Text, "*", SearchOption.AllDirectories);
-            List<String> names = new List<String>();
-            foreach (String dir in dirs)
-            {
-                // フォルダ直下にファイルが1つでもあればリストアップ
-                if (Directory.EnumerateFiles(dir).Any())
-                {
-                    names.Add(GetDisplayName(dir, md_textBox_SourceDir.Text));
-                }
-            }
-            foreach (String name in SortedByName(names))
+            // フォルダ直下にファイルが1つでもあればリストアップ
+            String[] names = GetSortedDisplayNames(
+                Directory.GetDirectories(md_textBox_SourceDir.Text, "*", SearchOption.AllDirectories)
+                    .Where(dir => Directory.EnumerateFiles(dir).Any()),
+                md_textBox_SourceDir.Text);
+            foreach (String name in names)
             {
                 md_listBox_Listup.Items.Add(name);
             }
@@ -177,7 +172,7 @@ namespace FileArranger
                 md_listBox_Listup.UpdateLayout();
                 scroller.ScrollToVerticalOffset(scrollBarPos);
             }
-            md_label_TotalNum.Text = "フォルダ数：" + names.Count.ToString();
+            md_label_TotalNum.Text = "フォルダ数：" + names.Length.ToString();
         }
 
         // ListBox内部のScrollViewerを探す(テンプレート適用前はnull)

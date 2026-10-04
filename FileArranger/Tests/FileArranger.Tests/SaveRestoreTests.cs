@@ -442,6 +442,28 @@ namespace FileArranger.Tests
         }
 
         [TestMethod]
+        public void 旧キーRefrenceCandidateで保存された参照候補フォルダも読める()
+        {
+            // typo一括修正(キーもReferenceCandidateに変更)より前のWinForms版が書き出したプロファイル
+            string path = Path.Combine(tempDirectory, "legacy.json");
+            File.WriteAllText(path,
+                "{ \"Values\": {}, \"Lists\": { \"RefrenceCandidate|Value_\": [\"D:\\\\ref\\\\a\", \"D:\\\\ref\\\\b\"] }, \"CheckedStates\": {}, \"Grids\": {} }",
+                new UTF8Encoding(false));
+
+            StaRunner.Run(() =>
+            {
+                MainWindow window = NewWindow();
+                Assert.IsTrue(window.LoadProfile(path));
+                CollectionAssert.AreEqual(new[] { @"D:\ref\a", @"D:\ref\b" }, window.ReferenceCandidateFolders);
+
+                // 保存し直すと新キーで書かれ、新キーがあればそちらが優先される
+                string resaved = Path.Combine(tempDirectory, "resaved.json");
+                Assert.IsTrue(window.SaveProfile(resaved));
+                StringAssert.Contains(File.ReadAllText(resaved), "ReferenceCandidate|Value_");
+            });
+        }
+
+        [TestMethod]
         public void 起動時に既定の設定ファイルを読み込みプロファイル一覧の先頭も読み込む()
         {
             // WinForms版と同じく、FileArranger.jsonを読んだあと、プロファイル一覧の先頭が選ばれて読み込まれる

@@ -1,12 +1,12 @@
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
-namespace othello.Tests
+namespace Othello.Tests
 {
     /// <summary>
-    /// Kihu(棋譜のテキスト変換・読込)のテスト。C++版 CManager::GetKihu/GetKihuFile 相当。
+    /// Kifu(棋譜のテキスト変換・読込)のテスト。C++版 CManager::GetKifu/GetKifuFile 相当。
     /// </summary>
     [TestClass]
-    public class KihuTests
+    public class KifuTests
     {
         [TestMethod]
         public void ToTextは打った手を1手ずつ列と行と色で出力する()
@@ -16,7 +16,7 @@ namespace othello.Tests
             gm.TryPut(2, 3); // 黒
             gm.TryPut(2, 2); // 白
 
-            string text = Kihu.ToText(gm.History);
+            string text = Kifu.ToText(gm.History);
 
             StringAssert.Contains(text, "C.4 黒"); // (x=2,y=3) -> 列C(0=A,1=B,2=C), 行4(0-indexed3+1)
             StringAssert.Contains(text, "C.3 白"); // (x=2,y=2) -> 列C, 行3
@@ -30,10 +30,10 @@ namespace othello.Tests
             original.TryPut(2, 3);
             original.TryPut(2, 2);
             original.TryPut(4, 2);
-            string text = Kihu.ToText(original.History);
+            string text = Kifu.ToText(original.History);
 
             var replayed = new GameMaster();
-            bool ok = Kihu.TryReplay(text, replayed, out string errorMessage);
+            bool ok = Kifu.TryReplay(text, replayed, out string errorMessage);
 
             Assert.IsTrue(ok, errorMessage);
             Assert.AreEqual(original.CurrentTurn, replayed.CurrentTurn);
@@ -53,7 +53,7 @@ namespace othello.Tests
             var gm = new GameMaster();
             string text = "***** 棋譜 *****\n 1 : A.1 黒\n";
 
-            bool ok = Kihu.TryReplay(text, gm, out string errorMessage);
+            bool ok = Kifu.TryReplay(text, gm, out string errorMessage);
 
             Assert.IsFalse(ok);
             Assert.IsNotNull(errorMessage);
@@ -65,7 +65,7 @@ namespace othello.Tests
             var gm = new GameMaster();
             string text = "***** 棋譜 *****\nこれは無効な行\n 1 : C.4 黒\n";
 
-            bool ok = Kihu.TryReplay(text, gm, out string errorMessage);
+            bool ok = Kifu.TryReplay(text, gm, out string errorMessage);
 
             Assert.IsTrue(ok, errorMessage);
             Assert.AreEqual(1, gm.History.Count);

@@ -24,87 +24,87 @@ namespace EventRecorder
     //   MainWindow.Profile.cs     … プロファイル(JSON)の保存/読込
     public partial class MainWindow : Window
     {
-        private readonly StcUtils util = new StcUtils();
+        private readonly StcUtils _util = new StcUtils();
 
         // 記録中/再生中フラグ。UIスレッド(ボタンクリック・グローバルホットキー)と
         // 再生用バックグラウンドスレッド(Task.Run側)の両方から読み書きされるため、volatileにしている
-        private volatile Boolean isRecording = false;
-        private volatile Boolean isPlaying = false;
-        private volatile Boolean stopPlayRequested = false;
+        private volatile Boolean _isRecording;
+        private volatile Boolean _isPlaying;
+        private volatile Boolean _stopPlayRequested;
 
         // 実行中の再生スレッド(単発再生/プレイリスト実行のTask.Run)。終了時に停止を伝えた後、
         // 本当に止まるまで待つために持っておく(止まる前に終了すると、再生スレッドが閉店後の店内で動き回る)
-        private Task playbackTask;
+        private Task _playbackTask;
 
         // 終了処理(PrepareForExit)に入ったらtrue。以後は記録/再生を新しく始めない
-        private Boolean isExiting = false;
+        private Boolean _isExiting;
 
         // タイトルバーに表示する再生中のループ進捗(WinForms版と同じ。再生スレッドから書き込み、UIはUpdateTitleで読むだけ)
-        private int playbackOverallLoopNo = 0;
-        private int playbackOverallLoopMax = 0;
-        private int playbackInnerLoopNo = 0;
-        private int playbackInnerLoopMax = 0;
+        private int _playbackOverallLoopNo;
+        private int _playbackOverallLoopMax;
+        private int _playbackInnerLoopNo;
+        private int _playbackInnerLoopMax;
 
         // 直前のイベント時刻(記録の待機ms算出用)
-        private int lastEventTick = 0;
+        private int _lastEventTick;
 
         // 記録中/再生中にハイライトしている行のインデックス(-1ならハイライト無し)
-        private int highlightedEventRowIndex = -1;
+        private int _highlightedEventRowIndex = -1;
 
         // プレイリスト実行中にハイライトしている行(dataGrid_Playlist側)のインデックス
-        private int highlightedPlaylistRowIndex = -1;
+        private int _highlightedPlaylistRowIndex = -1;
 
         // 再生開始時のマウスカーソル位置(再生終了後に戻すため)。WinForms版と同じくCursor.Position(DPI非対応の座標)を使う
-        private System.Drawing.Point cursorPositionBeforePlay;
+        private System.Drawing.Point _cursorPositionBeforePlay;
 
         // 記録中に押下中のキー(OSのキーリピートによるKeyDown連発を抑制するため、
         // KeyUpが来るまで「押されている」とみなす)。記録セッションの開始のたびにクリアする
-        private readonly HashSet<Keys> pressedKeys = new HashSet<Keys>();
+        private readonly HashSet<Keys> _pressedKeys = new HashSet<Keys>();
 
-        // ホットキーの押下状態。記録セッションとは独立して管理する(pressedKeysをClearしても消えないように)
-        private readonly HashSet<Keys> pressedHotkeys = new HashSet<Keys>();
+        // ホットキーの押下状態。記録セッションとは独立して管理する(_pressedKeysをClearしても消えないように)
+        private readonly HashSet<Keys> _pressedHotkeys = new HashSet<Keys>();
 
         // タイトルバーの基本文字列。記録中/再生中はここに状態を追記する
-        private const String BaseTitle = "EventRecorder";
+        private const String _baseTitle = "EventRecorder";
 
         // 記録/再生の切り替えホットキー。設定画面([[HotkeySettingsWindow]]、システムメニューから開く)で変更でき、
         // 変更内容はEventRecorder.json(WinForms版と共通のアプリ設定ファイル)に保存される
-        private Keys hotkeyToggleRecord = HotkeyDefaults.Record;
-        private Keys hotkeyTogglePlay = HotkeyDefaults.Play;
+        private Keys _hotkeyToggleRecord = HotkeyDefaults.Record;
+        private Keys _hotkeyTogglePlay = HotkeyDefaults.Play;
 
         // キーバインド設定画面を開いている間だけtrueにする(テストで押したキーがホットキーとして誤発動しないように)
-        private Boolean isHotkeySettingsOpen = false;
+        private Boolean _isHotkeySettingsOpen;
 
         // 記録したがまだグリッドに反映していない行(フックのコールバックを描画待ちで塞がないよう、
         // 一旦ここに貯めてタイマーでまとめて反映する)
-        private readonly List<String[]> pendingRows = new List<String[]>();
-        private readonly DispatcherTimer gridFlushTimer;
+        private readonly List<String[]> _pendingRows = new List<String[]>();
+        private readonly DispatcherTimer _gridFlushTimer;
 
         // マウスカーソル座標の常時表示用タイマー
-        private readonly DispatcherTimer mousePosTimer;
+        private readonly DispatcherTimer _mousePosTimer;
 
         // マクロ・プレイリストのユーザーデータ置き場。WinForms版と同じ%LOCALAPPDATA%\EventRecorder\(既定)を使うので、
         // WinForms版で保存したプロファイル・設定をそのまま読める([[_Common\UserDataLocation.cs]])
-        private const String AppName = "EventRecorder";
-        private readonly String userDataFolder;
+        private const String _appName = "EventRecorder";
+        private readonly String _userDataFolder;
 
         // グローバルフック(キーボード/マウス)を張ってよいか。テスト用のコンストラクタではfalseにして、
         // このPCのキーボード/マウスに一切影響しないようにする
-        private readonly Boolean isHookEnabled;
+        private readonly Boolean _isHookEnabled;
 
         // レコード表・プレイリストの中身(1要素=1行)と、それぞれのUndo/Redo(WinForms版のDataGridViewEx相当)
-        internal readonly GridRowCollection<EventRow> eventRows = new GridRowCollection<EventRow>();
-        internal readonly GridRowCollection<PlaylistRow> playlistRows = new GridRowCollection<PlaylistRow>();
-        internal readonly GridUndoRedo<EventRow> eventsUndo;
-        internal readonly GridUndoRedo<PlaylistRow> playlistUndo;
+        internal GridRowCollection<EventRow> EventRows { get; } = new GridRowCollection<EventRow>();
+        internal GridRowCollection<PlaylistRow> PlaylistRows { get; } = new GridRowCollection<PlaylistRow>();
+        internal GridUndoRedo<EventRow> EventsUndo { get; }
+        internal GridUndoRedo<PlaylistRow> PlaylistUndo { get; }
 
         // プレイリストの設定ファイル列のプルダウンの選択肢(comboBox_Profileの一覧のコピー)
-        internal readonly ObservableCollection<String> playlistFileItems = new ObservableCollection<String>();
+        internal ObservableCollection<String> PlaylistFileItems { get; } = new ObservableCollection<String>();
 
         // 起動時に復元する左右分割の境界線位置(レイアウトが確定するLoadedで適用する)
-        private int pendingSplitterDistance = 0;
+        private int _pendingSplitterDistance;
 
-        public MainWindow() : this(UserDataLocation.GetUserDataFolder(AppName), true)
+        public MainWindow() : this(UserDataLocation.GetUserDataFolder(_appName), true)
         {
         }
 
@@ -116,58 +116,55 @@ namespace EventRecorder
         private MainWindow(String dataFolder, Boolean enableHooks)
         {
             InitializeComponent();
-            userDataFolder = dataFolder;
-            isHookEnabled = enableHooks;
+            _userDataFolder = dataFolder;
+            _isHookEnabled = enableHooks;
 
-            Resources["PlaylistFileItems"] = playlistFileItems;
-            dataGrid_Events.ItemsSource = eventRows;
-            dataGrid_Playlist.ItemsSource = playlistRows;
-            eventsUndo = new GridUndoRedo<EventRow>(eventRows);
-            playlistUndo = new GridUndoRedo<PlaylistRow>(playlistRows);
-            playlistUndo.RowCellChanged += PlaylistRow_CellChanged;
+            Resources["PlaylistFileItems"] = PlaylistFileItems;
+            dataGrid_Events.ItemsSource = EventRows;
+            dataGrid_Playlist.ItemsSource = PlaylistRows;
+            EventsUndo = new GridUndoRedo<EventRow>(EventRows);
+            PlaylistUndo = new GridUndoRedo<PlaylistRow>(PlaylistRows);
+            PlaylistUndo.RowCellChanged += PlaylistRow_CellChanged;
 
             // ウィンドウサイズ+境界線位置+ホットキーを、前回終了時の状態(EventRecorder.json、無ければ既定値のまま)で復元する
             LoadAppSettings();
 
-            util.SetCurrentDirectory();
+            _util.SetCurrentDirectory();
 
-            gridFlushTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(150) };
-            gridFlushTimer.Tick += (s, e) => FlushPendingRows();
+            _gridFlushTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(150) };
+            _gridFlushTimer.Tick += (s, e) => FlushPendingRows();
 
             // マウスカーソルの座標を起動中ずっと表示しておく(記録/再生の状態と関係なく常時更新)
-            mousePosTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(100) };
-            mousePosTimer.Tick += (s, e) =>
+            _mousePosTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(100) };
+            _mousePosTimer.Tick += (s, e) =>
             {
                 System.Drawing.Point p = System.Windows.Forms.Cursor.Position;
                 label_MousePos.Text = "Mouse: " + p.X + ", " + p.Y;
             };
-            mousePosTimer.Start();
+            _mousePosTimer.Start();
 
-            // キーボードフックはホットキー監視のためアプリ起動中ずっと張っておく。
-            // マウスフックは記録中だけでよいのでToggleRecording側で開始/停止する
-            if (isHookEnabled)
+            if (_isHookEnabled)
             {
+                // キーボードフックはホットキー監視のためアプリ起動中ずっと張っておく。
+                // マウスフックは記録中だけでよいのでToggleRecording側で開始/停止する
                 GlobalHook.KeyboardHook.AddEvent(OnKeyboardEvent);
                 GlobalHook.KeyboardHook.Start();
-            }
 
-            Closing += MainWindow_Closing;
-            Closed += MainWindow_Closed;
-
-            // 画面ロック・サインイン(セッション切替)と、シャットダウン/再起動/サインアウトの通知。
-            // テスト用のコンストラクタ(フック無し)では、テスト実行中のPCの状態に反応しないよう購読しない
-            if (isHookEnabled)
-            {
+                // 画面ロック・サインイン(セッション切替)と、シャットダウン/再起動/サインアウトの通知。
+                // テスト用のコンストラクタ(フック無し)では、テスト実行中のPCの状態に反応しないよう購読しない
                 Microsoft.Win32.SystemEvents.SessionSwitch += SystemEvents_SessionSwitch;
                 if (Application.Current != null)
                 {
                     Application.Current.SessionEnding += Application_SessionEnding;
                 }
             }
+
+            Closing += MainWindow_Closing;
+            Closed += MainWindow_Closed;
             Loaded += MainWindow_Loaded;
             StateChanged += (s, e) => UpdateTaskbarVisibility();
 
-            // userDataFolder配下のプロファイル一覧をコンボボックスに表示する。一覧の先頭が選ばれ、
+            // _userDataFolder配下のプロファイル一覧をコンボボックスに表示する。一覧の先頭が選ばれ、
             // そのまま読み込まれる(=起動時は一覧の先頭を読み込む。WinForms版と同じ)
             UpdateProfileListAll("");
 
@@ -177,7 +174,7 @@ namespace EventRecorder
 
             // プレイリストが空のままだと使うたびに毎回「行の追加」を押す羽目になるため、起動時点で空行を2行用意しておく。
             // ただし、読み込んだプロファイルに既にプレイリストの中身が入っていた場合は、その内容を優先する
-            if (playlistRows.Count == 0)
+            if (PlaylistRows.Count == 0)
             {
                 for (int i = 0; i < 2; i++)
                 {
@@ -203,9 +200,9 @@ namespace EventRecorder
             // 境界線位置(左側パネルの幅)を復元する。WinForms版のSplitContainer(FixedPanel=None)と同じく、
             // ウィンドウのサイズ変更では左右が比率を保って伸び縮みするよう、比率(*)で指定する
             double total = grid_Split.ActualWidth - 4;
-            if (pendingSplitterDistance > 0 && total > 0)
+            if (_pendingSplitterDistance > 0 && total > 0)
             {
-                double left = Math.Max(column_SplitLeft.MinWidth, Math.Min(pendingSplitterDistance, total - column_SplitRight.MinWidth));
+                double left = Math.Max(column_SplitLeft.MinWidth, Math.Min(_pendingSplitterDistance, total - column_SplitRight.MinWidth));
                 if (left > 0 && total - left > 0)
                 {
                     column_SplitLeft.Width = new GridLength(left, GridUnitType.Star);
@@ -220,7 +217,7 @@ namespace EventRecorder
         // 今選択中のモードのグループボックスだけ背景色をハイライトする。
         // ボタンをDisableにする方式は分かりにくいという理由でやめ、色分けだけにした(WinForms版と同じ)。
         // 実行中の行のハイライト(LightYellow)と被らないよう、別の色にしてある
-        private static readonly Brush ModeHighlightBrush = CreateFrozenBrush(Color.FromRgb(205, 255, 230));
+        private static readonly Brush _modeHighlightBrush = CreateFrozenBrush(Color.FromRgb(205, 255, 230));
 
         private static Brush CreateFrozenBrush(Color color)
         {
@@ -236,8 +233,8 @@ namespace EventRecorder
 
         private void UpdateModeHighlight()
         {
-            panel_Playback.Background = radioButton_Playback.IsChecked == true ? ModeHighlightBrush : Brushes.Transparent;
-            panel_Record.Background = radioButton_Record.IsChecked == true ? ModeHighlightBrush : Brushes.Transparent;
+            panel_Playback.Background = radioButton_Playback.IsChecked == true ? _modeHighlightBrush : Brushes.Transparent;
+            panel_Record.Background = radioButton_Record.IsChecked == true ? _modeHighlightBrush : Brushes.Transparent;
         }
 
         // グループボックス自体(枠・余白部分)や、グループボックス内のコントロールをクリックしたら、
@@ -282,16 +279,16 @@ namespace EventRecorder
         }
 
         // Ctrl+F/Ctrl+Hのダイアログは、既に開いていれば作り直さずモードだけ切り替えて前面に出す(重複オープン防止)
-        private FindReplaceWindow findReplaceWindow;
+        private FindReplaceWindow _findReplaceWindow;
 
         private void ShowFindReplaceDialog(FindReplaceMode mode)
         {
-            if (isRecording || isPlaying)
+            if (_isRecording || _isPlaying)
             {
                 return;
             }
 
-            if (findReplaceWindow == null)
+            if (_findReplaceWindow == null)
             {
                 String initialText = "";
                 if (mode == FindReplaceMode.Find)
@@ -303,15 +300,15 @@ namespace EventRecorder
                     }
                 }
 
-                findReplaceWindow = new FindReplaceWindow(dataGrid_Events, eventRows, eventsUndo, mode, initialText);
-                findReplaceWindow.Owner = this;
-                findReplaceWindow.Closed += (s, e) => findReplaceWindow = null;
-                findReplaceWindow.Show();
+                _findReplaceWindow = new FindReplaceWindow(dataGrid_Events, EventRows, EventsUndo, mode, initialText);
+                _findReplaceWindow.Owner = this;
+                _findReplaceWindow.Closed += (s, e) => _findReplaceWindow = null;
+                _findReplaceWindow.Show();
             }
             else
             {
-                findReplaceWindow.SetMode(mode);
-                findReplaceWindow.Activate();
+                _findReplaceWindow.SetMode(mode);
+                _findReplaceWindow.Activate();
             }
         }
 
@@ -329,16 +326,16 @@ namespace EventRecorder
 
         // 「データ保存先を変更」はWpfDataFolderMenu([[_Common/Wpf/WpfDataFolderMenu.cs]])が0x1000で追加する。
         // EventRecorder独自の項目のIDはWinForms版と同じ0x1010(16の倍数かつ0xF000未満)
-        private const int SysMenuId_ChangeHotkeys = 0x1010;
+        private const int _sysMenuIdChangeHotkeys = 0x1010;
 
         private void AppendHotkeyMenu()
         {
             IntPtr hWnd = new WindowInteropHelper(this).Handle;
-            AppendMenu(GetSystemMenu(hWnd, false), MF_STRING, (UIntPtr)SysMenuId_ChangeHotkeys, "キーバインドを設定(&K)...");
+            AppendMenu(GetSystemMenu(hWnd, false), MF_STRING, (UIntPtr)_sysMenuIdChangeHotkeys, "キーバインドを設定(&K)...");
 
             HwndSource.FromHwnd(hWnd).AddHook((IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref Boolean handled) =>
             {
-                if (msg == WM_SYSCOMMAND && (wParam.ToInt64() & 0xFFF0) == SysMenuId_ChangeHotkeys)
+                if (msg == WM_SYSCOMMAND && (wParam.ToInt64() & 0xFFF0) == _sysMenuIdChangeHotkeys)
                 {
                     handled = true;
                     // システムメニューのメッセージ処理中にモーダルダイアログを開かないよう、処理が戻ってから開く
@@ -351,31 +348,25 @@ namespace EventRecorder
         // キーバインド設定画面を開き、「保存」で閉じられたら現在有効なホットキーとEventRecorder.jsonの両方を更新する
         private void ChangeHotkeys()
         {
-            if (isRecording || isPlaying)
+            if (WarnIfBusy("EventRecorder - キーバインド設定"))
             {
-                MessageBox.Show(
-                    this,
-                    "記録中/再生中は変更できないよ。停止してから試してね",
-                    "EventRecorder - キーバインド設定",
-                    MessageBoxButton.OK,
-                    MessageBoxImage.Warning);
                 return;
             }
 
             // 設定画面を開いている間は、テキストボックスに試しに入力したキーがグローバルフック(OnKeyboardEvent)側にも
             // 同時に届いて、記録/再生のホットキーとして誤発動してしまう。その間はOnKeyboardEventの処理そのものを止める
-            isHotkeySettingsOpen = true;
+            _isHotkeySettingsOpen = true;
             try
             {
-                HotkeySettingsWindow window = new HotkeySettingsWindow(hotkeyToggleRecord, hotkeyTogglePlay);
+                HotkeySettingsWindow window = new HotkeySettingsWindow(_hotkeyToggleRecord, _hotkeyTogglePlay);
                 window.Owner = this;
                 if (window.ShowDialog() != true)
                 {
                     return;
                 }
 
-                hotkeyToggleRecord = window.RecordHotkey;
-                hotkeyTogglePlay = window.PlayHotkey;
+                _hotkeyToggleRecord = window.RecordHotkey;
+                _hotkeyTogglePlay = window.PlayHotkey;
 
                 if (!SaveAppSettings())
                 {
@@ -389,37 +380,48 @@ namespace EventRecorder
             }
             finally
             {
-                isHotkeySettingsOpen = false;
+                _isHotkeySettingsOpen = false;
             }
         }
 
+        // 記録中/再生中なら設定を変更できない旨を警告してtrueを返す(システムメニューからの設定変更共通)
+        private Boolean WarnIfBusy(String caption)
+        {
+            if (!_isRecording && !_isPlaying)
+            {
+                return false;
+            }
+
+            MessageBox.Show(
+                this,
+                "記録中/再生中は変更できないよ。停止してから試してね",
+                caption,
+                MessageBoxButton.OK,
+                MessageBoxImage.Warning);
+            return true;
+        }
+
         // 保存先フォルダを選び直し、exe直下のポインタファイル(DataFolder.txt)を書き換える。
-        // 実行中のuserDataFolderはその場では切り替えない(変更は次回起動時から反映される、WinForms版と同じ)
+        // 実行中の_userDataFolderはその場では切り替えない(変更は次回起動時から反映される、WinForms版と同じ)
         private void ChangeDataFolder()
         {
-            if (isRecording || isPlaying)
+            if (WarnIfBusy(_appName + " - データ保存先の変更"))
             {
-                MessageBox.Show(
-                    this,
-                    "記録中/再生中は変更できないよ。停止してから試してね",
-                    AppName + " - データ保存先の変更",
-                    MessageBoxButton.OK,
-                    MessageBoxImage.Warning);
                 return;
             }
 
             // EventRecorder.json(アプリの設定ファイル、プロファイルではない)は引っ越し対象から外す
-            DataFolderMenu.ChangeDataFolder(AppName, userDataFolder,
-                (oldFolder, newFolder) => DataFolderMenu.MoveProfiles(oldFolder, newFolder, AppName, IsNonProfileSettingFile));
+            DataFolderMenu.ChangeDataFolder(_appName, _userDataFolder,
+                (oldFolder, newFolder) => DataFolderMenu.MoveProfiles(oldFolder, newFolder, _appName, IsNonProfileSettingFile));
         }
 
         // *******************************************************************************
         // 最小化時のタスクトレイ格納
 
-        private System.Windows.Forms.NotifyIcon notifyIcon_Tray;
+        private System.Windows.Forms.NotifyIcon _notifyIconTray;
 
         // タスクトレイに格納するためにウィンドウを隠している最中か
-        private Boolean isHiddenToTray = false;
+        private Boolean _isHiddenToTray;
 
         // checkBox_MinimizeOnPlay(実行時にウィンドウを最小化する)がオンかつ最小化中の時だけ、
         // タスクバーから消してシステムトレイアイコンを表示する(WinForms版と同じ)。
@@ -427,28 +429,25 @@ namespace EventRecorder
         // タスクバーから消す代わりにウィンドウ自体を隠す(Hide)方式にしている
         private void UpdateTaskbarVisibility()
         {
-            Boolean shouldHideFromTaskbar = checkBox_MinimizeOnPlay.IsChecked == true
-                && WindowState == WindowState.Minimized;
-
-            if (shouldHideFromTaskbar)
+            if (checkBox_MinimizeOnPlay.IsChecked == true && WindowState == WindowState.Minimized)
             {
                 EnsureTrayIcon();
-                notifyIcon_Tray.Visible = true;
-                if (!isHiddenToTray)
+                _notifyIconTray.Visible = true;
+                if (!_isHiddenToTray)
                 {
-                    isHiddenToTray = true;
+                    _isHiddenToTray = true;
                     Hide();
                 }
             }
             else
             {
-                if (notifyIcon_Tray != null)
+                if (_notifyIconTray != null)
                 {
-                    notifyIcon_Tray.Visible = false;
+                    _notifyIconTray.Visible = false;
                 }
-                if (isHiddenToTray)
+                if (_isHiddenToTray)
                 {
-                    isHiddenToTray = false;
+                    _isHiddenToTray = false;
                     Show();
                 }
             }
@@ -461,7 +460,7 @@ namespace EventRecorder
 
         private void EnsureTrayIcon()
         {
-            if (notifyIcon_Tray != null)
+            if (_notifyIconTray != null)
             {
                 return;
             }
@@ -470,7 +469,7 @@ namespace EventRecorder
             menu.Items.Add("元に戻す(&R)", null, (s, e) => RestoreFromTray());
             menu.Items.Add("終了(&X)", null, (s, e) => Close());
 
-            notifyIcon_Tray = new System.Windows.Forms.NotifyIcon
+            _notifyIconTray = new System.Windows.Forms.NotifyIcon
             {
                 Text = "EventRecorder",
                 ContextMenuStrip = menu,
@@ -480,14 +479,14 @@ namespace EventRecorder
             {
                 using (Stream stream = Application.GetResourceStream(new Uri("pack://application:,,,/EventRecorder.ico")).Stream)
                 {
-                    notifyIcon_Tray.Icon = new System.Drawing.Icon(stream);
+                    _notifyIconTray.Icon = new System.Drawing.Icon(stream);
                 }
             }
             catch (IOException)
             {
-                notifyIcon_Tray.Icon = System.Drawing.SystemIcons.Application;
+                _notifyIconTray.Icon = System.Drawing.SystemIcons.Application;
             }
-            notifyIcon_Tray.DoubleClick += (s, e) => RestoreFromTray();
+            _notifyIconTray.DoubleClick += (s, e) => RestoreFromTray();
         }
 
         // トレイアイコンのダブルクリック/右クリックメニュー「元に戻す」共通の復元処理
@@ -520,26 +519,26 @@ namespace EventRecorder
         // ④設定を保存 ⑤タイマー・フックを片付ける。2回目以降の呼び出しは何もしない
         internal void PrepareForExit()
         {
-            if (isExiting)
+            if (_isExiting)
             {
                 return;
             }
-            isExiting = true;
+            _isExiting = true;
 
             // ①止めている最中にホットキーで記録/再生が再開されないよう、先にキーボードフックを外す
             GlobalHook.KeyboardHook.Stop();
 
             // ②記録中なら、溜まっている行を表へ反映してから止める(マウスフックもここで外れる)
-            if (isRecording)
+            if (_isRecording)
             {
                 ToggleRecording();
             }
 
             // ③再生中なら停止を伝え、再生スレッドが後片付け(押しっぱなしのキーを離す等)を終えるまで待つ
-            if (isPlaying)
+            if (_isPlaying)
             {
-                stopPlayRequested = true;
-                Task task = playbackTask;
+                _stopPlayRequested = true;
+                Task task = _playbackTask;
                 if (task != null)
                 {
                     SessionGuard.WaitWhilePumping(() => task.IsCompleted, PumpDispatcher, SessionGuard.ExitWaitTimeoutMs);
@@ -550,8 +549,8 @@ namespace EventRecorder
             SaveAppSettings();
 
             // ⑤
-            gridFlushTimer.Stop();
-            mousePosTimer.Stop();
+            _gridFlushTimer.Stop();
+            _mousePosTimer.Stop();
             GlobalHook.MouseHook.Stop();
             GlobalHook.KeyboardHook.Stop();
         }
@@ -576,7 +575,7 @@ namespace EventRecorder
         private void SystemEvents_SessionSwitch(object sender, Microsoft.Win32.SessionSwitchEventArgs e)
         {
             SessionChange change = SessionGuard.Classify(e.Reason);
-            if (isExiting || Dispatcher.HasShutdownStarted)
+            if (_isExiting || Dispatcher.HasShutdownStarted)
             {
                 return;
             }
@@ -593,7 +592,7 @@ namespace EventRecorder
 
         internal void HandleSessionChange(SessionChange change)
         {
-            if (isExiting)
+            if (_isExiting)
             {
                 return;
             }
@@ -616,17 +615,17 @@ namespace EventRecorder
         //   「押しっぱなし」扱いのキーが残るため、ここで記録を終える(記録済みの行はそのまま残る)
         private void SuspendForSessionLock()
         {
-            if (isRecording)
+            if (_isRecording)
             {
                 ToggleRecording();
             }
 
-            if (isPlaying)
+            if (_isPlaying)
             {
-                stopPlayRequested = true;
+                _stopPlayRequested = true;
             }
 
-            pressedHotkeys.Clear();
+            _pressedHotkeys.Clear();
         }
 
         // ロック解除・サインインでこのセッションの画面に戻ってきた時の立て直し(WinForms版と同じ)。
@@ -635,9 +634,9 @@ namespace EventRecorder
         //   (ロック解除直後は画面の再描画などでUIスレッドが詰まりやすい)。外れたかどうかは知る手段が無いので張り直す
         private void ResumeAfterSessionUnlock()
         {
-            pressedHotkeys.Clear();
+            _pressedHotkeys.Clear();
 
-            if (!isHookEnabled)
+            if (!_isHookEnabled)
             {
                 return;
             }
@@ -666,29 +665,28 @@ namespace EventRecorder
             }
 
             // 残しておくと、終了後もタスクトレイにアイコンの抜け殻が残ってしまう
-            if (notifyIcon_Tray != null)
+            if (_notifyIconTray != null)
             {
-                notifyIcon_Tray.Visible = false;
-                notifyIcon_Tray.Dispose();
-                notifyIcon_Tray = null;
+                _notifyIconTray.Visible = false;
+                _notifyIconTray.Dispose();
+                _notifyIconTray = null;
             }
         }
 
         // アプリ本体の設定をまとめて保存するファイル名(WinForms版と同じ)。プロファイル一覧には出さない
-        private const String AppSettingsFileName = "EventRecorder.json";
+        private const String _appSettingsFileName = "EventRecorder.json";
 
-        // userDataFolder直下にプロファイルと混在して置かれる、アプリ自体の設定ファイルかどうか
+        // _userDataFolder直下にプロファイルと混在して置かれる、アプリ自体の設定ファイルかどうか
         private static Boolean IsNonProfileSettingFile(String filePath)
         {
-            String fileName = Path.GetFileName(filePath);
-            return String.Equals(fileName, AppSettingsFileName, StringComparison.OrdinalIgnoreCase);
+            return String.Equals(Path.GetFileName(filePath), _appSettingsFileName, StringComparison.OrdinalIgnoreCase);
         }
 
         // 起動時、前回終了時のウィンドウサイズ+境界線位置+ホットキーを復元する。保存ファイルが
         // 無い/壊れている場合は何もしない(XAML既定のサイズ・境界線位置、HotkeyDefaultsのままで動く)
         private void LoadAppSettings()
         {
-            AppSettings settings = JsonFileStorage.Load<AppSettings>(Path.Combine(userDataFolder, AppSettingsFileName));
+            AppSettings settings = JsonFileStorage.Load<AppSettings>(Path.Combine(_userDataFolder, _appSettingsFileName));
             if (settings == null)
             {
                 return;
@@ -703,17 +701,17 @@ namespace EventRecorder
 
             if (settings.SplitterDistance > 0)
             {
-                pendingSplitterDistance = settings.SplitterDistance;
+                _pendingSplitterDistance = settings.SplitterDistance;
             }
 
             if (settings.RecordHotkey != Keys.None)
             {
-                hotkeyToggleRecord = settings.RecordHotkey;
+                _hotkeyToggleRecord = settings.RecordHotkey;
             }
 
             if (settings.PlayHotkey != Keys.None)
             {
-                hotkeyTogglePlay = settings.PlayHotkey;
+                _hotkeyTogglePlay = settings.PlayHotkey;
             }
         }
 
@@ -734,20 +732,20 @@ namespace EventRecorder
 
             int splitterDistance = column_SplitLeft.ActualWidth > 0
                 ? (int)Math.Round(column_SplitLeft.ActualWidth)
-                : pendingSplitterDistance;
+                : _pendingSplitterDistance;
 
             AppSettings settings = new AppSettings
             {
                 Width = (int)Math.Round(sizeToSave.Width),
                 Height = (int)Math.Round(sizeToSave.Height),
                 SplitterDistance = splitterDistance,
-                RecordHotkey = hotkeyToggleRecord,
-                PlayHotkey = hotkeyTogglePlay,
+                RecordHotkey = _hotkeyToggleRecord,
+                PlayHotkey = _hotkeyTogglePlay,
             };
 
             try
             {
-                JsonFileStorage.Save(Path.Combine(userDataFolder, AppSettingsFileName), settings);
+                JsonFileStorage.Save(Path.Combine(_userDataFolder, _appSettingsFileName), settings);
                 return true;
             }
             catch (Exception)

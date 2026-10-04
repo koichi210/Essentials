@@ -2,7 +2,7 @@ using System;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 
-namespace othello
+namespace Othello
 {
     /// <summary>
     /// BoardRenderer.Canvas(System.Drawing.Bitmap)をWPFのImageに表示できるBitmapSourceへ変換する。

@@ -15,20 +15,20 @@ namespace EventRecorder
         // プレイリスト: 複数の設定ファイルを指定した順番で連続再生する
 
         // 右クリックしたセルの行(プレイリスト側)。行が無い場所を右クリックした場合は-1(末尾扱い)
-        private int contextMenuPlaylistRowIndex = -1;
+        private int _contextMenuPlaylistRowIndex = -1;
 
         // trueなら、実行チェックがONの行だけをプレイリストに表示する
-        private Boolean showOnlyCheckedPlaylistRows = false;
+        private Boolean _showOnlyCheckedPlaylistRows;
 
         // UpdatePlaylistMissingFileHighlightsの非同期化用の世代カウンタ。
         // File.Existsチェック(バックグラウンド)が終わる前に別のプロファイルへ切り替えられた場合、
         // 古い結果をグリッドへ適用してしまわないようにするため
-        private int playlistHighlightGeneration = 0;
+        private int _playlistHighlightGeneration;
 
         // プロファイル読込でプレイリストの行を作っている最中はtrue(1行ごとのファイル存在チェック・ループ回数の読み取りを抑止する)
-        private Boolean isLoadingPlaylist = false;
+        private Boolean _isLoadingPlaylist;
 
-        // プレイリストの設定ファイル列のプルダウン(playlistFileItems)を、comboBox_Profileと同じ内容に揃える。
+        // プレイリストの設定ファイル列のプルダウン(PlaylistFileItems)を、comboBox_Profileと同じ内容に揃える。
         // ファイルシステムへの問い合わせはcomboBox_Profile側だけで行い、その結果をそのままコピーする。
         // 既にプレイリストの行が参照しているファイル名は、実体が削除されて一覧から消えていても残しておく。
         //
@@ -36,31 +36,28 @@ namespace EventRecorder
         // Clear→全件Addではなく、差分(消えた項目の削除・増えた項目の挿入)だけで更新する
         private void SyncPlaylistFileItems()
         {
-            List<String> desired = new List<String>();
-            foreach (object item in comboBox_Profile.Items)
-            {
-                desired.Add(Convert.ToString(item));
-            }
+            List<String> desired = comboBox_Profile.Items.Cast<object>().Select(item => Convert.ToString(item)).ToList();
+            HashSet<String> desiredSet = new HashSet<String>(desired);
 
-            foreach (PlaylistRow row in playlistRows)
+            foreach (PlaylistRow row in PlaylistRows)
             {
-                if (!String.IsNullOrEmpty(row.FileName) && !desired.Contains(row.FileName))
+                if (!String.IsNullOrEmpty(row.FileName) && desiredSet.Add(row.FileName))
                 {
                     desired.Add(row.FileName);
                 }
             }
 
-            for (int i = playlistFileItems.Count - 1; i >= 0; i--)
+            for (int i = PlaylistFileItems.Count - 1; i >= 0; i--)
             {
-                if (!desired.Contains(playlistFileItems[i]))
+                if (!desiredSet.Contains(PlaylistFileItems[i]))
                 {
-                    playlistFileItems.RemoveAt(i);
+                    PlaylistFileItems.RemoveAt(i);
                 }
             }
 
             for (int i = 0; i < desired.Count; i++)
             {
-                int current = playlistFileItems.IndexOf(desired[i]);
+                int current = PlaylistFileItems.IndexOf(desired[i]);
                 if (current == i)
                 {
                     continue;
@@ -68,11 +65,11 @@ namespace EventRecorder
 
                 if (current >= 0)
                 {
-                    playlistFileItems.Move(current, i);
+                    PlaylistFileItems.Move(current, i);
                 }
                 else
                 {
-                    playlistFileItems.Insert(i, desired[i]);
+                    PlaylistFileItems.Insert(i, desired[i]);
                 }
             }
         }
@@ -86,31 +83,24 @@ namespace EventRecorder
 
         internal void RefreshPlaylist()
         {
-            if (isRecording || isPlaying)
+            if (_isRecording || _isPlaying)
             {
                 return;
             }
 
-            HashSet<String> existingFiles = new HashSet<String>();
-            foreach (PlaylistRow row in playlistRows)
-            {
-                if (!String.IsNullOrEmpty(row.FileName))
-                {
-                    existingFiles.Add(row.FileName);
-                }
-            }
+            HashSet<String> existingFiles = new HashSet<String>(PlaylistRows.Select(row => row.FileName));
 
-            foreach (String fileName in playlistFileItems.ToList())
+            foreach (String fileName in PlaylistFileItems.ToList())
             {
                 if (existingFiles.Contains(fileName))
                 {
                     continue;
                 }
 
-                int insertAt = playlistRows.Count;
+                int insertAt = PlaylistRows.Count;
                 AddPlaylistRow(insertAt, isEnabled: true);
                 // 設定ファイルを選ぶと、そのファイルに保存されているループ回数が初期値として入る(PlaylistRow_CellChanged)
-                playlistRows[insertAt].FileName = fileName;
+                PlaylistRows[insertAt].FileName = fileName;
             }
 
             UpdatePlaylistMissingFileHighlights();
@@ -121,14 +111,14 @@ namespace EventRecorder
         // グリッドへの反映だけ完了後にUIスレッドへ戻す(WinForms版の「プロファイル選択時のUI更新を高速化」と同じ)
         private void UpdatePlaylistMissingFileHighlights()
         {
-            List<String> fileNames = playlistRows
+            List<String> fileNames = PlaylistRows
                 .Select(row => row.FileName)
                 .Where(name => !String.IsNullOrEmpty(name))
                 .Distinct()
                 .ToList();
 
-            int generation = ++playlistHighlightGeneration;
-            String folder = userDataFolder;
+            int generation = ++_playlistHighlightGeneration;
+            String folder = _userDataFolder;
 
             Task.Run(() =>
             {
@@ -143,7 +133,7 @@ namespace EventRecorder
                 Dispatcher.BeginInvoke(new Action(() =>
                 {
                     // 判定中に別のプロファイルへ切り替えられていたら、古い結果は捨てる
-                    if (generation != playlistHighlightGeneration)
+                    if (generation != _playlistHighlightGeneration)
                     {
                         return;
                     }
@@ -155,7 +145,7 @@ namespace EventRecorder
 
         internal void ApplyPlaylistMissingFileHighlights(Dictionary<String, Boolean> existsMap)
         {
-            foreach (PlaylistRow row in playlistRows)
+            foreach (PlaylistRow row in PlaylistRows)
             {
                 Boolean exists;
                 if (!String.IsNullOrEmpty(row.FileName) && existsMap.TryGetValue(row.FileName, out exists) && !exists)
@@ -171,7 +161,7 @@ namespace EventRecorder
 
         private void dataGrid_Playlist_PreviewMouseRightButtonDown(object sender, MouseButtonEventArgs e)
         {
-            contextMenuPlaylistRowIndex = SelectRowForContextMenu(dataGrid_Playlist, e);
+            _contextMenuPlaylistRowIndex = SelectRowForContextMenu(dataGrid_Playlist, e);
         }
 
         // *******************************************************************************
@@ -194,14 +184,14 @@ namespace EventRecorder
                 return;
             }
 
-            if (HandleUndoRedoKey(e, playlistUndo))
+            if (HandleUndoRedoKey(e, PlaylistUndo))
             {
                 return;
             }
 
             if (e.Key == Key.Delete && Keyboard.Modifiers == ModifierKeys.None)
             {
-                ClearSelectedCells(dataGrid_Playlist, playlistUndo);
+                ClearSelectedCells(dataGrid_Playlist, PlaylistUndo);
                 e.Handled = true;
             }
         }
@@ -247,7 +237,7 @@ namespace EventRecorder
         private void PlaylistFileCell_PreviewMouseLeftButtonUp(object sender, MouseButtonEventArgs e)
         {
             DataGridCell cell = sender as DataGridCell;
-            if (cell == null || cell.IsEditing || isRecording || isPlaying)
+            if (cell == null || cell.IsEditing || _isRecording || _isPlaying)
             {
                 return;
             }
@@ -287,7 +277,7 @@ namespace EventRecorder
                 ApplyPlaylistRowFilter(row);
             }
 
-            if (!e.Contains(PlaylistRow.ColFileName) || isLoadingPlaylist)
+            if (!e.Contains(PlaylistRow.ColFileName) || _isLoadingPlaylist)
             {
                 return;
             }
@@ -301,7 +291,7 @@ namespace EventRecorder
             }
 
             // 設定ファイルを選ぶと、そのファイル自身に保存されているループ回数を、行のループ回数へ初期値として自動セットする
-            String savedLoopCount = ReadSavedLoopCount(Path.Combine(userDataFolder, row.FileName));
+            String savedLoopCount = ReadSavedLoopCount(Path.Combine(_userDataFolder, row.FileName));
             if (savedLoopCount != null)
             {
                 row.LoopCount = savedLoopCount;
@@ -324,28 +314,28 @@ namespace EventRecorder
         // *******************************************************************************
         // プレイリストの行のドラッグ&ドロップによる並び替え
 
-        private const String PlaylistRowDragFormat = "EventRecorder.PlaylistRowIndex";
+        private const String _playlistRowDragFormat = "EventRecorder.PlaylistRowIndex";
 
         // 掴んだ(左ボタンを押した)行のインデックス。ドラッグ開始の起点にもする
-        private int dragStartPlaylistRowIndex = -1;
-        private Point dragStartPlaylistPoint;
+        private int _dragStartPlaylistRowIndex = -1;
+        private Point _dragStartPlaylistPoint;
 
         private void dataGrid_Playlist_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
-            if (isRecording || isPlaying)
+            if (_isRecording || _isPlaying)
             {
-                dragStartPlaylistRowIndex = -1;
+                _dragStartPlaylistRowIndex = -1;
                 return;
             }
 
-            dragStartPlaylistRowIndex = WpfGridHelper.GetRowIndexFromSource(dataGrid_Playlist, e.OriginalSource);
-            dragStartPlaylistPoint = e.GetPosition(dataGrid_Playlist);
+            _dragStartPlaylistRowIndex = WpfGridHelper.GetRowIndexFromSource(dataGrid_Playlist, e.OriginalSource);
+            _dragStartPlaylistPoint = e.GetPosition(dataGrid_Playlist);
         }
 
         // マウスを一定距離動かして初めてドラッグとみなす(チェックボックスのクリック等が誤ってドラッグ扱いにならないように)
         private void dataGrid_Playlist_PreviewMouseMove(object sender, MouseEventArgs e)
         {
-            if (e.LeftButton != MouseButtonState.Pressed || dragStartPlaylistRowIndex < 0)
+            if (e.LeftButton != MouseButtonState.Pressed || _dragStartPlaylistRowIndex < 0)
             {
                 return;
             }
@@ -357,31 +347,31 @@ namespace EventRecorder
             }
 
             Point p = e.GetPosition(dataGrid_Playlist);
-            if (Math.Abs(p.X - dragStartPlaylistPoint.X) < SystemParameters.MinimumHorizontalDragDistance
-                && Math.Abs(p.Y - dragStartPlaylistPoint.Y) < SystemParameters.MinimumVerticalDragDistance)
+            if (Math.Abs(p.X - _dragStartPlaylistPoint.X) < SystemParameters.MinimumHorizontalDragDistance
+                && Math.Abs(p.Y - _dragStartPlaylistPoint.Y) < SystemParameters.MinimumVerticalDragDistance)
             {
                 return;
             }
 
-            int sourceIndex = dragStartPlaylistRowIndex;
-            dragStartPlaylistRowIndex = -1;
-            DragDrop.DoDragDrop(dataGrid_Playlist, new DataObject(PlaylistRowDragFormat, sourceIndex), DragDropEffects.Move);
+            int sourceIndex = _dragStartPlaylistRowIndex;
+            _dragStartPlaylistRowIndex = -1;
+            DragDrop.DoDragDrop(dataGrid_Playlist, new DataObject(_playlistRowDragFormat, sourceIndex), DragDropEffects.Move);
         }
 
         private void dataGrid_Playlist_DragOver(object sender, DragEventArgs e)
         {
-            e.Effects = e.Data.GetDataPresent(PlaylistRowDragFormat) ? DragDropEffects.Move : DragDropEffects.None;
+            e.Effects = e.Data.GetDataPresent(_playlistRowDragFormat) ? DragDropEffects.Move : DragDropEffects.None;
             e.Handled = true;
         }
 
         private void dataGrid_Playlist_Drop(object sender, DragEventArgs e)
         {
-            if (!e.Data.GetDataPresent(PlaylistRowDragFormat))
+            if (!e.Data.GetDataPresent(_playlistRowDragFormat))
             {
                 return;
             }
 
-            int sourceIndex = (int)e.Data.GetData(PlaylistRowDragFormat);
+            int sourceIndex = (int)e.Data.GetData(_playlistRowDragFormat);
             int targetIndex = WpfGridHelper.GetRowIndexFromSource(dataGrid_Playlist, e.OriginalSource);
             MovePlaylistRow(sourceIndex, targetIndex);
             e.Handled = true;
@@ -390,15 +380,15 @@ namespace EventRecorder
         // sourceIndex行をtargetIndexの位置へ移動する(ドロップ先の行の位置に割り込む形)
         internal void MovePlaylistRow(int sourceIndex, int targetIndex)
         {
-            if (sourceIndex < 0 || sourceIndex >= playlistRows.Count
-                || targetIndex < 0 || targetIndex >= playlistRows.Count
+            if (sourceIndex < 0 || sourceIndex >= PlaylistRows.Count
+                || targetIndex < 0 || targetIndex >= PlaylistRows.Count
                 || sourceIndex == targetIndex)
             {
                 return;
             }
 
-            PlaylistRow moved = playlistRows[sourceIndex];
-            playlistRows.Move(sourceIndex, targetIndex);
+            PlaylistRow moved = PlaylistRows[sourceIndex];
+            PlaylistRows.Move(sourceIndex, targetIndex);
 
             WpfGridHelper.SelectWholeRow(dataGrid_Playlist, moved);
         }
@@ -408,36 +398,36 @@ namespace EventRecorder
 
         private void dataGrid_Playlist_ContextMenuOpening(object sender, ContextMenuEventArgs e)
         {
-            if (isRecording || isPlaying)
+            if (_isRecording || _isPlaying)
             {
                 e.Handled = true;
                 return;
             }
 
-            menuItem_PlaylistDeleteRow.IsEnabled = contextMenuPlaylistRowIndex >= 0 && contextMenuPlaylistRowIndex < playlistRows.Count;
+            menuItem_PlaylistDeleteRow.IsEnabled = IsValidIndex(_contextMenuPlaylistRowIndex, PlaylistRows.Count);
             // 右クリックした行にファイルが指定されていて、実在する時だけ開けるようにする
             menuItem_PlaylistOpenFile.IsEnabled = File.Exists(GetContextMenuPlaylistFilePath() ?? "");
 
             // 今どちらの表示モードか一目で分かるように、選択中の方にチェックを付ける
-            menuItem_PlaylistShowCheckedOnly.IsChecked = showOnlyCheckedPlaylistRows;
-            menuItem_PlaylistShowAll.IsChecked = !showOnlyCheckedPlaylistRows;
+            menuItem_PlaylistShowCheckedOnly.IsChecked = _showOnlyCheckedPlaylistRows;
+            menuItem_PlaylistShowAll.IsChecked = !_showOnlyCheckedPlaylistRows;
         }
 
         // 右クリックした行の設定ファイルのフルパスを返す(行が範囲外、またはファイル未指定ならnull)
         private String GetContextMenuPlaylistFilePath()
         {
-            if (contextMenuPlaylistRowIndex < 0 || contextMenuPlaylistRowIndex >= playlistRows.Count)
+            if (!IsValidIndex(_contextMenuPlaylistRowIndex, PlaylistRows.Count))
             {
                 return null;
             }
 
-            String fileName = playlistRows[contextMenuPlaylistRowIndex].FileName;
+            String fileName = PlaylistRows[_contextMenuPlaylistRowIndex].FileName;
             if (String.IsNullOrEmpty(fileName))
             {
                 return null;
             }
 
-            return Path.Combine(userDataFolder, fileName);
+            return Path.Combine(_userDataFolder, fileName);
         }
 
         // 右クリックした行の設定ファイルを、Windowsの関連付けアプリ(メモ帳など)で開く
@@ -462,20 +452,20 @@ namespace EventRecorder
 
         private void menuItem_PlaylistShowCheckedOnly_Click(object sender, RoutedEventArgs e)
         {
-            showOnlyCheckedPlaylistRows = true;
+            _showOnlyCheckedPlaylistRows = true;
             ApplyPlaylistRowFilter();
         }
 
         private void menuItem_PlaylistShowAll_Click(object sender, RoutedEventArgs e)
         {
-            showOnlyCheckedPlaylistRows = false;
+            _showOnlyCheckedPlaylistRows = false;
             ApplyPlaylistRowFilter();
         }
 
         // 実行列のチェック状態を見て、プレイリストの行の表示/非表示を切り替える
         internal void ApplyPlaylistRowFilter()
         {
-            foreach (PlaylistRow row in playlistRows)
+            foreach (PlaylistRow row in PlaylistRows)
             {
                 ApplyPlaylistRowFilter(row);
             }
@@ -484,19 +474,18 @@ namespace EventRecorder
         // 1行分の表示/非表示を、今の表示フィルタと実行チェックの状態に合わせる
         private void ApplyPlaylistRowFilter(PlaylistRow row)
         {
-            row.IsVisible = !showOnlyCheckedPlaylistRows || row.Enabled;
+            row.IsVisible = !_showOnlyCheckedPlaylistRows || row.Enabled;
         }
 
         internal Boolean ShowOnlyCheckedPlaylistRows
         {
-            get { return showOnlyCheckedPlaylistRows; }
-            set { showOnlyCheckedPlaylistRows = value; ApplyPlaylistRowFilter(); }
+            get { return _showOnlyCheckedPlaylistRows; }
+            set { _showOnlyCheckedPlaylistRows = value; ApplyPlaylistRowFilter(); }
         }
 
         private void menuItem_PlaylistAddRow_Click(object sender, RoutedEventArgs e)
         {
-            Boolean isContextMenuRowIndexValid = contextMenuPlaylistRowIndex >= 0 && contextMenuPlaylistRowIndex < playlistRows.Count;
-            int insertAt = isContextMenuRowIndexValid ? contextMenuPlaylistRowIndex + 1 : playlistRows.Count;
+            int insertAt = IsValidIndex(_contextMenuPlaylistRowIndex, PlaylistRows.Count) ? _contextMenuPlaylistRowIndex + 1 : PlaylistRows.Count;
             // 右クリックで能動的に追加した行は、すぐ使うつもりのはずなので実行チェックはONにしておく
             AddPlaylistRow(insertAt, isEnabled: true);
         }
@@ -505,24 +494,24 @@ namespace EventRecorder
         internal void AddPlaylistRow(int insertAt, Boolean isEnabled)
         {
             // 呼び出し元の計算ミスで範囲外indexが渡ってきても落ちないよう防御的にクランプする
-            insertAt = Math.Max(0, Math.Min(insertAt, playlistRows.Count));
+            insertAt = Math.Max(0, Math.Min(insertAt, PlaylistRows.Count));
 
             PlaylistRow newRow = PlaylistRow.FromData(isEnabled, "", "1");
             ApplyPlaylistRowFilter(newRow);
-            playlistRows.Insert(insertAt, newRow);
+            PlaylistRows.Insert(insertAt, newRow);
         }
 
         private void menuItem_PlaylistDeleteRow_Click(object sender, RoutedEventArgs e)
         {
-            List<int> targetIndexes = GetSelectedOrContextMenuRowIndexes(dataGrid_Playlist, contextMenuPlaylistRowIndex);
+            List<int> targetIndexes = GetSelectedOrContextMenuRowIndexes(dataGrid_Playlist, _contextMenuPlaylistRowIndex);
 
             foreach (int idx in targetIndexes.OrderByDescending(x => x))
             {
-                if (idx == highlightedPlaylistRowIndex)
+                if (idx == _highlightedPlaylistRowIndex)
                 {
-                    highlightedPlaylistRowIndex = -1;
+                    _highlightedPlaylistRowIndex = -1;
                 }
-                playlistRows.RemoveAt(idx);
+                PlaylistRows.RemoveAt(idx);
             }
         }
 
@@ -538,7 +527,7 @@ namespace EventRecorder
 
         private void SetAllPlaylistChecks(Boolean isChecked)
         {
-            foreach (PlaylistRow row in playlistRows)
+            foreach (PlaylistRow row in PlaylistRows)
             {
                 row.Enabled = isChecked;
             }
@@ -563,9 +552,9 @@ namespace EventRecorder
         internal List<PlaylistEntry> GetPlaylistEntries()
         {
             List<PlaylistEntry> entries = new List<PlaylistEntry>();
-            for (int i = 0; i < playlistRows.Count; i++)
+            for (int i = 0; i < PlaylistRows.Count; i++)
             {
-                PlaylistRow row = playlistRows[i];
+                PlaylistRow row = PlaylistRows[i];
                 if (!row.Enabled || String.IsNullOrEmpty(row.FileName))
                 {
                     continue;
@@ -577,7 +566,7 @@ namespace EventRecorder
             return entries;
         }
 
-        // プレイリストグループの内容を実行する(isPlaying/isRecordingのチェックは呼び出し元のPlayOrStopで済んでいる)
+        // プレイリストグループの内容を実行する(_isPlaying/_isRecordingのチェックは呼び出し元のPlayOrStopで済んでいる)
         private void StartPlaylistRun()
         {
             List<PlaylistEntry> entries = GetPlaylistEntries();
@@ -589,87 +578,56 @@ namespace EventRecorder
             // 「全体ループ」も単発再生の「ループ回数」とtextBox_Loopを共有している
             int overallLoopCount = ParseLoopCount(textBox_Loop.Text);
 
-            cursorPositionBeforePlay = System.Windows.Forms.Cursor.Position;
+            _playbackOverallLoopNo = 0;
+            _playbackOverallLoopMax = overallLoopCount;
+            _playbackInnerLoopNo = 0;
+            _playbackInnerLoopMax = 0;
 
-            playbackOverallLoopNo = 0;
-            playbackOverallLoopMax = overallLoopCount;
-            playbackInnerLoopNo = 0;
-            playbackInnerLoopMax = 0;
-
-            isPlaying = true;
-            stopPlayRequested = false;
-            UpdatePlayButton();
-            UpdateTitle();
-            MinimizeIfRequested();
-
-            playbackTask = Task.Run(() => PlaylistPlayLoop(entries, overallLoopCount));
+            BeginPlayback(() => PlaylistPlayLoop(entries, overallLoopCount));
         }
 
         // プレイリスト全体をoverallLoopCount回繰り返す。各周回の中で、
         // リストの各行を上から順に読み込み→その行のループ回数分だけ再生、を繰り返す
+        // (前後の状態管理・カーソル位置の復元はRunPlaybackの担当)
         private void PlaylistPlayLoop(List<PlaylistEntry> entries, int overallLoopCount)
         {
-            try
+            for (int loopNo = 0; loopNo < overallLoopCount && !_stopPlayRequested; loopNo++)
             {
-                for (int loopNo = 0; loopNo < overallLoopCount && !stopPlayRequested; loopNo++)
+                int loopDisplayNo = loopNo + 1;
+                _playbackOverallLoopNo = loopDisplayNo;
+
+                for (int i = 0; i < entries.Count && !_stopPlayRequested; i++)
                 {
-                    int loopDisplayNo = loopNo + 1;
-                    playbackOverallLoopNo = loopDisplayNo;
+                    PlaylistEntry entry = entries[i];
+                    int fileNo = i + 1;
+                    List<String[]> rows = null;
 
-                    for (int i = 0; i < entries.Count && !stopPlayRequested; i++)
+                    InvokeOnUi(() =>
                     {
-                        PlaylistEntry entry = entries[i];
-                        int fileNo = i + 1;
-                        List<String[]> rows = null;
+                        label_PlaylistStatus.Text = "実行中(全体" + loopDisplayNo + "/" + overallLoopCount + "): "
+                            + entry.FileName + " (" + fileNo + "/" + entries.Count + ")";
 
-                        InvokeOnUi(() =>
+                        // 今どのファイル(行)を再生しているか、プレイリスト側もハイライトする
+                        HighlightPlaylistRow(entry.RowIndex);
+
+                        // 再生対象の記録データだけ差し替える。プレイリスト自体には影響しない
+                        LoadProfileForPlayback(Path.Combine(_userDataFolder, entry.FileName));
+
+                        // 読み込んだファイルに再生できない行が無いか確認する。あればプレイリスト全体を停止する
+                        if (!ValidateEventsForPlayback())
                         {
-                            label_PlaylistStatus.Text = "実行中(全体" + loopDisplayNo + "/" + overallLoopCount + "): "
-                                + entry.FileName + " (" + fileNo + "/" + entries.Count + ")";
-
-                            // 今どのファイル(行)を再生しているか、プレイリスト側もハイライトする
-                            HighlightPlaylistRow(entry.RowIndex);
-
-                            // 再生対象の記録データだけ差し替える。プレイリスト自体には影響しない
-                            LoadProfileForPlayback(Path.Combine(userDataFolder, entry.FileName));
-
-                            // 読み込んだファイルに再生できない行が無いか確認する。あればプレイリスト全体を停止する
-                            if (!ValidateEventsForPlayback())
-                            {
-                                stopPlayRequested = true;
-                                return;
-                            }
-
-                            rows = SnapshotRows();
-                        });
-
-                        if (rows != null && rows.Count > 0)
-                        {
-                            PlayRows(rows, entry.LoopCount);
+                            _stopPlayRequested = true;
+                            return;
                         }
+
+                        rows = SnapshotRows();
+                    });
+
+                    if (rows != null && rows.Count > 0)
+                    {
+                        PlayRows(rows, entry.LoopCount);
                     }
                 }
-
-                System.Windows.Forms.Cursor.Position = cursorPositionBeforePlay;
-            }
-            catch (Exception ex)
-            {
-                ReportPlaybackError(ex);
-            }
-            finally
-            {
-                // 途中で例外が起きても、必ず「再生中」状態を解除する
-                isPlaying = false;
-                stopPlayRequested = false;
-                InvokeOnUi(() =>
-                {
-                    UpdatePlayButton();
-                    label_PlaylistStatus.Text = "";
-                    UpdateTitle();
-                    HighlightEventRow(-1);
-                    HighlightPlaylistRow(-1);
-                    RestoreIfMinimizedByPlay();
-                });
             }
         }
     }

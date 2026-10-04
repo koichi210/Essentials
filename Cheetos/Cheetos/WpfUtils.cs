@@ -2,6 +2,7 @@
 // WPFから使えないものの代わり(プロジェクト内ローカル版)。
 // _Common/Wpf に同等品ができたら置き換える候補。
 using System;
+using System.Collections.Generic;
 using System.Drawing.Imaging;
 using System.Linq;
 using System.Runtime.InteropServices;
@@ -18,8 +19,10 @@ namespace Cheetos
         // WPFのSelectedItemsは「選択した順」に並ぶため、WinForms版と同じ「リストの並び順」に揃えて返す
         public static String[] GetSelectedStrArray(ListBox listCtrl)
         {
+            // SelectedItems.Containsは線形探索なので、ファイル数が多いとO(n^2)になる。HashSetで引く
+            HashSet<Object> selected = new HashSet<Object>(listCtrl.SelectedItems.Cast<Object>());
             return listCtrl.Items.Cast<Object>()
-                .Where(item => listCtrl.SelectedItems.Contains(item))
+                .Where(selected.Contains)
                 .Select(item => item.ToString())
                 .ToArray();
         }
@@ -56,12 +59,13 @@ namespace Cheetos
             }
         }
 
-        // ファイルをロックしたままにしないよう、一度メモリへ読み込んでから変換する
-        public static BitmapSource LoadBitmapSource(String filePath)
+        // 整数として読めないテキストボックスを空欄にする
+        public static void ClearIfNotInteger(TextBox ctrl)
         {
-            using (System.Drawing.Bitmap bmp = new System.Drawing.Bitmap(filePath))
+            int val;
+            if (!Int32.TryParse(ctrl.Text, out val))
             {
-                return ToBitmapSource(bmp);
+                ctrl.Text = "";
             }
         }
 

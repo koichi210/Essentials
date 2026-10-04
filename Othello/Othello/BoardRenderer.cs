@@ -1,7 +1,7 @@
 using System;
 using System.Drawing;
 
-namespace othello
+namespace Othello
 {
     /// <summary>
     /// オセロ盤面をSystem.Drawing.Bitmap(Canvas)に描画するクラス。
@@ -12,14 +12,10 @@ namespace othello
     /// </summary>
     class BoardRenderer
     {
-        private const int CellMax = 8;
-        private const int EdgeOffset = 0;
-        private static readonly Color LineColor = Color.Black;
-        private const int LineWidth = 2;
-
-        // 描画先のサイズ(ピクセル)。WinForms版のpb.Width/pb.Height相当。
-        private int areaWidth;
-        private int areaHeight;
+        private const int _cellMax = GameMaster.BoardSize;
+        private const int _edgeOffset = 0;
+        private const int _lineWidth = 2;
+        private static readonly Color _lineColor = Color.Black;
 
         /// <summary>
         /// 現在描画中のBitmap。WinForms版のpictureBox.Image相当。
@@ -28,25 +24,17 @@ namespace othello
         /// </summary>
         public Bitmap Canvas { get; private set; }
 
-        public int Width => areaWidth;
-        public int Height => areaHeight;
-
-        public BoardRenderer()
-        {
-        }
-
-        public BoardRenderer(int width, int height)
-        {
-            SetDrawArea(width, height);
-        }
+        // 描画先のサイズ(ピクセル)。WinForms版のpb.Width/pb.Height相当。
+        public int Width { get; private set; }
+        public int Height { get; private set; }
 
         /// <summary>
         /// 描画先のサイズ(ピクセル)を設定し、そのサイズのCanvasを作り直す。
         /// </summary>
         public void SetDrawArea(int width, int height)
         {
-            areaWidth = width;
-            areaHeight = height;
+            Width = width;
+            Height = height;
             CreateCanvas();
         }
 
@@ -54,13 +42,13 @@ namespace othello
         {
             // リサイズ中の一瞬(最小化直後など)は幅・高さが0以下になることがある。
             // その場合はBitmapが作れないので、既存のCanvasを残したまま何もしない。
-            if (areaWidth <= 0 || areaHeight <= 0)
+            if (Width <= 0 || Height <= 0)
             {
                 return;
             }
 
             Bitmap oldCanvas = Canvas;
-            Canvas = new Bitmap(areaWidth, areaHeight);
+            Canvas = new Bitmap(Width, Height);
             oldCanvas?.Dispose();
         }
 
@@ -93,25 +81,25 @@ namespace othello
             // 見た目になってしまう。「i番目の線の位置 = 全体 * i / 8」の形で
             // 掛け算を先に行うことで、端数を各マスに均等に配分し、最後の線が
             // 必ず盤面のちょうど端に来るようにする。
-            int width = areaWidth - (EdgeOffset * 2);
-            int height = areaHeight - (EdgeOffset * 2);
+            int width = Width - (_edgeOffset * 2);
+            int height = Height - (_edgeOffset * 2);
 
             // 縦線
-            for (int i = 0; i <= CellMax; i++)
+            for (int i = 0; i <= _cellMax; i++)
             {
-                int x = EdgeOffset + (width * i / CellMax);
-                Point startPoint = new Point(x, EdgeOffset);
-                Point endPoint = new Point(x, areaHeight - EdgeOffset);
-                DrawLine(startPoint, endPoint, LineColor, LineWidth);
+                int x = _edgeOffset + (width * i / _cellMax);
+                Point startPoint = new Point(x, _edgeOffset);
+                Point endPoint = new Point(x, Height - _edgeOffset);
+                DrawLine(startPoint, endPoint, _lineColor, _lineWidth);
             }
 
             // 横線
-            for (int i = 0; i <= CellMax; i++)
+            for (int i = 0; i <= _cellMax; i++)
             {
-                int y = EdgeOffset + (height * i / CellMax);
-                Point startPoint = new Point(EdgeOffset, y);
-                Point endPoint = new Point(areaWidth - EdgeOffset, y);
-                DrawLine(startPoint, endPoint, LineColor, LineWidth);
+                int y = _edgeOffset + (height * i / _cellMax);
+                Point startPoint = new Point(_edgeOffset, y);
+                Point endPoint = new Point(Width - _edgeOffset, y);
+                DrawLine(startPoint, endPoint, _lineColor, _lineWidth);
             }
         }
 
@@ -122,16 +110,16 @@ namespace othello
         /// </summary>
         private void GetCellRangeX(int cellX, out int left, out int right)
         {
-            int width = areaWidth - (EdgeOffset * 2);
-            left = EdgeOffset + (width * cellX / CellMax);
-            right = EdgeOffset + (width * (cellX + 1) / CellMax);
+            int width = Width - (_edgeOffset * 2);
+            left = _edgeOffset + (width * cellX / _cellMax);
+            right = _edgeOffset + (width * (cellX + 1) / _cellMax);
         }
 
         private void GetCellRangeY(int cellY, out int top, out int bottom)
         {
-            int height = areaHeight - (EdgeOffset * 2);
-            top = EdgeOffset + (height * cellY / CellMax);
-            bottom = EdgeOffset + (height * (cellY + 1) / CellMax);
+            int height = Height - (_edgeOffset * 2);
+            top = _edgeOffset + (height * cellY / _cellMax);
+            bottom = _edgeOffset + (height * (cellY + 1) / _cellMax);
         }
 
         /// <summary>
@@ -171,9 +159,9 @@ namespace othello
         {
             InitField();
 
-            for (int y = 0; y < CellMax; y++)
+            for (int y = 0; y < _cellMax; y++)
             {
-                for (int x = 0; x < CellMax; x++)
+                for (int x = 0; x < _cellMax; x++)
                 {
                     DrawStone(x, y, table[y, x]);
 
@@ -228,7 +216,7 @@ namespace othello
 
             GetCellRangeX(cellX, out int left, out int right);
             GetCellRangeY(cellY, out int top, out int bottom);
-            int margin = Math.Max(2, LineWidth);
+            int margin = Math.Max(2, _lineWidth);
 
             Rectangle rect = new Rectangle(
                 left + margin,
@@ -246,7 +234,7 @@ namespace othello
 
         public void FillBackground(Brush brush)
         {
-            Rectangle rect = new Rectangle(0, 0, areaWidth, areaHeight);
+            Rectangle rect = new Rectangle(0, 0, Width, Height);
 
             using (Graphics g = Graphics.FromImage(Canvas))
             {

@@ -10,8 +10,8 @@ namespace EventRecorder
     // (WinForms版EventWaitBulkChangeFormのWPF版。WinForms版と同じくコードだけで画面を組み立てている)
     internal class EventWaitBulkChangeWindow : DialogWindowBase
     {
-        private readonly TextBox txtEventName;
-        private readonly TextBox txtWaitMs;
+        private readonly TextBox _txtEventName;
+        private readonly TextBox _txtWaitMs;
 
         public String EventName { get; private set; }
         public int WaitMs { get; private set; }
@@ -26,22 +26,10 @@ namespace EventRecorder
                 return false;
             }
 
-            foreach (String name in Enum.GetNames(typeof(GlobalHook.MouseHook.Stroke))
-                .Concat(Enum.GetNames(typeof(GlobalHook.KeyboardHook.Stroke))))
-            {
-                if (name == "UNKNOWN")
-                {
-                    continue;
-                }
-
-                if (String.Equals(name, trimmed, StringComparison.OrdinalIgnoreCase))
-                {
-                    eventName = name;
-                    return true;
-                }
-            }
-
-            return false;
+            eventName = Enum.GetNames(typeof(GlobalHook.MouseHook.Stroke))
+                .Concat(Enum.GetNames(typeof(GlobalHook.KeyboardHook.Stroke)))
+                .FirstOrDefault(name => name != "UNKNOWN" && String.Equals(name, trimmed, StringComparison.OrdinalIgnoreCase));
+            return eventName != null;
         }
 
         public EventWaitBulkChangeWindow(String initialEventName)
@@ -60,7 +48,7 @@ namespace EventRecorder
                 VerticalAlignment = VerticalAlignment.Top,
             };
 
-            txtEventName = new TextBox
+            _txtEventName = new TextBox
             {
                 Text = initialEventName,
                 Width = 200,
@@ -78,7 +66,7 @@ namespace EventRecorder
                 VerticalAlignment = VerticalAlignment.Top,
             };
 
-            txtWaitMs = new TextBox
+            _txtWaitMs = new TextBox
             {
                 Text = "100",
                 Width = 100,
@@ -100,16 +88,16 @@ namespace EventRecorder
             btnOk.Click += BtnOk_Click;
 
             root.Children.Add(label);
-            root.Children.Add(txtEventName);
+            root.Children.Add(_txtEventName);
             root.Children.Add(waitLabel);
-            root.Children.Add(txtWaitMs);
+            root.Children.Add(_txtWaitMs);
             root.Children.Add(btnOk);
             Content = root;
 
             Loaded += (s, e) =>
             {
                 // 初期値のイベント名が入っていれば待機時間から、無ければイベント名から入力してもらう
-                TextBox target = txtEventName.Text.Length > 0 ? txtWaitMs : txtEventName;
+                TextBox target = _txtEventName.Text.Length > 0 ? _txtWaitMs : _txtEventName;
                 target.Focus();
                 target.SelectAll();
             };
@@ -118,33 +106,28 @@ namespace EventRecorder
         private void BtnOk_Click(object sender, RoutedEventArgs e)
         {
             String eventName;
-            if (!TryNormalizeEventName(txtEventName.Text, out eventName))
+            if (!TryNormalizeEventName(_txtEventName.Text, out eventName))
             {
-                MessageBox.Show(
-                    this,
-                    "イベント名が正しくないよ(例: LEFT_UP, RIGHT_DOWN, KEY_DOWN, KEY_UP)",
-                    "WAIT時間を一括変更",
-                    MessageBoxButton.OK,
-                    MessageBoxImage.Warning);
-                txtEventName.Focus();
+                ShowWarning("イベント名が正しくないよ(例: LEFT_UP, RIGHT_DOWN, KEY_DOWN, KEY_UP)");
+                _txtEventName.Focus();
                 return;
             }
 
             int wait;
-            if (!int.TryParse(txtWaitMs.Text, out wait) || wait < 0)
+            if (!int.TryParse(_txtWaitMs.Text, out wait) || wait < 0)
             {
-                MessageBox.Show(
-                    this,
-                    "0以上の整数を入力してね",
-                    "WAIT時間を一括変更",
-                    MessageBoxButton.OK,
-                    MessageBoxImage.Warning);
+                ShowWarning("0以上の整数を入力してね");
                 return;
             }
 
             EventName = eventName;
             WaitMs = wait;
             DialogResult = true;
+        }
+
+        private void ShowWarning(String message)
+        {
+            MessageBox.Show(this, message, Title, MessageBoxButton.OK, MessageBoxImage.Warning);
         }
     }
 }

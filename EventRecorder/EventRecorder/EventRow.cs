@@ -24,37 +24,37 @@ namespace EventRecorder
         public const String ColKey = "Key";
         public const String ColRemarks = "Remarks";
 
-        private String type = "";
-        private String detail = "";
-        private String wait = "";
-        private String x = "";
-        private String y = "";
-        private String key = "";
-        private String remarks = "";
+        private String _type = "";
+        private String _detail = "";
+        private String _wait = "";
+        private String _x = "";
+        private String _y = "";
+        private String _key = "";
+        private String _remarks = "";
 
-        private int rowNumber;
-        private Boolean isHighlighted;
+        private int _rowNumber;
+        private Boolean _isHighlighted;
 
         public event PropertyChangedEventHandler PropertyChanged;
         public event EventHandler<GridCellChangedEventArgs> CellChanged;
 
-        public String Type { get { return type; } set { SetCell(ColType, value); } }
-        public String Detail { get { return detail; } set { SetCell(ColDetail, value); } }
-        public String Wait { get { return wait; } set { SetCell(ColWait, value); } }
-        public String X { get { return x; } set { SetCell(ColX, value); } }
-        public String Y { get { return y; } set { SetCell(ColY, value); } }
-        public String Key { get { return key; } set { SetCell(ColKey, value); } }
-        public String Remarks { get { return remarks; } set { SetCell(ColRemarks, value); } }
+        public String Type { get { return _type; } set { SetCell(ColType, value); } }
+        public String Detail { get { return _detail; } set { SetCell(ColDetail, value); } }
+        public String Wait { get { return _wait; } set { SetCell(ColWait, value); } }
+        public String X { get { return _x; } set { SetCell(ColX, value); } }
+        public String Y { get { return _y; } set { SetCell(ColY, value); } }
+        public String Key { get { return _key; } set { SetCell(ColKey, value); } }
+        public String Remarks { get { return _remarks; } set { SetCell(ColRemarks, value); } }
 
         // 行ヘッダーに表示する行番号(0始まり、WinForms版のRowPostPaintと同じ)
         public int RowNumber
         {
-            get { return rowNumber; }
+            get { return _rowNumber; }
             set
             {
-                if (rowNumber != value)
+                if (_rowNumber != value)
                 {
-                    rowNumber = value;
+                    _rowNumber = value;
                     Notify("RowNumber");
                 }
             }
@@ -63,12 +63,12 @@ namespace EventRecorder
         // 記録中の最新行・再生中の実行中行のハイライト(薄い黄色)
         public Boolean IsHighlighted
         {
-            get { return isHighlighted; }
+            get { return _isHighlighted; }
             set
             {
-                if (isHighlighted != value)
+                if (_isHighlighted != value)
                 {
-                    isHighlighted = value;
+                    _isHighlighted = value;
                     Notify("IsHighlighted");
                 }
             }
@@ -81,13 +81,13 @@ namespace EventRecorder
             get
             {
                 String errorMessage;
-                if (EventRules.IsRowInvalidForPlayback(type, x, y, key, wait, out errorMessage))
+                if (EventRules.IsRowInvalidForPlayback(_type, _x, _y, _key, _wait, out errorMessage))
                 {
                     return errorMessage;
                 }
 
                 String warningMessage;
-                if (EventRules.IsKeyIgnoredOnMouseRow(type, key, out warningMessage))
+                if (EventRules.IsKeyIgnoredOnMouseRow(_type, _key, out warningMessage))
                 {
                     return warningMessage;
                 }
@@ -103,20 +103,20 @@ namespace EventRecorder
 
         public Boolean IsInvalidForPlayback(out String message)
         {
-            return EventRules.IsRowInvalidForPlayback(type, x, y, key, wait, out message);
+            return EventRules.IsRowInvalidForPlayback(_type, _x, _y, _key, _wait, out message);
         }
 
         // 保存ファイル(MacroEventData)の値からまとめて作る。Detailは実データから作り直す
         public static EventRow FromData(String type, String x, String y, String key, String wait, String remarks)
         {
             EventRow row = new EventRow();
-            row.type = type ?? "";
-            row.x = x ?? "";
-            row.y = y ?? "";
-            row.key = key ?? "";
-            row.wait = wait ?? "";
-            row.remarks = remarks ?? "";
-            row.detail = row.ComputeDetail();
+            row._type = type ?? "";
+            row._x = x ?? "";
+            row._y = y ?? "";
+            row._key = key ?? "";
+            row._wait = wait ?? "";
+            row._remarks = remarks ?? "";
+            row._detail = row.ComputeDetail();
             return row;
         }
 
@@ -124,13 +124,13 @@ namespace EventRecorder
         {
             switch (name)
             {
-                case ColType: return type;
-                case ColDetail: return detail;
-                case ColWait: return wait;
-                case ColX: return x;
-                case ColY: return y;
-                case ColKey: return key;
-                case ColRemarks: return remarks;
+                case ColType: return _type;
+                case ColDetail: return _detail;
+                case ColWait: return _wait;
+                case ColX: return _x;
+                case ColY: return _y;
+                case ColKey: return _key;
+                case ColRemarks: return _remarks;
                 default: throw new ArgumentException("不明な列名: " + name);
             }
         }
@@ -157,16 +157,16 @@ namespace EventRecorder
 
                 case ColDetail:
                     // ユーザーがDetail列を直接編集した時は、逆に実データへ書き戻す
-                    if (EventRules.IsWaitEventType(type))
+                    if (EventRules.IsWaitEventType(_type))
                     {
                         String parsedWait;
-                        EventRules.TryParseWaitDetail(detail, out parsedWait);
+                        EventRules.TryParseWaitDetail(_detail, out parsedWait);
                         Store(ColWait, parsedWait, changes);
                     }
                     else
                     {
                         String parsedX, parsedY, parsedKey;
-                        EventRules.ParseDetail(detail, out parsedX, out parsedY, out parsedKey);
+                        EventRules.ParseDetail(_detail, out parsedX, out parsedY, out parsedKey);
                         Store(ColX, parsedX, changes);
                         Store(ColY, parsedY, changes);
                         Store(ColKey, parsedKey, changes);
@@ -189,11 +189,11 @@ namespace EventRecorder
 
         private String ComputeDetail()
         {
-            if (EventRules.IsWaitEventType(type))
+            if (EventRules.IsWaitEventType(_type))
             {
-                return EventRules.FormatWaitDetail(wait);
+                return EventRules.FormatWaitDetail(_wait);
             }
-            return EventRules.FormatDetail(x, y, key);
+            return EventRules.FormatDetail(_x, _y, _key);
         }
 
         // 値を1つ書き換える(変わらなければ何もしない)。WinForms版のセルのnullは空文字として扱う
@@ -208,13 +208,13 @@ namespace EventRecorder
 
             switch (name)
             {
-                case ColType: type = newValue; break;
-                case ColDetail: detail = newValue; break;
-                case ColWait: wait = newValue; break;
-                case ColX: x = newValue; break;
-                case ColY: y = newValue; break;
-                case ColKey: key = newValue; break;
-                case ColRemarks: remarks = newValue; break;
+                case ColType: _type = newValue; break;
+                case ColDetail: _detail = newValue; break;
+                case ColWait: _wait = newValue; break;
+                case ColX: _x = newValue; break;
+                case ColY: _y = newValue; break;
+                case ColKey: _key = newValue; break;
+                case ColRemarks: _remarks = newValue; break;
             }
 
             changes.Add(new GridCellChange(name, oldValue, newValue));

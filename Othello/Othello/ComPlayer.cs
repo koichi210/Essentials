@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Drawing;
 
-namespace othello
+namespace Othello
 {
     /// <summary>
     /// COM(コンピュータ)の思考ルーチン。C++版 CComProc(com.h/com.cpp)を移植したもの。
@@ -14,7 +14,7 @@ namespace othello
     /// </summary>
     static class ComPlayer
     {
-        private static readonly Random random = new Random();
+        private static readonly Random _random = new Random();
 
         /// <summary>
         /// colorの次の一手を決める。置ける場所が無ければfalseを返す。
@@ -33,7 +33,7 @@ namespace othello
             // 序盤2手はランダム(C++版準拠: turn_cnt <= 2)
             if (gm.TurnCount <= 2)
             {
-                Point picked = candidates[random.Next(candidates.Count)];
+                Point picked = candidates[_random.Next(candidates.Count)];
                 x = picked.X;
                 y = picked.Y;
                 return true;
@@ -111,20 +111,10 @@ namespace othello
                 return SortByCenter(candidates);
             }
 
-            List<Point> sorted = new List<Point>(candidates);
-
-            if (turnCount < total / 3 * 2)
-            {
-                // 中盤: なるべく少なくひっくり返す(石を序盤に固めすぎない)
-                sorted.Sort((a, b) => gm.CountFlips(a.X, a.Y, color).CompareTo(gm.CountFlips(b.X, b.Y, color)));
-            }
-            else
-            {
-                // 終盤: なるべく多くひっくり返す
-                sorted.Sort((a, b) => gm.CountFlips(b.X, b.Y, color).CompareTo(gm.CountFlips(a.X, a.Y, color)));
-            }
-
-            return sorted;
+            // 中盤: なるべく少なくひっくり返す(石を序盤に固めすぎない)
+            // 終盤: なるべく多くひっくり返す
+            bool descending = turnCount >= total / 3 * 2;
+            return SortByKey(candidates, p => gm.CountFlips(p.X, p.Y, color), descending);
         }
 
         /// <summary>
@@ -132,8 +122,31 @@ namespace othello
         /// </summary>
         private static List<Point> SortByOpenness(GameMaster gm, StoneColor color, List<Point> candidates)
         {
+            return SortByKey(candidates, p => CalcOpenness(gm, color, p), false);
+        }
+
+        /// <summary>
+        /// 候補手をkeySelectorの値で並べる(descendingなら大きい順)。
+        /// 比較のたびにキーを計算し直さないよう、先に1回ずつ計算しておく。
+        /// </summary>
+        private static List<Point> SortByKey(List<Point> candidates, Func<Point, int> keySelector, bool descending)
+        {
+            var keys = new Dictionary<Point, int>(candidates.Count);
+            foreach (Point p in candidates)
+            {
+                keys[p] = keySelector(p);
+            }
+
             List<Point> sorted = new List<Point>(candidates);
-            sorted.Sort((a, b) => CalcOpenness(gm, color, a).CompareTo(CalcOpenness(gm, color, b)));
+            if (descending)
+            {
+                sorted.Sort((a, b) => keys[b].CompareTo(keys[a]));
+            }
+            else
+            {
+                sorted.Sort((a, b) => keys[a].CompareTo(keys[b]));
+            }
+
             return sorted;
         }
 
@@ -202,64 +215,28 @@ namespace othello
             {
                 if (IsCorner(p))
                 {
-                    if (corner == null)
-                    {
-                        corner = p;
-                    }
+                    corner = corner ?? p;
                 }
                 else if (WouldLetEnemyTakeCorner(gm, color, p))
                 {
-                    if (stealCorner == null)
-                    {
-                        stealCorner = p;
-                    }
+                    stealCorner = stealCorner ?? p;
                 }
                 else if (IsStar(p))
                 {
-                    if (star == null)
-                    {
-                        star = p;
-                    }
+                    star = star ?? p;
                 }
                 else if (IsNextStar(p))
                 {
-                    if (nextStar == null)
-                    {
-                        nextStar = p;
-                    }
+                    nextStar = nextStar ?? p;
                 }
                 else
                 {
-                    if (safe == null)
-                    {
-                        safe = p;
-                    }
+                    safe = safe ?? p;
                 }
             }
 
-            if (safe != null)
-            {
-                return safe.Value;
-            }
-            if (corner != null)
-            {
-                return corner.Value;
-            }
-            if (star != null)
-            {
-                return star.Value;
-            }
-            if (nextStar != null)
-            {
-                return nextStar.Value;
-            }
-            if (stealCorner != null)
-            {
-                return stealCorner.Value;
-            }
-
-            // 候補が1つ以上あれば必ずどれかに分類されるので、通常ここには来ない
-            return sortedCandidates[0];
+            // 上の優先順で選ぶ。候補が1つ以上あれば必ずどれかに分類されるので、末尾のsortedCandidates[0]は保険
+            return safe ?? corner ?? star ?? nextStar ?? stealCorner ?? sortedCandidates[0];
         }
 
         private static bool IsCorner(Point p)

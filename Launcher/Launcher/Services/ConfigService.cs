@@ -15,10 +15,10 @@ namespace Launcher.Services
     /// </summary>
     public class ConfigService
     {
-        private const string AppName = "Launcher";
-        private const string ConfigFileName = "config.json";
+        private const string _appName = "Launcher";
+        private const string _configFileName = "config.json";
 
-        private static readonly JsonSerializerOptions JsonOptions = new JsonSerializerOptions
+        private static readonly JsonSerializerOptions _jsonOptions = new JsonSerializerOptions
         {
             WriteIndented = true,
             // 日本語を\uXXXXにエスケープせず、手動編集しやすいそのままの文字で出力する
@@ -29,11 +29,11 @@ namespace Launcher.Services
         public string DataFolder { get; private set; }
 
         /// <summary>設定ファイルのフルパス</summary>
-        public string ConfigFilePath => Path.Combine(DataFolder, ConfigFileName);
+        public string ConfigFilePath => Path.Combine(DataFolder, _configFileName);
 
         public ConfigService()
         {
-            DataFolder = UserDataLocation.GetUserDataFolder(AppName);
+            DataFolder = UserDataLocation.GetUserDataFolder(_appName);
         }
 
         /// <summary>
@@ -54,14 +54,14 @@ namespace Launcher.Services
                 return CreateDefaultConfig();
             }
 
-            var config = JsonSerializer.Deserialize<LauncherConfig>(json, JsonOptions);
+            var config = JsonSerializer.Deserialize<LauncherConfig>(json, _jsonOptions);
             return config ?? CreateDefaultConfig();
         }
 
         /// <summary>設定をJSONファイルへ保存する</summary>
         public void Save(LauncherConfig config)
         {
-            string json = JsonSerializer.Serialize(config, JsonOptions);
+            string json = JsonSerializer.Serialize(config, _jsonOptions);
             File.WriteAllText(ConfigFilePath, json);
         }
 
@@ -90,7 +90,7 @@ namespace Launcher.Services
             Directory.CreateDirectory(newFolder);
 
             string oldConfigPath = ConfigFilePath;
-            string newConfigPath = Path.Combine(newFolder, ConfigFileName);
+            string newConfigPath = Path.Combine(newFolder, _configFileName);
 
             if (File.Exists(newConfigPath))
             {
@@ -107,7 +107,7 @@ namespace Launcher.Services
             }
 
             DataFolder = newFolder;
-            UserDataLocation.SetUserDataFolder(AppName, newFolder);
+            UserDataLocation.SetUserDataFolder(_appName, newFolder);
             return true;
         }
 

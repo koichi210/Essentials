@@ -14,7 +14,7 @@ namespace EventRecorder
         // WinForms版にあった旧XML形式(StcSaveRestore)の読み書きはWPF版では対応しない
         // (XMLのプロファイルはWinForms版で開いて.jsonで保存し直せば移行できる)
 
-        private static readonly String[] ProfileExtensions = { "*.json" };
+        private static readonly String[] _profileExtensions = { "*.json" };
 
         private static Boolean IsJsonFile(String filePath)
         {
@@ -30,7 +30,7 @@ namespace EventRecorder
                 return;
             }
 
-            LoadProfile(Path.Combine(userDataFolder, comboBox_Profile.SelectedItem.ToString()));
+            LoadProfile(Path.Combine(_userDataFolder, comboBox_Profile.SelectedItem.ToString()));
         }
 
         // 設定ファイル(記録データ+プレイリスト+モード)をまるごと読み込む
@@ -46,8 +46,8 @@ namespace EventRecorder
             if (!IsJsonFile(filePath))
             {
                 // WPF版は旧XML形式を読めない。前のファイルの記録データを誤って再生しないよう、空にして何も再生しない
-                eventRows.Clear();
-                highlightedEventRowIndex = -1;
+                EventRows.Clear();
+                _highlightedEventRowIndex = -1;
                 return;
             }
 
@@ -86,8 +86,8 @@ namespace EventRecorder
             // 万一、旧形式相当(各行が自分のWaitを持つ)のデータを読み込んでも安全なように、待機をWAIT_MS行へ切り出す
             EventRules.MigrateWaitColumnToRows(rows);
 
-            highlightedEventRowIndex = -1;
-            eventRows.ReplaceAll(rows);
+            _highlightedEventRowIndex = -1;
+            EventRows.ReplaceAll(rows);
 
             if (loadPlaylistAndMode)
             {
@@ -103,15 +103,15 @@ namespace EventRecorder
                     playlist.Add(row);
                 }
 
-                isLoadingPlaylist = true;
+                _isLoadingPlaylist = true;
                 try
                 {
-                    highlightedPlaylistRowIndex = -1;
-                    playlistRows.ReplaceAll(playlist);
+                    _highlightedPlaylistRowIndex = -1;
+                    PlaylistRows.ReplaceAll(playlist);
                 }
                 finally
                 {
-                    isLoadingPlaylist = false;
+                    _isLoadingPlaylist = false;
                 }
 
                 // 読み込んだプレイリストが参照しているファイル名を、プルダウンの選択肢にも入れておく
@@ -125,10 +125,10 @@ namespace EventRecorder
             }
 
             // ファイル読込は「ユーザーの編集操作」ではないので、Ctrl+Zで戻せないようにする
-            eventsUndo.ClearUndoHistory();
+            EventsUndo.ClearUndoHistory();
             if (loadPlaylistAndMode)
             {
-                playlistUndo.ClearUndoHistory();
+                PlaylistUndo.ClearUndoHistory();
             }
         }
 
@@ -140,7 +140,7 @@ namespace EventRecorder
             profile.IsRecordMode = radioButton_Record.IsChecked == true;
             profile.MinimizeOnPlay = checkBox_MinimizeOnPlay.IsChecked == true;
 
-            foreach (EventRow row in eventRows)
+            foreach (EventRow row in EventRows)
             {
                 profile.Events.Add(new MacroEventData
                 {
@@ -153,7 +153,7 @@ namespace EventRecorder
                 });
             }
 
-            foreach (PlaylistRow row in playlistRows)
+            foreach (PlaylistRow row in PlaylistRows)
             {
                 profile.Playlist.Add(new PlaylistEntryData
                 {
@@ -195,16 +195,16 @@ namespace EventRecorder
             }
 
             MessageBox.Show(this, "設定の保存に失敗したよ" + Environment.NewLine + filePath + Environment.NewLine + errorMessage,
-                AppName + " - 保存エラー", MessageBoxButton.OK, MessageBoxImage.Error);
+                _appName + " - 保存エラー", MessageBoxButton.OK, MessageBoxImage.Error);
             return false;
         }
 
-        // comboBox_Profile(プレイリストの設定ファイル列も含む)へ、userDataFolder配下(サブフォルダ含む)の*.jsonを、
-        // userDataFolderからの相対パスで並べる。WinForms版のComboBox(Sorted=true)と同じく名前順に並べ、
+        // comboBox_Profile(プレイリストの設定ファイル列も含む)へ、_userDataFolder配下(サブフォルダ含む)の*.jsonを、
+        // _userDataFolderからの相対パスで並べる。WinForms版のComboBox(Sorted=true)と同じく名前順に並べ、
         // defaultProfileNameに一致する項目(無ければ先頭)を選ぶ。選択が変わればSelectionChangedでそのプロファイルが読み込まれる
         private void UpdateProfileListAll(String defaultProfileName)
         {
-            List<String> names = ListProfileNames(userDataFolder);
+            List<String> names = ListProfileNames(_userDataFolder);
 
             comboBox_Profile.Items.Clear();
             foreach (String name in names)
@@ -225,9 +225,12 @@ namespace EventRecorder
                 return names;
             }
 
+            // 複数の拡張子パターンで同じファイルが重複して見つかった場合の除外用
+            HashSet<String> seen = new HashSet<String>();
+            int prefixLength = folder.TrimEnd('\\').Length + 1;
             try
             {
-                foreach (String extension in ProfileExtensions)
+                foreach (String extension in _profileExtensions)
                 {
                     foreach (String file in Directory.GetFiles(folder, extension, SearchOption.AllDirectories))
                     {
@@ -237,8 +240,8 @@ namespace EventRecorder
                             continue;
                         }
 
-                        String name = file.Substring(folder.TrimEnd('\\').Length + 1);
-                        if (name != String.Empty && !names.Contains(name))
+                        String name = file.Substring(prefixLength);
+                        if (name != String.Empty && seen.Add(name))
                         {
                             names.Add(name);
                         }
@@ -297,7 +300,7 @@ namespace EventRecorder
 
                 if (overwriteResult == MessageBoxResult.Yes)
                 {
-                    String overwriteFilePath = Path.Combine(userDataFolder, currentName);
+                    String overwriteFilePath = Path.Combine(_userDataFolder, currentName);
                     if (!SaveProfileWithErrorDialog(overwriteFilePath))
                     {
                         return;
@@ -311,8 +314,8 @@ namespace EventRecorder
             Microsoft.Win32.SaveFileDialog dlg = new Microsoft.Win32.SaveFileDialog();
             dlg.FileName = Path.GetFileName(currentName);
             dlg.InitialDirectory = String.IsNullOrEmpty(currentName)
-                ? userDataFolder
-                : Path.GetDirectoryName(Path.Combine(userDataFolder, currentName));
+                ? _userDataFolder
+                : Path.GetDirectoryName(Path.Combine(_userDataFolder, currentName));
             dlg.Filter = "JSONファイル(*.json)|*.json";
             dlg.DefaultExt = ".json";
             dlg.AddExtension = true;
@@ -345,11 +348,11 @@ namespace EventRecorder
             SyncPlaylistFileItems();
         }
 
-        // 保存先のフルパスを、プルダウンに並べる名前(userDataFolderからの相対パス)に直す。
-        // userDataFolderの外に保存した場合はファイル名だけ(WinForms版と同じくPath.GetFileName)
+        // 保存先のフルパスを、プルダウンに並べる名前(_userDataFolderからの相対パス)に直す。
+        // _userDataFolderの外に保存した場合はファイル名だけ(WinForms版と同じくPath.GetFileName)
         private String ToProfileName(String fullPath)
         {
-            String folder = userDataFolder.TrimEnd('\\') + "\\";
+            String folder = _userDataFolder.TrimEnd('\\') + "\\";
             if (fullPath.StartsWith(folder, StringComparison.OrdinalIgnoreCase))
             {
                 return fullPath.Substring(folder.Length);

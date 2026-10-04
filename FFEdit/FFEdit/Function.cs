@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Text;
 
 namespace FFEdit
 {
@@ -18,74 +19,56 @@ namespace FFEdit
         public List<String> FileList { get; set; }
         public FunctionType Type { get; set; }
 
-        private readonly FileMng fm = new FileMng();
+        private readonly FileMng _fm = new FileMng();
 
         public Boolean Restore()
         {
-            return fm.RestoreAll();
+            return _fm.RestoreAll();
         }
 
         public String Execute()
         {
-            String errorList = "";
+            StringBuilder errorList = new StringBuilder();
 
             for (int i = 0; i < FileList.Count; i++)
             {
                 String srcName = BaseDir + '\\' + FileList[i];
-                String destName;
-                switch (Type)
+                if (Type == FunctionType.DelEmptyDir)
                 {
-                    case FunctionType.DelEmptyDir:
-                        fm.DeleteBlankDir(srcName);
-                        break;
+                    _fm.DeleteBlankDir(srcName);
+                    continue;
+                }
 
-                    case FunctionType.Move:
-                        destName = DestDir + '\\' + Path.GetFileName(FileList[i]);
-                        if (srcName == destName)
-                        {
-                            // 同一だったら処理しない
-                            continue;
-                        }
+                // 移動/コピーは移動先のパスが同じ形なので共通にする
+                String destName = DestDir + '\\' + Path.GetFileName(FileList[i]);
+                if (srcName == destName)
+                {
+                    // 同一だったら処理しない
+                    continue;
+                }
 
-                        Directory.CreateDirectory(DestDir);
-                        if (fm.Move(srcName, destName))
-                        {
-                            // 復元用に設定を覚えておく
-                            fm.AddRestoreItem(srcName, destName);
-                        }
-                        else
-                        {
-                            errorList += GetErrorText(srcName, destName);
-                        }
-                        break;
-
-                    case FunctionType.Copy:
-                        destName = DestDir + '\\' + Path.GetFileName(FileList[i]);
-                        if (srcName == destName)
-                        {
-                            // 同一だったら処理しない
-                            continue;
-                        }
-
-                        Directory.CreateDirectory(DestDir);
-                        // コピーのときは処理を覚えない
-                        if (!fm.Copy(srcName, destName))
-                        {
-                            errorList += GetErrorText(srcName, destName);
-                        }
-                        break;
+                Directory.CreateDirectory(DestDir);
+                if (Type == FunctionType.Move)
+                {
+                    if (_fm.Move(srcName, destName))
+                    {
+                        // 復元用に設定を覚えておく
+                        _fm.AddRestoreItem(srcName, destName);
+                    }
+                    else
+                    {
+                        errorList.Append(FileMng.GetErrorText(srcName, destName));
+                    }
+                }
+                else if (!_fm.Copy(srcName, destName))
+                {
+                    // コピーのときは処理を覚えない
+                    errorList.Append(FileMng.GetErrorText(srcName, destName));
                 }
             }
-            fm.IncrementSerialNumber();
+            _fm.IncrementSerialNumber();
 
-            return errorList;
-        }
-
-        private static String GetErrorText(String srcName, String destName)
-        {
-            return "Src=" + srcName + Environment.NewLine
-                + "Dst=" + destName + Environment.NewLine
-                + Environment.NewLine;
+            return errorList.ToString();
         }
     }
 }

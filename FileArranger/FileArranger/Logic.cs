@@ -1,5 +1,5 @@
 using System;
-using System.Collections.Generic;
+using System.Linq;
 using System.Text.RegularExpressions;
 using System.Windows.Controls;
 using Microsoft.VisualBasic;
@@ -19,18 +19,14 @@ namespace FileArranger
         /// </summary>
         public static int GetPaddingDigits(long number, Boolean isZeroDigitForZero = false)
         {
-            const int PaddingMinDigits = 2;
-            int paddingDigits = 0;
+            const int paddingMinDigits = 2;
 
             if (isZeroDigitForZero && number == 0)
             {
                 // 数値が「0」のときは、桁数も「0」とする
+                return 0;
             }
-            else if (number.ToString().Length <= PaddingMinDigits)
-            {
-                paddingDigits = PaddingMinDigits;
-            }
-            return paddingDigits;
+            return number.ToString().Length <= paddingMinDigits ? paddingMinDigits : 0;
         }
 
         /// <summary>連番に加算数を足し、必要な桁数までゼロ埋めした文字列にする。</summary>
@@ -45,10 +41,11 @@ namespace FileArranger
         /// <summary>全角の数字・英字・スペースを半角に変換する。</summary>
         public static String ChangeWide2Narrow(String srcString)
         {
-            const String WidePattern = "[０-９Ａ-Ｚａ-ｚ　]";
-            Regex re = new Regex(WidePattern);
-            return re.Replace(srcString, ToNarrow);
+            return _widePattern.Replace(srcString, ToNarrow);
         }
+
+        // 全角の数字・英字・スペース。リネーム候補の更新のたびに呼ばれるので、毎回作り直さず使い回す
+        private static readonly Regex _widePattern = new Regex("[０-９Ａ-Ｚａ-ｚ　]");
 
         private static String ToNarrow(Match m)
         {
@@ -82,7 +79,7 @@ namespace FileArranger
         /// </summary>
         public static int GetAddCount(ListView lv, String fileName, String trimName, Boolean isReverse = false)
         {
-            const int TargetSubItemIdx = 0;
+            const int targetSubItemIdx = 0;
 
             int count = 0;
             String searchName = "";
@@ -96,7 +93,7 @@ namespace FileArranger
 
             foreach (Object item in WpfControlHelper.GetSelectedItemsInIndexOrder(lv))
             {
-                String srcFileName = ((ListViewRow)item)[TargetSubItemIdx];
+                String srcFileName = ((ListViewRow)item)[targetSubItemIdx];
 
                 if (srcFileName.IndexOf(searchName) != -1)
                 {
@@ -115,31 +112,14 @@ namespace FileArranger
         /// <summary>
         /// 新しく追加された項目のうち、既存の一覧に既に含まれているものを取り除く。
         ///
-        /// ⚠️ Delimiter 引数は元の実装から使われていなかった（呼び出し側は値を渡しているが
+        /// ⚠️ delimiter 引数は元の実装から使われていなかった（呼び出し側は値を渡しているが
         /// 中では参照されていない）。挙動を変えないため、そのまま残してある。
         /// </summary>
         public static void DeleteDuplicate(String[] existingArray, ref String[] newArray, String delimiter)
         {
-            var result = new List<String>();
-            foreach (String newItem in newArray)
-            {
-                Boolean isDuplicate = false;
-                foreach (String existingItem in existingArray)
-                {
-                    if (existingItem.IndexOf(newItem) != -1)
-                    {
-                        isDuplicate = true;
-                        break;
-                    }
-                }
-
-                if (!isDuplicate)
-                {
-                    result.Add(newItem);
-                }
-            }
-
-            newArray = result.ToArray();
+            newArray = newArray
+                .Where(newItem => !existingArray.Any(existingItem => existingItem.IndexOf(newItem) != -1))
+                .ToArray();
         }
     }
 }

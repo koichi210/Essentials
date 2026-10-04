@@ -1,6 +1,6 @@
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
-namespace othello.Tests
+namespace Othello.Tests
 {
     /// <summary>
     /// ComPlayer(COMの思考ルーチン、C++版 CComProc の移植)のテスト。

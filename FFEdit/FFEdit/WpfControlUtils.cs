@@ -43,13 +43,11 @@ namespace FFEdit
         // WPFのListBox.SelectedItemsはクリックした順になるため、WinForms版(常にインデックス順)に合わせて並べ直す
         public static List<String> GetSelectedItemsInOrder(ListBox listBox)
         {
-            List<int> indices = new List<int>();
-            foreach (Object item in listBox.SelectedItems)
-            {
-                indices.Add(listBox.Items.IndexOf(item));
-            }
-            indices.Sort();
-            return indices.Select(i => listBox.Items[i].ToString()).ToList();
+            return listBox.SelectedItems.Cast<Object>()
+                .Select(item => listBox.Items.IndexOf(item))
+                .OrderBy(index => index)
+                .Select(index => listBox.Items[index].ToString())
+                .ToList();
         }
 
         // 選択項目を「rootPath\項目名」の形で改行区切りに連結する(StcUtils.GetSelectNameと同じ)
@@ -77,8 +75,9 @@ namespace FFEdit
         // (StcUtils.SetClipboardTextと同じ考え方)。空文字のときはクリアする
         public static Boolean SetClipboardText(String text)
         {
-            const int RetryCount = 5;
-            for (int i = 0; i < RetryCount; i++)
+            const int retryCount = 5;
+            const int retryWaitMsec = 100;
+            for (int i = 0; i < retryCount; i++)
             {
                 try
                 {
@@ -94,7 +93,7 @@ namespace FFEdit
                 }
                 catch (COMException)
                 {
-                    Thread.Sleep(100);
+                    Thread.Sleep(retryWaitMsec);
                 }
             }
             return false;

@@ -3,11 +3,11 @@ using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Windows;
 
-[assembly: AssemblyTitle("othello")]
+[assembly: AssemblyTitle("Othello")]
 [assembly: AssemblyDescription("")]
 [assembly: AssemblyConfiguration("")]
 [assembly: AssemblyCompany("")]
-[assembly: AssemblyProduct("othello")]
+[assembly: AssemblyProduct("Othello")]
 [assembly: AssemblyCopyright("Copyright ©  2018")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
@@ -16,7 +16,7 @@ using System.Windows;
 
 // テストプロジェクトから internal クラス（BoardRenderer / GameMaster / MainWindowのコントロール など）を
 // 直接参照できるようにする
-[assembly: InternalsVisibleTo("othello.Tests")]
+[assembly: InternalsVisibleTo("Othello.Tests")]
 
 [assembly: ThemeInfo(ResourceDictionaryLocation.None, ResourceDictionaryLocation.SourceAssembly)]
 

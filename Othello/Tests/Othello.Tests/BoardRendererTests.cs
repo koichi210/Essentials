@@ -1,7 +1,7 @@
 using System.Drawing;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
-namespace othello.Tests
+namespace Othello.Tests
 {
     /// <summary>
     /// BoardRenderer（オセロ盤面をBitmapに描画するクラス、MainWindowとは独立した
@@ -14,7 +14,7 @@ namespace othello.Tests
     {
         private BoardRenderer CreateRenderer()
         {
-            // CellMax=8なので、80x80(1マス10px)にしておくと座標計算がしやすい
+            // 盤面は8x8マスなので、80x80(1マス10px)にしておくと座標計算がしやすい
             var renderer = new BoardRenderer();
             renderer.SetDrawArea(80, 80);
             return renderer;

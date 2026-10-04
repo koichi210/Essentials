@@ -18,8 +18,14 @@ namespace EventRecorder
         {
             InitializeComponent();
 
-            RecordHotkey = currentRecordHotkey;
-            PlayHotkey = currentPlayHotkey;
+            SetHotkeys(currentRecordHotkey, currentPlayHotkey);
+        }
+
+        // ホットキーを設定し、テキストボックスの表示も合わせて更新する
+        private void SetHotkeys(Keys recordHotkey, Keys playHotkey)
+        {
+            RecordHotkey = recordHotkey;
+            PlayHotkey = playHotkey;
             textBox_Record.Text = HotkeyFormatter.Format(RecordHotkey);
             textBox_Play.Text = HotkeyFormatter.Format(PlayHotkey);
         }
@@ -32,8 +38,7 @@ namespace EventRecorder
                 return;
             }
 
-            RecordHotkey = captured;
-            textBox_Record.Text = HotkeyFormatter.Format(RecordHotkey);
+            SetHotkeys(captured, PlayHotkey);
         }
 
         private void textBox_Play_PreviewKeyDown(object sender, KeyEventArgs e)
@@ -44,8 +49,7 @@ namespace EventRecorder
                 return;
             }
 
-            PlayHotkey = captured;
-            textBox_Play.Text = HotkeyFormatter.Format(PlayHotkey);
+            SetHotkeys(RecordHotkey, captured);
         }
 
         // テキストボックスへの通常の文字入力・キャレット移動は起こさせず、押されたキーの
@@ -127,10 +131,7 @@ namespace EventRecorder
 
         private void button_Reset_Click(object sender, RoutedEventArgs e)
         {
-            RecordHotkey = HotkeyDefaults.Record;
-            PlayHotkey = HotkeyDefaults.Play;
-            textBox_Record.Text = HotkeyFormatter.Format(RecordHotkey);
-            textBox_Play.Text = HotkeyFormatter.Format(PlayHotkey);
+            SetHotkeys(HotkeyDefaults.Record, HotkeyDefaults.Play);
         }
 
         private void button_Save_Click(object sender, RoutedEventArgs e)

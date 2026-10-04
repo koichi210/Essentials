@@ -7,8 +7,8 @@
     <ProjectGuid>{BE18360C-C7F8-4088-B89D-E81A1814795D}</ProjectGuid>
     <OutputType>WinExe</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>othello</RootNamespace>
-    <AssemblyName>othello</AssemblyName>
+    <RootNamespace>Othello</RootNamespace>
+    <AssemblyName>Othello</AssemblyName>
     <TargetFrameworkVersion>v4.0</TargetFrameworkVersion>
     <TargetFrameworkProfile>Client</TargetFrameworkProfile>
     <FileAlignment>512</FileAlignment>
@@ -67,7 +67,7 @@
     <Compile Include="ComPlayer.cs" />
     <Compile Include="BoardRenderer.cs" />
     <Compile Include="GameMaster.cs" />
-    <Compile Include="Kihu.cs" />
+    <Compile Include="Kifu.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="..\..\_Common\StcWpfExceptionGuard.cs">
       <Link>_Common\StcWpfExceptionGuard.cs</Link>

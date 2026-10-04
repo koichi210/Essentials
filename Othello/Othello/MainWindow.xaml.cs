@@ -7,7 +7,7 @@ using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Threading;
 
-namespace othello
+namespace Othello
 {
     public partial class MainWindow : Window
     {
@@ -23,39 +23,40 @@ namespace othello
             ComCom,
         }
 
-        private const int CountdownIntervalMs = 100;
+        private const int _countdownIntervalMs = 100;
+        private const string _kifuFileFilter = "棋譜ファイル (*.txt)|*.txt|すべてのファイル (*.*)|*.*";
 
         internal BoardRenderer BoardRenderer { get; } = new BoardRenderer();
         internal GameMaster GameMaster { get; } = new GameMaster();
-        private PlayMode playMode = PlayMode.PlayerPlayer;
-        private int comLevel = 1;
+        private PlayMode _playMode = PlayMode.PlayerPlayer;
+        private int _comLevel = 1;
 
         // 持ち時間(秒)。-1は「なし」。C++版 time_limit 相当。
-        private int timeLimitSeconds = -1;
-        private int blackTimeMs;
-        private int whiteTimeMs;
+        private int _timeLimitSeconds = -1;
+        private int _blackTimeMs;
+        private int _whiteTimeMs;
         // 時間切れで終局したかどうか(GameMaster.IsGameEndとは別に管理する)
-        private bool isTimedOut;
+        private bool _isTimedOut;
 
         // COMの手を少し間を置いてから打つためのタイマー(人間の手と同じ速さで即打つと
         // 何が起きたか分かりにくいため)。
-        private readonly DispatcherTimer comMoveTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(150) };
+        private readonly DispatcherTimer _comMoveTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(150) };
 
         // 持ち時間のカウントダウン用タイマー。C++版 COUNT_DOWN_CYC(100ms)相当。
         // 常に「今の手番」の残り時間を減らす(手番が変わればおのずと対象も切り替わる)。
-        private readonly DispatcherTimer countdownTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(CountdownIntervalMs) };
+        private readonly DispatcherTimer _countdownTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(_countdownIntervalMs) };
 
-        private bool isLayoutFixed;
+        private bool _isLayoutFixed;
 
         // MouseClick相当(同じボタンで押して離した時だけ反応させる)のための押下中ボタン
-        private MouseButton? pressedButton;
+        private MouseButton? _pressedButton;
 
         public MainWindow()
         {
             InitializeComponent();
 
-            comMoveTimer.Tick += ComMoveTimer_Tick;
-            countdownTimer.Tick += CountdownTimer_Tick;
+            _comMoveTimer.Tick += ComMoveTimer_Tick;
+            _countdownTimer.Tick += CountdownTimer_Tick;
 
             ResetGame();
 
@@ -68,8 +69,8 @@ namespace othello
             SourceInitialized += MainWindow_SourceInitialized;
             Closed += (s, e) =>
             {
-                comMoveTimer.Stop();
-                countdownTimer.Stop();
+                _comMoveTimer.Stop();
+                _countdownTimer.Stop();
             };
         }
 
@@ -88,7 +89,7 @@ namespace othello
             boardHost.ClearValue(WidthProperty);
             boardHost.ClearValue(HeightProperty);
             menuStrip1.ClearValue(WidthProperty);
-            isLayoutFixed = true;
+            _isLayoutFixed = true;
         }
 
         #region 盤面を正方形に保つリサイズ(WM_SIZING)
@@ -127,7 +128,7 @@ namespace othello
         /// </summary>
         private IntPtr WndProc(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
         {
-            if (msg == WM_SIZING && isLayoutFixed)
+            if (msg == WM_SIZING && _isLayoutFixed)
             {
                 AdjustResizingRectForSquareBoard(hwnd, wParam, lParam);
             }
@@ -206,8 +207,8 @@ namespace othello
         /// </summary>
         private void ResetGame()
         {
-            comMoveTimer.Stop();
-            countdownTimer.Stop();
+            _comMoveTimer.Stop();
+            _countdownTimer.Stop();
 
             GameMaster.Initialize();
             ResetTimeLimit();
@@ -218,9 +219,10 @@ namespace othello
         /// </summary>
         private void ResetTimeLimit()
         {
-            isTimedOut = false;
-            blackTimeMs = timeLimitSeconds < 0 ? 0 : timeLimitSeconds * 1000;
-            whiteTimeMs = timeLimitSeconds < 0 ? 0 : timeLimitSeconds * 1000;
+            _isTimedOut = false;
+            int limitMs = _timeLimitSeconds < 0 ? 0 : _timeLimitSeconds * 1000;
+            _blackTimeMs = limitMs;
+            _whiteTimeMs = limitMs;
         }
 
         /// <summary>
@@ -229,10 +231,10 @@ namespace othello
         /// </summary>
         private void menuItem_Undo_Click(object sender, RoutedEventArgs e)
         {
-            comMoveTimer.Stop();
+            _comMoveTimer.Stop();
             if (GameMaster.Undo())
             {
-                isTimedOut = false;
+                _isTimedOut = false;
                 RedrawBoard();
             }
         }
@@ -243,10 +245,10 @@ namespace othello
         /// </summary>
         private void menuItem_Redo_Click(object sender, RoutedEventArgs e)
         {
-            comMoveTimer.Stop();
+            _comMoveTimer.Stop();
             if (GameMaster.Redo())
             {
-                isTimedOut = false;
+                _isTimedOut = false;
                 RedrawBoard();
             }
         }
@@ -298,7 +300,7 @@ namespace othello
         {
             MessageBox.Show(
                 this,
-                "othello (C#/WinForms版)\nC++版(MFC)からの移植",
+                "Othello (C#/WPF版)\nC++版(MFC)からの移植",
                 "バージョン情報",
                 MessageBoxButton.OK,
                 MessageBoxImage.Information);
@@ -313,29 +315,36 @@ namespace othello
 
             if (clicked == menuItem_PP)
             {
-                playMode = PlayMode.PlayerPlayer;
+                _playMode = PlayMode.PlayerPlayer;
             }
             else if (clicked == menuItem_PC)
             {
-                playMode = PlayMode.PlayerCom;
+                _playMode = PlayMode.PlayerCom;
             }
             else if (clicked == menuItem_CP)
             {
-                playMode = PlayMode.ComPlayer;
+                _playMode = PlayMode.ComPlayer;
             }
             else if (clicked == menuItem_CC)
             {
-                playMode = PlayMode.ComCom;
+                _playMode = PlayMode.ComCom;
             }
 
-            // IsCheckable=Trueなのでクリックで一旦反転するが、ここで「選んだものだけチェック」に揃え直す
-            menuItem_PP.IsChecked = clicked == menuItem_PP;
-            menuItem_PC.IsChecked = clicked == menuItem_PC;
-            menuItem_CP.IsChecked = clicked == menuItem_CP;
-            menuItem_CC.IsChecked = clicked == menuItem_CC;
+            CheckOnly(clicked, menuItem_PP, menuItem_PC, menuItem_CP, menuItem_CC);
 
             ResetGame();
             RedrawBoard();
+        }
+
+        /// <summary>
+        /// IsCheckable=Trueのメニューはクリックで一旦反転するので、itemsのうちclickedだけをチェック状態に揃え直す。
+        /// </summary>
+        private static void CheckOnly(MenuItem clicked, params MenuItem[] items)
+        {
+            foreach (MenuItem item in items)
+            {
+                item.IsChecked = item == clicked;
+            }
         }
 
         /// <summary>
@@ -347,20 +356,18 @@ namespace othello
 
             if (clicked == menuItem_ComLevel1)
             {
-                comLevel = 1;
+                _comLevel = 1;
             }
             else if (clicked == menuItem_ComLevel2)
             {
-                comLevel = 2;
+                _comLevel = 2;
             }
             else if (clicked == menuItem_ComLevel3)
             {
-                comLevel = 3;
+                _comLevel = 3;
             }
 
-            menuItem_ComLevel1.IsChecked = clicked == menuItem_ComLevel1;
-            menuItem_ComLevel2.IsChecked = clicked == menuItem_ComLevel2;
-            menuItem_ComLevel3.IsChecked = clicked == menuItem_ComLevel3;
+            CheckOnly(clicked, menuItem_ComLevel1, menuItem_ComLevel2, menuItem_ComLevel3);
         }
 
         /// <summary>
@@ -372,48 +379,42 @@ namespace othello
 
             if (clicked == menuItem_TimeNone)
             {
-                timeLimitSeconds = -1;
+                _timeLimitSeconds = -1;
             }
             else if (clicked == menuItem_Time30s)
             {
-                timeLimitSeconds = 30;
+                _timeLimitSeconds = 30;
             }
             else if (clicked == menuItem_Time1m)
             {
-                timeLimitSeconds = 60;
+                _timeLimitSeconds = 60;
             }
             else if (clicked == menuItem_Time2m)
             {
-                timeLimitSeconds = 120;
+                _timeLimitSeconds = 120;
             }
             else if (clicked == menuItem_Time3m)
             {
-                timeLimitSeconds = 180;
+                _timeLimitSeconds = 180;
             }
             else if (clicked == menuItem_Time5m)
             {
-                timeLimitSeconds = 300;
+                _timeLimitSeconds = 300;
             }
             else if (clicked == menuItem_Time10m)
             {
-                timeLimitSeconds = 600;
+                _timeLimitSeconds = 600;
             }
             else if (clicked == menuItem_Time15m)
             {
-                timeLimitSeconds = 900;
+                _timeLimitSeconds = 900;
             }
 
-            menuItem_TimeNone.IsChecked = clicked == menuItem_TimeNone;
-            menuItem_Time30s.IsChecked = clicked == menuItem_Time30s;
-            menuItem_Time1m.IsChecked = clicked == menuItem_Time1m;
-            menuItem_Time2m.IsChecked = clicked == menuItem_Time2m;
-            menuItem_Time3m.IsChecked = clicked == menuItem_Time3m;
-            menuItem_Time5m.IsChecked = clicked == menuItem_Time5m;
-            menuItem_Time10m.IsChecked = clicked == menuItem_Time10m;
-            menuItem_Time15m.IsChecked = clicked == menuItem_Time15m;
+            CheckOnly(clicked, menuItem_TimeNone, menuItem_Time30s, menuItem_Time1m, menuItem_Time2m,
+                menuItem_Time3m, menuItem_Time5m, menuItem_Time10m, menuItem_Time15m);
 
             // WinForms版のVisible=falseと同じく、非表示でも場所は空けておく(Hidden)
-            label_Time.Visibility = timeLimitSeconds >= 0 ? Visibility.Visible : Visibility.Hidden;
+            label_Time.Visibility = _timeLimitSeconds >= 0 ? Visibility.Visible : Visibility.Hidden;
 
             ResetGame();
             RedrawBoard();
@@ -422,15 +423,15 @@ namespace othello
         /// <summary>
         /// メニュー「棋譜」→「表示」。ここまでの手順をメッセージボックスに表示する。
         /// </summary>
-        private void menuItem_KihuShow_Click(object sender, RoutedEventArgs e)
+        private void menuItem_KifuShow_Click(object sender, RoutedEventArgs e)
         {
-            MessageBox.Show(this, Kihu.ToText(GameMaster.History), "棋譜", MessageBoxButton.OK, MessageBoxImage.Information);
+            MessageBox.Show(this, Kifu.ToText(GameMaster.History), "棋譜", MessageBoxButton.OK, MessageBoxImage.Information);
         }
 
         /// <summary>
         /// メニュー「棋譜」→「保存」。ここまでの手順をテキストファイルに保存する。
         /// </summary>
-        private void menuItem_KihuSave_Click(object sender, RoutedEventArgs e)
+        private void menuItem_KifuSave_Click(object sender, RoutedEventArgs e)
         {
             if (GameMaster.History.Count == 0)
             {
@@ -440,24 +441,24 @@ namespace othello
 
             var dialog = new Microsoft.Win32.SaveFileDialog
             {
-                Filter = "棋譜ファイル (*.txt)|*.txt|すべてのファイル (*.*)|*.*",
-                FileName = "othello_kihu.txt",
+                Filter = _kifuFileFilter,
+                FileName = "Othello_kifu.txt",
             };
 
             if (dialog.ShowDialog(this) == true)
             {
-                System.IO.File.WriteAllText(dialog.FileName, Kihu.ToText(GameMaster.History));
+                System.IO.File.WriteAllText(dialog.FileName, Kifu.ToText(GameMaster.History));
             }
         }
 
         /// <summary>
         /// メニュー「棋譜」→「読込」。テキストファイルから手順を読み込み、最初から再生する。
         /// </summary>
-        private void menuItem_KihuLoad_Click(object sender, RoutedEventArgs e)
+        private void menuItem_KifuLoad_Click(object sender, RoutedEventArgs e)
         {
             var dialog = new Microsoft.Win32.OpenFileDialog
             {
-                Filter = "棋譜ファイル (*.txt)|*.txt|すべてのファイル (*.*)|*.*",
+                Filter = _kifuFileFilter,
             };
 
             if (dialog.ShowDialog(this) != true)
@@ -476,19 +477,19 @@ namespace othello
                 return;
             }
 
-            LoadKihuText(text);
+            LoadKifuText(text);
         }
 
         /// <summary>
         /// 棋譜テキストを最初から再生する(「棋譜」→「読込」のファイル読込以降の処理)。
         /// 失敗した場合はメッセージを表示する。
         /// </summary>
-        internal bool LoadKihuText(string text, bool showError = true)
+        internal bool LoadKifuText(string text, bool showError = true)
         {
-            comMoveTimer.Stop();
-            countdownTimer.Stop();
+            _comMoveTimer.Stop();
+            _countdownTimer.Stop();
 
-            bool ok = Kihu.TryReplay(text, GameMaster, out string errorMessage);
+            bool ok = Kifu.TryReplay(text, GameMaster, out string errorMessage);
             ResetTimeLimit();
 
             RedrawBoard();
@@ -505,7 +506,7 @@ namespace othello
         /// </summary>
         private bool IsComTurn(StoneColor color)
         {
-            switch (playMode)
+            switch (_playMode)
             {
                 case PlayMode.PlayerCom:
                     return color == StoneColor.White;
@@ -525,13 +526,13 @@ namespace othello
         {
             if (!GameMaster.IsGameEnd && IsComTurn(GameMaster.CurrentTurn))
             {
-                comMoveTimer.Start();
+                _comMoveTimer.Start();
             }
         }
 
-        internal bool IsComMovePending => comMoveTimer.IsEnabled;
+        internal bool IsComMovePending => _comMoveTimer.IsEnabled;
 
-        internal bool IsCountdownRunning => countdownTimer.IsEnabled;
+        internal bool IsCountdownRunning => _countdownTimer.IsEnabled;
 
         private void ComMoveTimer_Tick(object sender, EventArgs e)
         {
@@ -543,14 +544,14 @@ namespace othello
         /// </summary>
         internal void DoComMove()
         {
-            comMoveTimer.Stop();
+            _comMoveTimer.Stop();
 
-            if (isTimedOut || GameMaster.IsGameEnd || !IsComTurn(GameMaster.CurrentTurn))
+            if (_isTimedOut || GameMaster.IsGameEnd || !IsComTurn(GameMaster.CurrentTurn))
             {
                 return;
             }
 
-            if (ComPlayer.TryGetMove(GameMaster, GameMaster.CurrentTurn, comLevel, out int x, out int y))
+            if (ComPlayer.TryGetMove(GameMaster, GameMaster.CurrentTurn, _comLevel, out int x, out int y))
             {
                 GameMaster.TryPut(x, y);
             }
@@ -564,42 +565,42 @@ namespace othello
         /// </summary>
         private void CountdownTimer_Tick(object sender, EventArgs e)
         {
-            CountDown(CountdownIntervalMs);
+            CountDown(_countdownIntervalMs);
         }
 
         internal void CountDown(int elapsedMs)
         {
             if (GameMaster.CurrentTurn == StoneColor.Black)
             {
-                blackTimeMs -= elapsedMs;
+                _blackTimeMs -= elapsedMs;
             }
             else
             {
-                whiteTimeMs -= elapsedMs;
+                _whiteTimeMs -= elapsedMs;
             }
 
             UpdateTimeLabel();
 
-            if (blackTimeMs <= 0 || whiteTimeMs <= 0)
+            if (_blackTimeMs <= 0 || _whiteTimeMs <= 0)
             {
-                countdownTimer.Stop();
-                comMoveTimer.Stop();
-                isTimedOut = true;
+                _countdownTimer.Stop();
+                _comMoveTimer.Stop();
+                _isTimedOut = true;
                 UpdateStatusLabel();
             }
         }
 
         private void boardHost_MouseDown(object sender, MouseButtonEventArgs e)
         {
-            pressedButton = e.ChangedButton;
+            _pressedButton = e.ChangedButton;
             boardHost.CaptureMouse();
         }
 
         private void boardHost_MouseUp(object sender, MouseButtonEventArgs e)
         {
             // WinForms版のMouseClick相当: 盤面上で押したボタンと同じボタンを盤面上で離した時だけ反応する
-            bool isClick = pressedButton == e.ChangedButton;
-            pressedButton = null;
+            bool isClick = _pressedButton == e.ChangedButton;
+            _pressedButton = null;
             if (boardHost.IsMouseCaptured)
             {
                 boardHost.ReleaseMouseCapture();
@@ -618,7 +619,7 @@ namespace othello
         /// </summary>
         internal bool HandleBoardClick(Point position)
         {
-            if (isTimedOut || GameMaster.IsGameEnd)
+            if (_isTimedOut || GameMaster.IsGameEnd)
             {
                 return false;
             }
@@ -684,7 +685,7 @@ namespace othello
         /// </summary>
         private void RedrawBoard()
         {
-            bool showNotice = !isTimedOut && !GameMaster.IsGameEnd && !IsComTurn(GameMaster.CurrentTurn);
+            bool showNotice = !_isTimedOut && !GameMaster.IsGameEnd && !IsComTurn(GameMaster.CurrentTurn);
             bool[,] validMoves = showNotice ? GameMaster.GetValidMoves(GameMaster.CurrentTurn) : null;
             BoardRenderer.DrawField(GameMaster.Table, validMoves);
             GetDpiScale(out double scaleX, out double scaleY);
@@ -695,13 +696,13 @@ namespace othello
             menuItem_Undo.IsEnabled = GameMaster.CanUndo;
             menuItem_Redo.IsEnabled = GameMaster.CanRedo;
 
-            if (!isTimedOut && !GameMaster.IsGameEnd && timeLimitSeconds >= 0)
+            if (!_isTimedOut && !GameMaster.IsGameEnd && _timeLimitSeconds >= 0)
             {
-                countdownTimer.Start();
+                _countdownTimer.Start();
             }
             else
             {
-                countdownTimer.Stop();
+                _countdownTimer.Stop();
             }
 
             MaybeTriggerComMove();
@@ -712,13 +713,13 @@ namespace othello
         /// </summary>
         private void UpdateTimeLabel()
         {
-            if (timeLimitSeconds < 0)
+            if (_timeLimitSeconds < 0)
             {
                 return;
             }
 
-            int blackSec = Math.Max(0, blackTimeMs) / 1000;
-            int whiteSec = Math.Max(0, whiteTimeMs) / 1000;
+            int blackSec = Math.Max(0, _blackTimeMs) / 1000;
+            int whiteSec = Math.Max(0, _whiteTimeMs) / 1000;
             label_Time.Text = string.Format("残り時間 黒:{0}秒 白:{1}秒", blackSec, whiteSec);
         }
 
@@ -729,10 +730,10 @@ namespace othello
         {
             GameMaster.CountStones(out int blackCount, out int whiteCount);
 
-            if (isTimedOut)
+            if (_isTimedOut)
             {
-                string loserName = blackTimeMs <= 0 ? "黒" : "白";
-                string winnerName = blackTimeMs <= 0 ? "白" : "黒";
+                string loserName = _blackTimeMs <= 0 ? "黒" : "白";
+                string winnerName = _blackTimeMs <= 0 ? "白" : "黒";
                 label_Status.Text = string.Format("時間切れ({0}) {1}の勝ち 黒:{2} 白:{3}", loserName, winnerName, blackCount, whiteCount);
                 return;
             }

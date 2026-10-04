@@ -24,10 +24,10 @@ namespace EventRecorder
 
     internal sealed class FindReplaceEngine
     {
-        private readonly Func<IList<IEditableGridRow>> getRows;
-        private readonly Func<IList<String>> getVisibleColumns;
-        private readonly Action beginUndoBatch;
-        private readonly Action endUndoBatch;
+        private readonly Func<IList<IEditableGridRow>> _getRows;
+        private readonly Func<IList<String>> _getVisibleColumns;
+        private readonly Action _beginUndoBatch;
+        private readonly Action _endUndoBatch;
 
         // 「次を検索」で最後に見つけたセル位置(行インデックス・表示列インデックス)。次回はこの続き(次のセル)から探す
         public int LastFoundRowIndex { get; private set; } = -1;
@@ -38,10 +38,10 @@ namespace EventRecorder
         public FindReplaceEngine(Func<IList<IEditableGridRow>> getRows, Func<IList<String>> getVisibleColumns,
                                  Action beginUndoBatch, Action endUndoBatch)
         {
-            this.getRows = getRows;
-            this.getVisibleColumns = getVisibleColumns;
-            this.beginUndoBatch = beginUndoBatch;
-            this.endUndoBatch = endUndoBatch;
+            _getRows = getRows;
+            _getVisibleColumns = getVisibleColumns;
+            _beginUndoBatch = beginUndoBatch;
+            _endUndoBatch = endUndoBatch;
         }
 
         private StringComparison Comparison
@@ -63,8 +63,8 @@ namespace EventRecorder
                 return hits;
             }
 
-            IList<IEditableGridRow> rows = getRows();
-            IList<String> columns = getVisibleColumns();
+            IList<IEditableGridRow> rows = _getRows();
+            IList<String> columns = _getVisibleColumns();
 
             for (int r = 0; r < rows.Count; r++)
             {
@@ -102,8 +102,8 @@ namespace EventRecorder
                 return false;
             }
 
-            IList<IEditableGridRow> rows = getRows();
-            IList<String> columns = getVisibleColumns();
+            IList<IEditableGridRow> rows = _getRows();
+            IList<String> columns = _getVisibleColumns();
             int rowCount = rows.Count;
             int colCount = columns.Count;
             if (rowCount == 0 || colCount == 0)
@@ -154,16 +154,19 @@ namespace EventRecorder
                 return;
             }
 
-            IList<IEditableGridRow> rows = getRows();
-            IList<String> columns = getVisibleColumns();
-            if (LastFoundRowIndex >= 0 && LastFoundRowIndex < rows.Count && LastFoundColumnIndex >= 0 && LastFoundColumnIndex < columns.Count)
+            IList<IEditableGridRow> rows = _getRows();
+            IList<String> columns = _getVisibleColumns();
+            if (LastFoundRowIndex < 0 || LastFoundRowIndex >= rows.Count || LastFoundColumnIndex < 0 || LastFoundColumnIndex >= columns.Count)
             {
-                IEditableGridRow row = rows[LastFoundRowIndex];
-                String text = row.GetCell(columns[LastFoundColumnIndex]);
-                if (Matches(text, keyword))
-                {
-                    row.SetCell(columns[LastFoundColumnIndex], ReplaceAllOccurrences(text, keyword, replacement ?? "", Comparison));
-                }
+                return;
+            }
+
+            IEditableGridRow row = rows[LastFoundRowIndex];
+            String column = columns[LastFoundColumnIndex];
+            String text = row.GetCell(column);
+            if (Matches(text, keyword))
+            {
+                row.SetCell(column, ReplaceAllOccurrences(text, keyword, replacement ?? "", Comparison));
             }
         }
 
@@ -176,11 +179,13 @@ namespace EventRecorder
                 return 0;
             }
 
-            IList<IEditableGridRow> rows = getRows();
-            IList<String> columns = getVisibleColumns();
+            IList<IEditableGridRow> rows = _getRows();
+            IList<String> columns = _getVisibleColumns();
+            String newValue = replacement ?? "";
+            StringComparison comparison = Comparison;
             int replacedCount = 0;
 
-            beginUndoBatch();
+            _beginUndoBatch();
             try
             {
                 foreach (IEditableGridRow row in rows)
@@ -193,14 +198,14 @@ namespace EventRecorder
                             continue;
                         }
 
-                        row.SetCell(column, ReplaceAllOccurrences(text, keyword, replacement ?? "", Comparison));
+                        row.SetCell(column, ReplaceAllOccurrences(text, keyword, newValue, comparison));
                         replacedCount++;
                     }
                 }
             }
             finally
             {
-                endUndoBatch();
+                _endUndoBatch();
             }
 
             return replacedCount;

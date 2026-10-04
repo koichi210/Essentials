@@ -57,12 +57,7 @@ namespace FileArranger
             // 移動元フォルダをリストアップ
             String[] files = Directory.GetFiles(pf_textBox_TargetFile.Text);
             pf_listView_Target.Items.Clear();
-            List<String> names = new List<String>();
-            foreach (String file in files)
-            {
-                names.Add(GetDisplayName(file, pf_textBox_TargetFile.Text));
-            }
-            foreach (String fileName in SortedByName(names))
+            foreach (String fileName in GetSortedDisplayNames(files, pf_textBox_TargetFile.Text))
             {
                 pf_listView_Target.Items.Add(new ListViewRow(fileName, "", ""));
             }
@@ -83,18 +78,18 @@ namespace FileArranger
             if (selectedIndices.Count != 0)
             {
                 int idx = selectedIndices[0];
-                pf_comboBox_MoveDestDirName.Text = ((ListViewRow)pf_listView_Target.Items[idx])[PartitionMoveDestIdx];
+                pf_comboBox_MoveDestDirName.Text = ((ListViewRow)pf_listView_Target.Items[idx])[_partitionMoveDestIdx];
             }
         }
 
         private Boolean GetPartitionNameFromListView(ref String srcFolderName, ref String targetFolderName, String srcFileName)
         {
-            int sameIdx = util.FindSelectedRowIndex(pf_listView_Target, PartitionTargetIdx, srcFileName, pf_textBox_TargetSeparator.Text, true);
+            int sameIdx = _util.FindSelectedRowIndex(pf_listView_Target, _partitionTargetIdx, srcFileName, pf_textBox_TargetSeparator.Text, true);
             if (0 <= sameIdx)
             {
                 ListViewRow row = (ListViewRow)pf_listView_Target.Items[sameIdx];
-                srcFolderName = row[PartitionMoveSrcIdx];
-                targetFolderName = row[PartitionMoveDestIdx];
+                srcFolderName = row[_partitionMoveSrcIdx];
+                targetFolderName = row[_partitionMoveDestIdx];
             }
 
             return targetFolderName != String.Empty;
@@ -119,7 +114,7 @@ namespace FileArranger
         {
             // 期待するフォルダ名が見つからなかった
             srcFolderName = "";
-            String sampleSrcFolderName = util.CreateNewFolderName(srcFileName, pf_textBox_TargetSeparator.Text, true);
+            String sampleSrcFolderName = _util.CreateNewFolderName(srcFileName, pf_textBox_TargetSeparator.Text, true);
             sampleSrcFolderName += cmn_textBox_AddListSuffix.Text;
 
             // 数値を考慮した文字列
@@ -128,7 +123,7 @@ namespace FileArranger
 
         private String GetPartitionTargetNameWithNumber(String srcFolderName, String srcFileName, String defaultNumber)
         {
-            long srcNumber = util.GetNumberFromRear(srcFolderName, pf_textBox_SearchTitleLine.Text, pf_textBox_SearchTitleLength.Text, defaultNumber);
+            long srcNumber = _util.GetNumberFromRear(srcFolderName, pf_textBox_SearchTitleLine.Text, pf_textBox_SearchTitleLength.Text, defaultNumber);
             int addCount = Logic.GetAddCount(pf_listView_Target, srcFileName, pf_textBox_TargetSeparator.Text, true);
 
             String number = Logic.ToPaddedNumberString(srcNumber, addCount);
@@ -144,7 +139,7 @@ namespace FileArranger
                 // 参照しているListViewのIdx
                 ListViewRow row = (ListViewRow)pf_listView_Target.Items[idx];
 
-                String srcFileName = row[PartitionTargetIdx];
+                String srcFileName = row[_partitionTargetIdx];
                 String srcFolderName = "";
                 String targetFolderName = "";
 
@@ -163,8 +158,8 @@ namespace FileArranger
                     CreatePartitionName(ref srcFolderName, ref targetFolderName, srcFileName);
                 }
 
-                row[PartitionMoveSrcIdx] = srcFolderName;
-                row[PartitionMoveDestIdx] = targetFolderName;
+                row[_partitionMoveSrcIdx] = srcFolderName;
+                row[_partitionMoveDestIdx] = targetFolderName;
             }
         }
 
@@ -178,8 +173,8 @@ namespace FileArranger
         {
             foreach (ListViewRow row in pf_listView_Target.Items)
             {
-                row[PartitionMoveSrcIdx] = "";
-                row[PartitionMoveDestIdx] = "";
+                row[_partitionMoveSrcIdx] = "";
+                row[_partitionMoveDestIdx] = "";
             }
         }
 
@@ -199,14 +194,12 @@ namespace FileArranger
 
             // WinForms版のBackgroundWorkerは実行中に再度RunWorkerAsyncすると例外になっていた。
             // WPF版では実行中なら何もしない(二重実行の防止)
-            if (bgPartition.IsBusy)
+            if (_bgPartition.IsBusy)
             {
                 return;
             }
 
-            progressBar.Maximum = selectedIndices.Count;
-            progressBar.Minimum = 0;
-            progressBar.Value = 0;
+            ResetProgress(selectedIndices.Count);
 
             // 別スレッドを非同期実行
             PartitionWorkerParam param = new PartitionWorkerParam
@@ -220,12 +213,12 @@ namespace FileArranger
                 ListViewRow row = (ListViewRow)pf_listView_Target.Items[idx];
                 param.Items.Add(new PartitionWorkerParam.Item
                 {
-                    TargetName = row[PartitionTargetIdx],
-                    MoveSrc = row[PartitionMoveSrcIdx],
-                    MoveDest = row[PartitionMoveDestIdx],
+                    TargetName = row[_partitionTargetIdx],
+                    MoveSrc = row[_partitionMoveSrcIdx],
+                    MoveDest = row[_partitionMoveDestIdx],
                 });
             }
-            bgPartition.RunWorkerAsync(param);   // ⇒bgPartition_DoWork()
+            _bgPartition.RunWorkerAsync(param);   // ⇒bgPartition_DoWork()
         }
 
         // 項目のダブルクリック(WinForms版ListView.DoubleClickは項目上でだけ発生していたため、項目側で受ける)
@@ -238,10 +231,10 @@ namespace FileArranger
             }
 
             int idx = selectedIndices[0];
-            String dirPath = pf_textBox_ReferenceFile.Text + @"\" + ((ListViewRow)pf_listView_Target.Items[idx])[PartitionMoveSrcIdx];
+            String dirPath = pf_textBox_ReferenceFile.Text + @"\" + ((ListViewRow)pf_listView_Target.Items[idx])[_partitionMoveSrcIdx];
             if (Directory.Exists(dirPath))
             {
-                util.ExecutePath(dirPath);
+                _util.ExecutePath(dirPath);
             }
         }
 
@@ -257,7 +250,7 @@ namespace FileArranger
                     foreach (int idx in WpfControlHelper.GetSelectedIndices(pf_listView_Target))
                     {
                         // 参照しているListViewのIdx
-                        ((ListViewRow)pf_listView_Target.Items[idx])[PartitionMoveDestIdx] = "";
+                        ((ListViewRow)pf_listView_Target.Items[idx])[_partitionMoveDestIdx] = "";
                     }
                     break;
 
@@ -276,7 +269,7 @@ namespace FileArranger
             {
                 foreach (int idx in WpfControlHelper.GetSelectedIndices(pf_listView_Target))
                 {
-                    ((ListViewRow)pf_listView_Target.Items[idx])[PartitionMoveDestIdx] = pf_comboBox_MoveDestDirName.Text;
+                    ((ListViewRow)pf_listView_Target.Items[idx])[_partitionMoveDestIdx] = pf_comboBox_MoveDestDirName.Text;
                 }
             }
         }
@@ -331,7 +324,7 @@ namespace FileArranger
                     }
 
                     // ファイル名の重複回避
-                    if (!util.AvoidFileNameConflict(ref destFileName, i))
+                    if (!_util.AvoidFileNameConflict(ref destFileName, i))
                     {
                         messages.Add("ファイル名が重複したので処理をスキップしました：" + fileName);
                         continue;
@@ -358,9 +351,7 @@ namespace FileArranger
 
         private void bgPartition_ProgressChanged(object sender, ProgressChangedEventArgs e)
         {
-            // 進捗率の表示
-            progressText.Text = e.ProgressPercentage + "/" + progressBar.Maximum + " 完了";
-            progressBar.Value = e.ProgressPercentage;
+            ShowProgress(e.ProgressPercentage);
         }
 
         private void bgPartition_RunWorkerCompleted(object sender, RunWorkerCompletedEventArgs e)

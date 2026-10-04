@@ -21,6 +21,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Collections.Specialized;
+using System.Linq;
 
 namespace EventRecorder
 {
@@ -51,14 +52,7 @@ namespace EventRecorder
 
         public Boolean Contains(String columnName)
         {
-            foreach (GridCellChange change in Changes)
-            {
-                if (change.ColumnName == columnName)
-                {
-                    return true;
-                }
-            }
-            return false;
+            return Changes.Any(change => change.ColumnName == columnName);
         }
     }
 
@@ -85,15 +79,19 @@ namespace EventRecorder
             public IList<GridCellChange> Changes;
         }
 
-        private readonly ObservableCollection<TRow> rows;
-        private readonly HashSet<TRow> subscribedRows = new HashSet<TRow>();
+        private readonly ObservableCollection<TRow> _rows;
+        private readonly HashSet<TRow> _subscribedRows = new HashSet<TRow>();
 
-        private readonly Stack<List<Entry>> undoStack = new Stack<List<Entry>>();
-        private readonly Stack<List<Entry>> redoStack = new Stack<List<Entry>>();
+        private readonly Stack<List<Entry>> _undoStack = new Stack<List<Entry>>();
+        private readonly Stack<List<Entry>> _redoStack = new Stack<List<Entry>>();
 
-        private List<Entry> pendingBatch;
+        private List<Entry> _pendingBatch;
+
+        // RowCellChangedを通知している最中のUndo単位(この間の連動変更は同じ単位に追加する)
+        private List<Entry> _dispatchingUnit;
+
         // Undo/Redoの適用中かどうか(この間に行側から来る変更通知は履歴に積まない)
-        private Boolean isApplyingHistory;
+        private Boolean _isApplyingHistory;
 
         // Ctrl+Z/Ctrl+Yによる元に戻す/やり直すを有効にするかどうか。既定は有効
         public Boolean EnableUndoRedo { get; set; } = true;
@@ -103,7 +101,7 @@ namespace EventRecorder
 
         public GridUndoRedo(ObservableCollection<TRow> rows)
         {
-            this.rows = rows;
+            _rows = rows;
             foreach (TRow row in rows)
             {
                 Subscribe(row);
@@ -113,28 +111,28 @@ namespace EventRecorder
 
         public Boolean CanUndo
         {
-            get { return undoStack.Count > 0; }
+            get { return _undoStack.Count > 0; }
         }
 
         public Boolean CanRedo
         {
-            get { return redoStack.Count > 0; }
+            get { return _redoStack.Count > 0; }
         }
 
         public void BeginUndoBatch()
         {
-            pendingBatch = new List<Entry>();
+            _pendingBatch = new List<Entry>();
         }
 
         public void EndUndoBatch()
         {
-            if (pendingBatch == null)
+            if (_pendingBatch == null)
             {
                 return;
             }
 
-            List<Entry> batch = pendingBatch;
-            pendingBatch = null;
+            List<Entry> batch = _pendingBatch;
+            _pendingBatch = null;
 
             if (batch.Count > 0)
             {
@@ -145,37 +143,37 @@ namespace EventRecorder
         // ファイルの読込直後など、それ以前の編集を誤って元に戻せてしまわないようにしたい場面で呼ぶ
         public void ClearUndoHistory()
         {
-            undoStack.Clear();
-            redoStack.Clear();
+            _undoStack.Clear();
+            _redoStack.Clear();
         }
 
         public void Undo()
         {
-            if (undoStack.Count == 0)
+            if (_undoStack.Count == 0)
             {
                 return;
             }
 
-            List<Entry> entries = undoStack.Pop();
+            List<Entry> entries = _undoStack.Pop();
             Apply(entries, useOldValue: true);
-            redoStack.Push(entries);
+            _redoStack.Push(entries);
         }
 
         public void Redo()
         {
-            if (redoStack.Count == 0)
+            if (_redoStack.Count == 0)
             {
                 return;
             }
 
-            List<Entry> entries = redoStack.Pop();
+            List<Entry> entries = _redoStack.Pop();
             Apply(entries, useOldValue: false);
-            undoStack.Push(entries);
+            _undoStack.Push(entries);
         }
 
         private void Apply(List<Entry> entries, Boolean useOldValue)
         {
-            isApplyingHistory = true;
+            _isApplyingHistory = true;
             try
             {
                 if (useOldValue)
@@ -203,20 +201,20 @@ namespace EventRecorder
             }
             finally
             {
-                isApplyingHistory = false;
+                _isApplyingHistory = false;
             }
         }
 
         private void PushUndo(List<Entry> entries)
         {
-            undoStack.Push(entries);
+            _undoStack.Push(entries);
             // 新しい変更が入ったら、それより後のRedo履歴は辻褄が合わなくなるので破棄する
-            redoStack.Clear();
+            _redoStack.Clear();
         }
 
         private void Subscribe(TRow row)
         {
-            if (row != null && subscribedRows.Add(row))
+            if (row != null && _subscribedRows.Add(row))
             {
                 row.CellChanged += Row_CellChanged;
             }
@@ -224,7 +222,7 @@ namespace EventRecorder
 
         private void Unsubscribe(TRow row)
         {
-            if (row != null && subscribedRows.Remove(row))
+            if (row != null && _subscribedRows.Remove(row))
             {
                 row.CellChanged -= Row_CellChanged;
             }
@@ -250,16 +248,13 @@ namespace EventRecorder
 
                 default:
                     // Remove / Replace / Reset。今コレクションに無い行の購読を外す
-                    HashSet<TRow> current = new HashSet<TRow>(rows);
-                    foreach (TRow row in new List<TRow>(subscribedRows))
+                    HashSet<TRow> current = new HashSet<TRow>(_rows);
+                    foreach (TRow row in _subscribedRows.Where(r => !current.Contains(r)).ToList())
                     {
-                        if (!current.Contains(row))
-                        {
-                            Unsubscribe(row);
-                            anyRemoved = true;
-                        }
+                        Unsubscribe(row);
+                        anyRemoved = true;
                     }
-                    foreach (TRow row in rows)
+                    foreach (TRow row in _rows)
                     {
                         Subscribe(row);
                     }
@@ -277,19 +272,19 @@ namespace EventRecorder
             TRow row = (TRow)sender;
 
             List<Entry> unit = null;
-            if (EnableUndoRedo && !isApplyingHistory)
+            if (EnableUndoRedo && !_isApplyingHistory)
             {
                 Entry entry = new Entry { Row = row, Changes = new List<GridCellChange>(e.Changes) };
-                if (dispatchingUnit != null)
+                if (_dispatchingUnit != null)
                 {
                     // RowCellChangedの受け手(例: ファイルを選んだらループ回数を自動セット)が連動して変えた値は、
                     // きっかけになった変更と同じ1つのUndo単位にまとめる
-                    dispatchingUnit.Add(entry);
+                    _dispatchingUnit.Add(entry);
                 }
-                else if (pendingBatch != null)
+                else if (_pendingBatch != null)
                 {
-                    pendingBatch.Add(entry);
-                    unit = pendingBatch;
+                    _pendingBatch.Add(entry);
+                    unit = _pendingBatch;
                 }
                 else
                 {
@@ -298,10 +293,10 @@ namespace EventRecorder
                 }
             }
 
-            List<Entry> previous = dispatchingUnit;
+            List<Entry> previous = _dispatchingUnit;
             if (unit != null)
             {
-                dispatchingUnit = unit;
+                _dispatchingUnit = unit;
             }
             try
             {
@@ -309,11 +304,8 @@ namespace EventRecorder
             }
             finally
             {
-                dispatchingUnit = previous;
+                _dispatchingUnit = previous;
             }
         }
-
-        // RowCellChangedを通知している最中のUndo単位(この間の連動変更は同じ単位に追加する)
-        private List<Entry> dispatchingUnit;
     }
 }

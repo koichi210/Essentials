@@ -10,7 +10,7 @@ namespace FFEdit
     {
         public const String DisplayFormat = "H:mm:ss";
 
-        private static readonly String[] ParseFormats = { "H:mm:ss", "H:m:s", "H:mm", "H:m" };
+        private static readonly String[] _parseFormats = { "H:mm:ss", "H:m:s", "H:mm", "H:m" };
 
         public static String Format(TimeSpan time)
         {
@@ -21,7 +21,7 @@ namespace FFEdit
         public static Boolean TryParse(String text, out TimeSpan time)
         {
             DateTime parsed;
-            if (DateTime.TryParseExact((text ?? "").Trim(), ParseFormats, CultureInfo.InvariantCulture, DateTimeStyles.None, out parsed))
+            if (DateTime.TryParseExact((text ?? "").Trim(), _parseFormats, CultureInfo.InvariantCulture, DateTimeStyles.None, out parsed))
             {
                 time = parsed.TimeOfDay;
                 return true;

@@ -1,6 +1,6 @@
 using System.Windows;
 
-namespace othello
+namespace Othello
 {
     public partial class App : Application
     {

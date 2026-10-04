@@ -6,8 +6,6 @@ namespace Mailer
     /// <summary>
     /// もともと Form1.cs に private メソッドとして埋め込まれていた、メール件名・本文の
     /// プレースホルダ置換ロジックを、テストできる形に切り出したもの。
-    ///
-    /// コードは元のファイルにあったものをそのまま移しただけで、中身の書き換えはしていない。
     /// </summary>
     internal static class Logic
     {
@@ -53,13 +51,9 @@ namespace Mailer
 
         public static String ReplaceDay(DateTime dt, String srcText, String keyName, bool withYear = true)
         {
-            String dateString = "";
-            if (withYear)
-            {
-                dateString += dt.Year.ToString() + "/";
-            }
-            dateString += dt.Month.ToString() + "/";
-            dateString += dt.Day.ToString();
+            String dateString = withYear
+                ? dt.Year + "/" + dt.Month + "/" + dt.Day
+                : dt.Month + "/" + dt.Day;
 
             return srcText.Replace(keyName, dateString);
         }
@@ -67,14 +61,10 @@ namespace Mailer
         /// <summary>メール作成する日数分のオフセット一覧を作る。reverse指定で降順にする。</summary>
         public static List<int> GetDayOffsetList(int createNum, bool reverse)
         {
-            var offsets = new List<int>();
+            var offsets = new List<int>(Math.Max(createNum, 0));
             for (var i = 0; i < createNum; i++)
             {
-                offsets.Add(i);
-            }
-            if (reverse)
-            {
-                offsets.Sort((x, y) => y - x);
+                offsets.Add(reverse ? createNum - 1 - i : i);
             }
             return offsets;
         }

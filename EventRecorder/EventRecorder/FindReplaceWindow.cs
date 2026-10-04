@@ -14,29 +14,29 @@ namespace EventRecorder
     // ヒットしたセル自体は薄い黄色でハイライトする。置換モードは、次を検索/置換/すべて置換の従来型ダイアログとして動く。
     // 検索・置換のロジックそのものは[[FindReplaceEngine]]にある。
     //
-    // レイアウトはWinForms版と同じく上部(topPanel)/中央(resultsGrid)/下部(bottomPanel)の3つの帯で組む
+    // レイアウトはWinForms版と同じく上部(topPanel)/中央(_resultsGrid)/下部(bottomPanel)の3つの帯で組む
     internal class FindReplaceWindow : DialogWindowBase
     {
-        private readonly DataGrid targetGrid;
-        private readonly FindReplaceEngine engine;
+        private readonly DataGrid _targetGrid;
+        private readonly FindReplaceEngine _engine;
 
-        private readonly RadioButton radioFind;
-        private readonly RadioButton radioReplace;
-        private readonly TextBlock lblReplace;
-        private readonly TextBox txtFind;
-        private readonly TextBox txtReplace;
-        private readonly CheckBox chkMatchCase;
-        private readonly Button btnSearch;
-        private readonly Button btnFindNext;
-        private readonly Button btnReplace;
-        private readonly Button btnReplaceAll;
-        private readonly DataGrid resultsGrid;
-        private readonly TextBlock lblStatus;
+        private readonly RadioButton _radioFind;
+        private readonly RadioButton _radioReplace;
+        private readonly TextBlock _lblReplace;
+        private readonly TextBox _txtFind;
+        private readonly TextBox _txtReplace;
+        private readonly CheckBox _chkMatchCase;
+        private readonly Button _btnSearch;
+        private readonly Button _btnFindNext;
+        private readonly Button _btnReplace;
+        private readonly Button _btnReplaceAll;
+        private readonly DataGrid _resultsGrid;
+        private readonly TextBlock _lblStatus;
 
         // 検索モード・置換モードとも幅は共通。高さだけ、検索モードは結果一覧の分だけ余計に確保する(クライアント領域のサイズ)
-        private const double PanelWidth = 460;
-        private const double FindModeHeight = 420;
-        private const double ReplaceModeHeight = 170;
+        private const double _panelWidth = 460;
+        private const double _findModeHeight = 420;
+        private const double _replaceModeHeight = 170;
 
         // 検索結果一覧の1行(表示用)
         internal sealed class ResultItem
@@ -49,10 +49,10 @@ namespace EventRecorder
 
         public FindReplaceWindow(DataGrid grid, IList<EventRow> rows, GridUndoRedo<EventRow> undo, FindReplaceMode initialMode, String initialSearchText)
         {
-            targetGrid = grid;
-            engine = new FindReplaceEngine(
+            _targetGrid = grid;
+            _engine = new FindReplaceEngine(
                 () => rows.Cast<IEditableGridRow>().ToList(),
-                () => WpfGridHelper.GetVisibleColumnsInDisplayOrder(targetGrid).Select(WpfGridHelper.GetColumnName).ToList(),
+                () => WpfGridHelper.GetVisibleColumnsInDisplayOrder(_targetGrid).Select(WpfGridHelper.GetColumnName).ToList(),
                 undo.BeginUndoBatch,
                 undo.EndUndoBatch);
 
@@ -63,39 +63,39 @@ namespace EventRecorder
             Canvas topPanel = new Canvas { Height = 120 };
             DockPanel.SetDock(topPanel, Dock.Top);
 
-            radioFind = new RadioButton { Content = "検索" };
-            radioReplace = new RadioButton { Content = "置換" };
+            _radioFind = new RadioButton { Content = "検索" };
+            _radioReplace = new RadioButton { Content = "置換" };
             TextBlock lblFind = new TextBlock { Text = "検索文字列:" };
-            txtFind = new TextBox { Width = 220, Text = initialSearchText ?? "" };
-            lblReplace = new TextBlock { Text = "置換後の文字列:" };
-            txtReplace = new TextBox { Width = 200 };
-            chkMatchCase = new CheckBox { Content = "大文字/小文字を区別する" };
-            btnSearch = new Button { Content = "検索(_S)", Width = 90, Height = 23 };
-            btnFindNext = new Button { Content = "次を検索(_N)", Width = 90, Height = 23 };
-            btnReplace = new Button { Content = "置換(_R)", Width = 90, Height = 23 };
-            btnReplaceAll = new Button { Content = "すべて置換(_A)", Width = 90, Height = 23 };
+            _txtFind = new TextBox { Width = 220, Text = initialSearchText ?? "" };
+            _lblReplace = new TextBlock { Text = "置換後の文字列:" };
+            _txtReplace = new TextBox { Width = 200 };
+            _chkMatchCase = new CheckBox { Content = "大文字/小文字を区別する" };
+            _btnSearch = CreateButton("検索(_S)");
+            _btnFindNext = CreateButton("次を検索(_N)");
+            _btnReplace = CreateButton("置換(_R)");
+            _btnReplaceAll = CreateButton("すべて置換(_A)");
 
-            Place(topPanel, radioFind, 10, 8);
-            Place(topPanel, radioReplace, 80, 8);
+            Place(topPanel, _radioFind, 10, 8);
+            Place(topPanel, _radioReplace, 80, 8);
             Place(topPanel, lblFind, 10, 38);
-            Place(topPanel, txtFind, 90, 34);
-            Place(topPanel, lblReplace, 10, 66);
-            Place(topPanel, txtReplace, 110, 62);
-            Place(topPanel, chkMatchCase, 10, 94);
+            Place(topPanel, _txtFind, 90, 34);
+            Place(topPanel, _lblReplace, 10, 66);
+            Place(topPanel, _txtReplace, 110, 62);
+            Place(topPanel, _chkMatchCase, 10, 94);
             // 検索モード用/置換モード用のボタンは、それぞれの行の右端(X=320)に置き、ApplyModeで表示を切り替える
-            Place(topPanel, btnSearch, 320, 32);
-            Place(topPanel, btnFindNext, 320, 32);
-            Place(topPanel, btnReplace, 320, 60);
-            Place(topPanel, btnReplaceAll, 320, 88);
+            Place(topPanel, _btnSearch, 320, 32);
+            Place(topPanel, _btnFindNext, 320, 32);
+            Place(topPanel, _btnReplace, 320, 60);
+            Place(topPanel, _btnReplaceAll, 320, 88);
 
             // ***** 下段: ステータス表示。閉じるボタンは置かない(Escキーで閉じられる) *****
             Canvas bottomPanel = new Canvas { Height = 40 };
             DockPanel.SetDock(bottomPanel, Dock.Bottom);
-            lblStatus = new TextBlock();
-            Place(bottomPanel, lblStatus, 10, 10);
+            _lblStatus = new TextBlock();
+            Place(bottomPanel, _lblStatus, 10, 10);
 
             // ***** 中段: 検索結果一覧(検索モードのみ表示、残り全体を使う) *****
-            resultsGrid = new DataGrid
+            _resultsGrid = new DataGrid
             {
                 IsReadOnly = true,
                 AutoGenerateColumns = false,
@@ -108,24 +108,24 @@ namespace EventRecorder
                 SelectionMode = DataGridSelectionMode.Single,
                 SelectionUnit = DataGridSelectionUnit.FullRow,
             };
-            resultsGrid.MouseDoubleClick += ResultsGrid_MouseDoubleClick;
+            _resultsGrid.MouseDoubleClick += ResultsGrid_MouseDoubleClick;
 
             DockPanel root = new DockPanel { LastChildFill = true };
             root.Children.Add(topPanel);
             root.Children.Add(bottomPanel);
-            root.Children.Add(resultsGrid);
+            root.Children.Add(_resultsGrid);
             Content = root;
 
-            radioFind.Checked += (s, e) => ApplyMode();
-            radioReplace.Checked += (s, e) => ApplyMode();
-            btnSearch.Click += (s, e) => DoSearch();
-            btnFindNext.Click += (s, e) => FindNext();
-            btnReplace.Click += (s, e) => ReplaceCurrent();
-            btnReplaceAll.Click += (s, e) => ReplaceAll();
-            chkMatchCase.Checked += (s, e) => engine.MatchCase = true;
-            chkMatchCase.Unchecked += (s, e) => engine.MatchCase = false;
+            _radioFind.Checked += (s, e) => ApplyMode();
+            _radioReplace.Checked += (s, e) => ApplyMode();
+            _btnSearch.Click += (s, e) => DoSearch();
+            _btnFindNext.Click += (s, e) => FindNext();
+            _btnReplace.Click += (s, e) => ReplaceCurrent();
+            _btnReplaceAll.Click += (s, e) => ReplaceAll();
+            _chkMatchCase.Checked += (s, e) => _engine.MatchCase = true;
+            _chkMatchCase.Unchecked += (s, e) => _engine.MatchCase = false;
 
-            txtFind.PreviewKeyDown += (s, e) =>
+            _txtFind.PreviewKeyDown += (s, e) =>
             {
                 if (e.Key != Key.Enter)
                 {
@@ -133,7 +133,7 @@ namespace EventRecorder
                 }
 
                 e.Handled = true;
-                if (radioFind.IsChecked == true)
+                if (_radioFind.IsChecked == true)
                 {
                     DoSearch();
                 }
@@ -145,8 +145,8 @@ namespace EventRecorder
 
             Loaded += (s, e) =>
             {
-                txtFind.Focus();
-                txtFind.SelectAll();
+                _txtFind.Focus();
+                _txtFind.SelectAll();
             };
 
             SetMode(initialMode);
@@ -155,6 +155,11 @@ namespace EventRecorder
             {
                 DoSearch();
             }
+        }
+
+        private static Button CreateButton(String content)
+        {
+            return new Button { Content = content, Width = 90, Height = 23 };
         }
 
         private static void Place(Canvas canvas, UIElement element, double left, double top)
@@ -167,52 +172,53 @@ namespace EventRecorder
         // Ctrl+F/Ctrl+Hが押されるたびに、開き直さずこのメソッドでモードだけ切り替える
         internal void SetMode(FindReplaceMode mode)
         {
-            radioFind.IsChecked = mode == FindReplaceMode.Find;
-            radioReplace.IsChecked = mode == FindReplaceMode.Replace;
+            _radioFind.IsChecked = mode == FindReplaceMode.Find;
+            _radioReplace.IsChecked = mode == FindReplaceMode.Replace;
             ApplyMode();
         }
 
         private void ApplyMode()
         {
-            Boolean isFind = radioFind.IsChecked == true;
+            Boolean isFind = _radioFind.IsChecked == true;
 
             Title = isFind ? "検索" : "置換";
 
             // WinForms版のClientSize指定と同じく、クライアント領域の大きさに枠の分を足してウィンドウの大きさにする
             Thickness border = SystemParameters.WindowResizeBorderThickness;
-            Width = PanelWidth + border.Left + border.Right;
-            Height = (isFind ? FindModeHeight : ReplaceModeHeight) + SystemParameters.WindowCaptionHeight + border.Top + border.Bottom;
+            Width = _panelWidth + border.Left + border.Right;
+            Height = (isFind ? _findModeHeight : _replaceModeHeight) + SystemParameters.WindowCaptionHeight + border.Top + border.Bottom;
 
+            Visibility findOnly = isFind ? Visibility.Visible : Visibility.Collapsed;
             Visibility replaceOnly = isFind ? Visibility.Collapsed : Visibility.Visible;
-            lblReplace.Visibility = replaceOnly;
-            txtReplace.Visibility = replaceOnly;
-            btnFindNext.Visibility = replaceOnly;
-            btnReplace.Visibility = replaceOnly;
-            btnReplaceAll.Visibility = replaceOnly;
-            btnSearch.Visibility = isFind ? Visibility.Visible : Visibility.Collapsed;
-            resultsGrid.Visibility = isFind ? Visibility.Visible : Visibility.Collapsed;
+            _lblReplace.Visibility = replaceOnly;
+            _txtReplace.Visibility = replaceOnly;
+            _btnFindNext.Visibility = replaceOnly;
+            _btnReplace.Visibility = replaceOnly;
+            _btnReplaceAll.Visibility = replaceOnly;
+            _btnSearch.Visibility = findOnly;
+            _resultsGrid.Visibility = findOnly;
 
-            // 検索ボタン/次を検索ボタンのどちらをEnter(既定ボタン)の対象にするかは、txtFindのEnter処理で振り分けている
-            lblStatus.Text = "";
+            // 検索ボタン/次を検索ボタンのどちらをEnter(既定ボタン)の対象にするかは、_txtFindのEnter処理で振り分けている
+            _lblStatus.Text = "";
         }
 
         // レコード表と同じ列構成(行番号+可視列)で検索結果を一覧表示する。
         // ヒットしたセルはLightYellowでハイライトし、どこがヒットしたか一目で分かるようにする
         private void DoSearch()
         {
-            resultsGrid.ItemsSource = null;
-            resultsGrid.Columns.Clear();
+            _resultsGrid.ItemsSource = null;
+            _resultsGrid.Columns.Clear();
 
-            String keyword = txtFind.Text;
+            String keyword = _txtFind.Text;
             if (String.IsNullOrEmpty(keyword))
             {
-                lblStatus.Text = "";
+                _lblStatus.Text = "";
                 return;
             }
 
-            List<DataGridColumn> visibleColumns = WpfGridHelper.GetVisibleColumnsInDisplayOrder(targetGrid);
+            List<DataGridColumn> visibleColumns = WpfGridHelper.GetVisibleColumnsInDisplayOrder(_targetGrid);
 
-            resultsGrid.Columns.Add(new DataGridTextColumn { Header = "行", Binding = new Binding("RowNo"), Width = new DataGridLength(1, DataGridLengthUnitType.Star) });
+            _resultsGrid.Columns.Add(new DataGridTextColumn { Header = "行", Binding = new Binding("RowNo"), Width = new DataGridLength(1, DataGridLengthUnitType.Star) });
             for (int vi = 0; vi < visibleColumns.Count; vi++)
             {
                 Style cellStyle = new Style(typeof(DataGridCell));
@@ -220,7 +226,7 @@ namespace EventRecorder
                 hitTrigger.Setters.Add(new Setter(Control.BackgroundProperty, Brushes.LightYellow));
                 cellStyle.Triggers.Add(hitTrigger);
 
-                resultsGrid.Columns.Add(new DataGridTextColumn
+                _resultsGrid.Columns.Add(new DataGridTextColumn
                 {
                     Header = visibleColumns[vi].Header,
                     Binding = new Binding("Values[" + vi + "]"),
@@ -230,7 +236,7 @@ namespace EventRecorder
             }
 
             List<ResultItem> items = new List<ResultItem>();
-            foreach (FindHit hit in engine.Search(keyword))
+            foreach (FindHit hit in _engine.Search(keyword))
             {
                 Boolean[] hits = new Boolean[hit.Values.Length];
                 foreach (int vi in hit.HitVisibleColumnIndexes)
@@ -242,47 +248,47 @@ namespace EventRecorder
                 items.Add(new ResultItem { RowNo = hit.TargetRowIndex, Values = hit.Values, Hits = hits, Hit = hit });
             }
 
-            resultsGrid.ItemsSource = items;
-            lblStatus.Text = items.Count + " 件ヒット";
+            _resultsGrid.ItemsSource = items;
+            _lblStatus.Text = items.Count + " 件ヒット";
         }
 
         // 検索結果一覧をダブルクリックしたら、本体グリッドの該当セル(最初にヒットした列)へジャンプする
         private void ResultsGrid_MouseDoubleClick(object sender, MouseButtonEventArgs e)
         {
-            if (WpfGridHelper.GetRowIndexFromSource(resultsGrid, e.OriginalSource) < 0)
+            if (WpfGridHelper.GetRowIndexFromSource(_resultsGrid, e.OriginalSource) < 0)
             {
                 return;
             }
 
-            ResultItem item = resultsGrid.SelectedItem as ResultItem;
+            ResultItem item = _resultsGrid.SelectedItem as ResultItem;
             if (item == null)
             {
                 return;
             }
 
-            List<DataGridColumn> visibleColumns = WpfGridHelper.GetVisibleColumnsInDisplayOrder(targetGrid);
+            List<DataGridColumn> visibleColumns = WpfGridHelper.GetVisibleColumnsInDisplayOrder(_targetGrid);
             int vi = item.Hit.HitVisibleColumnIndexes[0];
             if (vi < visibleColumns.Count)
             {
-                WpfGridHelper.JumpToCell(targetGrid, item.Hit.TargetRowIndex, visibleColumns[vi]);
+                WpfGridHelper.JumpToCell(_targetGrid, item.Hit.TargetRowIndex, visibleColumns[vi]);
             }
         }
 
         private Boolean FindNext()
         {
             String status;
-            Boolean found = engine.FindNext(txtFind.Text, out status);
+            Boolean found = _engine.FindNext(_txtFind.Text, out status);
             if (found)
             {
-                List<DataGridColumn> visibleColumns = WpfGridHelper.GetVisibleColumnsInDisplayOrder(targetGrid);
-                if (engine.LastFoundColumnIndex < visibleColumns.Count)
+                List<DataGridColumn> visibleColumns = WpfGridHelper.GetVisibleColumnsInDisplayOrder(_targetGrid);
+                if (_engine.LastFoundColumnIndex < visibleColumns.Count)
                 {
-                    WpfGridHelper.JumpToCell(targetGrid, engine.LastFoundRowIndex, visibleColumns[engine.LastFoundColumnIndex]);
+                    WpfGridHelper.JumpToCell(_targetGrid, _engine.LastFoundRowIndex, visibleColumns[_engine.LastFoundColumnIndex]);
                 }
             }
             if (status != null)
             {
-                lblStatus.Text = status;
+                _lblStatus.Text = status;
             }
             return found;
         }
@@ -290,25 +296,25 @@ namespace EventRecorder
         // 直前の「次を検索」で選択したセルが検索文字列にマッチしていれば置換して、続けて次を検索する
         private void ReplaceCurrent()
         {
-            if (String.IsNullOrEmpty(txtFind.Text))
+            if (String.IsNullOrEmpty(_txtFind.Text))
             {
                 return;
             }
 
-            engine.ReplaceCurrent(txtFind.Text, txtReplace.Text);
+            _engine.ReplaceCurrent(_txtFind.Text, _txtReplace.Text);
             FindNext();
         }
 
         private void ReplaceAll()
         {
-            if (String.IsNullOrEmpty(txtFind.Text))
+            if (String.IsNullOrEmpty(_txtFind.Text))
             {
-                lblStatus.Text = "検索文字列を入力してね";
+                _lblStatus.Text = "検索文字列を入力してね";
                 return;
             }
 
-            int replacedCount = engine.ReplaceAll(txtFind.Text, txtReplace.Text);
-            lblStatus.Text = replacedCount + " 件置換したよ";
+            int replacedCount = _engine.ReplaceAll(_txtFind.Text, _txtReplace.Text);
+            _lblStatus.Text = replacedCount + " 件置換したよ";
         }
     }
 }

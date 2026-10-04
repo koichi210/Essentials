@@ -1,6 +1,6 @@
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
-namespace othello.Tests
+namespace Othello.Tests
 {
     /// <summary>
     /// GameMaster（オセロの盤面状態とルールを管理するクラス）のテスト。

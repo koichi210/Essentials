@@ -17,46 +17,49 @@ namespace FileArranger
     {
         // データ保存先・設定ファイル名はWinForms版FileArrangerと同じ(%LOCALAPPDATA%\FileArranger\FileArranger.json)。
         // 保存キーも同じにしてあるので、WinForms版で保存したJSONプロファイルをそのまま読める
-        private const String AppName = "FileArranger";
-        private const String SettingFileName = "FileArranger.json";
-        private static readonly String[] ProfileExtensions = { "*.json" };
+        private const String _appName = "FileArranger";
+        private const String _settingFileName = "FileArranger.json";
+        private static readonly String[] _profileExtensions = { "*.json" };
 
         // ReferenceCandidateFolders(RegisterCtrlを介さない専用の配列)の保存キー。WinForms版と同じ"ReferenceCandidate|Value_"
-        private const String ReferenceCandidateAttrName = "ReferenceCandidate";
-        private const String ReferenceCandidateAttrValue = "Value_";
+        private const String _referenceCandidateAttrName = "ReferenceCandidate";
+        private const String _referenceCandidateAttrValue = "Value_";
+        // 旧キー(typoのまま保存されていたもの)。WinForms版は2026-09のtypo一括修正でキーも"ReferenceCandidate"に
+        // 変わったため、それより前に保存されたプロファイルはこちらのキーで入っている。読み込み時だけ読み替える
+        private const String _legacyReferenceCandidateAttrName = "RefrenceCandidate";
 
-        private const int RenameSrcIdx = 0;
-        private const int RenameDestIdx = 1;
+        private const int _renameSrcIdx = 0;
+        private const int _renameDestIdx = 1;
 
-        private const int PartitionTargetIdx = 0;
-        private const int PartitionMoveSrcIdx = 1;
-        private const int PartitionMoveDestIdx = 2;
+        private const int _partitionTargetIdx = 0;
+        private const int _partitionMoveSrcIdx = 1;
+        private const int _partitionMoveDestIdx = 2;
 
         public String[] ReferenceCandidateFolders { get; set; }     // リファレンス名の候補
 
-        private readonly String userDataFolder;
-        private readonly StcFileInputOutput fio = new StcFileInputOutput();
+        private readonly String _userDataFolder;
+        private readonly StcFileInputOutput _fio = new StcFileInputOutput();
         // FileArranger固有の拡張メソッド(AvoidFolderNameConflict等)を持つUtils(StcUtilsを継承)
-        private readonly Utils util = new Utils();
+        private readonly Utils _util = new Utils();
         // フォルダ名変更タブ(rd)の「元に戻す」用の履歴
-        private readonly StcProcessMemory renameDirMemory = new StcProcessMemory();
-        private readonly FileSorter sorter = new FileSorter();
+        private readonly StcProcessMemory _renameDirMemory = new StcProcessMemory();
+        private readonly FileSorter _sorter = new FileSorter();
         internal WpfSaveRestore SaveRestore { get; } = new WpfSaveRestore();
 
-        private readonly BackgroundWorker bgWorkerMove = new BackgroundWorker { WorkerReportsProgress = true };
-        private readonly BackgroundWorker bgPartition = new BackgroundWorker { WorkerReportsProgress = true };
+        private readonly BackgroundWorker _bgWorkerMove = new BackgroundWorker { WorkerReportsProgress = true };
+        private readonly BackgroundWorker _bgPartition = new BackgroundWorker { WorkerReportsProgress = true };
 
-        public MainWindow() : this(UserDataLocation.GetUserDataFolder(AppName))
+        public MainWindow() : this(UserDataLocation.GetUserDataFolder(_appName))
         {
         }
 
         // テスト用に、データ保存先を差し替えられるようにしてある(ユーザーの実データフォルダに触れないため)
         internal MainWindow(String dataFolder)
         {
-            userDataFolder = dataFolder;
+            _userDataFolder = dataFolder;
 
             InitializeComponent();
-            util.SetCurrentDirectory();
+            _util.SetCurrentDirectory();
             InitializeControls();
 
             //ListView初期設定
@@ -66,14 +69,14 @@ namespace FileArranger
             RegisterLoadItem();
 
             // 起動時は既定の設定ファイル(FileArranger.json)を読む。旧XMLからの移行はWinForms版で済んでいる前提
-            SaveRestore.LoadOrDefault(Path.Combine(userDataFolder, SettingFileName));
+            SaveRestore.ApplyGenericProfile(LoadGenericProfile(Path.Combine(_userDataFolder, _settingFileName)));
             RefreshAfterLoad();
 
             // 一覧の先頭が選ばれ、SelectionChangedでそのプロファイルが読み込まれる(WinForms版と同じ)
-            WpfProfile.UpdateProfileList(comboBox_LoadSetting, ProfileExtensions, "", userDataFolder);
+            WpfProfile.UpdateProfileList(comboBox_LoadSetting, _profileExtensions, "", _userDataFolder);
 
-            WpfDataFolderMenu.Attach(this, () => DataFolderMenu.ChangeDataFolder(AppName, userDataFolder,
-                (oldFolder, newFolder) => DataFolderMenu.MoveProfiles(oldFolder, newFolder, AppName)));
+            WpfDataFolderMenu.Attach(this, () => DataFolderMenu.ChangeDataFolder(_appName, _userDataFolder,
+                (oldFolder, newFolder) => DataFolderMenu.MoveProfiles(oldFolder, newFolder, _appName)));
         }
 
         private void InitializeControls()
@@ -90,13 +93,13 @@ namespace FileArranger
             comboText.AddValueChanged(rd_comboBox_MergeWord, rd_comboBox_TextChanged);
             comboText.AddValueChanged(rd_comboBox_AddTitlePostWord, rd_comboBox_TextChanged);
 
-            bgWorkerMove.DoWork += bgWorkerMove_DoWork;
-            bgWorkerMove.ProgressChanged += bgWorkerMove_ProgressChanged;
-            bgWorkerMove.RunWorkerCompleted += bgWorkerMove_RunWorkerCompleted;
+            _bgWorkerMove.DoWork += bgWorkerMove_DoWork;
+            _bgWorkerMove.ProgressChanged += bgWorkerMove_ProgressChanged;
+            _bgWorkerMove.RunWorkerCompleted += bgWorkerMove_RunWorkerCompleted;
 
-            bgPartition.DoWork += bgPartition_DoWork;
-            bgPartition.ProgressChanged += bgPartition_ProgressChanged;
-            bgPartition.RunWorkerCompleted += bgPartition_RunWorkerCompleted;
+            _bgPartition.DoWork += bgPartition_DoWork;
+            _bgPartition.ProgressChanged += bgPartition_ProgressChanged;
+            _bgPartition.RunWorkerCompleted += bgPartition_RunWorkerCompleted;
         }
 
         // *******************************************************************************
@@ -140,7 +143,7 @@ namespace FileArranger
             SaveRestore.RegisterCtrl("PartitionFile", "pf_checkBox_CreateNewDir", pf_checkBox_CreateNewDir);
 
             // WinForms版SaveJsonFile/LoadJsonFileが"ReferenceCandidate|Value_"というキーでprofileに相乗りさせていた配列
-            SaveRestore.RegisterList(ReferenceCandidateAttrName, ReferenceCandidateAttrValue,
+            SaveRestore.RegisterList(_referenceCandidateAttrName, _referenceCandidateAttrValue,
                 () => (ReferenceCandidateFolders ?? new String[0]).ToList(),
                 items => ReferenceCandidateFolders = items.ToArray());
         }
@@ -158,12 +161,34 @@ namespace FileArranger
         // 設定ファイルを読み込む(WinForms版LoadJsonFile)。読み込めたら、コンボボックス更新・リストリセットも行う
         internal Boolean LoadProfile(String filePath)
         {
-            if (!SaveRestore.Load(filePath))
+            GenericProfile profile = LoadGenericProfile(filePath);
+            if (profile == null)
             {
                 return false;
             }
+            SaveRestore.ApplyGenericProfile(profile);
             RefreshAfterLoad();
             return true;
+        }
+
+        // 設定ファイルを読む(無い・壊れている場合はnull)。WpfSaveRestore.Load/LoadOrDefaultと同じ読み方だが、
+        // RegisterListには旧キーの読み替え(legacyAttrValue)が無いので、参照候補フォルダの旧キーだけここで読み替える
+        private static GenericProfile LoadGenericProfile(String filePath)
+        {
+            GenericProfile profile = JsonFileStorage.Load<GenericProfile>(filePath);
+            if (profile == null)
+            {
+                return null;
+            }
+
+            String key = GenericProfile.MakeKey(_referenceCandidateAttrName, _referenceCandidateAttrValue);
+            String legacyKey = GenericProfile.MakeKey(_legacyReferenceCandidateAttrName, _referenceCandidateAttrValue);
+            List<String> legacyItems;
+            if (!profile.Lists.ContainsKey(key) && profile.Lists.TryGetValue(legacyKey, out legacyItems))
+            {
+                profile.Lists[key] = legacyItems;
+            }
+            return profile;
         }
 
         // WinForms版LoadJsonFile/LoadProcの後処理
@@ -196,12 +221,12 @@ namespace FileArranger
             {
                 return;
             }
-            LoadProfile(Path.Combine(userDataFolder, comboBox_LoadSetting.SelectedItem.ToString()));
+            LoadProfile(Path.Combine(_userDataFolder, comboBox_LoadSetting.SelectedItem.ToString()));
         }
 
         private void SaveSetting_Click(object sender, RoutedEventArgs e)
         {
-            WpfProfile.SaveProfileWithDialog(fio, comboBox_LoadSetting, ProfileExtensions, SaveProfile, userDataFolder, SettingFileName);
+            WpfProfile.SaveProfileWithDialog(_fio, comboBox_LoadSetting, _profileExtensions, SaveProfile, _userDataFolder, _settingFileName);
         }
 
         // Ctrl+Sで「設定値保存」ボタンと同じ動作にする(テキストボックス等にフォーカスがあっても拾える)
@@ -222,7 +247,7 @@ namespace FileArranger
         {
             if (e.Key == Key.Enter)
             {
-                util.ExecutePath(execPath);
+                _util.ExecutePath(execPath);
             }
         }
 
@@ -262,12 +287,27 @@ namespace FileArranger
             return fullPath.Remove(0, baseFolderPath.Length + 1);
         }
 
-        // WinForms版のSorted=trueなListView/ListBoxと同じく、表示名の昇順に並べる
-        private static String[] SortedByName(IEnumerable<String> names)
+        // フルパスの一覧を表示用の名前にし、WinForms版のSorted=trueなListView/ListBoxと同じく昇順に並べる
+        private static String[] GetSortedDisplayNames(IEnumerable<String> fullPaths, String baseFolderPath)
         {
-            String[] sorted = names.ToArray();
+            String[] sorted = fullPaths.Select(path => GetDisplayName(path, baseFolderPath)).ToArray();
             Array.Sort(sorted, StringComparer.CurrentCulture);
             return sorted;
+        }
+
+        // 進捗バーを0/maxに戻す(ファイル移動・フォルダ振り分けの開始時)
+        private void ResetProgress(int max)
+        {
+            progressBar.Maximum = max;
+            progressBar.Minimum = 0;
+            progressBar.Value = 0;
+        }
+
+        // 進捗の表示(BackgroundWorkerのProgressChangedから呼ぶ)
+        private void ShowProgress(int done)
+        {
+            progressText.Text = done + "/" + progressBar.Maximum + " 完了";
+            progressBar.Value = done;
         }
 
         private void cmn_textBox_Reference_TextChanged(object sender, TextChangedEventArgs e)

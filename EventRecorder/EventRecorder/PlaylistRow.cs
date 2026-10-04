@@ -13,56 +13,56 @@ namespace EventRecorder
         public const String ColFileName = "FileName";
         public const String ColLoopCount = "LoopCount";
 
-        private Boolean enabled;
-        private String fileName = "";
-        private String loopCount = "";
+        private Boolean _enabled;
+        private String _fileName = "";
+        private String _loopCount = "";
 
-        private int rowNumber;
-        private Boolean isHighlighted;
-        private Boolean isVisible = true;
-        private String missingFileText;
+        private int _rowNumber;
+        private Boolean _isHighlighted;
+        private Boolean _isVisible = true;
+        private String _missingFileText;
 
         public event PropertyChangedEventHandler PropertyChanged;
         public event EventHandler<GridCellChangedEventArgs> CellChanged;
 
         public Boolean Enabled
         {
-            get { return enabled; }
+            get { return _enabled; }
             set { SetCell(ColEnabled, value.ToString()); }
         }
 
-        public String FileName { get { return fileName; } set { SetCell(ColFileName, value); } }
-        public String LoopCount { get { return loopCount; } set { SetCell(ColLoopCount, value); } }
+        public String FileName { get { return _fileName; } set { SetCell(ColFileName, value); } }
+        public String LoopCount { get { return _loopCount; } set { SetCell(ColLoopCount, value); } }
 
         public int RowNumber
         {
-            get { return rowNumber; }
-            set { if (rowNumber != value) { rowNumber = value; Notify("RowNumber"); } }
+            get { return _rowNumber; }
+            set { if (_rowNumber != value) { _rowNumber = value; Notify("RowNumber"); } }
         }
 
         // プレイリスト実行中に、今どのファイル(行)を再生しているかのハイライト
         public Boolean IsHighlighted
         {
-            get { return isHighlighted; }
-            set { if (isHighlighted != value) { isHighlighted = value; Notify("IsHighlighted"); } }
+            get { return _isHighlighted; }
+            set { if (_isHighlighted != value) { _isHighlighted = value; Notify("IsHighlighted"); } }
         }
 
         // 「チェックONのみ表示」フィルタでの表示/非表示
         public Boolean IsVisible
         {
-            get { return isVisible; }
-            set { if (isVisible != value) { isVisible = value; Notify("IsVisible"); } }
+            get { return _isVisible; }
+            set { if (_isVisible != value) { _isVisible = value; Notify("IsVisible"); } }
         }
 
         // 設定ファイルが見つからない時のメッセージ(nullなら正常)。設定ファイル列をピンク表示+ツールチップにする
         public String MissingFileText
         {
-            get { return missingFileText; }
+            get { return _missingFileText; }
             set
             {
-                if (missingFileText != value)
+                if (_missingFileText != value)
                 {
-                    missingFileText = value;
+                    _missingFileText = value;
                     Notify("MissingFileText");
                     Notify("IsFileMissing");
                 }
@@ -71,15 +71,15 @@ namespace EventRecorder
 
         public Boolean IsFileMissing
         {
-            get { return missingFileText != null; }
+            get { return _missingFileText != null; }
         }
 
         public static PlaylistRow FromData(Boolean enabled, String fileName, String loopCount)
         {
             PlaylistRow row = new PlaylistRow();
-            row.enabled = enabled;
-            row.fileName = fileName ?? "";
-            row.loopCount = loopCount ?? "";
+            row._enabled = enabled;
+            row._fileName = fileName ?? "";
+            row._loopCount = loopCount ?? "";
             return row;
         }
 
@@ -87,9 +87,9 @@ namespace EventRecorder
         {
             switch (name)
             {
-                case ColEnabled: return enabled.ToString();
-                case ColFileName: return fileName;
-                case ColLoopCount: return loopCount;
+                case ColEnabled: return _enabled.ToString();
+                case ColFileName: return _fileName;
+                case ColLoopCount: return _loopCount;
                 default: throw new ArgumentException("不明な列名: " + name);
             }
         }
@@ -121,9 +121,9 @@ namespace EventRecorder
 
             switch (name)
             {
-                case ColEnabled: enabled = Boolean.Parse(newValue); break;
-                case ColFileName: fileName = newValue; break;
-                case ColLoopCount: loopCount = newValue; break;
+                case ColEnabled: _enabled = Boolean.Parse(newValue); break;
+                case ColFileName: _fileName = newValue; break;
+                case ColLoopCount: _loopCount = newValue; break;
                 default: throw new ArgumentException("不明な列名: " + name);
             }
 

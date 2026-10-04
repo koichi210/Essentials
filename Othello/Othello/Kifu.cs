@@ -3,29 +3,29 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Text;
 
-namespace othello
+namespace Othello
 {
     /// <summary>
-    /// 棋譜のテキスト形式への変換・読み込み。C++版 CManager::GetKihu/GetKihuFile 相当。
+    /// 棋譜のテキスト形式への変換・読み込み。C++版 CManager::GetKifu/GetKifuFile 相当。
     ///
     /// 形式: 1手を1行、"手数 : 列.行 色" の形で表す(例: " 1 : C.4 黒")。
     /// 列はA〜H(0-indexedのxをA起点の文字に変換)、行は1〜8(0-indexedのyを+1)。
     /// </summary>
-    static class Kihu
+    static class Kifu
     {
-        private const string Header = "***** 棋譜 *****";
+        private const string _header = "***** 棋譜 *****";
 
         /// <summary>
         /// 手の履歴をテキスト形式(保存/表示用)に変換する。
         /// </summary>
-        public static string ToText(IList<KihuMove> history)
+        public static string ToText(IList<KifuMove> history)
         {
             var sb = new StringBuilder();
-            sb.AppendLine(Header);
+            sb.AppendLine(_header);
 
             for (int i = 0; i < history.Count; i++)
             {
-                KihuMove move = history[i];
+                KifuMove move = history[i];
                 char column = (char)('A' + move.X);
                 int row = move.Y + 1;
                 string colorName = move.Color == StoneColor.Black ? "黒" : "白";
@@ -38,7 +38,7 @@ namespace othello
         /// <summary>
         /// 棋譜テキストを読み、gmを初期化してから記載順に1手ずつ再生する。
         /// 打てない/解釈できない行があればそこで打ち切る(それまでに反映された手は残る)。
-        /// C++版 CManager::GetKihuFile 相当。
+        /// C++版 CManager::GetKifuFile 相当。
         /// </summary>
         /// <returns>1手以上を正常に反映できればtrue</returns>
         public static bool TryReplay(string text, GameMaster gm, out string errorMessage)

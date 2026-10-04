@@ -25,12 +25,7 @@ namespace FileArranger
             // フォルダをリストアップ
             String[] folders = Directory.GetDirectories(sf_textBox_TargetFile.Text);
             sf_listBox_Target.Items.Clear();
-            List<String> names = new List<String>();
-            foreach (String folder in folders)
-            {
-                names.Add(GetDisplayName(folder, sf_textBox_TargetFile.Text));
-            }
-            foreach (String folderName in SortedByName(names))
+            foreach (String folderName in GetSortedDisplayNames(folders, sf_textBox_TargetFile.Text))
             {
                 sf_listBox_Target.Items.Add(folderName);
             }
@@ -55,14 +50,14 @@ namespace FileArranger
             foreach (Object item in selectedItems)
             {
                 String folderPath = sf_textBox_TargetFile.Text + @"\" + item.ToString();
-                sorter.SortFolder(folderPath);
+                _sorter.SortFolder(folderPath);
             }
-            sorter.CommitBatch();
+            _sorter.CommitBatch();
         }
 
         private void sf_button_Sort_Restore_Click(object sender, RoutedEventArgs e)
         {
-            if (!sorter.Restore())
+            if (!_sorter.Restore())
             {
                 MessageBox.Show("これ以上復元できません");
             }

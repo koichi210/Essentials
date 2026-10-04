@@ -20,18 +20,18 @@ namespace EventRecorder.Tests
     [TestClass]
     public class SessionGuardTests
     {
-        private TempFolder temp;
+        private TempFolder _temp;
 
         [TestInitialize]
         public void SetUp()
         {
-            temp = new TempFolder();
+            _temp = new TempFolder();
         }
 
         [TestCleanup]
         public void TearDown()
         {
-            temp.Dispose();
+            _temp.Dispose();
         }
 
         [TestMethod]
@@ -65,7 +65,7 @@ namespace EventRecorder.Tests
         {
             StaRunner.Run(() =>
             {
-                MainWindow window = new MainWindow(temp.Path);
+                MainWindow window = new MainWindow(_temp.Path);
 
                 window.HandleKeyboardStroke(Stroke.KEY_DOWN, Keys.F1, Keys.None);   // 記録開始
                 window.HandleKeyboardStroke(Stroke.KEY_UP, Keys.F1, Keys.None);
@@ -76,12 +76,12 @@ namespace EventRecorder.Tests
 
                 Assert.AreEqual("EventRecorder", window.Title);
                 Assert.AreEqual("記録", window.button_Record.Content);
-                CollectionAssert.Contains(window.eventRows.Select(r => r.Type + ":" + r.Key).ToList(), "KEY_DOWN:A");
+                CollectionAssert.Contains(window.EventRows.Select(r => r.Type + ":" + r.Key).ToList(), "KEY_DOWN:A");
 
                 // 止まった後のキー操作は記録しない
-                int count = window.eventRows.Count;
+                int count = window.EventRows.Count;
                 window.HandleKeyboardStroke(Stroke.KEY_DOWN, Keys.B, Keys.None);
-                Assert.AreEqual(count, window.eventRows.Count);
+                Assert.AreEqual(count, window.EventRows.Count);
             });
         }
 
@@ -90,7 +90,7 @@ namespace EventRecorder.Tests
         {
             StaRunner.Run(() =>
             {
-                MainWindow window = new MainWindow(temp.Path);
+                MainWindow window = new MainWindow(_temp.Path);
 
                 // F1を押した直後にロックされ、KeyUpを取りこぼした状態を作る
                 window.HandleKeyboardStroke(Stroke.KEY_DOWN, Keys.F1, Keys.None);
@@ -109,7 +109,7 @@ namespace EventRecorder.Tests
         {
             StaRunner.Run(() =>
             {
-                MainWindow window = new MainWindow(temp.Path);
+                MainWindow window = new MainWindow(_temp.Path);
 
                 window.HandleKeyboardStroke(Stroke.KEY_DOWN, Keys.F1, Keys.None);
                 window.HandleKeyboardStroke(Stroke.KEY_UP, Keys.F1, Keys.None);
@@ -142,23 +142,23 @@ namespace EventRecorder.Tests
         {
             StaRunner.Run(() =>
             {
-                MainWindow window = new MainWindow(temp.Path);
+                MainWindow window = new MainWindow(_temp.Path);
                 Boolean uiUpdatedByWorker = false;
 
-                SetField(window, "isPlaying", true);
+                SetField(window, "_isPlaying", true);
                 Task worker = Task.Run(() =>
                 {
                     // 停止要求が来るまで「再生中」
-                    while (!(Boolean)GetField(window, "stopPlayRequested"))
+                    while (!(Boolean)GetField(window, "_stopPlayRequested"))
                     {
                         Thread.Sleep(5);
                     }
 
                     // 本物のPlayLoop/PlaylistPlayLoopのfinallyと同じく、UIスレッドで画面を戻してから終わる
                     window.InvokeOnUi(() => uiUpdatedByWorker = true);
-                    SetField(window, "isPlaying", false);
+                    SetField(window, "_isPlaying", false);
                 });
-                SetField(window, "playbackTask", worker);
+                SetField(window, "_playbackTask", worker);
 
                 DateTime start = DateTime.Now;
                 window.PrepareForExit();

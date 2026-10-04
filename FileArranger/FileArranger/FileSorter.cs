@@ -16,7 +16,7 @@ namespace FileArranger
     /// </summary>
     internal class FileSorter
     {
-        private readonly StcProcessMemory pm = new StcProcessMemory();
+        private readonly StcProcessMemory _pm = new StcProcessMemory();
 
         /// <summary>指定フォルダの中のファイルを連番にリネームする。</summary>
         public void SortFolder(String folderPath)
@@ -25,16 +25,16 @@ namespace FileArranger
             for (int i = 0; i < files.Length; i++)
             {
                 String ext = Path.GetExtension(files[i]);
-                String destName = folderPath + @"\" + String.Format("{0:D3}", i) + ext;
+                String destName = folderPath + @"\" + i.ToString("D3") + ext;
                 File.Move(files[i], destName);
-                pm.AddRestoreItem(files[i], destName);
+                _pm.AddRestoreItem(files[i], destName);
             }
         }
 
         /// <summary>SortFolder を1回以上呼んだあと、まとめて1回の「実行」として記録を確定する。</summary>
         public void CommitBatch()
         {
-            pm.IncrementSerialNumber();
+            _pm.IncrementSerialNumber();
         }
 
         /// <summary>
@@ -43,16 +43,16 @@ namespace FileArranger
         /// </summary>
         public Boolean Restore()
         {
-            if (!pm.DecrementSerialNumber())
+            if (!_pm.DecrementSerialNumber())
             {
                 return false;
             }
 
-            while (pm.HasRestoreItem())
+            while (_pm.HasRestoreItem())
             {
                 String srcName = "";
                 String destName = "";
-                pm.PopRestoreItem(ref srcName, ref destName);
+                _pm.PopRestoreItem(ref srcName, ref destName);
                 File.Move(destName, srcName);
             }
 

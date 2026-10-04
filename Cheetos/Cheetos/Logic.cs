@@ -23,8 +23,6 @@ namespace Cheetos
         /// </summary>
         public static bool IsPortrait(String targetFileName, int whiteWidth, int whiteCoef, Boolean isSample = false)
         {
-            Boolean isPortrait = true;
-
             // 1回だけデコードしたBitmapを使い回すことでデコード回数を1回に減らす。
             using (Bitmap sourceImg = new Bitmap(targetFileName))
             {
@@ -39,10 +37,7 @@ namespace Cheetos
                 // 左端
                 Rectangle leftCutParam = new Rectangle(0, 0, width, pictSize.Height);
                 long leftPictSize = GetTrimmedPngByteLength(sourceImg, leftCutParam);
-                if (baseSize < leftPictSize)
-                {
-                    isPortrait = false;
-                }
+                Boolean isPortrait = (leftPictSize <= baseSize);
 
                 // 右端(左端で縦長でないと分かったら見ない)
                 long rightPictSize = 0;
@@ -50,10 +45,7 @@ namespace Cheetos
                 {
                     Rectangle rightCutParam = new Rectangle(pictSize.Width - width, 0, width, pictSize.Height);
                     rightPictSize = GetTrimmedPngByteLength(sourceImg, rightCutParam);
-                    if (baseSize < rightPictSize)
-                    {
-                        isPortrait = false;
-                    }
+                    isPortrait = (rightPictSize <= baseSize);
                 }
 
                 if (isSample)
@@ -103,7 +95,7 @@ namespace Cheetos
             }
             if (addTimeStamp)
             {
-                filePathPrefix += System.DateTime.Now.ToString("yyyy_MM_dd_HH_mm_ss_");
+                filePathPrefix += DateTime.Now.ToString("yyyy_MM_dd_HH_mm_ss_");
             }
 
             return filePathPrefix;
@@ -114,26 +106,14 @@ namespace Cheetos
         /// </summary>
         public static String StepValueByArrowKey(String baseValue, Key key)
         {
-            int addValue = 0;
-            switch (key)
+            int val;
+            if (!Int32.TryParse(baseValue, out val))
             {
-                case Key.Up:
-                    addValue = 1;
-                    break;
-                case Key.Down:
-                    addValue = -1;
-                    break;
-                default:
-                    break;
+                return baseValue;
             }
 
-            int val;
-            if (Int32.TryParse(baseValue.ToString(), out val))
-            {
-                val += addValue;
-                return val.ToString();
-            }
-            return baseValue;
+            int addValue = (key == Key.Up) ? 1 : (key == Key.Down) ? -1 : 0;
+            return (val + addValue).ToString();
         }
     }
 }

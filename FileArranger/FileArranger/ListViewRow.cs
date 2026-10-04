@@ -10,42 +10,38 @@ namespace FileArranger
     /// </summary>
     internal class ListViewRow : INotifyPropertyChanged
     {
-        private readonly String[] columns;
+        private readonly String[] _columns;
 
         public event PropertyChangedEventHandler PropertyChanged;
 
         public ListViewRow(params String[] values)
         {
-            columns = (String[])values.Clone();
+            _columns = (String[])values.Clone();
         }
 
         public int ColumnCount
         {
-            get { return columns.Length; }
+            get { return _columns.Length; }
         }
 
         public String this[int index]
         {
-            get { return columns[index]; }
+            get { return _columns[index]; }
             set
             {
-                if (columns[index] == value)
+                if (_columns[index] == value)
                 {
                     return;
                 }
-                columns[index] = value;
-                PropertyChangedEventHandler handler = PropertyChanged;
-                if (handler != null)
-                {
-                    handler(this, new PropertyChangedEventArgs("Item[]"));
-                }
+                _columns[index] = value;
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs("Item[]"));
             }
         }
 
         // WinForms版ListViewItemのTextは先頭列の値だった(ソートや既定の表示に使われる)
         public override String ToString()
         {
-            return columns.Length > 0 ? columns[0] : "";
+            return _columns.Length > 0 ? _columns[0] : "";
         }
     }
 }

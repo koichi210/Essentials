@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Drawing;
 
-namespace othello
+namespace Othello
 {
     /// <summary>
     /// 石の色(盤面の状態)
@@ -15,9 +15,9 @@ namespace othello
     }
 
     /// <summary>
-    /// 棋譜の1手分。C++版 StrKihuTable(KihuTable配列の要素)相当。
+    /// 棋譜の1手分。C++版 StrKifuTable(KifuTable配列の要素)相当。
     /// </summary>
-    public struct KihuMove
+    public struct KifuMove
     {
         public int X;
         public int Y;
@@ -45,17 +45,17 @@ namespace othello
         // COMの思考(序盤/中盤/終盤の判定、最初の2手はランダムにする等)に使う。
         public int TurnCount { get; private set; }
 
-        // これまでに打たれた手の履歴(棋譜)。C++版 KihuTable 相当。
-        public List<KihuMove> History { get; private set; }
+        // これまでに打たれた手の履歴(棋譜)。C++版 KifuTable 相当。
+        public List<KifuMove> History { get; private set; }
 
         // 8方向(左, 右, 上, 下, 左上, 左下, 右上, 右下)
-        private static readonly int[] DirX = { -1, 1, 0, 0, -1, -1, 1, 1 };
-        private static readonly int[] DirY = { 0, 0, -1, 1, -1, 1, -1, 1 };
+        private static readonly int[] _dirX = { -1, 1, 0, 0, -1, -1, 1, 1 };
+        private static readonly int[] _dirY = { 0, 0, -1, 1, -1, 1, -1, 1 };
 
         public void Initialize()
         {
             ResetBoardOnly();
-            History = new List<KihuMove>();
+            History = new List<KifuMove>();
         }
 
         /// <summary>
@@ -87,7 +87,7 @@ namespace othello
                 CurrentTurn = CurrentTurn,
                 IsGameEnd = IsGameEnd,
                 TurnCount = TurnCount,
-                History = new List<KihuMove>(History),
+                History = new List<KifuMove>(History),
             };
         }
 
@@ -114,17 +114,17 @@ namespace othello
             StoneColor enemy = GetEnemyColor(color);
             bool canPut = false;
 
-            for (int dir = 0; dir < DirX.Length; dir++)
+            for (int dir = 0; dir < _dirX.Length; dir++)
             {
-                int cx = x + DirX[dir];
-                int cy = y + DirY[dir];
+                int cx = x + _dirX[dir];
+                int cy = y + _dirY[dir];
                 int count = 0;
 
                 while (IsInBoard(cx, cy) && Table[cy, cx] == enemy)
                 {
                     count++;
-                    cx += DirX[dir];
-                    cy += DirY[dir];
+                    cx += _dirX[dir];
+                    cy += _dirY[dir];
                 }
 
                 if (count > 0 && IsInBoard(cx, cy) && Table[cy, cx] == color)
@@ -142,7 +142,7 @@ namespace othello
         /// </summary>
         private bool CanPutAny(StoneColor color)
         {
-            int[] flipCounts = new int[DirX.Length];
+            int[] flipCounts = new int[_dirX.Length];
 
             for (int y = 0; y < BoardSize; y++)
             {
@@ -166,7 +166,7 @@ namespace othello
         public bool[,] GetValidMoves(StoneColor color)
         {
             bool[,] result = new bool[BoardSize, BoardSize];
-            int[] flipCounts = new int[DirX.Length];
+            int[] flipCounts = new int[_dirX.Length];
 
             for (int y = 0; y < BoardSize; y++)
             {
@@ -186,20 +186,20 @@ namespace othello
         /// </summary>
         public IEnumerable<Point> GetFlippedPositions(int x, int y, StoneColor color)
         {
-            int[] flipCounts = new int[DirX.Length];
+            int[] flipCounts = new int[_dirX.Length];
             if (!CanPut(x, y, color, flipCounts))
             {
                 yield break;
             }
 
-            for (int dir = 0; dir < DirX.Length; dir++)
+            for (int dir = 0; dir < _dirX.Length; dir++)
             {
                 int cx = x;
                 int cy = y;
                 for (int i = 0; i < flipCounts[dir]; i++)
                 {
-                    cx += DirX[dir];
-                    cy += DirY[dir];
+                    cx += _dirX[dir];
+                    cy += _dirY[dir];
                     yield return new Point(cx, cy);
                 }
             }
@@ -222,7 +222,7 @@ namespace othello
         /// (x, y)にCurrentTurnの石を置き、ひっくり返し、次の手番(パス・終局判定込み)に進める。
         /// 置けない場所を指定した場合は何もせずfalseを返す。
         /// Undoで過去に戻っている状態から新しい手を打った場合、そこから先の(やり直せたはずの)
-        /// 棋譜は破棄される(C++版 UpDateKihu の turning_point = turn_cnt 相当)。
+        /// 棋譜は破棄される(C++版 UpDateKifu の turning_point = turn_cnt 相当)。
         /// </summary>
         public bool TryPut(int x, int y)
         {
@@ -236,7 +236,7 @@ namespace othello
                 History.RemoveRange(TurnCount, History.Count - TurnCount);
             }
 
-            History.Add(new KihuMove { X = x, Y = y, Color = Table[y, x] });
+            History.Add(new KifuMove { X = x, Y = y, Color = Table[y, x] });
             TurnCount++;
             return true;
         }
@@ -252,7 +252,7 @@ namespace othello
                 return false;
             }
 
-            int[] flipCounts = new int[DirX.Length];
+            int[] flipCounts = new int[_dirX.Length];
             if (!CanPut(x, y, CurrentTurn, flipCounts))
             {
                 return false;
@@ -260,14 +260,14 @@ namespace othello
 
             Table[y, x] = CurrentTurn;
 
-            for (int dir = 0; dir < DirX.Length; dir++)
+            for (int dir = 0; dir < _dirX.Length; dir++)
             {
                 int cx = x;
                 int cy = y;
                 for (int i = 0; i < flipCounts[dir]; i++)
                 {
-                    cx += DirX[dir];
-                    cy += DirY[dir];
+                    cx += _dirX[dir];
+                    cy += _dirY[dir];
                     Table[cy, cx] = CurrentTurn;
                 }
             }
@@ -315,7 +315,7 @@ namespace othello
         /// </summary>
         private void ReplayHistory(int targetCount)
         {
-            List<KihuMove> savedHistory = History;
+            List<KifuMove> savedHistory = History;
 
             ResetBoardOnly();
 

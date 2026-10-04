@@ -12,7 +12,7 @@ namespace Cheetos
     {
         public const int ColumnCount = 5;
 
-        private readonly String[] cells = { "", "", "", "", "" };
+        private readonly String[] _cells = { "", "", "", "", "" };
 
         public event PropertyChangedEventHandler PropertyChanged;
 
@@ -22,26 +22,22 @@ namespace Cheetos
         public String MouseAction { get { return this[3]; } set { this[3] = value; } }
         public String Capture { get { return this[4]; } set { this[4] = value; } }
 
-        private static readonly String[] PropertyNames = { "Sleep", "MouseX", "MouseY", "MouseAction", "Capture" };
+        private static readonly String[] _propertyNames = { "Sleep", "MouseX", "MouseY", "MouseAction", "Capture" };
 
         // 列番号でアクセスする(WinForms版の util.GetDataGridCell / SetDataGridCell の代わり)
         public String this[int columnIdx]
         {
-            get { return cells[columnIdx] ?? ""; }
+            get { return _cells[columnIdx] ?? ""; }
             set
             {
-                cells[columnIdx] = value ?? "";
-                PropertyChangedEventHandler handler = PropertyChanged;
-                if (handler != null)
-                {
-                    handler(this, new PropertyChangedEventArgs(PropertyNames[columnIdx]));
-                }
+                _cells[columnIdx] = value ?? "";
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(_propertyNames[columnIdx]));
             }
         }
 
         public List<String> ToList()
         {
-            return new List<String>(cells);
+            return new List<String>(_cells);
         }
 
         // 保存ファイルの1行分から作る。列が足りない分は空文字、多い分は捨てる
@@ -51,7 +47,7 @@ namespace Cheetos
             CaptureGridRow row = new CaptureGridRow();
             for (int c = 0; values != null && c < values.Count && c < ColumnCount; c++)
             {
-                row.cells[c] = values[c] ?? "";
+                row._cells[c] = values[c] ?? "";
             }
             return row;
         }

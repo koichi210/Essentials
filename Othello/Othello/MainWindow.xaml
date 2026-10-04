@@ -1,7 +1,7 @@
-﻿<Window x:Class="othello.MainWindow"
+﻿<Window x:Class="Othello.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="othello"
+        Title="Othello"
         SizeToContent="WidthAndHeight" UseLayoutRounding="True">
     <DockPanel x:Name="rootPanel">
         <!-- WPFのMenuは横幅が足りないと折り返す(WinForms版MenuStripははみ出た項目が隠れる)。
@@ -38,10 +38,10 @@
                 <MenuItem x:Name="menuItem_Time10m" Header="10分" IsCheckable="True" Click="menuItem_TimeLimit_Click" />
                 <MenuItem x:Name="menuItem_Time15m" Header="15分" IsCheckable="True" Click="menuItem_TimeLimit_Click" />
             </MenuItem>
-            <MenuItem x:Name="menuItem_Kihu" Header="棋譜(_K)">
-                <MenuItem x:Name="menuItem_KihuShow" Header="表示(_V)" Click="menuItem_KihuShow_Click" />
-                <MenuItem x:Name="menuItem_KihuSave" ToolTip="手順を「手数 : 列.行 色」形式(例: 1 : C.4 黒)のテキストで保存する。一手戻した手も、やり直せる間は含まれる" Header="保存(_S)..." Click="menuItem_KihuSave_Click" />
-                <MenuItem x:Name="menuItem_KihuLoad" ToolTip="棋譜テキストを最初から再生した局面にする。置けない手があればそこで打ち切る" Header="読込(_L)..." Click="menuItem_KihuLoad_Click" />
+            <MenuItem x:Name="menuItem_Kifu" Header="棋譜(_K)">
+                <MenuItem x:Name="menuItem_KifuShow" Header="表示(_V)" Click="menuItem_KifuShow_Click" />
+                <MenuItem x:Name="menuItem_KifuSave" ToolTip="手順を「手数 : 列.行 色」形式(例: 1 : C.4 黒)のテキストで保存する。一手戻した手も、やり直せる間は含まれる" Header="保存(_S)..." Click="menuItem_KifuSave_Click" />
+                <MenuItem x:Name="menuItem_KifuLoad" ToolTip="棋譜テキストを最初から再生した局面にする。置けない手があればそこで打ち切る" Header="読込(_L)..." Click="menuItem_KifuLoad_Click" />
             </MenuItem>
         </Menu>
 

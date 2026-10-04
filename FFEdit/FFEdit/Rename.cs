@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Text;
 
 namespace FFEdit
 {
@@ -26,16 +27,16 @@ namespace FFEdit
         public int PaddingDigits { get; set; } // 0埋めする桁数
         public Boolean KeepOriginalName { get; set; }
 
-        private readonly FileMng fm = new FileMng();
+        private readonly FileMng _fm = new FileMng();
 
         public Boolean Restore()
         {
-            return fm.RestoreAll();
+            return _fm.RestoreAll();
         }
 
         public String Execute()
         {
-            String errorList = "";
+            StringBuilder errorList = new StringBuilder();
 
             for (int i = 0; i < FileList.Count; i++)
             {
@@ -49,22 +50,20 @@ namespace FFEdit
                     continue;
                 }
 
-                if (fm.Move(srcName, destName))
+                if (_fm.Move(srcName, destName))
                 {
                     // 復元用に処理を覚えておく
-                    fm.AddRestoreItem(srcName, destName);
+                    _fm.AddRestoreItem(srcName, destName);
                 }
                 else
                 {
                     // エラー発生
-                    errorList += "Src=" + srcName + Environment.NewLine;
-                    errorList += "Dst=" + destName + Environment.NewLine;
-                    errorList += Environment.NewLine;
+                    errorList.Append(FileMng.GetErrorText(srcName, destName));
                 }
             }
-            fm.IncrementSerialNumber();
+            _fm.IncrementSerialNumber();
 
-            return errorList;
+            return errorList.ToString();
         }
 
         private String GetChangedName(String srcName, int index)
@@ -99,15 +98,8 @@ namespace FFEdit
                     break;
             }
 
-            String fullPathName = "";
             String directoryPath = Path.GetDirectoryName(srcName);
-            if (directoryPath != String.Empty)
-            {
-                fullPathName += directoryPath.TrimEnd('\\') + @"\";
-            }
-            fullPathName += targetName;
-
-            return fullPathName;
+            return directoryPath == String.Empty ? targetName : directoryPath.TrimEnd('\\') + @"\" + targetName;
         }
 
         // 連番のファイル名(元の名前を残す指定なら「連番＋元の名前」)

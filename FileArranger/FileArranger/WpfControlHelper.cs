@@ -91,10 +91,10 @@ namespace FileArranger
         // (StcUtils.SetClipboardTextと同じ考え方。こちらはWPFのClipboardを使う)
         public static Boolean SetClipboardText(String text)
         {
-            const int RetryCount = 5;
-            const int RetryWaitMsec = 100;
+            const int retryCount = 5;
+            const int retryWaitMsec = 100;
 
-            for (int i = 0; i < RetryCount; i++)
+            for (int i = 0; i < retryCount; i++)
             {
                 try
                 {
@@ -110,7 +110,7 @@ namespace FileArranger
                 }
                 catch (COMException)
                 {
-                    Thread.Sleep(RetryWaitMsec);
+                    Thread.Sleep(retryWaitMsec);
                 }
             }
             return false;
@@ -166,11 +166,7 @@ namespace FileArranger
         // removeStringは各要素の先頭から取り除く部分(長さ+区切り1文字分だけ読み飛ばす)
         public static void SetComboBoxFromArray(ComboBox comboCtrl, String[] values, String removeString = "", String limitString = "")
         {
-            int startIdx = 0;
-            if (removeString != String.Empty)
-            {
-                startIdx = removeString.Length + 1;
-            }
+            int startIdx = removeString == String.Empty ? 0 : removeString.Length + 1;
             SetComboBoxFromArraySubString(comboCtrl, values, startIdx, "", limitString);
         }
 
@@ -179,7 +175,7 @@ namespace FileArranger
         public static void SetComboBoxFromArraySubString(ComboBox comboCtrl, String[] values, int startIdx, String endDelimiter = "", String limitString = "", Boolean isReverse = false)
         {
             List<String> items = new List<String>();
-            String currentText = comboCtrl.Text;
+            HashSet<String> added = new HashSet<String>();
             foreach (String value in values ?? new String[0])
             {
                 // カラ文字
@@ -201,23 +197,17 @@ namespace FileArranger
                     valueName = value.Substring(startIdx);
                 }
 
-                // 文字の絞り込み(limitStringを含む項目だけ残す)
-                if (limitString != String.Empty)
-                {
-                    // 大文字小文字を区別せずに部分一致で検索
-                    if (valueName.IndexOf(limitString, StringComparison.OrdinalIgnoreCase) < 0)
-                    {
-                        continue;
-                    }
-                }
-
-                // 登録済みだったらスキップ
-                if (items.Contains(valueName))
+                // 文字の絞り込み(limitStringを含む項目だけ残す。大文字小文字を区別せずに部分一致で検索)
+                if (limitString != String.Empty && valueName.IndexOf(limitString, StringComparison.OrdinalIgnoreCase) < 0)
                 {
                     continue;
                 }
 
-                items.Add(valueName);
+                // 登録済みだったらスキップ(HashSetで重複を判定し、項目数が多くてもO(n)で済ませる)
+                if (added.Add(valueName))
+                {
+                    items.Add(valueName);
+                }
             }
 
             SetItemsKeepText(comboCtrl, items);

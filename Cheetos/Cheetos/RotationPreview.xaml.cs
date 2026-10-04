@@ -17,35 +17,43 @@ namespace Cheetos
         public String Angle { get; private set; } = "";
 
         // 画面の組み立て中(InitializeComponent中や初期値の代入中)はTextChangedで描画しない
-        private Boolean isConstructed = false;
+        private Boolean _isConstructed = false;
+
+        // 描画元画像のキャッシュ。数値を1文字変えるたびに画像ファイルをデコードし直さないよう、
+        // 同じパスの間は使い回す(「load」ボタンで読み直す)。
+        // ファイルをロックしないよう、ファイルの中身はメモリへ読み込んでからデコードする
+        private String _sourcePath;
+        private MemoryStream _sourceStream;
+        private Drawing.Bitmap _sourceBitmap;
 
         public RotationPreview()
         {
             InitializeComponent();
-            isConstructed = true;
+            Closed += (s, e) => ReleaseSourceBitmap();
+            _isConstructed = true;
         }
 
-        public RotationPreview(String originX, String originY, String angle)
+        public RotationPreview(String originX, String originY, String angle) : this()
         {
-            InitializeComponent();
-
+            _isConstructed = false;
             textBox_OriginX.Text = originX;
             textBox_OriginY.Text = originY;
             textBox_angle.Text = angle;
-            isConstructed = true;
+            _isConstructed = true;
         }
 
         private void button_ClickDraw(object sender, RoutedEventArgs e)
         {
+            ReleaseSourceBitmap();
             pictureBox_Source.Source = null;
-            pictureBox_Source.Source = WpfUtils.LoadBitmapSource(textBox_LoadFilePath.Text);
+            pictureBox_Source.Source = WpfUtils.ToBitmapSource(GetSourceBitmap(textBox_LoadFilePath.Text));
             Draw();
         }
 
         // WinForms版はKeyPressのたびに再描画していた。WPFでは入力後の値で描画できるTextChangedを使う
         private void textBox_Param_TextChanged(object sender, TextChangedEventArgs e)
         {
-            if (isConstructed)
+            if (_isConstructed)
             {
                 Draw();
             }
@@ -103,21 +111,49 @@ namespace Cheetos
                 return false;
             }
 
-            int val;
-            if (!Int32.TryParse(textBox_OriginX.Text, out val))
+            WpfUtils.ClearIfNotInteger(textBox_OriginX);
+            WpfUtils.ClearIfNotInteger(textBox_OriginY);
+            WpfUtils.ClearIfNotInteger(textBox_angle);
+            return true;
+        }
+
+        // 描画元画像を返す。前回と同じパスならキャッシュを返す
+        private Drawing.Bitmap GetSourceBitmap(String filePath)
+        {
+            if (_sourceBitmap != null && _sourcePath == filePath)
             {
-                textBox_OriginX.Text = "";
-            }
-            if (!Int32.TryParse(textBox_OriginY.Text, out val))
-            {
-                textBox_OriginY.Text = "";
-            }
-            if (!Int32.TryParse(textBox_angle.Text, out val))
-            {
-                textBox_angle.Text = "";
+                return _sourceBitmap;
             }
 
-            return true;
+            ReleaseSourceBitmap();
+            MemoryStream stream = new MemoryStream(File.ReadAllBytes(filePath));
+            try
+            {
+                _sourceBitmap = new Drawing.Bitmap(stream);
+            }
+            catch
+            {
+                stream.Dispose();
+                throw;
+            }
+            _sourceStream = stream;
+            _sourcePath = filePath;
+            return _sourceBitmap;
+        }
+
+        private void ReleaseSourceBitmap()
+        {
+            if (_sourceBitmap != null)
+            {
+                _sourceBitmap.Dispose();
+                _sourceBitmap = null;
+            }
+            if (_sourceStream != null)
+            {
+                _sourceStream.Dispose();
+                _sourceStream = null;
+            }
+            _sourcePath = null;
         }
 
         private void Draw()
@@ -127,46 +163,23 @@ namespace Cheetos
                 return;
             }
 
-            using (Drawing.Bitmap img = new Drawing.Bitmap(textBox_LoadFilePath.Text))
+            Drawing.Bitmap img = GetSourceBitmap(textBox_LoadFilePath.Text);
+            int max = Math.Max(img.Width, img.Height);
+
+            using (Drawing.Bitmap canvas = new Drawing.Bitmap(max * 2, max * 2))
             {
-                int max = Math.Max(img.Width, img.Height);
+                // (WinForms版はfloat.Parseで、空欄だと例外になっていた。空欄は0として扱う)
+                int angle;
+                Int32.TryParse(textBox_angle.Text, out angle);
+                float x;
+                float y;
+                float.TryParse(textBox_OriginX.Text, out x);
+                float.TryParse(textBox_OriginY.Text, out y);
 
-                using (Drawing.Bitmap canvas = new Drawing.Bitmap(max * 2, max * 2))
-                {
-                    //ラジアン単位に変換
-                    int angle;
-                    Int32.TryParse(textBox_angle.Text, out angle);
-                    double d = angle / (180 / Math.PI);
+                Rotation.DrawRotated(canvas, img, x, y, angle);
 
-                    //新しい座標位置を計算する
-                    // (WinForms版はfloat.Parseで、空欄だと例外になっていた。空欄は0として扱う)
-                    float x;
-                    float y;
-                    float.TryParse(textBox_OriginX.Text, out x);
-                    float.TryParse(textBox_OriginY.Text, out y);
-
-                    float x1 = x + img.Width * (float)Math.Cos(d);
-                    float y1 = y + img.Width * (float)Math.Sin(d);
-                    float x2 = x - img.Height * (float)Math.Sin(d);
-                    float y2 = y + img.Height * (float)Math.Cos(d);
-
-                    //PointF配列を作成
-                    Drawing.PointF[] destinationPoints =
-                    {
-                        new Drawing.PointF(x, y),
-                        new Drawing.PointF(x1, y1),
-                        new Drawing.PointF(x2, y2)
-                    };
-
-                    using (Drawing.Graphics g = Drawing.Graphics.FromImage(canvas))
-                    {
-                        //画像を表示
-                        g.DrawImage(img, destinationPoints);
-                    }
-
-                    //pictureBoxに表示
-                    pictureBox_Dest.Source = WpfUtils.ToBitmapSource(canvas);
-                }
+                //pictureBoxに表示
+                pictureBox_Dest.Source = WpfUtils.ToBitmapSource(canvas);
             }
         }
     }

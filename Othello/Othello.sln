@@ -3,9 +3,9 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 16
 VisualStudioVersion = 16.0.30114.105
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "othello", "othello\othello.csproj", "{BE18360C-C7F8-4088-B89D-E81A1814795D}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Othello", "Othello\Othello.csproj", "{BE18360C-C7F8-4088-B89D-E81A1814795D}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "othello.Tests", "Tests\othello.Tests\othello.Tests.csproj", "{32E7538F-7344-4084-A843-6ACCC0928EE5}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Othello.Tests", "Tests\Othello.Tests\Othello.Tests.csproj", "{32E7538F-7344-4084-A843-6ACCC0928EE5}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
