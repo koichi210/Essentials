@@ -494,6 +494,16 @@ namespace EventRecorder
         {
             WindowState = WindowState.Normal;
             UpdateTaskbarVisibility();
+            BringWindowToFront();
+        }
+
+        // 再生中は再生対象のアプリが前面(フォアグラウンド)にいるため、WindowStateを戻すだけだと
+        // Windowsのフォアグラウンドロックにより対象アプリの裏に隠れたままになり、戻ったことに気付けない。
+        // 一瞬だけ最前面にしてZオーダーの先頭へ持ってきてから、アクティブにする(WinForms版と同じ)
+        private void BringWindowToFront()
+        {
+            Topmost = true;
+            Topmost = false;
             Activate();
         }
 

@@ -108,13 +108,15 @@ namespace EventRecorder
             }
         }
 
-        // MinimizeIfRequestedで最小化した場合、再生終了時に元の表示状態へ戻す
+        // MinimizeIfRequestedで最小化した場合、再生終了時(最後まで再生/停止/エラーのいずれでも)に
+        // 標準サイズへ戻し、再生対象アプリの裏に隠れないよう前面に出す
         private void RestoreIfMinimizedByPlay()
         {
             if (checkBox_MinimizeOnPlay.IsChecked == true && WindowState == WindowState.Minimized)
             {
                 WindowState = WindowState.Normal;
                 UpdateTaskbarVisibility();
+                BringWindowToFront();
             }
         }
 
