@@ -59,5 +59,31 @@ namespace FileArranger.Tests
             Assert.AreEqual("2a_src", src, "直近の実行分だけが取り出される");
             Assert.IsFalse(pm.HasRestoreItem(), "2回目の分は1件だけ");
         }
+
+        [TestMethod]
+        public void RestoreLastBatch_直前の1回分を移動後から移動前へ戻す()
+        {
+            var pm = new StcProcessMemory();
+            pm.AddRestoreItem("1a_src", "1a_dst");
+            pm.IncrementSerialNumber();
+            pm.AddRestoreItem("2a_src", "2a_dst");
+            pm.AddRestoreItem("2b_src", "2b_dst");
+            pm.IncrementSerialNumber();
+
+            var moved = new System.Collections.Generic.List<string>();
+            Assert.IsTrue(pm.RestoreLastBatch((from, to) => moved.Add(from + ">" + to)));
+
+            CollectionAssert.AreEquivalent(new[] { "2a_dst>2a_src", "2b_dst>2b_src" }, moved, "2回目の2件だけが逆向きに戻る");
+        }
+
+        [TestMethod]
+        public void RestoreLastBatch_戻す対象が無ければfalseで何もしない()
+        {
+            var pm = new StcProcessMemory();
+            int moveCount = 0;
+
+            Assert.IsFalse(pm.RestoreLastBatch((from, to) => moveCount++));
+            Assert.AreEqual(0, moveCount);
+        }
     }
 }

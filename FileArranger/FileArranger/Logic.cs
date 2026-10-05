@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Text.RegularExpressions;
 using System.Windows.Controls;
@@ -81,7 +82,18 @@ namespace FileArranger
         {
             const int targetSubItemIdx = 0;
 
-            int count = 0;
+            List<String> selectedNames = WpfControlHelper.GetSelectedRows(lv)
+                .Select(row => row[targetSubItemIdx])
+                .ToList();
+            return GetAddCount(selectedNames, fileName, trimName, isReverse);
+        }
+
+        /// <summary>
+        /// GetAddCount の本体。選択項目の名前を先に取り出しておけば、複数ファイル分を
+        /// 続けて数える時にListViewへ何度も問い合わせずに済む。
+        /// </summary>
+        public static int GetAddCount(IEnumerable<String> selectedNames, String fileName, String trimName, Boolean isReverse = false)
+        {
             String searchName = "";
 
             // TrimAtSeparatorとは違い、区切り文字が見つからなければ空文字で探す(=全件一致)
@@ -91,22 +103,10 @@ namespace FileArranger
                 searchName = fileName.Substring(0, delimiterIdx);
             }
 
-            foreach (Object item in WpfControlHelper.GetSelectedItemsInIndexOrder(lv))
-            {
-                String srcFileName = ((ListViewRow)item)[targetSubItemIdx];
+            int count = selectedNames.Count(name => name.IndexOf(searchName) != -1);
 
-                if (srcFileName.IndexOf(searchName) != -1)
-                {
-                    count++;
-                }
-            }
-
-            if (count == 0)
-            {
-                // 今回新規追加時の初期値
-                count = 1;
-            }
-            return count;
+            // 一致が無ければ、今回新規追加時の初期値
+            return count == 0 ? 1 : count;
         }
 
         /// <summary>

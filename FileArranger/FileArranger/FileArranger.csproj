@@ -92,6 +92,7 @@
       <DependentUpon>MainWindow.xaml</DependentUpon>
     </Compile>
     <Compile Include="FileSorter.cs" />
+    <Compile Include="ProcessMemoryExtensions.cs" />
     <Compile Include="ListViewRow.cs" />
     <Compile Include="Logic.cs" />
     <Compile Include="Utils.cs" />

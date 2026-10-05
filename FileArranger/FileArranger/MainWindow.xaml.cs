@@ -94,11 +94,11 @@ namespace FileArranger
             comboText.AddValueChanged(rd_comboBox_AddTitlePostWord, rd_comboBox_TextChanged);
 
             _bgWorkerMove.DoWork += bgWorkerMove_DoWork;
-            _bgWorkerMove.ProgressChanged += bgWorkerMove_ProgressChanged;
+            _bgWorkerMove.ProgressChanged += bgWorker_ProgressChanged;
             _bgWorkerMove.RunWorkerCompleted += bgWorkerMove_RunWorkerCompleted;
 
             _bgPartition.DoWork += bgPartition_DoWork;
-            _bgPartition.ProgressChanged += bgPartition_ProgressChanged;
+            _bgPartition.ProgressChanged += bgWorker_ProgressChanged;
             _bgPartition.RunWorkerCompleted += bgPartition_RunWorkerCompleted;
         }
 
@@ -242,13 +242,36 @@ namespace FileArranger
         // *******************************************************************************
         // 共通
 
-        // Enterキーでパスを開く(WinForms版StcUtils.ExecutePath(String, KeyEventArgs)相当)
-        private void ExecutePathOnEnter(String execPath, KeyEventArgs e)
+        // パス入力欄(TextBox/ComboBox)でEnterを押したら、入力中のパスを開く
+        // (WinForms版StcUtils.ExecutePath(String, KeyEventArgs)相当。各タブのフォルダ入力欄で共通のハンドラ)
+        private void PathInput_KeyDown(object sender, KeyEventArgs e)
         {
-            if (e.Key == Key.Enter)
+            if (e.Key != Key.Enter)
             {
-                _util.ExecutePath(execPath);
+                return;
             }
+
+            String path = sender is ComboBox comboBox ? comboBox.Text : ((TextBox)sender).Text;
+            _util.ExecutePath(path);
+        }
+
+        // Ctrl+Aで全選択(複数行テキスト・リストボックスで共通のハンドラ)
+        private void SelectAll_KeyDown(object sender, KeyEventArgs e)
+        {
+            if (e.Key != Key.A || Keyboard.Modifiers != ModifierKeys.Control)
+            {
+                return;
+            }
+
+            if (sender is TextBox textBox)
+            {
+                textBox.SelectAll();
+            }
+            else
+            {
+                ((ListBox)sender).SelectAll();
+            }
+            e.Handled = true;
         }
 
         private static Boolean IsCtrlEnter(KeyEventArgs e)
@@ -256,14 +279,34 @@ namespace FileArranger
             return e.Key == Key.Enter && Keyboard.Modifiers == ModifierKeys.Control;
         }
 
-        private void cmn_textBox_AddList_KeyDown(object sender, KeyEventArgs e)
+        // リストボックスのキー操作: Enterで実行、Ctrl+Aで全選択(md/sfタブで共通)
+        private static void HandleListBoxKeyDown(ListBox listBox, KeyEventArgs e, Action executeOnEnter)
         {
-            // WinForms版はCtrl+Aで全選択していた(StcUtils.SelectAll)。WPFのTextBoxはCtrl+Aで標準的に全選択される
-            if (e.Key == Key.A && Keyboard.Modifiers == ModifierKeys.Control)
+            if (e.Key == Key.Enter)
             {
-                cmn_textBox_AddList.SelectAll();
-                e.Handled = true;
+                executeOnEnter();
             }
+            else
+            {
+                WpfControlHelper.SelectAll(listBox, e);
+            }
+        }
+
+        // 選択項目が無ければメッセージを出してfalseを返す(各タブの実行ボタンで共通)
+        private static Boolean HasSelectedItems(int selectedCount)
+        {
+            if (selectedCount > 0)
+            {
+                return true;
+            }
+
+            MessageBox.Show("項目が選択されていません。");
+            return false;
+        }
+
+        private static String FormatSelectedCount(int selectedCount)
+        {
+            return "選択数：" + selectedCount.ToString();
         }
 
         // リストアップ前のフォルダ確認(showErrorPopup=falseなら、無効でもメッセージを出さずに中断する)
@@ -282,9 +325,10 @@ namespace FileArranger
         }
 
         // フルパスから基準フォルダの分を取り除いて、表示用の名前にする
+        // (基準フォルダの末尾に「\」が付いていると名前の先頭1文字まで削れていたため、末尾の区切りは除いて数える)
         private static String GetDisplayName(String fullPath, String baseFolderPath)
         {
-            return fullPath.Remove(0, baseFolderPath.Length + 1);
+            return fullPath.Remove(0, baseFolderPath.TrimEnd('\\', '/').Length + 1);
         }
 
         // フルパスの一覧を表示用の名前にし、WinForms版のSorted=trueなListView/ListBoxと同じく昇順に並べる
@@ -303,11 +347,48 @@ namespace FileArranger
             progressBar.Value = 0;
         }
 
-        // 進捗の表示(BackgroundWorkerのProgressChangedから呼ぶ)
-        private void ShowProgress(int done)
+        // リストアップ処理の共通部分。フォルダを確認し、getPathsで集めたパスを表示用の名前にして昇順で一覧に並べ、
+        // 件数を表示する。makeItemで一覧に入れる項目を作る(省略時は名前そのもの)。フォルダが無効ならnullを返す
+        private static String[] ListupInto(ItemsControl listCtrl, TextBlock totalLabel, String countName,
+            String folderPath, Func<String, IEnumerable<String>> getPaths,
+            Func<String, Object> makeItem = null, Boolean showErrorPopup = true)
         {
+            if (!IsValidFolderPath(folderPath, showErrorPopup))
+            {
+                return null;
+            }
+
+            String[] names = GetSortedDisplayNames(getPaths(folderPath), folderPath);
+            WpfControlHelper.SetListItems(listCtrl, names.Select(makeItem ?? (name => name)));
+            totalLabel.Text = countName + "：" + names.Length;
+            return names;
+        }
+
+        // 進捗の表示(mf/pfタブのBackgroundWorkerで共通のハンドラ。ProgressPercentageには完了件数を入れている)
+        private void bgWorker_ProgressChanged(object sender, ProgressChangedEventArgs e)
+        {
+            int done = e.ProgressPercentage;
             progressText.Text = done + "/" + progressBar.Maximum + " 完了";
             progressBar.Value = done;
+        }
+
+        // BackgroundWorker完了時のキャンセル/エラー表示(mf/pfタブで共通)。正常に終わっていればtrue
+        private static Boolean IsWorkerCompletedNormally(RunWorkerCompletedEventArgs e, String errorMessage)
+        {
+            if (e.Cancelled)
+            {
+                // この場合はe.Resultにはアクセスできない
+                MessageBox.Show("キャンセルされました");
+                return false;
+            }
+
+            if (e.Error != null)
+            {
+                MessageBox.Show(errorMessage + Environment.NewLine + e.Error.Message);
+                return false;
+            }
+
+            return true;
         }
 
         private void cmn_textBox_Reference_TextChanged(object sender, TextChangedEventArgs e)
@@ -331,7 +412,7 @@ namespace FileArranger
             {
                 String[] addReferenceList = cmn_textBox_AddList.Text.Split(new[] { Environment.NewLine }, StringSplitOptions.RemoveEmptyEntries);
                 Logic.DeleteDuplicate(ReferenceCandidateFolders, ref addReferenceList, rd_textBox_SplitWord3.Text);
-                addReferenceList = addReferenceList.Select(str => cmn_textBox_Reference.Text + @"\" + str + cmn_textBox_AddListSuffix.Text).ToArray();
+                addReferenceList = addReferenceList.Select(str => Path.Combine(cmn_textBox_Reference.Text, str + cmn_textBox_AddListSuffix.Text)).ToArray();
 
                 ReferenceCandidateFolders = ReferenceCandidateFolders.Concat(addReferenceList).ToArray();
             }

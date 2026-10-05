@@ -1,5 +1,7 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Windows.Controls;
 using StandardTemplate;
 
@@ -46,20 +48,16 @@ namespace FileArranger
         // 選択されているリストビューの中から目的の文字列を探す(戻り値はItems上のインデックス。無ければ-1)
         public int FindSelectedRowIndex(ListView listView, int subItemIdx, String srcName, String trimName = "", Boolean isReverse = false)
         {
+            ListViewRow found = FindRow(WpfControlHelper.GetSelectedRows(listView), subItemIdx, srcName, trimName, isReverse);
+            return found != null ? listView.Items.IndexOf(found) : -1;
+        }
+
+        // rows(選択行のスナップショット等)の中から目的の文字列を含む最初の行を探す(無ければnull)
+        public ListViewRow FindRow(IEnumerable<ListViewRow> rows, int subItemIdx, String srcName, String trimName = "", Boolean isReverse = false)
+        {
             // trimNameが設定されていたら、特定の文字列で区切る
             String searchName = Logic.TrimAtSeparator(srcName, trimName, isReverse);
-
-            foreach (int idx in WpfControlHelper.GetSelectedIndices(listView))
-            {
-                String lvString = ((ListViewRow)listView.Items[idx])[subItemIdx];
-
-                if (lvString.IndexOf(searchName) != -1)
-                {
-                    return idx;
-                }
-            }
-
-            return -1;
+            return rows.FirstOrDefault(row => row[subItemIdx].IndexOf(searchName) != -1);
         }
     }
 }

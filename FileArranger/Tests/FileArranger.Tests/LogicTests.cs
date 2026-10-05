@@ -251,5 +251,15 @@ namespace FileArranger.Tests
 
             CollectionAssert.AreEqual(new[] { "apple", "cherry" }, added);
         }
+
+        [TestMethod]
+        public void GetAddCount_名前の一覧を渡す版もListView版と同じ数え方をする()
+        {
+            string[] names = { "photo_1.jpg", "photo_2.jpg", "other.jpg" };
+
+            Assert.AreEqual(2, Logic.GetAddCount(names, "photo_3.jpg", "_"));
+            Assert.AreEqual(1, Logic.GetAddCount(names, "movie_1.mp4", "_"), "一致が無ければ初期値1");
+            Assert.AreEqual(1, Logic.GetAddCount(new[] { "a_b_photo", "x_y_photo" }, "a_b_photo_new", "_", true));
+        }
     }
 }

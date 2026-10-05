@@ -29,20 +29,55 @@ namespace FileArranger
             return GetSelectedIndices(listCtrl).Select(index => listCtrl.Items[index]).ToList();
         }
 
-        // 選択項目のインデックスを昇順で返す(WinFormsのSelectedItems[i].Index相当)
+        // 選択項目のインデックスを昇順で返す(WinFormsのSelectedItems[i].Index相当)。
+        // 選択項目ごとにItems.IndexOfで先頭から探すと「項目数×選択数」になり、全選択では項目数の2乗になる。
+        // 選択項目をHashSetに入れておき、Itemsを先頭から1回なめるだけで済ませる(結果は最初から昇順)
         public static List<int> GetSelectedIndices(ListBox listCtrl)
         {
-            List<int> indices = new List<int>();
-            foreach (Object item in listCtrl.SelectedItems)
+            HashSet<Object> selected = new HashSet<Object>(listCtrl.SelectedItems.Cast<Object>());
+            List<int> indices = new List<int>(selected.Count);
+            for (int i = 0; i < listCtrl.Items.Count && indices.Count < selected.Count; i++)
             {
-                int index = listCtrl.Items.IndexOf(item);
-                if (index >= 0)
+                if (selected.Contains(listCtrl.Items[i]))
                 {
-                    indices.Add(index);
+                    indices.Add(i);
                 }
             }
-            indices.Sort();
             return indices;
+        }
+
+        // 選択中の行(ListViewRow)を画面の並び順で返す
+        public static List<ListViewRow> GetSelectedRows(ListView listCtrl)
+        {
+            return GetSelectedItemsInIndexOrder(listCtrl).Cast<ListViewRow>().ToList();
+        }
+
+        // 選択中の項目の表示名を画面の並び順で返す
+        public static List<String> GetSelectedNames(ListBox listCtrl)
+        {
+            return GetSelectedItemsInIndexOrder(listCtrl).Select(item => item.ToString()).ToList();
+        }
+
+        // 指定した行の指定列にまとめて同じ文字列を入れる
+        public static void SetColumnText(IEnumerable<ListViewRow> rows, String text, params int[] columnIdxes)
+        {
+            foreach (ListViewRow row in rows)
+            {
+                foreach (int columnIdx in columnIdxes)
+                {
+                    row[columnIdx] = text;
+                }
+            }
+        }
+
+        // 一覧の項目を入れ替える(各タブのリストアップで共通)
+        public static void SetListItems(ItemsControl listCtrl, IEnumerable<Object> items)
+        {
+            listCtrl.Items.Clear();
+            foreach (Object item in items)
+            {
+                listCtrl.Items.Add(item);
+            }
         }
 
         // Ctrl+Aで全選択(WinForms版StcUtils.SelectAll(KeyEventArgs)はSendKeysで{HOME}+{END}を送っていた)

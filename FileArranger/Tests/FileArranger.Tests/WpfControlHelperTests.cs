@@ -149,5 +149,45 @@ namespace FileArranger.Tests
             Assert.AreEqual("b", row[1]);
             Assert.AreEqual("a", row.ToString());
         }
+
+        [TestMethod]
+        public void GetSelectedIndices_選択した順ではなく画面の並び順で返す()
+        {
+            StaRunner.Run(() =>
+            {
+                var listBox = new ListBox { SelectionMode = SelectionMode.Multiple };
+                foreach (string name in new[] { "a", "b", "c", "d" })
+                {
+                    listBox.Items.Add(name);
+                }
+                listBox.SelectedItems.Add("d");
+                listBox.SelectedItems.Add("b");
+
+                CollectionAssert.AreEqual(new[] { 1, 3 }, WpfControlHelper.GetSelectedIndices(listBox));
+                CollectionAssert.AreEqual(new[] { "b", "d" }, WpfControlHelper.GetSelectedNames(listBox));
+            });
+        }
+
+        [TestMethod]
+        public void GetSelectedRows_選択行を並び順で返しSetColumnTextでまとめて書き換えられる()
+        {
+            StaRunner.Run(() =>
+            {
+                var listView = new ListView { SelectionMode = SelectionMode.Multiple };
+                var rows = new[] { new ListViewRow("x", ""), new ListViewRow("y", ""), new ListViewRow("z", "") };
+                foreach (ListViewRow row in rows)
+                {
+                    listView.Items.Add(row);
+                }
+                listView.SelectedItems.Add(rows[2]);
+                listView.SelectedItems.Add(rows[0]);
+
+                var selected = WpfControlHelper.GetSelectedRows(listView);
+                CollectionAssert.AreEqual(new[] { rows[0], rows[2] }, selected);
+
+                WpfControlHelper.SetColumnText(selected, "moved", 1);
+                CollectionAssert.AreEqual(new[] { "moved", "", "moved" }, rows.Select(row => row[1]).ToArray());
+            });
+        }
     }
 }
