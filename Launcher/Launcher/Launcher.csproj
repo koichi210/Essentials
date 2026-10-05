@@ -19,7 +19,17 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="WindowsAPICodePack-Shell" Version="1.1.1" />
+    <!-- net10.0-windows(SDK形式)から.NET Framework向けの古いWindowsAPICodePack(Shellが依存するCoreを含む)を参照するため
+         NU1701(ターゲットフレームワーク不一致)が出る。_Common/DataFolderChooser.cs経由で
+         CS_Form/CS_Wpfの他プロジェクトと共有している依存で、.NET Frameworkの互換シムで
+         問題なく動作するため抑止する。 -->
+    <PackageReference Include="WindowsAPICodePack-Shell" Version="1.1.1" NoWarn="NU1701" />
   </ItemGroup>
+
+  <PropertyGroup>
+    <!-- 依存先WindowsAPICodePack-Core分はPackageReference個別指定のNoWarnが効かないため、
+         プロジェクト全体でも抑止する。 -->
+    <NoWarn>$(NoWarn);NU1701</NoWarn>
+  </PropertyGroup>
 
 </Project>
