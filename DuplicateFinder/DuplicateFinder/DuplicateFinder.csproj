@@ -1,0 +1,31 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net48</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <LangVersion>7.3</LangVersion>
+    <RootNamespace>DuplicateFinder</RootNamespace>
+    <AssemblyName>DuplicateFinder</AssemblyName>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+    <!-- 4GB超の動画を何本も比較するので、32bitプロセスにしない -->
+    <Prefer32Bit>false</Prefer32Bit>
+    <PlatformTarget>x64</PlatformTarget>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- フォルダ選択ダイアログ(FolderBrowserDialog)とごみ箱への削除(FileSystem.DeleteFile)で使う -->
+    <Reference Include="System.Windows.Forms" />
+    <Reference Include="Microsoft.VisualBasic" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Include="..\..\_Common\StcWpfExceptionGuard.cs" Link="_Common\StcWpfExceptionGuard.cs" />
+  </ItemGroup>
+
+</Project>

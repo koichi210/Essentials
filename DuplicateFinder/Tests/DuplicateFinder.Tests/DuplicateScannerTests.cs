@@ -1,0 +1,287 @@
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Threading;
+using Microsoft.VisualStudio.TestTools.UnitTesting;
+
+namespace DuplicateFinder.Tests
+{
+    [TestClass]
+    public class DuplicateScannerTests
+    {
+        private string _root;
+
+        [TestInitialize]
+        public void SetUp()
+        {
+            _root = Path.Combine(Path.GetTempPath(), "DuplicateFinderTests_" + Guid.NewGuid().ToString("N"));
+            Directory.CreateDirectory(_root);
+        }
+
+        [TestCleanup]
+        public void TearDown()
+        {
+            foreach (string file in Directory.GetFiles(_root, "*", SearchOption.AllDirectories))
+            {
+                File.SetAttributes(file, FileAttributes.Normal);
+            }
+            Directory.Delete(_root, true);
+        }
+
+        private string Write(string relativePath, byte[] content)
+        {
+            string path = Path.Combine(_root, relativePath);
+            Directory.CreateDirectory(Path.GetDirectoryName(path));
+            File.WriteAllBytes(path, content);
+            return path;
+        }
+
+        private static byte[] RandomBytes(int length, int seed)
+        {
+            var bytes = new byte[length];
+            new Random(seed).NextBytes(bytes);
+            return bytes;
+        }
+
+        private static byte[] WithChange(byte[] source, int index)
+        {
+            var copy = (byte[])source.Clone();
+            copy[index] ^= 0xFF;
+            return copy;
+        }
+
+        private ScanResult Scan(Action<ScanOptions> configure = null)
+        {
+            var options = new ScanOptions { RootFolder = _root };
+            configure?.Invoke(options);
+            return DuplicateScanner.Scan(options, null, CancellationToken.None);
+        }
+
+        private static List<List<string>> FileNames(ScanResult result)
+        {
+            return result.Groups
+                .Select(g => g.Files.Select(f => Path.GetFileName(f.Path)).OrderBy(n => n).ToList())
+                .OrderBy(g => g[0])
+                .ToList();
+        }
+
+        [TestMethod]
+        public void 名前やフォルダが違っても中身が同じなら重複になる()
+        {
+            byte[] content = RandomBytes(300 * 1024, 1);
+            Write("a.mp4", content);
+            Write(@"sub\deep\b_copy.mp4", content);
+            Write("other.mp4", RandomBytes(300 * 1024, 2));
+
+            ScanResult result = Scan();
+
+            CollectionAssert.AreEqual(new[] { "a.mp4", "b_copy.mp4" }, FileNames(result).Single());
+            Assert.AreEqual(3, result.ScannedFileCount);
+        }
+
+        [TestMethod]
+        public void 同じサイズでも1バイトでも違えば重複にしない_先頭_中間_末尾()
+        {
+            // 先頭・末尾の64KBは先読みでの絞り込み、中間は全体比較で弾かれる
+            const int length = 20 * 1024 * 1024 + 123;
+            byte[] content = RandomBytes(length, 3);
+            Write("original.bin", content);
+            Write("head.bin", WithChange(content, 0));
+            Write("middle.bin", WithChange(content, length / 2));
+            Write("tail.bin", WithChange(content, length - 1));
+            // 先読み範囲のすぐ外(チャンクの境目付近)
+            Write("edge.bin", WithChange(content, DuplicateScanner.SampleSize));
+
+            ScanResult result = Scan();
+
+            Assert.AreEqual(0, result.Groups.Count);
+        }
+
+        [TestMethod]
+        public void 同じサイズの中に複数の重複の組があれば別々のグループになる()
+        {
+            byte[] a = RandomBytes(500 * 1024, 4);
+            byte[] b = WithChange(a, 250 * 1024);
+            Write("a1.bin", a);
+            Write("a2.bin", a);
+            Write("a3.bin", a);
+            Write("b1.bin", b);
+            Write("b2.bin", b);
+            Write("c.bin", WithChange(a, 100));
+
+            List<List<string>> groups = FileNames(Scan());
+
+            Assert.AreEqual(2, groups.Count);
+            CollectionAssert.AreEqual(new[] { "a1.bin", "a2.bin", "a3.bin" }, groups[0]);
+            CollectionAssert.AreEqual(new[] { "b1.bin", "b2.bin" }, groups[1]);
+        }
+
+        [TestMethod]
+        public void 小さいファイルも比較できる_0バイトは対象外()
+        {
+            Write("x1.txt", new byte[] { 1, 2, 3 });
+            Write("x2.txt", new byte[] { 1, 2, 3 });
+            Write("y.txt", new byte[] { 1, 2, 4 });
+            Write("empty1.txt", new byte[0]);
+            Write("empty2.txt", new byte[0]);
+
+            ScanResult result = Scan();
+
+            CollectionAssert.AreEqual(new[] { "x1.txt", "x2.txt" }, FileNames(result).Single());
+            Assert.AreEqual(3, result.ScannedFileCount);
+        }
+
+        [TestMethod]
+        public void 同じサイズのファイルが大量にあっても正しく仕分ける()
+        {
+            // 総当たりではなく簡易ハッシュでの振り分けを通る件数
+            byte[] shared = RandomBytes(200 * 1024, 5);
+            for (int i = 0; i < 12; i++)
+            {
+                Write("unique" + i + ".bin", RandomBytes(200 * 1024, 100 + i));
+            }
+            for (int i = 0; i < 5; i++)
+            {
+                Write("same" + i + ".bin", shared);
+            }
+
+            ScanResult result = Scan();
+
+            Assert.AreEqual(1, result.Groups.Count);
+            Assert.AreEqual(5, result.Groups[0].Files.Count);
+            Assert.IsTrue(result.Groups[0].Files.All(f => Path.GetFileName(f.Path).StartsWith("same")));
+        }
+
+        [TestMethod]
+        public void 最小サイズと拡張子で絞り込める()
+        {
+            byte[] big = RandomBytes(2 * 1024 * 1024, 6);
+            byte[] small = RandomBytes(1000, 7);
+            Write("big1.MP4", big);
+            Write("big2.mp4", big);
+            Write("big3.txt", big);
+            Write("small1.mp4", small);
+            Write("small2.mp4", small);
+
+            ScanResult result = Scan(o =>
+            {
+                o.MinSizeBytes = 1024 * 1024;
+                o.Extensions = ScanOptions.ParseExtensions("mp4; .mkv");
+            });
+
+            CollectionAssert.AreEqual(new[] { "big1.MP4", "big2.mp4" }, FileNames(result).Single());
+        }
+
+        [TestMethod]
+        public void 隠しファイルは既定で対象外()
+        {
+            byte[] content = RandomBytes(1000, 8);
+            Write("visible1.bin", content);
+            Write("visible2.bin", content);
+            string hidden = Write("hidden.bin", content);
+            File.SetAttributes(hidden, FileAttributes.Hidden);
+
+            Assert.AreEqual(2, Scan().Groups.Single().Files.Count);
+            Assert.AreEqual(3, Scan(o => o.SkipHiddenAndSystem = false).Groups.Single().Files.Count);
+        }
+
+        [TestMethod]
+        public void 並列でも結果は同じ()
+        {
+            for (int i = 0; i < 10; i++)
+            {
+                byte[] content = RandomBytes(100 * 1024 + i, 200 + i);
+                Write("p" + i + "a.bin", content);
+                Write("p" + i + "b.bin", content);
+                Write("p" + i + "c.bin", WithChange(content, i));
+            }
+
+            List<List<string>> serial = FileNames(Scan());
+            List<List<string>> parallel = FileNames(Scan(o => o.MaxParallelism = 4));
+
+            Assert.AreEqual(10, serial.Count);
+            Assert.AreEqual(serial.Count, parallel.Count);
+            for (int i = 0; i < serial.Count; i++)
+            {
+                CollectionAssert.AreEqual(serial[i], parallel[i]);
+            }
+        }
+
+        [TestMethod]
+        public void 空く容量が大きいグループから並ぶ()
+        {
+            byte[] small = RandomBytes(1000, 9);
+            byte[] large = RandomBytes(5000, 10);
+            Write("s1.bin", small);
+            Write("s2.bin", small);
+            Write("s3.bin", small);
+            Write("l1.bin", large);
+            Write("l2.bin", large);
+
+            ScanResult result = Scan();
+
+            Assert.AreEqual(5000, result.Groups[0].WastedBytes);
+            Assert.AreEqual(2000, result.Groups[1].WastedBytes);
+        }
+
+        [TestMethod]
+        public void 進捗は最後に100パーセントになる()
+        {
+            byte[] content = RandomBytes(3 * 1024 * 1024, 11);
+            Write("a.bin", content);
+            Write("b.bin", content);
+            Write("c.bin", WithChange(content, 10));
+            Write("d.bin", WithChange(content, 2 * 1024 * 1024));
+
+            var reports = new List<ScanProgress>();
+            var progress = new SyncProgress(reports.Add);
+            DuplicateScanner.Scan(new ScanOptions { RootFolder = _root }, progress, CancellationToken.None);
+
+            ScanProgress last = reports.Last();
+            Assert.AreEqual(ScanPhase.Comparing, last.Phase);
+            Assert.AreEqual(4L * content.Length, last.TotalBytes);
+            Assert.AreEqual(last.TotalBytes, last.ProcessedBytes);
+        }
+
+        [TestMethod]
+        [ExpectedException(typeof(OperationCanceledException), AllowDerivedTypes = true)]
+        public void 中止できる()
+        {
+            Write("a.bin", new byte[] { 1 });
+            using (var cts = new CancellationTokenSource())
+            {
+                cts.Cancel();
+                DuplicateScanner.Scan(new ScanOptions { RootFolder = _root }, null, cts.Token);
+            }
+        }
+
+        [TestMethod]
+        public void 拡張子の入力を解釈できる()
+        {
+            ISet<string> extensions = ScanOptions.ParseExtensions(" mp4;.MKV, *.avi　wmv ;; ");
+            CollectionAssert.AreEquivalent(new[] { ".mp4", ".MKV", ".avi", ".wmv" }, extensions.ToList());
+            Assert.IsTrue(extensions.Contains(".mkv"));
+            Assert.AreEqual(0, ScanOptions.ParseExtensions("").Count);
+        }
+
+        // Progress<T>はUIスレッドへ非同期に送るので、テストでは呼ばれた場で記録する
+        private sealed class SyncProgress : IProgress<ScanProgress>
+        {
+            private readonly Action<ScanProgress> _report;
+
+            public SyncProgress(Action<ScanProgress> report)
+            {
+                _report = report;
+            }
+
+            public void Report(ScanProgress value)
+            {
+                lock (this)
+                {
+                    _report(value);
+                }
+            }
+        }
+    }
+}
