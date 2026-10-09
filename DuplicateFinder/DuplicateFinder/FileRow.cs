@@ -40,6 +40,12 @@ namespace DuplicateFinder
             get { return System.IO.Path.GetDirectoryName(Entry.Path); }
         }
 
+        /// <summary>何番目の対象フォルダにあるか(1始まり・画面表示用)</summary>
+        public int RootNumber
+        {
+            get { return Entry.RootIndex + 1; }
+        }
+
         public string SizeText
         {
             get { return SizeFormatter.Format(Entry.Length); }
@@ -68,10 +74,13 @@ namespace DuplicateFinder
     /// <summary>各グループで「どれを残すか」の自動選択ルール</summary>
     internal enum KeepRule
     {
+        // 設定ファイルには数値で保存されるので、並びを変えるときは末尾に足すこと
         Newest,
         Oldest,
         ShortestPath,
         LongestPath,
+        // 対象フォルダのリストで上にあるフォルダのものを残す(上を本体・下をバックアップにする使い方)
+        RootOrder,
     }
 
     /// <summary>削除対象のチェックを付け外しする処理(画面から切り離してテストできるようにしてある)</summary>
@@ -104,6 +113,9 @@ namespace DuplicateFinder
                     break;
                 case KeepRule.LongestPath:
                     ordered = group.OrderByDescending(r => r.Path.Length);
+                    break;
+                case KeepRule.RootOrder:
+                    ordered = group.OrderBy(r => r.Entry.RootIndex).ThenBy(r => r.Path.Length);
                     break;
                 default:
                     ordered = group.OrderBy(r => r.Path.Length);

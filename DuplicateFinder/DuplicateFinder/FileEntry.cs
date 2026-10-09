@@ -7,16 +7,20 @@ namespace DuplicateFinder
     /// <summary>探索で見つけた1ファイル</summary>
     internal sealed class FileEntry
     {
-        public FileEntry(string path, long length, DateTime lastWriteTime)
+        public FileEntry(string path, long length, DateTime lastWriteTime, int rootIndex = 0)
         {
             Path = path;
             Length = length;
             LastWriteTime = lastWriteTime;
+            RootIndex = rootIndex;
         }
 
         public string Path { get; }
         public long Length { get; }
         public DateTime LastWriteTime { get; }
+
+        /// <summary>何番目の対象フォルダ(0始まり)にあるか。対象フォルダが入れ子のときは、より深い方</summary>
+        public int RootIndex { get; }
 
         public override string ToString()
         {
@@ -41,12 +45,22 @@ namespace DuplicateFinder
         {
             get { return Length * (Files.Count - 1); }
         }
+
+        /// <summary>何か所の対象フォルダにまたがっているか</summary>
+        public int RootCount
+        {
+            get { return Files.Select(f => f.RootIndex).Distinct().Count(); }
+        }
     }
 
     /// <summary>探索の条件</summary>
     internal sealed class ScanOptions
     {
-        public string RootFolder { get; set; }
+        /// <summary>探すフォルダ(サブフォルダも対象)。どのフォルダにあるファイル同士でも比べる</summary>
+        public IList<string> RootFolders { get; set; } = new List<string>();
+
+        /// <summary>trueなら、別々の対象フォルダにまたがる重複だけを探す(同じ対象フォルダの中だけでの重複は無視)</summary>
+        public bool CrossRootOnly { get; set; }
 
         /// <summary>これより小さいファイルは対象外(0バイトのファイルは常に対象外)</summary>
         public long MinSizeBytes { get; set; }

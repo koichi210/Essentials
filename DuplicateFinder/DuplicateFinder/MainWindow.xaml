@@ -16,7 +16,7 @@
             </StatusBarItem>
             <StatusBarItem>
                 <TextBlock x:Name="StatusText" TextTrimming="CharacterEllipsis"
-                           Text="フォルダを指定(ドラッグ＆ドロップも可)して「検索開始」を押してください。" />
+                           Text="対象フォルダを追加(ドラッグ＆ドロップも可・複数可)して「検索開始」を押してください。" />
             </StatusBarItem>
         </StatusBar>
 
@@ -26,20 +26,32 @@
                 <ColumnDefinition Width="*" />
                 <ColumnDefinition Width="Auto" />
                 <ColumnDefinition Width="Auto" />
-                <ColumnDefinition Width="Auto" />
             </Grid.ColumnDefinitions>
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="Auto" />
             </Grid.RowDefinitions>
 
-            <TextBlock Grid.Row="0" Grid.Column="0" Text="対象フォルダ" VerticalAlignment="Center" Margin="0,0,6,0" />
-            <TextBox x:Name="FolderBox" Grid.Row="0" Grid.Column="1" VerticalContentAlignment="Center" Padding="2" />
-            <Button x:Name="BrowseButton" Grid.Row="0" Grid.Column="2" Content="参照(_B)..." Padding="10,3" Margin="6,0,0,0" Click="BrowseButton_Click" />
-            <Button x:Name="ScanButton" Grid.Row="0" Grid.Column="3" Content="検索開始(_S)" Padding="14,3" Margin="12,0,0,0" FontWeight="Bold" Click="ScanButton_Click" />
-            <Button x:Name="CancelButton" Grid.Row="0" Grid.Column="4" Content="中止" Padding="10,3" Margin="6,0,0,0" IsEnabled="False" Click="CancelButton_Click" />
+            <TextBlock Grid.Row="0" Grid.Column="0" Text="対象フォルダ" VerticalAlignment="Top" Margin="0,3,6,0" />
+            <ListBox x:Name="FolderList" Grid.Row="0" Grid.Column="1" Height="96" SelectionMode="Extended"
+                     KeyDown="FolderList_KeyDown"
+                     ToolTip="ここに登録したどのフォルダ(サブフォルダ含む)にあるファイル同士でも比べます。フォルダのドラッグ＆ドロップでも追加できます" />
+            <StackPanel Grid.Row="0" Grid.Column="2" Margin="6,0,0,0">
+                <Button x:Name="AddFolderButton" Content="追加(_B)..." Padding="10,2" Click="AddFolderButton_Click" />
+                <Button x:Name="RemoveFolderButton" Content="外す" Padding="10,2" Margin="0,3,0,0" Click="RemoveFolderButton_Click"
+                        ToolTip="選んだフォルダをリストから外します(フォルダ自体は消しません)" />
+                <Button x:Name="MoveUpButton" Content="▲ 上へ" Padding="10,2" Margin="0,3,0,0" Click="MoveUpButton_Click"
+                        ToolTip="自動選択の「リストの上の対象フォルダにあるものを残す」で優先されます" />
+                <Button x:Name="MoveDownButton" Content="▼ 下へ" Padding="10,2" Margin="0,3,0,0" Click="MoveDownButton_Click" />
+            </StackPanel>
+            <StackPanel Grid.Row="0" Grid.Column="3" Margin="12,0,0,0">
+                <Button x:Name="ScanButton" Content="検索開始(_S)" Padding="14,3" FontWeight="Bold" Click="ScanButton_Click" />
+                <Button x:Name="CancelButton" Content="中止" Padding="10,3" Margin="0,6,0,0" IsEnabled="False" Click="CancelButton_Click" />
+            </StackPanel>
 
-            <WrapPanel Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="5" Margin="0,6,0,0">
+            <WrapPanel Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="4" Margin="0,6,0,0">
+                <CheckBox x:Name="CrossRootCheck" Content="別々の対象フォルダにまたがる重複だけ" VerticalAlignment="Center" Margin="0,0,16,0"
+                          ToolTip="同じ対象フォルダの中だけでの重複は無視します(比べる量が減るので速くなります)" />
                 <TextBlock Text="最小サイズ" VerticalAlignment="Center" Margin="0,0,4,0" />
                 <TextBox x:Name="MinSizeBox" Width="56" VerticalContentAlignment="Center" HorizontalContentAlignment="Right"
                          ToolTip="これより小さいファイルは対象外にします(0バイトのファイルは常に対象外)。小数も可(例: 0.5)" />
@@ -58,7 +70,7 @@
 
         <DockPanel DockPanel.Dock="Top" Margin="8,10,8,6" LastChildFill="False">
             <TextBlock Text="自動選択" VerticalAlignment="Center" Margin="0,0,6,0" />
-            <ComboBox x:Name="KeepRuleCombo" Width="200" DisplayMemberPath="Value" SelectedValuePath="Key" />
+            <ComboBox x:Name="KeepRuleCombo" Width="270" DisplayMemberPath="Value" SelectedValuePath="Key" />
             <Button x:Name="ApplyRuleButton" Content="適用(_A)" Padding="10,3" Margin="6,0,0,0" Click="ApplyRuleButton_Click"
                     ToolTip="各グループで1件だけ残し、残りすべてに削除チェックを付けます" />
             <Button x:Name="ClearMarksButton" Content="チェックをすべて外す" Padding="10,3" Margin="6,0,0,0" Click="ClearMarksButton_Click" />
@@ -105,6 +117,13 @@
                         </DataTemplate>
                     </DataGridTemplateColumn.CellTemplate>
                 </DataGridTemplateColumn>
+                <DataGridTextColumn Header="対象" Binding="{Binding RootNumber}" Width="40">
+                    <DataGridTextColumn.ElementStyle>
+                        <Style TargetType="TextBlock">
+                            <Setter Property="HorizontalAlignment" Value="Center" />
+                        </Style>
+                    </DataGridTextColumn.ElementStyle>
+                </DataGridTextColumn>
                 <DataGridTextColumn Header="ファイル名" Binding="{Binding FileName}" Width="280" />
                 <DataGridTextColumn Header="サイズ" Binding="{Binding SizeText}" Width="90">
                     <DataGridTextColumn.ElementStyle>

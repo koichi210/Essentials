@@ -64,9 +64,11 @@ namespace DuplicateFinder
             List<FileEntry> files = EnumerateFiles();
             _result.ScannedFileCount = files.Count;
 
+            // フォルダをまたぐ重複だけ探すときは、同じサイズのファイルが1つの対象フォルダにしか無ければ比べるまでもない
             List<List<FileEntry>> candidates = files
                 .GroupBy(f => f.Length)
                 .Where(g => g.Count() >= 2)
+                .Where(g => !_options.CrossRootOnly || g.Select(f => f.RootIndex).Distinct().Skip(1).Any())
                 .Select(g => g.ToList())
                 .ToList();
             _totalBytes = candidates.Sum(g => g[0].Length * g.Count);
@@ -85,7 +87,11 @@ namespace DuplicateFinder
                 {
                     foreach (List<FileEntry> duplicates in CompareGroup(group))
                     {
-                        found.Add(new DuplicateGroup(duplicates));
+                        var duplicateGroup = new DuplicateGroup(duplicates);
+                        if (!_options.CrossRootOnly || duplicateGroup.RootCount >= 2)
+                        {
+                            found.Add(duplicateGroup);
+                        }
                     }
                 });
             }
@@ -109,9 +115,25 @@ namespace DuplicateFinder
 
         private List<FileEntry> EnumerateFiles()
         {
+            List<string> roots = _options.RootFolders.Select(NormalizeFolder).ToList();
             var files = new List<FileEntry>();
             var pending = new Stack<string>();
-            pending.Push(_options.RootFolder);
+            var existing = new List<string>();
+            foreach (string root in roots.Distinct(StringComparer.OrdinalIgnoreCase))
+            {
+                if (Directory.Exists(root))
+                {
+                    existing.Add(root);
+                }
+                else
+                {
+                    AddError("対象フォルダが見つかりません: " + root);
+                }
+            }
+            foreach (string root in StartFolders(existing))
+            {
+                pending.Push(root);
+            }
             while (pending.Count > 0)
             {
                 _token.ThrowIfCancellationRequested();
@@ -159,13 +181,51 @@ namespace DuplicateFinder
                     {
                         continue;
                     }
-                    files.Add(new FileEntry(file.FullName, length, file.LastWriteTime));
+                    files.Add(new FileEntry(file.FullName, length, file.LastWriteTime, RootIndexOf(file.FullName, roots)));
                     _filesFound = files.Count;
                     Report(file.FullName, false);
                 }
             }
             _filesFound = files.Count;
             return files;
+        }
+
+        // "D:\Videos\" → "D:\Videos"、"D:" → "D:\"(ドライブ直下だけは末尾の\を残す)
+        internal static string NormalizeFolder(string folder)
+        {
+            string full = Path.GetFullPath(folder.Trim().Trim('"') + "\\");
+            string trimmed = full.TrimEnd('\\');
+            return trimmed.EndsWith(":") ? trimmed + "\\" : trimmed;
+        }
+
+        // 実際に探索を始めるフォルダ。重複指定や、他の対象フォルダの中にある対象フォルダは除く
+        // (外側を探索すれば含まれるので、別に探索すると同じファイルを2回数えてしまう)
+        internal static List<string> StartFolders(IList<string> roots)
+        {
+            List<string> distinct = roots.Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+            return distinct.Where(r => !distinct.Any(other => IsStrictlyUnder(r, other))).ToList();
+        }
+
+        // ファイルが何番目の対象フォルダのものか。入れ子のとき("D:\Videos"と"D:\Videos\本体")は、より深い方
+        internal static int RootIndexOf(string path, IList<string> roots)
+        {
+            int found = 0;
+            int foundLength = -1;
+            for (int i = 0; i < roots.Count; i++)
+            {
+                if (roots[i].Length > foundLength && IsStrictlyUnder(path, roots[i]))
+                {
+                    found = i;
+                    foundLength = roots[i].Length;
+                }
+            }
+            return found;
+        }
+
+        private static bool IsStrictlyUnder(string path, string folder)
+        {
+            string prefix = folder.EndsWith("\\") ? folder : folder + "\\";
+            return path.Length > prefix.Length && path.StartsWith(prefix, StringComparison.OrdinalIgnoreCase);
         }
 
         // *******************************************************************************

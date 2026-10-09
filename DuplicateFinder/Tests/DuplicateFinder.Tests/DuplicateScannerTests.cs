@@ -53,7 +53,7 @@ namespace DuplicateFinder.Tests
 
         private ScanResult Scan(Action<ScanOptions> configure = null)
         {
-            var options = new ScanOptions { RootFolder = _root };
+            var options = new ScanOptions { RootFolders = new[] { _root } };
             configure?.Invoke(options);
             return DuplicateScanner.Scan(options, null, CancellationToken.None);
         }
@@ -236,7 +236,7 @@ namespace DuplicateFinder.Tests
 
             var reports = new List<ScanProgress>();
             var progress = new SyncProgress(reports.Add);
-            DuplicateScanner.Scan(new ScanOptions { RootFolder = _root }, progress, CancellationToken.None);
+            DuplicateScanner.Scan(new ScanOptions { RootFolders = new[] { _root } }, progress, CancellationToken.None);
 
             ScanProgress last = reports.Last();
             Assert.AreEqual(ScanPhase.Comparing, last.Phase);
@@ -252,8 +252,87 @@ namespace DuplicateFinder.Tests
             using (var cts = new CancellationTokenSource())
             {
                 cts.Cancel();
-                DuplicateScanner.Scan(new ScanOptions { RootFolder = _root }, null, cts.Token);
+                DuplicateScanner.Scan(new ScanOptions { RootFolders = new[] { _root } }, null, cts.Token);
             }
+        }
+
+        [TestMethod]
+        public void 複数の対象フォルダをまたいで重複を見つける()
+        {
+            byte[] content = RandomBytes(200 * 1024, 12);
+            string a = Write(@"A\movie.mp4", content);
+            string b = Write(@"B\deep\renamed.mp4", content);
+            Write(@"C\unrelated.mp4", content);
+
+            ScanResult result = Scan(o => o.RootFolders = new[] { Path.Combine(_root, "A"), Path.Combine(_root, "B") });
+
+            DuplicateGroup group = result.Groups.Single();
+            CollectionAssert.AreEqual(new[] { a, b }, group.Files.Select(f => f.Path).ToArray());
+            CollectionAssert.AreEqual(new[] { 0, 1 }, group.Files.Select(f => f.RootIndex).ToArray());
+            Assert.AreEqual(2, group.RootCount);
+        }
+
+        [TestMethod]
+        public void 入れ子の対象フォルダでも同じファイルを二重に数えない()
+        {
+            byte[] content = RandomBytes(1000, 13);
+            Write("top.bin", content);
+            Write(@"sub\inner.bin", content);
+
+            // 末尾の\や重複指定があっても同じフォルダとして扱う
+            ScanResult result = Scan(o => o.RootFolders = new[] { _root + "\\", Path.Combine(_root, "sub"), _root });
+
+            Assert.AreEqual(2, result.ScannedFileCount);
+            DuplicateGroup group = result.Groups.Single();
+            // 入れ子のときは、より深い対象フォルダのものとして扱う
+            Assert.AreEqual(0, group.Files.Single(f => f.Path.EndsWith("top.bin")).RootIndex);
+            Assert.AreEqual(1, group.Files.Single(f => f.Path.EndsWith("inner.bin")).RootIndex);
+        }
+
+        [TestMethod]
+        public void またがる重複だけに絞れる()
+        {
+            byte[] insideOnly = RandomBytes(1000, 14);
+            byte[] across = RandomBytes(2000, 15);
+            Write(@"A\in1.bin", insideOnly);
+            Write(@"A\in2.bin", insideOnly);
+            Write(@"A\x1.bin", across);
+            Write(@"A\x2.bin", across);
+            Write(@"B\x3.bin", across);
+            string[] roots = { Path.Combine(_root, "A"), Path.Combine(_root, "B") };
+
+            Assert.AreEqual(2, Scan(o => o.RootFolders = roots).Groups.Count);
+
+            ScanResult crossOnly = Scan(o =>
+            {
+                o.RootFolders = roots;
+                o.CrossRootOnly = true;
+            });
+            // またがっているグループは、同じフォルダ内の分も含めて全員出す
+            CollectionAssert.AreEqual(new[] { "x1.bin", "x2.bin", "x3.bin" }, FileNames(crossOnly).Single());
+        }
+
+        [TestMethod]
+        public void 見つからない対象フォルダがあっても他は探す()
+        {
+            byte[] content = RandomBytes(1000, 16);
+            Write("a.bin", content);
+            Write("b.bin", content);
+
+            ScanResult result = Scan(o => o.RootFolders = new[] { Path.Combine(_root, "nothing"), _root });
+
+            Assert.AreEqual(1, result.Groups.Count);
+            Assert.AreEqual(1, result.Errors.Count);
+        }
+
+        [TestMethod]
+        public void フォルダの表記をそろえる()
+        {
+            Assert.AreEqual(@"D:\Videos", DuplicateScanner.NormalizeFolder(@"D:\Videos\"));
+            Assert.AreEqual(@"D:\Videos", DuplicateScanner.NormalizeFolder("\"D:\\Videos\" "));
+            Assert.AreEqual(@"D:\", DuplicateScanner.NormalizeFolder(@"D:\"));
+            CollectionAssert.AreEqual(new[] { @"D:\", @"E:\Movies" },
+                DuplicateScanner.StartFolders(new[] { @"D:\", @"D:\Videos", @"E:\Movies", @"e:\movies" }));
         }
 
         [TestMethod]

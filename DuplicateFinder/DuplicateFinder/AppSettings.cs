@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Text;
 using Newtonsoft.Json;
@@ -8,13 +9,14 @@ namespace DuplicateFinder
     /// <summary>前回の入力内容(%LOCALAPPDATA%\DuplicateFinder\settings.json)</summary>
     internal sealed class AppSettings
     {
-        public string RootFolder { get; set; } = "";
+        public List<string> RootFolders { get; set; } = new List<string>();
+        public bool CrossRootOnly { get; set; }
         public string MinSizeMb { get; set; } = "0";
         public string Extensions { get; set; } = "";
         public bool SkipHiddenAndSystem { get; set; } = true;
         public int MaxParallelism { get; set; } = 1;
         public bool UseRecycleBin { get; set; } = true;
-        public KeepRule KeepRule { get; set; } = KeepRule.Oldest;
+        public KeepRule KeepRule { get; set; } = KeepRule.RootOrder;
 
         public static string DefaultFilePath
         {

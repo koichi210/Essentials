@@ -21,6 +21,7 @@ namespace DuplicateFinder
         private static readonly int[] _parallelChoices = { 1, 2, 4, 8 };
         private static readonly KeyValuePair<KeepRule, string>[] _keepRuleChoices =
         {
+            new KeyValuePair<KeepRule, string>(KeepRule.RootOrder, "リストの上の対象フォルダにあるものを残す"),
             new KeyValuePair<KeepRule, string>(KeepRule.Oldest, "更新日時が古いものを残す"),
             new KeyValuePair<KeepRule, string>(KeepRule.Newest, "更新日時が新しいものを残す"),
             new KeyValuePair<KeepRule, string>(KeepRule.ShortestPath, "パスが短いものを残す"),
@@ -30,6 +31,8 @@ namespace DuplicateFinder
         private const int _maxErrorLines = 30;
 
         private readonly string _settingsPath = AppSettings.DefaultFilePath;
+        // 対象フォルダ(並び順は自動選択「リストの上の対象フォルダにあるものを残す」の優先順)
+        private readonly List<string> _rootFolders = new List<string>();
         private List<FileRow> _rows = new List<FileRow>();
         private CancellationTokenSource _cts;
         private bool _isScanning;
@@ -45,7 +48,8 @@ namespace DuplicateFinder
             KeepRuleCombo.ItemsSource = _keepRuleChoices;
 
             AppSettings settings = AppSettings.Load(_settingsPath);
-            FolderBox.Text = settings.RootFolder;
+            AddFolders(settings.RootFolders);
+            CrossRootCheck.IsChecked = settings.CrossRootOnly;
             MinSizeBox.Text = settings.MinSizeMb;
             ExtensionsBox.Text = settings.Extensions;
             SkipHiddenCheck.IsChecked = settings.SkipHiddenAndSystem;
@@ -104,11 +108,23 @@ namespace DuplicateFinder
         // 入力欄から検索条件を作る。入力に問題があればメッセージを出してnull
         private ScanOptions ReadScanOptions()
         {
-            string folder = FolderBox.Text.Trim().Trim('"');
-            if (folder.Length == 0 || !Directory.Exists(folder))
+            if (_rootFolders.Count == 0)
             {
-                MessageBox.Show(this, "対象フォルダが見つかりません。", Title, MessageBoxButton.OK, MessageBoxImage.Warning);
-                FolderBox.Focus();
+                MessageBox.Show(this, "対象フォルダを追加してください。", Title, MessageBoxButton.OK, MessageBoxImage.Warning);
+                AddFolderButton.Focus();
+                return null;
+            }
+            List<string> missing = _rootFolders.Where(f => !Directory.Exists(f)).ToList();
+            if (missing.Count > 0)
+            {
+                MessageBox.Show(this, "見つからない対象フォルダがあります。\n\n" + string.Join("\n", missing), Title, MessageBoxButton.OK, MessageBoxImage.Warning);
+                return null;
+            }
+            bool crossRootOnly = CrossRootCheck.IsChecked == true;
+            if (crossRootOnly && _rootFolders.Count < 2)
+            {
+                MessageBox.Show(this, "「別々の対象フォルダにまたがる重複だけ」は、対象フォルダを2つ以上追加したときに使えます。",
+                    Title, MessageBoxButton.OK, MessageBoxImage.Warning);
                 return null;
             }
 
@@ -127,7 +143,8 @@ namespace DuplicateFinder
 
             return new ScanOptions
             {
-                RootFolder = Path.GetFullPath(folder),
+                RootFolders = _rootFolders.ToList(),
+                CrossRootOnly = crossRootOnly,
                 MinSizeBytes = (long)(minSizeMb * 1024 * 1024),
                 Extensions = ScanOptions.ParseExtensions(ExtensionsBox.Text),
                 SkipHiddenAndSystem = SkipHiddenCheck.IsChecked == true,
@@ -231,6 +248,10 @@ namespace DuplicateFinder
                 int count = group.Count();
                 string header = string.Format("#{0}   {1} 件 × {2}   (1件残すと {3} 空きます)",
                     group.Key, count, first.SizeText, SizeFormatter.Format(first.Entry.Length * (count - 1)));
+                if (_rootFolders.Count >= 2)
+                {
+                    header += "   [対象 " + string.Join("・", group.Select(r => r.RootNumber).Distinct().OrderBy(n => n)) + "]";
+                }
                 foreach (FileRow row in group)
                 {
                     row.GroupHeader = header;
@@ -505,8 +526,12 @@ namespace DuplicateFinder
         {
             bool busy = _isScanning || _isDeleting;
             bool hasRows = _rows.Count > 0;
-            FolderBox.IsEnabled = !busy;
-            BrowseButton.IsEnabled = !busy;
+            FolderList.IsEnabled = !busy;
+            AddFolderButton.IsEnabled = !busy;
+            RemoveFolderButton.IsEnabled = !busy;
+            MoveUpButton.IsEnabled = !busy;
+            MoveDownButton.IsEnabled = !busy;
+            CrossRootCheck.IsEnabled = !busy;
             ScanButton.IsEnabled = !busy;
             CancelButton.IsEnabled = busy;
             MinSizeBox.IsEnabled = !busy;
@@ -521,39 +546,135 @@ namespace DuplicateFinder
             ResultGrid.IsEnabled = !busy;
         }
 
-        private void BrowseButton_Click(object sender, RoutedEventArgs e)
+        // *******************************************************************************
+        // 対象フォルダのリスト
+
+        private void AddFolderButton_Click(object sender, RoutedEventArgs e)
         {
             using (var dialog = new System.Windows.Forms.FolderBrowserDialog())
             {
                 dialog.Description = "重複ファイルを探すフォルダを選んでください(サブフォルダも対象です)";
                 dialog.ShowNewFolderButton = false;
-                if (Directory.Exists(FolderBox.Text))
+                string last = _rootFolders.LastOrDefault();
+                if (last != null && Directory.Exists(last))
                 {
-                    dialog.SelectedPath = FolderBox.Text;
+                    dialog.SelectedPath = last;
                 }
                 if (dialog.ShowDialog() == System.Windows.Forms.DialogResult.OK)
                 {
-                    FolderBox.Text = dialog.SelectedPath;
+                    AddFolders(new[] { dialog.SelectedPath });
                 }
+            }
+        }
+
+        // リストの末尾に足す(同じフォルダは足さない)
+        private void AddFolders(IEnumerable<string> folders)
+        {
+            var added = new List<int>();
+            foreach (string folder in folders.Where(f => !string.IsNullOrWhiteSpace(f)))
+            {
+                string normalized;
+                try
+                {
+                    normalized = DuplicateScanner.NormalizeFolder(folder);
+                }
+                catch (Exception ex) when (ex is ArgumentException || ex is NotSupportedException || ex is PathTooLongException)
+                {
+                    continue;
+                }
+                if (_rootFolders.Contains(normalized, StringComparer.OrdinalIgnoreCase))
+                {
+                    continue;
+                }
+                _rootFolders.Add(normalized);
+                added.Add(_rootFolders.Count - 1);
+            }
+            RefreshFolderList(added);
+        }
+
+        private List<int> SelectedFolderIndexes()
+        {
+            return FolderList.SelectedItems.Cast<object>().Select(item => FolderList.Items.IndexOf(item)).OrderBy(i => i).ToList();
+        }
+
+        private void RemoveFolderButton_Click(object sender, RoutedEventArgs e)
+        {
+            RemoveSelectedFolders();
+        }
+
+        private void FolderList_KeyDown(object sender, KeyEventArgs e)
+        {
+            if (e.Key == Key.Delete)
+            {
+                RemoveSelectedFolders();
+                e.Handled = true;
+            }
+        }
+
+        private void RemoveSelectedFolders()
+        {
+            List<int> indexes = SelectedFolderIndexes();
+            for (int i = indexes.Count - 1; i >= 0; i--)
+            {
+                _rootFolders.RemoveAt(indexes[i]);
+            }
+            RefreshFolderList(new int[0]);
+        }
+
+        private void MoveUpButton_Click(object sender, RoutedEventArgs e)
+        {
+            MoveSelectedFolders(-1);
+        }
+
+        private void MoveDownButton_Click(object sender, RoutedEventArgs e)
+        {
+            MoveSelectedFolders(1);
+        }
+
+        // 選んだフォルダを1つ上(-1)・下(+1)へ。端にぶつかるときは動かさない
+        private void MoveSelectedFolders(int direction)
+        {
+            List<int> indexes = SelectedFolderIndexes();
+            if (indexes.Count == 0 || indexes[0] + direction < 0 || indexes[indexes.Count - 1] + direction >= _rootFolders.Count)
+            {
+                return;
+            }
+            IEnumerable<int> order = direction < 0 ? indexes : indexes.AsEnumerable().Reverse();
+            foreach (int index in order)
+            {
+                string folder = _rootFolders[index];
+                _rootFolders.RemoveAt(index);
+                _rootFolders.Insert(index + direction, folder);
+            }
+            RefreshFolderList(indexes.Select(i => i + direction));
+        }
+
+        // 番号付きで表示し直す(番号は一覧の「対象」列と対応)
+        private void RefreshFolderList(IEnumerable<int> selectIndexes)
+        {
+            FolderList.ItemsSource = _rootFolders.Select((folder, i) => (i + 1) + ".  " + folder).ToList();
+            foreach (int index in selectIndexes)
+            {
+                FolderList.SelectedItems.Add(FolderList.Items[index]);
             }
         }
 
         private void Window_PreviewDragOver(object sender, DragEventArgs e)
         {
-            e.Effects = e.Data.GetDataPresent(DataFormats.FileDrop) && FolderBox.IsEnabled ? DragDropEffects.Copy : DragDropEffects.None;
+            e.Effects = e.Data.GetDataPresent(DataFormats.FileDrop) && FolderList.IsEnabled ? DragDropEffects.Copy : DragDropEffects.None;
             e.Handled = true;
         }
 
-        // フォルダを落とせばそのフォルダ、ファイルを落とせばそのファイルがあるフォルダを対象にする
+        // フォルダを落とせばそのフォルダ、ファイルを落とせばそのファイルがあるフォルダを対象に追加する(複数可)
         private void Window_PreviewDrop(object sender, DragEventArgs e)
         {
             var paths = e.Data.GetData(DataFormats.FileDrop) as string[];
             e.Handled = true;
-            if (paths == null || paths.Length == 0 || !FolderBox.IsEnabled)
+            if (paths == null || !FolderList.IsEnabled)
             {
                 return;
             }
-            FolderBox.Text = Directory.Exists(paths[0]) ? paths[0] : Path.GetDirectoryName(paths[0]);
+            AddFolders(paths.Select(p => Directory.Exists(p) ? p : Path.GetDirectoryName(p)));
         }
 
         private void Window_Closing(object sender, CancelEventArgs e)
@@ -568,13 +689,14 @@ namespace DuplicateFinder
 
             var settings = new AppSettings
             {
-                RootFolder = FolderBox.Text.Trim(),
+                RootFolders = _rootFolders.ToList(),
+                CrossRootOnly = CrossRootCheck.IsChecked == true,
                 MinSizeMb = MinSizeBox.Text.Trim(),
                 Extensions = ExtensionsBox.Text.Trim(),
                 SkipHiddenAndSystem = SkipHiddenCheck.IsChecked == true,
                 MaxParallelism = ParallelCombo.SelectedItem is int parallelism ? parallelism : 1,
                 UseRecycleBin = RecycleCheck.IsChecked == true,
-                KeepRule = KeepRuleCombo.SelectedValue is KeepRule rule ? rule : KeepRule.Oldest,
+                KeepRule = KeepRuleCombo.SelectedValue is KeepRule rule ? rule : KeepRule.RootOrder,
             };
             try
             {

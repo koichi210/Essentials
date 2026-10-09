@@ -62,6 +62,23 @@ namespace DuplicateFinder.Tests
         }
 
         [TestMethod]
+        public void リストの上の対象フォルダにあるものを残す()
+        {
+            var rows = new List<FileRow>
+            {
+                new FileRow(new FileEntry(@"E:\Backup\a.mp4", 100, DateTime.Parse("2024/01/01"), 1), 1),
+                new FileRow(new FileEntry(@"D:\Main\very\long\path\a.mp4", 100, DateTime.Parse("2025/01/01"), 0), 1),
+                new FileRow(new FileEntry(@"E:\Backup\b.mp4", 100, DateTime.Parse("2024/01/01"), 1), 2),
+                new FileRow(new FileEntry(@"E:\Backup\sub\b.mp4", 100, DateTime.Parse("2024/01/01"), 1), 2),
+            };
+
+            RowMarker.ApplyKeepRule(rows, KeepRule.RootOrder);
+
+            // 同じ対象フォルダ同士なら、パスの短い方
+            CollectionAssert.AreEqual(new[] { @"D:\Main\very\long\path\a.mp4", @"E:\Backup\b.mp4" }, Kept(rows));
+        }
+
+        [TestMethod]
         public void 指定した1件だけ残す_他のグループには触らない()
         {
             List<FileRow> rows = SampleRows();
