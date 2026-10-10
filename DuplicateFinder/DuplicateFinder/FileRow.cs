@@ -57,6 +57,12 @@ namespace DuplicateFinder
             get { return Entry.LastWriteTime; }
         }
 
+        /// <summary>一覧の表示用。壊れていて読めなかった日時は「(不明)」</summary>
+        public string LastWriteTimeText
+        {
+            get { return Entry.LastWriteTime == DateTime.MinValue ? "(不明)" : Entry.LastWriteTime.ToString("yyyy/MM/dd HH:mm:ss"); }
+        }
+
         public bool IsMarked
         {
             get { return _isMarked; }

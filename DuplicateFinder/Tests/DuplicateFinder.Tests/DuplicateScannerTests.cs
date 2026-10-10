@@ -378,6 +378,38 @@ namespace DuplicateFinder.Tests
         }
 
         [TestMethod]
+        public void 更新日時が壊れているファイルがあっても止まらずに比較する()
+        {
+            byte[] content = RandomBytes(1000, 17);
+            Write("normal.bin", content);
+            string broken = Write("broken_time.bin", content);
+            SetBrokenLastWriteTime(broken);
+            // 前提: .NETで読むと例外になる日時が付いている
+            Assert.ThrowsException<ArgumentOutOfRangeException>(() => new FileInfo(broken).LastWriteTime);
+
+            ScanResult result = Scan();
+
+            DuplicateGroup group = result.Groups.Single();
+            Assert.AreEqual(2, group.Files.Count);
+            Assert.AreEqual(DateTime.MinValue, group.Files.Single(f => f.Path == broken).LastWriteTime);
+            Assert.AreEqual(DateTime.MinValue, DuplicateScanner.SafeLastWriteTime(new FileInfo(broken)));
+        }
+
+        // Windowsの日付(FILETIME)としては書けるが、.NETのDateTimeの範囲(西暦9999年)を超える値を付ける
+        private static void SetBrokenLastWriteTime(string path)
+        {
+            using (var stream = new FileStream(path, FileMode.Open, FileAccess.Write))
+            {
+                long broken = 0x7FFFFFFFFFFFFFF0;
+                long keep = 0;
+                Assert.IsTrue(SetFileTime(stream.SafeFileHandle, ref keep, ref keep, ref broken));
+            }
+        }
+
+        [System.Runtime.InteropServices.DllImport("kernel32.dll", SetLastError = true)]
+        private static extern bool SetFileTime(Microsoft.Win32.SafeHandles.SafeFileHandle hFile, ref long lpCreationTime, ref long lpLastAccessTime, ref long lpLastWriteTime);
+
+        [TestMethod]
         public void 拡張子の入力を解釈できる()
         {
             ISet<string> extensions = ScanOptions.ParseExtensions(" mp4;.MKV, *.avi　wmv ;; ");

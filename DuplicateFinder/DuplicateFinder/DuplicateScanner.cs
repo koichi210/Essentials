@@ -199,13 +199,29 @@ namespace DuplicateFinder
                     {
                         continue;
                     }
-                    files.Add(new FileEntry(file.FullName, length, file.LastWriteTime, RootIndexOf(file.FullName, roots)));
+                    files.Add(new FileEntry(file.FullName, length, SafeLastWriteTime(file), RootIndexOf(file.FullName, roots)));
                     _filesFound = files.Count;
                     Report(file.FullName, false);
                 }
             }
             _filesFound = files.Count;
             return files;
+        }
+
+        /// <summary>
+        /// 更新日時。Windowsでは付けられるが.NETで扱えない日時(西暦9999年より後など、壊れたタイムスタンプ)のファイルは、
+        /// 読むと例外になるので「不明」(DateTime.MinValue)にする。中身の比較には日時を使わないので、重複の判定には影響しない
+        /// </summary>
+        internal static DateTime SafeLastWriteTime(FileSystemInfo info)
+        {
+            try
+            {
+                return info.LastWriteTime;
+            }
+            catch (ArgumentOutOfRangeException)
+            {
+                return DateTime.MinValue;
+            }
         }
 
         // "D:\Videos\" → "D:\Videos"、"D:" → "D:\"(ドライブ直下だけは末尾の\を残す)

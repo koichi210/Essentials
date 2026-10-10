@@ -134,7 +134,7 @@
                         </Style>
                     </DataGridTextColumn.ElementStyle>
                 </DataGridTextColumn>
-                <DataGridTextColumn Header="更新日時" Binding="{Binding LastWriteTime, StringFormat=yyyy/MM/dd HH:mm:ss}" Width="140" />
+                <DataGridTextColumn Header="更新日時" Binding="{Binding LastWriteTimeText}" SortMemberPath="LastWriteTime" Width="140" />
                 <DataGridTextColumn Header="フォルダ" Binding="{Binding Folder}" Width="*" />
             </DataGrid.Columns>
             <DataGrid.ContextMenu>

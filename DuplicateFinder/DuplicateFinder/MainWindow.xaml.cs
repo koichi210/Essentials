@@ -553,7 +553,7 @@ namespace DuplicateFinder
         private static bool IsUnchanged(FileEntry entry)
         {
             var info = new FileInfo(entry.Path);
-            return info.Exists && info.Length == entry.Length && info.LastWriteTime == entry.LastWriteTime;
+            return info.Exists && info.Length == entry.Length && DuplicateScanner.SafeLastWriteTime(info) == entry.LastWriteTime;
         }
 
         // *******************************************************************************
