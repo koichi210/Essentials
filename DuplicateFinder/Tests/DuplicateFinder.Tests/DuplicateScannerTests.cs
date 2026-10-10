@@ -245,14 +245,56 @@ namespace DuplicateFinder.Tests
         }
 
         [TestMethod]
-        [ExpectedException(typeof(OperationCanceledException), AllowDerivedTypes = true)]
-        public void 中止できる()
+        public void ファイル一覧の作成中に中止したら結果は空()
         {
             Write("a.bin", new byte[] { 1 });
+            Write("b.bin", new byte[] { 1 });
             using (var cts = new CancellationTokenSource())
             {
                 cts.Cancel();
-                DuplicateScanner.Scan(new ScanOptions { RootFolders = new[] { _root } }, null, cts.Token);
+                ScanResult result = DuplicateScanner.Scan(new ScanOptions { RootFolders = new[] { _root } }, null, cts.Token);
+
+                Assert.IsTrue(result.Cancelled);
+                Assert.IsFalse(result.ReachedComparing);
+                Assert.AreEqual(0, result.Groups.Count);
+            }
+        }
+
+        [TestMethod]
+        public void 比較の途中で中止したら確定した分だけ返す()
+        {
+            // サイズ違いの重複ペアを10組。1組ずつ順に比較させ、半分ほど進んだところで中止する
+            var contents = new List<byte[]>();
+            for (int i = 0; i < 10; i++)
+            {
+                byte[] content = RandomBytes(300 * 1024 + i, 300 + i);
+                contents.Add(content);
+                Write("pair" + i + "a.bin", content);
+                Write("pair" + i + "b.bin", content);
+            }
+
+            using (var cts = new CancellationTokenSource())
+            {
+                var progress = new SyncProgress(p =>
+                {
+                    if (p.Phase == ScanPhase.Comparing && p.TotalBytes > 0 && p.ProcessedBytes * 2 >= p.TotalBytes)
+                    {
+                        cts.Cancel();
+                    }
+                });
+                var options = new ScanOptions { RootFolders = new[] { _root }, ReportIntervalMs = 0 };
+                ScanResult result = DuplicateScanner.Scan(options, progress, cts.Token);
+
+                Assert.IsTrue(result.Cancelled);
+                Assert.IsTrue(result.ReachedComparing);
+                Assert.IsTrue(result.Groups.Count > 0 && result.Groups.Count < 10, "途中まで: " + result.Groups.Count);
+                Assert.IsTrue(result.ProcessedBytes < result.TotalBytes);
+                // 返ってきたものは、すべて本物の重複ペア
+                foreach (DuplicateGroup group in result.Groups)
+                {
+                    Assert.AreEqual(2, group.Files.Count);
+                    CollectionAssert.AreEqual(File.ReadAllBytes(group.Files[0].Path), File.ReadAllBytes(group.Files[1].Path));
+                }
             }
         }
 

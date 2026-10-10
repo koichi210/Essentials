@@ -18,7 +18,7 @@ namespace DuplicateFinder
 {
     public partial class MainWindow : Window
     {
-        private static readonly int[] _parallelChoices = { 1, 2, 4, 8 };
+        private static readonly int[] _parallelChoices = { 1, 2, 4, 8, 16, 32 };
         private static readonly KeyValuePair<KeepRule, string>[] _keepRuleChoices =
         {
             new KeyValuePair<KeepRule, string>(KeepRule.RootOrder, "リストの上の対象フォルダにあるものを残す"),
@@ -88,13 +88,6 @@ namespace DuplicateFinder
                 ScanResult result = await Task.Run(() => DuplicateScanner.Scan(options, progress, token));
                 _isScanning = false;
                 ShowScanResult(result);
-            }
-            catch (OperationCanceledException)
-            {
-                _isScanning = false;
-                StatusText.Text = "検索を中止しました。";
-                WorkProgressBar.IsIndeterminate = false;
-                WorkProgressBar.Value = 0;
             }
             finally
             {
@@ -183,9 +176,26 @@ namespace DuplicateFinder
             SetRows(rows);
 
             WorkProgressBar.IsIndeterminate = false;
-            WorkProgressBar.Value = WorkProgressBar.Maximum;
             var status = new StringBuilder();
-            status.AppendFormat("完了: {0:N0} ファイル中、重複 {1:N0} グループ・{2:N0} 件 / 1件ずつ残すと {3} 空きます (所要 {4}、読み込み {5})",
+            if (!result.Cancelled)
+            {
+                WorkProgressBar.Value = WorkProgressBar.Maximum;
+                status.Append("完了: ");
+            }
+            else if (!result.ReachedComparing)
+            {
+                // ファイル一覧の作成中に中止したので、比較は1件もしていない
+                WorkProgressBar.Value = 0;
+                StatusText.Text = "検索を中止しました(ファイル一覧の作成中だったため、結果はありません)。";
+                return;
+            }
+            else
+            {
+                double ratio = result.TotalBytes == 0 ? 1 : (double)result.ProcessedBytes / result.TotalBytes;
+                WorkProgressBar.Value = ratio * WorkProgressBar.Maximum;
+                status.AppendFormat("中止: 全体の {0:0.0}% まで比較した時点で、重複と確定した分だけ表示しています / ", ratio * 100);
+            }
+            status.AppendFormat("{0:N0} ファイル中、重複 {1:N0} グループ・{2:N0} 件 / 1件ずつ残すと {3} 空きます (所要 {4}、読み込み {5})",
                 result.ScannedFileCount, result.Groups.Count, rows.Count,
                 SizeFormatter.Format(result.Groups.Sum(g => g.WastedBytes)),
                 FormatElapsed(result.Elapsed), SizeFormatter.Format(result.BytesRead));

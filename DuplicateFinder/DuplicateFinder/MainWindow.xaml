@@ -46,7 +46,8 @@
             </StackPanel>
             <StackPanel Grid.Row="0" Grid.Column="3" Margin="12,0,0,0">
                 <Button x:Name="ScanButton" Content="検索開始(_S)" Padding="14,3" FontWeight="Bold" Click="ScanButton_Click" />
-                <Button x:Name="CancelButton" Content="中止" Padding="10,3" Margin="0,6,0,0" IsEnabled="False" Click="CancelButton_Click" />
+                <Button x:Name="CancelButton" Content="中止" Padding="10,3" Margin="0,6,0,0" IsEnabled="False" Click="CancelButton_Click"
+                        ToolTip="検索を止めます。それまでに比較し終えて重複と確定した分は一覧に表示します" />
             </StackPanel>
 
             <WrapPanel Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="4" Margin="0,6,0,0">
@@ -63,8 +64,8 @@
                 <CheckBox x:Name="SkipHiddenCheck" Content="隠し・システムファイルを除外" VerticalAlignment="Center" Margin="0,0,16,0"
                           ToolTip="desktop.ini や Thumbs.db などが大量に重複扱いになるのを防ぎます" />
                 <TextBlock Text="同時比較数" VerticalAlignment="Center" Margin="0,0,4,0" />
-                <ComboBox x:Name="ParallelCombo" Width="48"
-                          ToolTip="同時に比較するグループ数。HDD・外付けHDD・NASは1が最速、SSDなら4〜8で速くなります" />
+                <ComboBox x:Name="ParallelCombo" Width="52"
+                          ToolTip="同時に比較するグループ数。HDD・外付けHDD・NASは1が最速、SSDなら4〜8以上で速くなります(多いほどメモリを使いますが、合計1GBまでに抑えます)" />
             </WrapPanel>
         </Grid>
 

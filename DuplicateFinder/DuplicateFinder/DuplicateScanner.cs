@@ -23,11 +23,12 @@ namespace DuplicateFinder
         internal const int SampleSize = 64 * 1024;
         private const int _maxChunkSize = 32 * 1024 * 1024;
         private const int _minChunkSize = 256 * 1024;
-        // 1グループの全体比較で使うバッファ合計の目安(ファイル数で割ってチャンクサイズを決める)
-        private const long _groupBufferBudget = 64L * 1024 * 1024;
+        // 1グループの全体比較で使うバッファ合計の上限(ファイル数で割ってチャンクサイズを決める)
+        private const long _maxGroupBufferBudget = 64L * 1024 * 1024;
+        // 同時比較数を増やしたときの、全グループ合計のバッファの上限(32並列でも1GBに収める)
+        private const long _totalBufferBudget = 1024L * 1024 * 1024;
         // これ以下の件数なら総当たりで仕分ける。多いときは簡易ハッシュで振り分けてから比べる
         private const int _linearPartitionLimit = 8;
-        private const int _reportIntervalMs = 100;
         // .NETのFileAttributesに無い、クラウドの未ダウンロードファイルを表す属性(読むとダウンロードが始まってしまう)
         private const FileAttributes _recallOnOpen = (FileAttributes)0x00040000;
         private const FileAttributes _recallOnDataAccess = (FileAttributes)0x00400000;
@@ -38,6 +39,7 @@ namespace DuplicateFinder
         private readonly ScanResult _result = new ScanResult();
         private readonly object _lock = new object();
         private readonly Stopwatch _reportTimer = Stopwatch.StartNew();
+        private readonly long _groupBufferBudget;
         private ScanPhase _phase = ScanPhase.Enumerating;
         private int _filesFound;
         private long _processedBytes;
@@ -49,9 +51,13 @@ namespace DuplicateFinder
             _options = options;
             _progress = progress;
             _token = token;
+            _groupBufferBudget = Math.Min(_maxGroupBufferBudget, _totalBufferBudget / Math.Max(1, options.MaxParallelism));
         }
 
-        /// <summary>重複ファイルを探す(時間がかかるので、UIからはTask.Runで呼ぶ)。中断時はOperationCanceledException</summary>
+        /// <summary>
+        /// 重複ファイルを探す(時間がかかるので、UIからはTask.Runで呼ぶ)。
+        /// 中止されたときは例外にせず、それまでに比較し終えて重複と確定したグループだけを返す(Cancelled=true)
+        /// </summary>
         public static ScanResult Scan(ScanOptions options, IProgress<ScanProgress> progress, CancellationToken token)
         {
             return new DuplicateScanner(options, progress, token).Run();
@@ -60,10 +66,38 @@ namespace DuplicateFinder
         private ScanResult Run()
         {
             Stopwatch watch = Stopwatch.StartNew();
+            var found = new ConcurrentBag<DuplicateGroup>();
+            try
+            {
+                List<FileEntry> files = EnumerateFiles();
+                _result.ScannedFileCount = files.Count;
+                CompareAll(files, found);
+            }
+            catch (OperationCanceledException) when (_token.IsCancellationRequested)
+            {
+                _result.Cancelled = true;
+            }
+            catch (AggregateException) when (_token.IsCancellationRequested)
+            {
+                _result.Cancelled = true;
+            }
 
-            List<FileEntry> files = EnumerateFiles();
-            _result.ScannedFileCount = files.Count;
+            // 消したときに空く容量が大きい順(一番効くものから見られるように)
+            _result.Groups.AddRange(found
+                .OrderByDescending(g => g.WastedBytes)
+                .ThenBy(g => g.Files[0].Path, StringComparer.OrdinalIgnoreCase));
+            _result.BytesRead = Interlocked.Read(ref _bytesRead);
+            _result.ProcessedBytes = Interlocked.Read(ref _processedBytes);
+            _result.TotalBytes = _totalBytes;
+            _result.ReachedComparing = _phase == ScanPhase.Comparing;
+            _result.Elapsed = watch.Elapsed;
+            Report(null, true);
+            return _result;
+        }
 
+        // 比較し終えて重複と確定したグループから順にfoundへ入れる(中止されても、入れた分はそのまま使える)
+        private void CompareAll(List<FileEntry> files, ConcurrentBag<DuplicateGroup> found)
+        {
             // フォルダをまたぐ重複だけ探すときは、同じサイズのファイルが1つの対象フォルダにしか無ければ比べるまでもない
             List<List<FileEntry>> candidates = files
                 .GroupBy(f => f.Length)
@@ -75,39 +109,23 @@ namespace DuplicateFinder
             _phase = ScanPhase.Comparing;
             Report(null, true);
 
-            var found = new ConcurrentBag<DuplicateGroup>();
             var parallelOptions = new ParallelOptions
             {
                 MaxDegreeOfParallelism = Math.Max(1, _options.MaxParallelism),
                 CancellationToken = _token,
             };
-            try
+            Parallel.ForEach(candidates, parallelOptions, group =>
             {
-                Parallel.ForEach(candidates, parallelOptions, group =>
+                // 途中で中止されたサイズグループは、ここまで来ずに捨てられる(確定していないものは出さない)
+                foreach (List<FileEntry> duplicates in CompareGroup(group))
                 {
-                    foreach (List<FileEntry> duplicates in CompareGroup(group))
+                    var duplicateGroup = new DuplicateGroup(duplicates);
+                    if (!_options.CrossRootOnly || duplicateGroup.RootCount >= 2)
                     {
-                        var duplicateGroup = new DuplicateGroup(duplicates);
-                        if (!_options.CrossRootOnly || duplicateGroup.RootCount >= 2)
-                        {
-                            found.Add(duplicateGroup);
-                        }
+                        found.Add(duplicateGroup);
                     }
-                });
-            }
-            catch (AggregateException) when (_token.IsCancellationRequested)
-            {
-                throw new OperationCanceledException(_token);
-            }
-
-            // 消したときに空く容量が大きい順(一番効くものから見られるように)
-            _result.Groups.AddRange(found
-                .OrderByDescending(g => g.WastedBytes)
-                .ThenBy(g => g.Files[0].Path, StringComparer.OrdinalIgnoreCase));
-            _result.BytesRead = Interlocked.Read(ref _bytesRead);
-            _result.Elapsed = watch.Elapsed;
-            Report(null, true);
-            return _result;
+                }
+            });
         }
 
         // *******************************************************************************
@@ -311,7 +329,7 @@ namespace DuplicateFinder
         // 1件だけになった組はその時点で読むのをやめるので、別物同士なら最初のチャンクで終わる
         private List<List<FileEntry>> CompareContents(List<FileEntry> files, long length)
         {
-            int chunkSize = ChooseChunkSize(files.Count, length);
+            int chunkSize = ChooseChunkSize(files.Count, length, _groupBufferBudget);
             var readers = new List<ChunkReader>(files.Count);
             try
             {
@@ -392,9 +410,9 @@ namespace DuplicateFinder
             }
         }
 
-        private static int ChooseChunkSize(int fileCount, long length)
+        private static int ChooseChunkSize(int fileCount, long length, long groupBufferBudget)
         {
-            long size = _groupBufferBudget / Math.Max(1, fileCount);
+            long size = groupBufferBudget / Math.Max(1, fileCount);
             size = Math.Max(_minChunkSize, Math.Min(_maxChunkSize, size));
             return (int)Math.Min(size, length);
         }
@@ -581,7 +599,7 @@ namespace DuplicateFinder
             }
             lock (_lock)
             {
-                if (!force && _reportTimer.ElapsedMilliseconds < _reportIntervalMs)
+                if (!force && _reportTimer.ElapsedMilliseconds < _options.ReportIntervalMs)
                 {
                     return;
                 }

@@ -71,8 +71,11 @@ namespace DuplicateFinder
         /// <summary>隠し・システム属性のファイル/フォルダを飛ばす(desktop.ini・Thumbs.db等が大量に重複扱いになるのを防ぐ)</summary>
         public bool SkipHiddenAndSystem { get; set; } = true;
 
-        /// <summary>同時に比較するグループ数。HDDは1、SSDなら2〜8が速い</summary>
+        /// <summary>同時に比較するグループ数。HDDは1、SSDなら4〜8以上が速い</summary>
         public int MaxParallelism { get; set; } = 1;
+
+        /// <summary>進捗通知の間隔(UIが追いつかなくならないよう間引く)。テストでは0にして毎回通知させる</summary>
+        internal int ReportIntervalMs { get; set; } = 100;
 
         /// <summary>"mp4; .MKV, avi" のような入力を拡張子の集合にする</summary>
         public static ISet<string> ParseExtensions(string text)
@@ -116,6 +119,16 @@ namespace DuplicateFinder
         public List<DuplicateGroup> Groups { get; } = new List<DuplicateGroup>();
         public List<string> Errors { get; } = new List<string>();
         public int ScannedFileCount { get; set; }
+
+        /// <summary>途中で中止された(Groupsはそれまでに比較し終えて確定した分だけ)</summary>
+        public bool Cancelled { get; set; }
+
+        /// <summary>ファイル一覧を作り終えて比較まで進んだか(falseで中止なら、比較は1件もしていない)</summary>
+        public bool ReachedComparing { get; set; }
+
+        /// <summary>比較の進み具合(ProcessedBytes / TotalBytes)</summary>
+        public long ProcessedBytes { get; set; }
+        public long TotalBytes { get; set; }
 
         /// <summary>クラウド上にしか無い(未ダウンロードの)ため読まずに飛ばしたファイル数</summary>
         public int SkippedCloudFileCount { get; set; }
