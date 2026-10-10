@@ -548,7 +548,8 @@ namespace DuplicateFinder
             ExtensionsBox.IsEnabled = !busy;
             SkipHiddenCheck.IsEnabled = !busy;
             ParallelCombo.IsEnabled = !busy;
-            KeepRuleCombo.IsEnabled = !busy && hasRows;
+            // ルールは検索前に選んでおけるよう、一覧が空でも触れるようにしておく
+            KeepRuleCombo.IsEnabled = !busy;
             ApplyRuleButton.IsEnabled = !busy && hasRows;
             ClearMarksButton.IsEnabled = !busy && hasRows;
             RecycleCheck.IsEnabled = !busy;
