@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.IO;
@@ -74,19 +75,24 @@ namespace DuplicateFinder
     /// <summary>各グループで「どれを残すか」の自動選択ルール</summary>
     internal enum KeepRule
     {
-        // 設定ファイルには数値で保存されるので、並びを変えるときは末尾に足すこと
-        Newest,
-        Oldest,
-        ShortestPath,
-        LongestPath,
-        // 対象フォルダのリストで上にあるフォルダのものを残す(上を本体・下をバックアップにする使い方)
-        RootOrder,
+        // 設定ファイルには数値で保存される。廃止した番号(0〜3: 更新日時の新旧・フルパスの長短)は使い回さないこと
+        // 対象フォルダ欄で上にあるフォルダのものを残す(上を本体・下をバックアップにする使い方)
+        RootOrder = 4,
+        // 一覧で各グループの一番上に表示されているものを残す(列ヘッダで並べ替えてから使う)
+        TopOfGroup = 5,
+        ShortestFileName = 6,
+        LongestFileName = 7,
+        ShortestFolder = 8,
+        LongestFolder = 9,
     }
 
     /// <summary>削除対象のチェックを付け外しする処理(画面から切り離してテストできるようにしてある)</summary>
     internal static class RowMarker
     {
-        /// <summary>各グループでルールに合う1件を残し、他すべてに削除チェックを付ける</summary>
+        /// <summary>
+        /// 各グループでルールに合う1件を残し、他すべてに削除チェックを付ける。
+        /// rowsは一覧の表示順で渡す(同じ条件のものが複数あるときは、一覧で上にある方を残す)
+        /// </summary>
         public static void ApplyKeepRule(IEnumerable<FileRow> rows, KeepRule rule)
         {
             foreach (IGrouping<int, FileRow> group in rows.GroupBy(r => r.GroupNumber))
@@ -99,29 +105,24 @@ namespace DuplicateFinder
             }
         }
 
+        // OrderByは安定ソートなので、同点のものは渡された順(=一覧の表示順)のまま残る
         internal static FileRow PickKeeper(IEnumerable<FileRow> group, KeepRule rule)
         {
-            // 同点のときは、パスの短い方 → パスの辞書順 で決める(毎回同じ結果になるように)
-            IOrderedEnumerable<FileRow> ordered;
             switch (rule)
             {
-                case KeepRule.Newest:
-                    ordered = group.OrderByDescending(r => r.LastWriteTime).ThenBy(r => r.Path.Length);
-                    break;
-                case KeepRule.Oldest:
-                    ordered = group.OrderBy(r => r.LastWriteTime).ThenBy(r => r.Path.Length);
-                    break;
-                case KeepRule.LongestPath:
-                    ordered = group.OrderByDescending(r => r.Path.Length);
-                    break;
                 case KeepRule.RootOrder:
-                    ordered = group.OrderBy(r => r.Entry.RootIndex).ThenBy(r => r.Path.Length);
-                    break;
+                    return group.OrderBy(r => r.Entry.RootIndex).First();
+                case KeepRule.ShortestFileName:
+                    return group.OrderBy(r => r.FileName.Length).First();
+                case KeepRule.LongestFileName:
+                    return group.OrderByDescending(r => r.FileName.Length).First();
+                case KeepRule.ShortestFolder:
+                    return group.OrderBy(r => r.Folder.Length).First();
+                case KeepRule.LongestFolder:
+                    return group.OrderByDescending(r => r.Folder.Length).First();
                 default:
-                    ordered = group.OrderBy(r => r.Path.Length);
-                    break;
+                    return group.First();
             }
-            return ordered.ThenBy(r => r.Path, StringComparer.OrdinalIgnoreCase).First();
         }
 
         /// <summary>指定した1件を残し、同じグループの他すべてに削除チェックを付ける</summary>
@@ -178,6 +179,55 @@ namespace DuplicateFinder
                 .Select(g => g.Key)
                 .OrderBy(n => n)
                 .ToList();
+        }
+    }
+
+    /// <summary>
+    /// 一覧の並べ替え。グループの並び(グループ番号順)は変えず、グループの中だけを指定した列で並べる。
+    /// 同点のときはパスの順(検索直後の並び)
+    /// </summary>
+    internal sealed class RowComparer : IComparer
+    {
+        private readonly string _key;
+        private readonly int _sign;
+
+        /// <param name="key">並べる列(FileRowのプロパティ名)。nullなら検索直後の並び(パスの順)</param>
+        public RowComparer(string key, ListSortDirection direction)
+        {
+            _key = key;
+            _sign = direction == ListSortDirection.Ascending ? 1 : -1;
+        }
+
+        public int Compare(object x, object y)
+        {
+            var a = (FileRow)x;
+            var b = (FileRow)y;
+            int result = a.GroupNumber.CompareTo(b.GroupNumber);
+            if (result != 0)
+            {
+                return result;
+            }
+            result = _sign * CompareByKey(a, b);
+            return result != 0 ? result : StringComparer.OrdinalIgnoreCase.Compare(a.Path, b.Path);
+        }
+
+        private int CompareByKey(FileRow a, FileRow b)
+        {
+            switch (_key)
+            {
+                case nameof(FileRow.IsMarked):
+                    return a.IsMarked.CompareTo(b.IsMarked);
+                case nameof(FileRow.RootNumber):
+                    return a.RootNumber.CompareTo(b.RootNumber);
+                case nameof(FileRow.FileName):
+                    return StringComparer.CurrentCultureIgnoreCase.Compare(a.FileName, b.FileName);
+                case nameof(FileRow.LastWriteTime):
+                    return a.LastWriteTime.CompareTo(b.LastWriteTime);
+                case nameof(FileRow.Folder):
+                    return StringComparer.CurrentCultureIgnoreCase.Compare(a.Folder, b.Folder);
+                default:
+                    return 0;
+            }
         }
     }
 

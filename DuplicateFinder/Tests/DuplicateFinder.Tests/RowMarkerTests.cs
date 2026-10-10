@@ -33,49 +33,79 @@ namespace DuplicateFinder.Tests
         }
 
         [TestMethod]
-        public void 古いものを残す()
+        public void 一覧で各グループの一番上にあるものを残す()
         {
             List<FileRow> rows = SampleRows();
-            RowMarker.ApplyKeepRule(rows, KeepRule.Oldest);
-            // グループ3は同時刻なのでパスの短い方→辞書順
-            CollectionAssert.AreEqual(new[] { @"D:\Videos\b.mp4", @"D:\Videos\copy\c.mp4", @"D:\Other\x.mp4" }, Kept(rows));
+            RowMarker.ApplyKeepRule(rows, KeepRule.TopOfGroup);
+            CollectionAssert.AreEqual(new[] { @"D:\Videos\keep\a.mp4", @"D:\Videos\copy\c.mp4", @"D:\Other\x.mp4" }, Kept(rows));
+
+            // 並べ替えて渡せば、その順で一番上のものが残る
+            rows.Reverse();
+            RowMarker.ApplyKeepRule(rows, KeepRule.TopOfGroup);
+            CollectionAssert.AreEqual(new[] { @"D:\Other\y.mp4", @"D:\Videos\keep\c.mp4", @"D:\Videos\b.mp4" }, Kept(rows));
         }
 
         [TestMethod]
-        public void 新しいものを残す()
+        public void ファイル名の長さで残す_同じ長さなら一覧で上の方()
         {
             List<FileRow> rows = SampleRows();
-            RowMarker.ApplyKeepRule(rows, KeepRule.Newest);
-            CollectionAssert.AreEqual(new[] { @"D:\Videos\copy\long\name\a (1).mp4", @"D:\Videos\keep\c.mp4", @"D:\Other\x.mp4" }, Kept(rows));
-        }
+            RowMarker.ApplyKeepRule(rows, KeepRule.ShortestFileName);
+            // グループ1は a.mp4 と b.mp4 が同じ長さなので上の方
+            CollectionAssert.AreEqual(new[] { @"D:\Videos\keep\a.mp4", @"D:\Videos\copy\c.mp4", @"D:\Other\x.mp4" }, Kept(rows));
 
-        [TestMethod]
-        public void パスの短い長いで残す()
-        {
-            List<FileRow> rows = SampleRows();
-            RowMarker.ApplyKeepRule(rows, KeepRule.ShortestPath);
-            CollectionAssert.AreEqual(new[] { @"D:\Videos\b.mp4", @"D:\Videos\copy\c.mp4", @"D:\Other\x.mp4" }, Kept(rows));
-
-            // グループ2は同じ長さなので辞書順
-            RowMarker.ApplyKeepRule(rows, KeepRule.LongestPath);
+            RowMarker.ApplyKeepRule(rows, KeepRule.LongestFileName);
             CollectionAssert.AreEqual(new[] { @"D:\Videos\copy\long\name\a (1).mp4", @"D:\Videos\copy\c.mp4", @"D:\Other\x.mp4" }, Kept(rows));
         }
 
         [TestMethod]
-        public void リストの上の対象フォルダにあるものを残す()
+        public void フォルダのパスの長さで残す()
+        {
+            List<FileRow> rows = SampleRows();
+            RowMarker.ApplyKeepRule(rows, KeepRule.ShortestFolder);
+            CollectionAssert.AreEqual(new[] { @"D:\Videos\b.mp4", @"D:\Videos\copy\c.mp4", @"D:\Other\x.mp4" }, Kept(rows));
+
+            RowMarker.ApplyKeepRule(rows, KeepRule.LongestFolder);
+            CollectionAssert.AreEqual(new[] { @"D:\Videos\copy\long\name\a (1).mp4", @"D:\Videos\copy\c.mp4", @"D:\Other\x.mp4" }, Kept(rows));
+        }
+
+        [TestMethod]
+        public void 対象フォルダ欄で上のフォルダにあるものを残す()
         {
             var rows = new List<FileRow>
             {
                 new FileRow(new FileEntry(@"E:\Backup\a.mp4", 100, DateTime.Parse("2024/01/01"), 1), 1),
                 new FileRow(new FileEntry(@"D:\Main\very\long\path\a.mp4", 100, DateTime.Parse("2025/01/01"), 0), 1),
-                new FileRow(new FileEntry(@"E:\Backup\b.mp4", 100, DateTime.Parse("2024/01/01"), 1), 2),
                 new FileRow(new FileEntry(@"E:\Backup\sub\b.mp4", 100, DateTime.Parse("2024/01/01"), 1), 2),
+                new FileRow(new FileEntry(@"E:\Backup\b.mp4", 100, DateTime.Parse("2024/01/01"), 1), 2),
             };
 
             RowMarker.ApplyKeepRule(rows, KeepRule.RootOrder);
 
-            // 同じ対象フォルダ同士なら、パスの短い方
-            CollectionAssert.AreEqual(new[] { @"D:\Main\very\long\path\a.mp4", @"E:\Backup\b.mp4" }, Kept(rows));
+            // 同じ対象フォルダ同士なら、一覧で上の方
+            CollectionAssert.AreEqual(new[] { @"D:\Main\very\long\path\a.mp4", @"E:\Backup\sub\b.mp4" }, Kept(rows));
+        }
+
+        [TestMethod]
+        public void 並べ替えはグループの中だけ()
+        {
+            List<FileRow> rows = SampleRows();
+            var list = new System.Collections.ArrayList(rows);
+
+            list.Sort(new RowComparer(nameof(FileRow.FileName), System.ComponentModel.ListSortDirection.Descending));
+            CollectionAssert.AreEqual(new[] { 1, 1, 1, 2, 2, 3, 3 }, list.Cast<FileRow>().Select(r => r.GroupNumber).ToArray());
+            CollectionAssert.AreEqual(new[] { "b.mp4", "a.mp4", "a (1).mp4", "c.mp4", "c.mp4", "y.mp4", "x.mp4" },
+                list.Cast<FileRow>().Select(r => r.FileName).ToArray());
+            // 同じ値(グループ2のc.mp4)はパスの順
+            Assert.AreEqual(@"D:\Videos\copy\c.mp4", ((FileRow)list[3]).Path);
+
+            list.Sort(new RowComparer(nameof(FileRow.LastWriteTime), System.ComponentModel.ListSortDirection.Ascending));
+            CollectionAssert.AreEqual(new[] { @"D:\Videos\b.mp4", @"D:\Videos\keep\a.mp4", @"D:\Videos\copy\long\name\a (1).mp4" },
+                list.Cast<FileRow>().Take(3).Select(r => r.Path).ToArray());
+
+            // 列の指定なしなら検索直後の並び(パスの順)
+            list.Sort(new RowComparer(null, System.ComponentModel.ListSortDirection.Ascending));
+            CollectionAssert.AreEqual(new[] { @"D:\Videos\b.mp4", @"D:\Videos\copy\long\name\a (1).mp4", @"D:\Videos\keep\a.mp4" },
+                list.Cast<FileRow>().Take(3).Select(r => r.Path).ToArray());
         }
 
         [TestMethod]

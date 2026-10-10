@@ -21,11 +21,12 @@ namespace DuplicateFinder
         private static readonly int[] _parallelChoices = { 1, 2, 4, 8, 16, 32 };
         private static readonly KeyValuePair<KeepRule, string>[] _keepRuleChoices =
         {
-            new KeyValuePair<KeepRule, string>(KeepRule.RootOrder, "リストの上の対象フォルダにあるものを残す"),
-            new KeyValuePair<KeepRule, string>(KeepRule.Oldest, "更新日時が古いものを残す"),
-            new KeyValuePair<KeepRule, string>(KeepRule.Newest, "更新日時が新しいものを残す"),
-            new KeyValuePair<KeepRule, string>(KeepRule.ShortestPath, "パスが短いものを残す"),
-            new KeyValuePair<KeepRule, string>(KeepRule.LongestPath, "パスが長いものを残す"),
+            new KeyValuePair<KeepRule, string>(KeepRule.RootOrder, "対象フォルダ欄で上のフォルダにあるものを残す"),
+            new KeyValuePair<KeepRule, string>(KeepRule.TopOfGroup, "一覧で各グループの一番上にあるものを残す"),
+            new KeyValuePair<KeepRule, string>(KeepRule.ShortestFileName, "ファイル名が短いものを残す"),
+            new KeyValuePair<KeepRule, string>(KeepRule.LongestFileName, "ファイル名が長いものを残す"),
+            new KeyValuePair<KeepRule, string>(KeepRule.ShortestFolder, "フォルダのパスが短いものを残す"),
+            new KeyValuePair<KeepRule, string>(KeepRule.LongestFolder, "フォルダのパスが長いものを残す"),
         };
         // エラー一覧のダイアログに出す最大件数(残りは件数だけ出す)
         private const int _maxErrorLines = 30;
@@ -39,6 +40,9 @@ namespace DuplicateFinder
         private bool _isDeleting;
         private int _markedCount;
         private long _markedBytes;
+        // 一覧の並べ替え(列ヘッダで指定)。nullなら検索直後の並び
+        private string _sortKey;
+        private ListSortDirection _sortDirection;
 
         public MainWindow()
         {
@@ -271,6 +275,8 @@ namespace DuplicateFinder
             var view = new ListCollectionView(_rows);
             view.GroupDescriptions.Add(new PropertyGroupDescription(nameof(FileRow.GroupHeader)));
             ResultGrid.ItemsSource = view;
+            // 検索し直したり削除したりして一覧を作り直しても、並べ替えは引き継ぐ
+            ApplySort();
             UpdateMarkedSummary();
             UpdateControlState();
         }
@@ -306,9 +312,40 @@ namespace DuplicateFinder
             return ResultGrid.SelectedItem as FileRow;
         }
 
+        // 一覧の表示順(並べ替え後)の行
+        private IEnumerable<FileRow> RowsInViewOrder()
+        {
+            return ResultGrid.Items.OfType<FileRow>();
+        }
+
         private void ApplyRuleButton_Click(object sender, RoutedEventArgs e)
         {
-            RowMarker.ApplyKeepRule(_rows, (KeepRule)KeepRuleCombo.SelectedValue);
+            RowMarker.ApplyKeepRule(RowsInViewOrder(), (KeepRule)KeepRuleCombo.SelectedValue);
+        }
+
+        // 列ヘッダを押したら、グループの並びはそのままで、各グループの中だけを並べ替える(押すたびに昇順⇔降順)
+        private void ResultGrid_Sorting(object sender, DataGridSortingEventArgs e)
+        {
+            e.Handled = true;
+            _sortDirection = e.Column.SortMemberPath == _sortKey && _sortDirection == ListSortDirection.Ascending
+                ? ListSortDirection.Descending
+                : ListSortDirection.Ascending;
+            _sortKey = e.Column.SortMemberPath;
+            ApplySort();
+        }
+
+        private void ApplySort()
+        {
+            var view = ResultGrid.ItemsSource as ListCollectionView;
+            if (view == null)
+            {
+                return;
+            }
+            view.CustomSort = new RowComparer(_sortKey, _sortDirection);
+            foreach (DataGridColumn column in ResultGrid.Columns)
+            {
+                column.SortDirection = _sortKey != null && column.SortMemberPath == _sortKey ? _sortDirection : (ListSortDirection?)null;
+            }
         }
 
         private void ClearMarksButton_Click(object sender, RoutedEventArgs e)

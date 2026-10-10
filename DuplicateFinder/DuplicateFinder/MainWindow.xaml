@@ -71,7 +71,8 @@
 
         <DockPanel DockPanel.Dock="Top" Margin="8,10,8,6" LastChildFill="False">
             <TextBlock Text="自動選択" VerticalAlignment="Center" Margin="0,0,6,0" />
-            <ComboBox x:Name="KeepRuleCombo" Width="270" DisplayMemberPath="Value" SelectedValuePath="Key" />
+            <ComboBox x:Name="KeepRuleCombo" Width="290"
+                      ToolTip="同じ条件のものが複数あるときは、一覧で上にある方を残します(列ヘッダを押すとグループの中で並べ替えられます)" DisplayMemberPath="Value" SelectedValuePath="Key" />
             <Button x:Name="ApplyRuleButton" Content="適用(_A)" Padding="10,3" Margin="6,0,0,0" Click="ApplyRuleButton_Click"
                     ToolTip="各グループで1件だけ残し、残りすべてに削除チェックを付けます" />
             <Button x:Name="ClearMarksButton" Content="チェックをすべて外す" Padding="10,3" Margin="6,0,0,0" Click="ClearMarksButton_Click" />
@@ -84,12 +85,12 @@
 
         <DataGrid x:Name="ResultGrid" Margin="8,0,8,8"
                   AutoGenerateColumns="False" IsReadOnly="True" CanUserAddRows="False" CanUserDeleteRows="False"
-                  CanUserSortColumns="False" CanUserReorderColumns="False" SelectionMode="Extended"
+                  CanUserSortColumns="True" CanUserReorderColumns="False" SelectionMode="Extended"
                   HeadersVisibility="Column" GridLinesVisibility="Horizontal" HorizontalGridLinesBrush="#E8E8E8"
                   EnableRowVirtualization="True"
                   VirtualizingPanel.IsVirtualizing="True" VirtualizingPanel.IsVirtualizingWhenGrouping="True"
                   VirtualizingPanel.VirtualizationMode="Recycling"
-                  PreviewKeyDown="ResultGrid_PreviewKeyDown" MouseDoubleClick="ResultGrid_MouseDoubleClick">
+                  Sorting="ResultGrid_Sorting" PreviewKeyDown="ResultGrid_PreviewKeyDown" MouseDoubleClick="ResultGrid_MouseDoubleClick">
             <DataGrid.GroupStyle>
                 <GroupStyle>
                     <GroupStyle.HeaderTemplate>
@@ -110,7 +111,7 @@
                 </Style>
             </DataGrid.RowStyle>
             <DataGrid.Columns>
-                <DataGridTemplateColumn Header="削除" Width="44">
+                <DataGridTemplateColumn Header="削除" Width="44" SortMemberPath="IsMarked">
                     <DataGridTemplateColumn.CellTemplate>
                         <DataTemplate>
                             <CheckBox IsChecked="{Binding IsMarked, UpdateSourceTrigger=PropertyChanged}"
@@ -126,7 +127,7 @@
                     </DataGridTextColumn.ElementStyle>
                 </DataGridTextColumn>
                 <DataGridTextColumn Header="ファイル名" Binding="{Binding FileName}" Width="280" />
-                <DataGridTextColumn Header="サイズ" Binding="{Binding SizeText}" Width="90">
+                <DataGridTextColumn Header="サイズ" Binding="{Binding SizeText}" Width="90" CanUserSort="False">
                     <DataGridTextColumn.ElementStyle>
                         <Style TargetType="TextBlock">
                             <Setter Property="HorizontalAlignment" Value="Right" />
