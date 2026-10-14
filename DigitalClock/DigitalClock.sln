@@ -1,0 +1,31 @@
+
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 16
+VisualStudioVersion = 16.0.30114.105
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DigitalClock", "DigitalClock\DigitalClock.csproj", "{D02BF5D9-A44F-49FA-9DD2-B87A376A9774}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DigitalClock.Tests", "Tests\DigitalClock.Tests\DigitalClock.Tests.csproj", "{D1C4B1DD-1B31-49AA-B8A6-F5A066FD9694}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|x64 = Debug|x64
+		Release|x64 = Release|x64
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{D02BF5D9-A44F-49FA-9DD2-B87A376A9774}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{D02BF5D9-A44F-49FA-9DD2-B87A376A9774}.Debug|x64.Build.0 = Debug|Any CPU
+		{D02BF5D9-A44F-49FA-9DD2-B87A376A9774}.Release|x64.ActiveCfg = Release|Any CPU
+		{D02BF5D9-A44F-49FA-9DD2-B87A376A9774}.Release|x64.Build.0 = Release|Any CPU
+		{D1C4B1DD-1B31-49AA-B8A6-F5A066FD9694}.Debug|x64.ActiveCfg = Debug|x64
+		{D1C4B1DD-1B31-49AA-B8A6-F5A066FD9694}.Debug|x64.Build.0 = Debug|x64
+		{D1C4B1DD-1B31-49AA-B8A6-F5A066FD9694}.Release|x64.ActiveCfg = Release|x64
+		{D1C4B1DD-1B31-49AA-B8A6-F5A066FD9694}.Release|x64.Build.0 = Release|x64
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {9E3740EB-53B6-4003-9ED9-623D7E66F3BE}
+	EndGlobalSection
+EndGlobal
