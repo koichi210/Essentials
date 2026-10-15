@@ -42,6 +42,8 @@
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
+    <!-- 依存dllをexeに埋め込み、exe単体で配れるようにする -->
+    <PackageReference Include="Costura.Fody" Version="5.7.0" PrivateAssets="all" />
   </ItemGroup>
   <ItemGroup>
     <Reference Include="System" />
@@ -85,6 +87,7 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />
+    <None Include="FodyWeavers.xml" />
   </ItemGroup>
   <ItemGroup>
     <Resource Include="DigitalClock.ico" />
