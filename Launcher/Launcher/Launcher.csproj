@@ -8,10 +8,6 @@
     <RootNamespace>Launcher</RootNamespace>
     <AssemblyName>Launcher</AssemblyName>
     <ApplicationIcon />
-    <!-- 配布用: dotnet publish -c Release -r win-x64 -o bin\Release\publish で、依存dllをexeに束ねた単一ファイルになる。
-         .NET 10 デスクトップランタイムは利用する側のPCに必要(自己完結にするとサイズが大きくなるため)。 -->
-    <PublishSingleFile>true</PublishSingleFile>
-    <SelfContained>false</SelfContained>
   </PropertyGroup>
 
   <ItemGroup>

@@ -42,9 +42,6 @@
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
-    <!-- 依存dllをexeに埋め込み、exe単体で配れるようにする -->
-    <PackageReference Include="Costura.Fody" Version="5.7.0" PrivateAssets="all" />
-    <PackageReference Include="Fody" Version="6.5.5" PrivateAssets="all" />
     <PackageReference Include="WindowsAPICodePack-Shell" Version="1.1.1" />
   </ItemGroup>
   <ItemGroup>
@@ -144,7 +141,6 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />
-    <None Include="FodyWeavers.xml" />
   </ItemGroup>
   <ItemGroup>
     <Resource Include="Cheetos.ico" />
