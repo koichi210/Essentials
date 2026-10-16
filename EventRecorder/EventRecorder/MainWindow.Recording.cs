@@ -116,12 +116,31 @@ namespace EventRecorder
                 return;
             }
 
-            HandleKeyboardStroke(s.Stroke, s.Key, System.Windows.Forms.Control.ModifierKeys);
+            // ホットキーの処理(再生前チェックのエラー表示など、MessageBoxを出すことがある)は、
+            // フックのコールバックを抜けてから動かす。コールバックの中でモーダル画面を出すと、閉じるまで
+            // コールバックが戻らずキー入力全体が固まる上、一定時間でWindowsにフックを黙って外されるため
+            Action hotkeyAction = ProcessKeyboardStroke(s.Stroke, s.Key, System.Windows.Forms.Control.ModifierKeys);
+            if (hotkeyAction != null)
+            {
+                Dispatcher.BeginInvoke(hotkeyAction);
+            }
         }
 
         // フックから来た1回のキー操作を処理する(ホットキー判定→記録)。
-        // heldModifiersは押した瞬間のCtrl/Alt/Shiftの状態(フックのKeyは修飾キーを含まない生のキーなので別に渡す)
+        // heldModifiersは押した瞬間のCtrl/Alt/Shiftの状態(フックのKeyは修飾キーを含まない生のキーなので別に渡す)。
+        // テストから呼ぶ用で、ホットキーの処理もその場で動かす
         internal void HandleKeyboardStroke(GlobalHook.KeyboardHook.Stroke stroke, Keys key, Keys heldModifiers)
+        {
+            Action hotkeyAction = ProcessKeyboardStroke(stroke, key, heldModifiers);
+            if (hotkeyAction != null)
+            {
+                hotkeyAction();
+            }
+        }
+
+        // キー操作を記録し、ホットキーだった場合はその処理(記録の開始/停止・再生/停止)を返す。
+        // ホットキーの処理は呼び出し側で動かす(記録にもホットキーにも当たらなければnull)
+        private Action ProcessKeyboardStroke(GlobalHook.KeyboardHook.Stroke stroke, Keys key, Keys heldModifiers)
         {
             Boolean isDown = stroke == GlobalHook.KeyboardHook.Stroke.KEY_DOWN || stroke == GlobalHook.KeyboardHook.Stroke.SYSKEY_DOWN;
             Boolean isUp = stroke == GlobalHook.KeyboardHook.Stroke.KEY_UP || stroke == GlobalHook.KeyboardHook.Stroke.SYSKEY_UP;
@@ -138,19 +157,10 @@ namespace EventRecorder
                     // リピート抑制。対応するKeyUpが来るまでは連続トグルさせない
                     if (!_pressedHotkeys.Add(key))
                     {
-                        return;
+                        return null;
                     }
 
-                    if (isRecordHotkey)
-                    {
-                        ToggleRecording();
-                    }
-                    else
-                    {
-                        PlayOrStop();
-                    }
-
-                    return;
+                    return isRecordHotkey ? (Action)ToggleRecording : PlayOrStop;
                 }
             }
             else if (isUp)
@@ -158,13 +168,13 @@ namespace EventRecorder
                 // Down時にホットキーとして処理したキーのUpは、マクロ記録に含めず消費する
                 if (_pressedHotkeys.Remove(key))
                 {
-                    return;
+                    return null;
                 }
             }
 
             if (!_isRecording)
             {
-                return;
+                return null;
             }
 
             if (isDown)
@@ -172,7 +182,7 @@ namespace EventRecorder
                 // すでに押されている状態なら、OSのキーリピートによるKeyDown連発なので無視する
                 if (!_pressedKeys.Add(key))
                 {
-                    return;
+                    return null;
                 }
             }
             else if (isUp)
@@ -181,6 +191,7 @@ namespace EventRecorder
             }
 
             QueueRow(stroke.ToString(), "", "", key.ToString(), TakeElapsedMsAndReset());
+            return null;
         }
 
         // 直前のイベント(前回この関数を呼んだ時点)からの経過msを返し、基準時刻(_lastEventTick)を今に更新する。
