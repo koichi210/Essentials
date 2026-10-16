@@ -6,6 +6,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Threading;
+using StandardTemplate.Wpf;
 
 namespace FileArranger
 {
@@ -35,7 +36,7 @@ namespace FileArranger
 
         private void ExecuteRenameFolder()
         {
-            List<int> selectedIndices = WpfControlHelper.GetSelectedIndices(rd_listView_Target);
+            List<int> selectedIndices = WpfControlUtils.GetSelectedIndices(rd_listView_Target);
             if (!HasSelectedItems(selectedIndices.Count))
             {
                 return;
@@ -79,7 +80,7 @@ namespace FileArranger
 
         public void UpdateRenameComboBox()
         {
-            WpfControlHelper.SetComboBoxFromArraySubString(
+            WpfControlUtils.SetComboBoxFromArraySubString(
                 rd_comboBox_MergeWord,
                 ReferenceCandidateFolders,
                 rd_textBox_ExistItemDir.Text.Length + 1,
@@ -210,7 +211,7 @@ namespace FileArranger
             }
             else
             {
-                WpfControlHelper.CopyToClipboard(e, rd_listView_Target, item => ((ListViewRow)item)[_renameSrcIdx]);
+                WpfControlUtils.CopyToClipboard(e, rd_listView_Target, item => ((ListViewRow)item)[_renameSrcIdx]);
             }
         }
 

@@ -3,6 +3,7 @@ using System.IO;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using StandardTemplate.Wpf;
 
 namespace FileArranger
 {
@@ -26,7 +27,7 @@ namespace FileArranger
                 return;
             }
 
-            foreach (String selectedName in WpfControlHelper.GetSelectedNames(sf_listBox_Target))
+            foreach (String selectedName in WpfControlUtils.GetSelectedNames(sf_listBox_Target))
             {
                 _sorter.SortFolder(Path.Combine(sf_textBox_TargetFile.Text, selectedName));
             }

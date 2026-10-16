@@ -5,6 +5,7 @@ using System.Linq;
 using System.Text;
 using System.Windows;
 using Picture;
+using StandardTemplate.Wpf;
 using Drawing = System.Drawing;
 
 namespace Cheetos
@@ -211,7 +212,7 @@ namespace Cheetos
                 TrimHeightRanges = trimHeightRanges,
 
                 // ListBoxの値を配列で取得
-                TargetFileNames = WpfUtils.GetSelectedStrArray(pm_ListBox_ListUp),
+                TargetFileNames = WpfControlUtils.GetSelectedNames(pm_ListBox_ListUp).ToArray(),
             };
 
             _debug.WriteData("BackUpDirPath = " + backUpDirPath);

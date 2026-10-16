@@ -1,9 +1,11 @@
 using System;
 using System.ComponentModel;
 using System.IO;
+using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 using Picture;
+using StandardTemplate.Wpf;
 using Drawing = System.Drawing;
 
 namespace Cheetos
@@ -93,7 +95,7 @@ namespace Cheetos
             _debug.WriteData("Size(" + targetWidth + "," + targetHeight + ")");
 
             // ListBoxの値を配列で取得
-            param.TargetFileNames = WpfUtils.GetSelectedStrArray(pt_ListBox_ListUp);
+            param.TargetFileNames = WpfControlUtils.GetSelectedNames(pt_ListBox_ListUp).ToArray();
 
             SetStartTime();
             pt_Button_Trim.Content = "中断";

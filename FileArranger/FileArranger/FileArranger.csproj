@@ -111,6 +111,9 @@
     <Compile Include="..\..\_Common\StandardTemplateClass.cs">
       <Link>_Common\StandardTemplateClass.cs</Link>
     </Compile>
+    <Compile Include="..\..\_Common\Wpf\WpfControlUtils.cs">
+      <Link>_Common\Wpf\WpfControlUtils.cs</Link>
+    </Compile>
     <Compile Include="..\..\_Common\AtomicFile.cs">
       <Link>_Common\AtomicFile.cs</Link>
     </Compile>

@@ -221,7 +221,7 @@ namespace FFEdit
                     return;
                 }
 
-                String targetNames = WpfControlUtils.GetSelectName(listBox, comboBox_TargetDir.Text);
+                String targetNames = WpfControlUtils.GetSelectListName(listBox, rootPath: comboBox_TargetDir.Text);
 
                 StcFileInputOutput fio = new StcFileInputOutput();
                 String[] targetArray = targetNames.Split(new[] { Environment.NewLine }, StringSplitOptions.RemoveEmptyEntries);
@@ -335,7 +335,7 @@ namespace FFEdit
         {
             if (checkBox_Target_SelectFile.IsChecked == true)
             {
-                return WpfControlUtils.GetSelectedItemsInOrder(listBox);
+                return WpfControlUtils.GetSelectedNames(listBox);
             }
 
             return listBox.Items.Cast<Object>().Select(item => item.ToString()).ToList();

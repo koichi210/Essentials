@@ -324,7 +324,7 @@ namespace Cheetos
         // リストボックスで選択中のファイルを開く(Trim/Mergeの各タブで共通)
         private void ExecuteSelectedFiles(TextBox folderPathCtrl, ListBox listCtrl)
         {
-            foreach (String name in WpfUtils.GetSelectedStrArray(listCtrl))
+            foreach (String name in WpfControlUtils.GetSelectedNames(listCtrl).ToArray())
             {
                 _util.ExecutePath(folderPathCtrl.Text + @"\" + name);
             }

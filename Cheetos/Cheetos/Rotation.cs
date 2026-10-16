@@ -1,7 +1,9 @@
 using System;
 using System.ComponentModel;
 using System.IO;
+using System.Linq;
 using System.Windows;
+using StandardTemplate.Wpf;
 using Drawing = System.Drawing;
 
 namespace Cheetos
@@ -151,7 +153,7 @@ namespace Cheetos
                 BackUpDirPath = backUpDirPath,
 
                 // ListBoxの値を配列で取得
-                TargetFileNames = WpfUtils.GetSelectedStrArray(pr_ListBox_ListUp),
+                TargetFileNames = WpfControlUtils.GetSelectedNames(pr_ListBox_ListUp).ToArray(),
             };
 
             SetStartTime();

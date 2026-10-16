@@ -62,22 +62,48 @@ namespace EventRecorder.Tests
         [TestMethod]
         public void AddMouseInputは絶対座標指定だと画面サイズに応じて座標を換算する()
         {
-            // 65535 を画面の幅・高さで割った値を座標に掛けている。
-            // 実行環境の画面解像度に依存するため、期待値も同じ計算式で求める
+            // 実行環境の画面解像度に依存するため、期待値は ToAbsoluteCoordinate で求める
             // （固定値をハードコードすると解像度の違う環境で壊れるため）。
+            // 換算そのものの正しさは下の ToAbsoluteCoordinate のテストで確かめる
             var inputs = new List<InputSimulator.Input>();
             int screenWidth = System.Windows.Forms.Screen.PrimaryScreen.Bounds.Width;
             int screenHeight = System.Windows.Forms.Screen.PrimaryScreen.Bounds.Height;
 
             InputSimulator.AddMouseInput(ref inputs, InputSimulator.MouseStroke.MOVE, 0, true, 100, 200);
 
-            int expectedX = 100 * (65535 / screenWidth);
-            int expectedY = 200 * (65535 / screenHeight);
-            Assert.AreEqual(expectedX, inputs[0].Mouse.X);
-            Assert.AreEqual(expectedY, inputs[0].Mouse.Y);
+            Assert.AreEqual(InputSimulator.ToAbsoluteCoordinate(100, screenWidth), inputs[0].Mouse.X);
+            Assert.AreEqual(InputSimulator.ToAbsoluteCoordinate(200, screenHeight), inputs[0].Mouse.Y);
 
             // ABSOLUTE フラグ(0x8000)が立っているはず
             Assert.AreEqual(0x8000, inputs[0].Mouse.Flags & 0x8000);
+        }
+
+        [DataTestMethod]
+        [DataRow(1920)]
+        [DataRow(1080)]
+        [DataRow(1366)]
+        [DataRow(768)]
+        [DataRow(2560)]
+        [DataRow(3840)]
+        public void ToAbsoluteCoordinateはWindowsがピクセルに戻すと元の座標になる(int screenSize)
+        {
+            // Windowsは正規化座標nを「n * 画面サイズ / 65536 (切り捨て)」でピクセルに戻す。
+            // 以前の「pixel * (65535 / 画面サイズ)」では、幅1920の右端(1919)が1911に戻っていた
+            for (int pixel = 0; pixel < screenSize; pixel++)
+            {
+                int normalized = InputSimulator.ToAbsoluteCoordinate(pixel, screenSize);
+
+                Assert.IsTrue(normalized >= 0 && normalized <= 65535, "範囲外: pixel=" + pixel);
+                Assert.AreEqual(pixel, (int)((long)normalized * screenSize / 65536), "pixel=" + pixel);
+            }
+        }
+
+        [TestMethod]
+        public void ToAbsoluteCoordinateは画面外の座標を0から65535に収める()
+        {
+            Assert.AreEqual(0, InputSimulator.ToAbsoluteCoordinate(-10, 1920));
+            Assert.AreEqual(65535, InputSimulator.ToAbsoluteCoordinate(5000, 1920));
+            Assert.AreEqual(0, InputSimulator.ToAbsoluteCoordinate(100, 0));
         }
 
         [TestMethod]

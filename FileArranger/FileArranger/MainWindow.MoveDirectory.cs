@@ -6,6 +6,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
+using StandardTemplate.Wpf;
 
 namespace FileArranger
 {
@@ -34,7 +35,7 @@ namespace FileArranger
 
         private void md_listBox_Listup_MouseDoubleClick(object sender, MouseButtonEventArgs e)
         {
-            String firstName = WpfControlHelper.GetSelectedNames(md_listBox_Listup).FirstOrDefault();
+            String firstName = WpfControlUtils.GetSelectedNames(md_listBox_Listup).FirstOrDefault();
             if (firstName != null)
             {
                 _util.ExecutePath(Path.Combine(md_textBox_SourceDir.Text, firstName));
@@ -60,7 +61,7 @@ namespace FileArranger
                 return;
             }
 
-            foreach (String selectedName in WpfControlHelper.GetSelectedNames(md_listBox_Listup))
+            foreach (String selectedName in WpfControlUtils.GetSelectedNames(md_listBox_Listup))
             {
                 Directory.Delete(Path.Combine(md_textBox_SourceDir.Text, selectedName), true);
             }
@@ -78,7 +79,7 @@ namespace FileArranger
                 return;
             }
 
-            List<String> selectedNames = WpfControlHelper.GetSelectedNames(md_listBox_Listup);
+            List<String> selectedNames = WpfControlUtils.GetSelectedNames(md_listBox_Listup);
             for (int i = 0; i < selectedNames.Count; i++)
             {
                 // 最上位フォルダごと移動する時は、格納元直下のフォルダ名をそのまま移動先でも使う。
@@ -144,7 +145,7 @@ namespace FileArranger
 
         public void UpdateMoveDestDirComboBox()
         {
-            WpfControlHelper.SetComboBoxFromArray(pf_comboBox_MoveDestDirName, ReferenceCandidateFolders, pf_textBox_ReferenceFile.Text);
+            WpfControlUtils.SetComboBoxFromArray(pf_comboBox_MoveDestDirName, ReferenceCandidateFolders, pf_textBox_ReferenceFile.Text);
         }
     }
 }

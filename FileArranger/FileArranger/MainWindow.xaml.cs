@@ -83,9 +83,9 @@ namespace FileArranger
         {
             // WinForms版でSorted=trueだったComboBoxは、項目を入れ替えるときに昇順に並べる
             // (ListBox/ListViewはリストアップ時に並べ替えてから追加している)
-            WpfControlHelper.SetSorted(rd_comboBox_MergeWord, true);
-            WpfControlHelper.SetSorted(rd_comboBox_AddTitlePostWord, true);
-            WpfControlHelper.SetSorted(pf_comboBox_MoveDestDirName, true);
+            WpfControlUtils.SetSorted(rd_comboBox_MergeWord, true);
+            WpfControlUtils.SetSorted(rd_comboBox_AddTitlePostWord, true);
+            WpfControlUtils.SetSorted(pf_comboBox_MoveDestDirName, true);
 
             // WPFのComboBoxにはTextChangedが無いので、Textプロパティの変更を監視する
             // (WinForms版はrd_comboBox_MergeWord/rd_comboBox_AddTitlePostWordのTextChangedにつないでいた)
@@ -154,8 +154,8 @@ namespace FileArranger
         private void RegisterComboHistory(String attrName, String attrValue, ComboBox ctrl)
         {
             SaveRestore.RegisterList(attrName, attrValue,
-                () => WpfControlHelper.GetItems(ctrl),
-                items => WpfControlHelper.SetItemsKeepText(ctrl, items));
+                () => WpfControlUtils.GetItems(ctrl),
+                items => WpfControlUtils.SetItemsKeepText(ctrl, items));
         }
 
         // 設定ファイルを読み込む(WinForms版LoadJsonFile)。読み込めたら、コンボボックス更新・リストリセットも行う
@@ -207,9 +207,9 @@ namespace FileArranger
         // 設定ファイルを保存する(WinForms版SaveJsonFile)。コンボボックスの入力値を履歴へ追加してから保存する
         internal Boolean SaveProfile(String filePath)
         {
-            WpfControlHelper.AddComboBoxTextToItems(md_comboBox_TargetDir);
-            WpfControlHelper.AddComboBoxTextToItems(rd_comboBox_RenameDir);
-            WpfControlHelper.AddComboBoxTextToItems(rd_comboBox_AddTitlePostWord);
+            WpfControlUtils.AddComboBoxTextToItems(md_comboBox_TargetDir);
+            WpfControlUtils.AddComboBoxTextToItems(rd_comboBox_RenameDir);
+            WpfControlUtils.AddComboBoxTextToItems(rd_comboBox_AddTitlePostWord);
 
             return SaveRestore.Save(filePath);
         }
@@ -288,7 +288,7 @@ namespace FileArranger
             }
             else
             {
-                WpfControlHelper.SelectAll(listBox, e);
+                WpfControlUtils.SelectAll(listBox, e);
             }
         }
 
@@ -359,7 +359,7 @@ namespace FileArranger
             }
 
             String[] names = GetSortedDisplayNames(getPaths(folderPath), folderPath);
-            WpfControlHelper.SetListItems(listCtrl, names.Select(makeItem ?? (name => name)));
+            WpfControlUtils.SetListItems(listCtrl, names.Select(makeItem ?? (name => name)));
             totalLabel.Text = countName + "：" + names.Length;
             return names;
         }

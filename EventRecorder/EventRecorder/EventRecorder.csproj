@@ -109,9 +109,6 @@
     <Compile Include="EventRow.cs" />
     <Compile Include="EventRules.cs" />
     <Compile Include="PlaylistRow.cs" />
-    <Compile Include="GridUndoRedo.cs" />
-    <Compile Include="GridRowCollection.cs" />
-    <Compile Include="WpfGridHelper.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="..\..\_Common\StcWpfExceptionGuard.cs">
       <Link>_Common\StcWpfExceptionGuard.cs</Link>
@@ -151,6 +148,15 @@
     </Compile>
     <Compile Include="..\..\_Common\Wpf\WpfDataFolderMenu.cs">
       <Link>_Common\Wpf\WpfDataFolderMenu.cs</Link>
+    </Compile>
+    <Compile Include="..\..\_Common\Wpf\GridRowCollection.cs">
+      <Link>_Common\Wpf\GridRowCollection.cs</Link>
+    </Compile>
+    <Compile Include="..\..\_Common\Wpf\GridUndoRedo.cs">
+      <Link>_Common\Wpf\GridUndoRedo.cs</Link>
+    </Compile>
+    <Compile Include="..\..\_Common\Wpf\WpfGridHelper.cs">
+      <Link>_Common\Wpf\WpfGridHelper.cs</Link>
     </Compile>
   </ItemGroup>
   <ItemGroup>

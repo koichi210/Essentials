@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Reflection;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+using StandardTemplate.Wpf;
 using StandardTemplate.Wpf.Tests;
 
 namespace FFEdit.Tests
@@ -162,9 +163,9 @@ namespace FFEdit.Tests
                 CollectionAssert.AreEqual(new List<string> { "a.txt", "b.txt", "c.txt" }, window.GetFileList());
 
                 Assert.AreEqual(@"C:\root\a.txt" + Environment.NewLine + @"C:\root\c.txt" + Environment.NewLine,
-                    WpfControlUtils.GetSelectName(window.listBox, @"C:\root"));
+                    WpfControlUtils.GetSelectListName(window.listBox, rootPath: @"C:\root"));
                 Assert.AreEqual("a.txt" + Environment.NewLine + "c.txt" + Environment.NewLine,
-                    WpfControlUtils.GetSelectName(window.listBox));
+                    WpfControlUtils.GetSelectListName(window.listBox));
             });
         }
 

@@ -1,10 +1,8 @@
-// StcUtils([[_Common/StandardTemplateClass.cs]])のうち、WinFormsのコントロールを引数に取るため
-// WPFから使えないものの代わり(プロジェクト内ローカル版)。
-// _Common/Wpf に同等品ができたら置き換える候補。
+// Cheetos専用のWPF用ヘルパー(画像の変換・キャプチャ用の目印など)。
+// どのアプリでも使える汎用の処理(選択項目を並び順で取る等)は
+// _Common/Wpf/WpfControlUtils.cs([[_Common/Wpf/WpfControlUtils.cs]])へ移した。
 using System;
-using System.Collections.Generic;
 using System.Drawing.Imaging;
-using System.Linq;
 using System.Runtime.InteropServices;
 using System.Windows.Controls;
 using System.Windows.Interop;
@@ -15,18 +13,6 @@ namespace Cheetos
 {
     internal static class WpfUtils
     {
-        // StcUtils.GetStrArrayFromListBox の代わり。
-        // WPFのSelectedItemsは「選択した順」に並ぶため、WinForms版と同じ「リストの並び順」に揃えて返す
-        public static String[] GetSelectedStrArray(ListBox listCtrl)
-        {
-            // SelectedItems.Containsは線形探索なので、ファイル数が多いとO(n^2)になる。HashSetで引く
-            HashSet<Object> selected = new HashSet<Object>(listCtrl.SelectedItems.Cast<Object>());
-            return listCtrl.Items.Cast<Object>()
-                .Where(selected.Contains)
-                .Select(item => item.ToString())
-                .ToArray();
-        }
-
         // WinForms版の「ListBox.Sorted=true のリストへ Items.Add」の代わり。並べ替えてから一括で入れる
         public static void SetSortedItems(ListBox listCtrl, String[] items)
         {

@@ -3,6 +3,7 @@ using System.ComponentModel;
 using System.IO;
 using System.Windows;
 using System.Windows.Controls;
+using StandardTemplate.Wpf;
 
 namespace FileArranger
 {
@@ -49,7 +50,7 @@ namespace FileArranger
                 SourceDir = mf_textBox_SourceDir.Text,
                 TargetDir = mf_textBox_TargetDir.Text,
             };
-            param.TargetNames.AddRange(WpfControlHelper.GetSelectedNames(mf_listBox_Target));
+            param.TargetNames.AddRange(WpfControlUtils.GetSelectedNames(mf_listBox_Target));
 
             ResetProgress(param.TargetNames.Count);
             _bgWorkerMove.RunWorkerAsync(param);   // ⇒bgWorkerMove_DoWork()

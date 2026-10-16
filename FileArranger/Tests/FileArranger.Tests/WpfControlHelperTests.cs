@@ -26,7 +26,7 @@ namespace FileArranger.Tests
             StaRunner.Run(() =>
             {
                 var combo = new ComboBoxEx();
-                WpfControlHelper.SetComboBoxFromArray(combo, new[] { @"D:\ref\a", @"D:\ref\b", @"D:\ref\a", "" }, @"D:\ref");
+                WpfControlUtils.SetComboBoxFromArray(combo, new[] { @"D:\ref\a", @"D:\ref\b", @"D:\ref\a", "" }, @"D:\ref");
 
                 CollectionAssert.AreEqual(new object[] { "a", "b" }, ItemsOf(combo));
             });
@@ -39,7 +39,7 @@ namespace FileArranger.Tests
             {
                 var combo = new ComboBoxEx();
                 combo.Items.Add("old");
-                WpfControlHelper.SetComboBoxFromArray(combo, null, @"D:\ref");
+                WpfControlUtils.SetComboBoxFromArray(combo, null, @"D:\ref");
 
                 Assert.AreEqual(0, combo.Items.Count);
             });
@@ -52,7 +52,7 @@ namespace FileArranger.Tests
             {
                 var combo = new ComboBoxEx();
                 combo.Text = "PH";
-                WpfControlHelper.SetComboBoxFromArraySubString(combo,
+                WpfControlUtils.SetComboBoxFromArraySubString(combo,
                     new[] { @"D:\r\photo_01", @"D:\r\music_02", @"D:\r\graph_03" }, 5, "_", combo.Text, true);
 
                 CollectionAssert.AreEqual(new object[] { "photo", "graph" }, ItemsOf(combo), "大文字小文字を区別せず部分一致");
@@ -82,9 +82,9 @@ namespace FileArranger.Tests
                 var combo = new ComboBoxEx();
                 combo.Items.Add("a");
                 combo.Text = "b";
-                WpfControlHelper.AddComboBoxTextToItems(combo);
+                WpfControlUtils.AddComboBoxTextToItems(combo);
                 combo.Text = "a";
-                WpfControlHelper.AddComboBoxTextToItems(combo);
+                WpfControlUtils.AddComboBoxTextToItems(combo);
 
                 CollectionAssert.AreEqual(new object[] { "a", "b" }, ItemsOf(combo));
                 Assert.AreEqual("a", combo.Text);
@@ -98,7 +98,7 @@ namespace FileArranger.Tests
             {
                 var combo = new ComboBoxEx();
                 combo.Items.Add("a");
-                WpfControlHelper.AddComboBoxTextToItems(combo);
+                WpfControlUtils.AddComboBoxTextToItems(combo);
 
                 CollectionAssert.AreEqual(new object[] { "a" }, ItemsOf(combo));
             });
@@ -111,8 +111,8 @@ namespace FileArranger.Tests
             StaRunner.Run(() =>
             {
                 var combo = new ComboBoxEx();
-                WpfControlHelper.SetSorted(combo, true);
-                WpfControlHelper.SetItemsKeepText(combo, new[] { "c", "a", "b" });
+                WpfControlUtils.SetSorted(combo, true);
+                WpfControlUtils.SetItemsKeepText(combo, new[] { "c", "a", "b" });
 
                 CollectionAssert.AreEqual(new object[] { "a", "b", "c" }, ItemsOf(combo));
             });
@@ -130,7 +130,7 @@ namespace FileArranger.Tests
                 lv.SelectedItems.Add(lv.Items[2]);
                 lv.SelectedItems.Add(lv.Items[0]);
 
-                string text = WpfControlHelper.GetSelectListName(lv, item => ((ListViewRow)item)[0]);
+                string text = WpfControlUtils.GetSelectListName(lv, item => ((ListViewRow)item)[0]);
 
                 Assert.AreEqual("x" + Environment.NewLine + "z" + Environment.NewLine, text);
             });
@@ -163,8 +163,8 @@ namespace FileArranger.Tests
                 listBox.SelectedItems.Add("d");
                 listBox.SelectedItems.Add("b");
 
-                CollectionAssert.AreEqual(new[] { 1, 3 }, WpfControlHelper.GetSelectedIndices(listBox));
-                CollectionAssert.AreEqual(new[] { "b", "d" }, WpfControlHelper.GetSelectedNames(listBox));
+                CollectionAssert.AreEqual(new[] { 1, 3 }, WpfControlUtils.GetSelectedIndices(listBox));
+                CollectionAssert.AreEqual(new[] { "b", "d" }, WpfControlUtils.GetSelectedNames(listBox));
             });
         }
 
