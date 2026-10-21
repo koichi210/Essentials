@@ -168,5 +168,19 @@ namespace Mailer.Tests
 
             Assert.AreEqual(0, result.Count);
         }
+
+        [TestMethod]
+        public void EscapeUrlParam_URLの区切り文字を値として埋め込めるようにする()
+        {
+            // 以前は"&"で値が切れ、"#"以降が消え、"+"が空白になっていた
+            Assert.AreEqual("Q%26A%20%23123%20100%25", Logic.EscapeUrlParam("Q&A #123 100%"));
+            Assert.AreEqual("user%2Btag%40example.com", Logic.EscapeUrlParam("user+tag@example.com"));
+        }
+
+        [TestMethod]
+        public void EscapeUrlParam_改行は以前と同じく0D0Aになる()
+        {
+            Assert.AreEqual("a%0D%0Ab", Logic.EscapeUrlParam("a\r\nb"));
+        }
     }
 }

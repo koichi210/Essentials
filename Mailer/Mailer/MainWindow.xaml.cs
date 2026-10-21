@@ -101,30 +101,33 @@ namespace Mailer
             String browseUrl = _mailUrl;
             if (textBox_MailTo.Text != String.Empty)
             {
-                browseUrl += "&to=" + textBox_MailTo.Text;
+                browseUrl += "&to=" + Logic.EscapeUrlParam(textBox_MailTo.Text);
             }
             if (textBox_MailCc.Text != String.Empty)
             {
-                browseUrl += "&cc=" + textBox_MailCc.Text;
+                browseUrl += "&cc=" + Logic.EscapeUrlParam(textBox_MailCc.Text);
             }
             if (textBox_MailBcc.Text != String.Empty)
             {
-                browseUrl += "&bcc=" + textBox_MailBcc.Text;
+                browseUrl += "&bcc=" + Logic.EscapeUrlParam(textBox_MailBcc.Text);
             }
 
+            // 値はエスケープしてから埋め込む(空白・改行もここで"%20"・"%0D%0A"になる)
             if (textBox_MailSubject.Text != String.Empty)
             {
                 DateTime userDate = _param.UserDate.AddDays(daysOffset);
-                String chromeFormatText = textBox_MailSubject.Text.Replace(" ", "+");
-                browseUrl += "&su=" + Logic.ReplaceDatePlaceholders(chromeFormatText, userDate);
+                browseUrl += "&su=" + Logic.EscapeUrlParam(Logic.ReplaceDatePlaceholders(textBox_MailSubject.Text, userDate));
             }
 
             if (textBox_MailBody.Text != String.Empty)
             {
-                browseUrl += "&body=" + textBox_MailBody.Text.Replace("\r\n", "%0D%0A").Replace(" ", "+");
+                browseUrl += "&body=" + Logic.EscapeUrlParam(textBox_MailBody.Text);
             }
 
-            _util.ExecuteProcess(textBox_BrowserPath.Text, browseUrl);
+            // 起動したプロセスのハンドルは使わないので、すぐに解放する
+            using (_util.ExecuteProcess(textBox_BrowserPath.Text, browseUrl))
+            {
+            }
         }
 
         private Boolean TryGetUiParam()

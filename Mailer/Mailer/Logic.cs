@@ -58,6 +58,17 @@ namespace Mailer
             return srcText.Replace(keyName, dateString);
         }
 
+        /// <summary>
+        /// URLのパラメータ値(to/cc/bcc/su/body)としてそのまま埋め込めるようにエスケープする。
+        /// 以前は空白→"+"・改行→"%0D%0A"だけを置き換えていたため、"&"(Q&Aなど)で値が途中で切れる、
+        /// "#"以降が丸ごと消える、"+"(user+tag@...)が空白になる、"%"で文字化けする、といった崩れ方をしていた。
+        /// </summary>
+        public static String EscapeUrlParam(String value)
+        {
+            // 改行("\r\n")は以前と同じ"%0D%0A"になる
+            return Uri.EscapeDataString(value);
+        }
+
         /// <summary>メール作成する日数分のオフセット一覧を作る。reverse指定で降順にする。</summary>
         public static List<int> GetDayOffsetList(int createNum, bool reverse)
         {
