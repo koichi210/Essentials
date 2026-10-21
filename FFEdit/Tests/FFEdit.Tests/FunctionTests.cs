@@ -8,9 +8,8 @@ namespace FFEdit.Tests
     /// <summary>
     /// Function（コピー・移動・空フォルダ削除）のテスト。
     ///
-    /// DelEmptyDir は内部で一時バッチファイルを作って cmd.exe をバックグラウンド起動する
-    /// (StcUtils.ExecuteProcess は完了を待たない) ため、削除が完了するタイミングが不定。
-    /// このテストではポーリングして許容時間内に消えることだけを確認する。
+    /// DelEmptyDir は内部で一時バッチファイルを作って cmd.exe を起動する。
+    /// 以前は完了を待たずに戻っていたためポーリングで確認していた(今は完了まで待つが、既存のテストはそのまま)。
     /// </summary>
     [TestClass]
     public class FunctionTests
@@ -208,6 +207,29 @@ namespace FFEdit.Tests
             // 削除されない想定なので、少し待ってから「消えていないこと」を確認する
             System.Threading.Thread.Sleep(1000);
             Assert.IsTrue(Directory.Exists(dirWithFile), "中身があるフォルダは残るはず");
+        }
+
+        [TestMethod]
+        public void DelEmptyDir_空フォルダだけを含むフォルダもまとめて削除される()
+        {
+            // 以前は親(outer)を子(inner)より先にrdしていたため、outerが残っていた
+            string root = Path.Combine(tempDirectory, "root3");
+            string outer = Path.Combine(root, "outer");
+            string inner = Path.Combine(outer, "inner");
+            Directory.CreateDirectory(inner);
+
+            var fs = new Function
+            {
+                BaseDir = tempDirectory,
+                FileList = new List<string> { "root3" },
+                Type = Function.FunctionType.DelEmptyDir,
+            };
+            fs.Execute();
+
+            // 完了を待ってから戻るので、戻った時点で消えている
+            Assert.IsFalse(Directory.Exists(inner));
+            Assert.IsFalse(Directory.Exists(outer), "空フォルダだけを含むフォルダも消える");
+            Assert.IsTrue(Directory.Exists(root), "root自体は消えずに残る");
         }
 
         private static bool WaitUntil(Func<bool> condition, TimeSpan timeout)

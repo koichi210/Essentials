@@ -442,12 +442,11 @@ namespace FFEdit
                 return comboBox_ChangeNumber_Digit.SelectedIndex;
             }
 
-            // [自動桁数]の場合
-            if (checkBox_Target_SelectFile.IsChecked == true)
-            {
-                return listBox.SelectedItems.Count.ToString().Length;
-            }
-            return listBox.Items.Count.ToString().Length;
+            // [自動桁数]の場合(開始番号はChangeNameで先に設定済み)
+            int count = (checkBox_Target_SelectFile.IsChecked == true)
+                ? listBox.SelectedItems.Count
+                : listBox.Items.Count;
+            return Rename.GetAutoPaddingDigits(_rename.FirstNumber, count);
         }
 
         internal static long GetTickTime(int timeSpanIndex)

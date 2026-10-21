@@ -299,5 +299,62 @@ namespace FFEdit.Tests
             Assert.IsTrue(Exists(@"sub\sub_a.txt"), "サブフォルダ名がファイル名の先頭に付くはず");
             Assert.IsFalse(Exists(@"sub\a.txt"));
         }
+
+        [TestMethod]
+        public void DelNum_先頭も後方も空欄なら名前は変わらずエラーにもならない()
+        {
+            // 以前は空文字の名前を返し、BaseDir自身へリネームしようとしてエラー一覧に載っていた
+            CreateFile("keep.txt");
+
+            var rename = new Rename
+            {
+                BaseDir = tempDirectory,
+                FileList = new List<string> { "keep.txt" },
+                Type = Rename.ChangeType.DelNum,
+                Param1 = "",
+                Param2 = "",
+            };
+
+            string errors = rename.Execute();
+
+            Assert.AreEqual(string.Empty, errors);
+            Assert.IsTrue(Exists("keep.txt"));
+        }
+
+        [TestMethod]
+        public void DelNum_名前より長い文字数はその1件だけエラーにして残りは処理する()
+        {
+            CreateFile("ab.txt");
+            CreateFile("abcdefghi.txt");
+
+            var rename = new Rename
+            {
+                BaseDir = tempDirectory,
+                FileList = new List<string> { "ab.txt", "abcdefghi.txt" },
+                Type = Rename.ChangeType.DelNum,
+                Param1 = "7", // ab.txt(6文字)より長い
+            };
+
+            string errors = rename.Execute();
+
+            StringAssert.Contains(errors, "ab.txt");
+            Assert.IsTrue(Exists("ab.txt"), "削れない名前はそのまま");
+            Assert.IsTrue(Exists("hi.txt"), "例外で止まらず2件目も処理される");
+
+            // 例外で抜けずに復元用の番号が進むので、この実行分だけを元に戻せる
+            Assert.IsTrue(rename.Restore());
+            Assert.IsTrue(Exists("abcdefghi.txt"));
+            Assert.IsFalse(rename.Restore(), "2回目は戻すものが無い");
+        }
+
+        [TestMethod]
+        public void GetAutoPaddingDigits_件数と最後の番号の大きい方の桁数になる()
+        {
+            Assert.AreEqual(1, Rename.GetAutoPaddingDigits(1, 9), "1～9");
+            Assert.AreEqual(2, Rename.GetAutoPaddingDigits(1, 10), "1～10");
+            Assert.AreEqual(2, Rename.GetAutoPaddingDigits(0, 10), "件数の桁数(2)はこれまでどおり");
+            Assert.AreEqual(3, Rename.GetAutoPaddingDigits(95, 10), "95～104は3桁にそろえる");
+            Assert.AreEqual(1, Rename.GetAutoPaddingDigits(-5, 3), "最後の番号が負なら件数の桁数");
+        }
     }
 }
