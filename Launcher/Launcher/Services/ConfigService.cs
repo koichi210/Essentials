@@ -1,5 +1,7 @@
 using System;
+using System.Collections.ObjectModel;
 using System.IO;
+using System.Linq;
 using System.Text.Encodings.Web;
 using System.Text.Json;
 using Launcher.Models;
@@ -55,7 +57,33 @@ namespace Launcher.Services
             }
 
             var config = JsonSerializer.Deserialize<LauncherConfig>(json, _jsonOptions);
-            return config ?? CreateDefaultConfig();
+            if (config == null)
+            {
+                return CreateDefaultConfig();
+            }
+
+            // 手で編集して "Sections": null / "Items": null と書かれていると、追加や削除でNullReferenceExceptionになるため空の一覧にしておく
+            if (config.Sections == null)
+            {
+                config.Sections = new ObservableCollection<SectionModel>();
+            }
+            foreach (var section in config.Sections.Where(s => s != null && s.Items == null))
+            {
+                section.Items = new ObservableCollection<ItemModel>();
+            }
+            // null の要素(例: [null])は画面のボタンのTagがnullになって操作できないだけなので取り除く
+            foreach (var section in config.Sections.Where(s => s == null).ToList())
+            {
+                config.Sections.Remove(section);
+            }
+            foreach (var section in config.Sections)
+            {
+                foreach (var item in section.Items.Where(i => i == null).ToList())
+                {
+                    section.Items.Remove(item);
+                }
+            }
+            return config;
         }
 
         /// <summary>設定をJSONファイルへ保存する</summary>

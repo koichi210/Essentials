@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Collections.ObjectModel;
+using System.IO;
 using System.Linq;
+using System.Text.Json;
 using System.Windows;
 using Launcher.Dialogs;
 using Launcher.Models;
@@ -15,6 +17,10 @@ namespace Launcher
     {
         private readonly ConfigService _configService = new ConfigService();
         private LauncherConfig _config;
+
+        // 設定ファイルが壊れていて読み込めなかったか。この間は保存しない
+        // (手で編集している途中のconfig.jsonを、画面の内容で上書きして消してしまわないため)
+        private bool _isConfigBroken;
 
         public ObservableCollection<SectionModel> Sections => _config.Sections;
 
@@ -159,7 +165,10 @@ namespace Launcher
         // 設定ファイルをテキストエディタで開く（手動編集したい場合用）
         private void OpenConfigButton_Click(object sender, RoutedEventArgs e)
         {
-            SaveConfig();
+            if (!_isConfigBroken)
+            {
+                SaveConfig();
+            }
 
             try
             {
@@ -206,7 +215,21 @@ namespace Launcher
         /// <summary>設定を読み込み直し、画面(セクション一覧・保存先表示)に反映する</summary>
         private void LoadConfig()
         {
-            _config = _configService.Load();
+            // 以前は手で編集したconfig.jsonの書き間違い(JSONの文法エラー等)で例外になり、
+            // 起動時ならアプリが立ち上がらず、「再読み込み」ならアプリごと落ちていた
+            try
+            {
+                _config = _configService.Load();
+                _isConfigBroken = false;
+            }
+            catch (Exception ex) when (ex is JsonException || ex is IOException || ex is UnauthorizedAccessException || ex is NotSupportedException)
+            {
+                _isConfigBroken = true;
+                // 再読み込みの失敗なら今の画面の内容のまま。起動時なら空の一覧で開く
+                _config ??= new LauncherConfig();
+                MessageBox.Show($"設定ファイルを読み込めませんでした。\n修正してから「再読み込み」してください（読み込めるまで変更は保存しません）。\n\n{_configService.ConfigFilePath}\n\n{ex.Message}",
+                    "読み込みエラー", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
             SectionsItemsControl.ItemsSource = Sections;
             UpdateDataFolderText();
         }
@@ -218,7 +241,23 @@ namespace Launcher
 
         private void SaveConfig()
         {
-            _configService.Save(_config);
+            if (_isConfigBroken)
+            {
+                MessageBox.Show("設定ファイルを読み込めていないため、変更を保存しませんでした。\n設定ファイルを修正して「再読み込み」してください。",
+                    "保存エラー", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            // 保存先(ネットワークドライブ・クラウド同期フォルダ等)に書けないときも、アプリごと落ちないようにする
+            try
+            {
+                _configService.Save(_config);
+            }
+            catch (Exception ex) when (ex is IOException || ex is UnauthorizedAccessException)
+            {
+                MessageBox.Show($"設定を保存できませんでした。\n\n{_configService.ConfigFilePath}\n\n{ex.Message}",
+                    "保存エラー", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
         }
     }
 }
