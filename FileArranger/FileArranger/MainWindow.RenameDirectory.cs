@@ -51,7 +51,13 @@ namespace FileArranger
                 // フォルダ名の重複回避
                 _util.AvoidFileNameConflict(ref destName, i);
                 _fio.MoveDirectory(srcName, destName);
-                _renameDirMemory.AddRestoreItem(srcName, destName);
+                // MoveDirectoryは失敗してもメッセージを出すだけなので、実際にリネームできたものだけ履歴に残す
+                // (失敗分まで残すと「元に戻す」が存在しないフォルダを戻そうとして例外になり、他の分も戻せなくなる)。
+                // 移動先は重複回避で存在しない名前にしてあるので、移動後にあればリネームできている
+                if (Directory.Exists(destName))
+                {
+                    _renameDirMemory.AddRestoreItem(srcName, destName);
+                }
             }
             _renameDirMemory.IncrementSerialNumber();
 

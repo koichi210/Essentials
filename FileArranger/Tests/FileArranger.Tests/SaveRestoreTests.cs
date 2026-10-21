@@ -307,9 +307,14 @@ namespace FileArranger.Tests
                 reader.sf_listBox_Target.Items.Add("残っててはいけない項目");
                 reader.rd_listView_Target.Items.Add(new ListViewRow("残っててはいけない項目", ""));
                 reader.pf_listView_Target.Items.Add(new ListViewRow("残っててはいけない項目", "", ""));
+                // フォルダ移動/ファイル移動タブの一覧も、残っていると新しい格納元で同名のものを削除・移動してしまう
+                reader.md_listBox_Listup.Items.Add("残っててはいけない項目");
+                reader.mf_listBox_Target.Items.Add("残っててはいけない項目");
 
                 reader.LoadProfile(path);
 
+                Assert.AreEqual(0, reader.md_listBox_Listup.Items.Count);
+                Assert.AreEqual(0, reader.mf_listBox_Target.Items.Count);
                 Assert.AreEqual(0, reader.sf_listBox_Target.Items.Count);
                 Assert.AreEqual(0, reader.rd_listView_Target.Items.Count);
                 Assert.AreEqual(0, reader.pf_listView_Target.Items.Count);

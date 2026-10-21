@@ -137,6 +137,30 @@ namespace FileArranger.Tests
         }
 
         [TestMethod]
+        public void SortFoldersが途中で失敗しても_そこまでの分はRestoreで戻せる()
+        {
+            string dirA = Path.Combine(tempDirectory, "a");
+            string dirB = Path.Combine(tempDirectory, "b");
+            Directory.CreateDirectory(dirA);
+            Directory.CreateDirectory(dirB);
+            File.WriteAllText(Path.Combine(dirA, "x.txt"), "dummy");
+            // "(1).txt"は"000.txt"より先に並ぶので、"000.txt"へリネームしようとして既存の"000.txt"とぶつかり失敗する
+            File.WriteAllText(Path.Combine(dirB, "(1).txt"), "first");
+            File.WriteAllText(Path.Combine(dirB, "000.txt"), "second");
+
+            var sorter = new FileSorter();
+            Assert.ThrowsException<IOException>(() => sorter.SortFolders(new[] { dirA, dirB }));
+            // 前提: 1つ目のフォルダはリネーム済み。2つ目は上書きされず元のまま
+            Assert.IsTrue(File.Exists(Path.Combine(dirA, "000.txt")));
+            Assert.AreEqual("second", File.ReadAllText(Path.Combine(dirB, "000.txt")));
+
+            Assert.IsTrue(sorter.Restore());
+
+            Assert.IsTrue(File.Exists(Path.Combine(dirA, "x.txt")), "失敗する前にリネームした分は戻る");
+            Assert.IsFalse(File.Exists(Path.Combine(dirA, "000.txt")));
+        }
+
+        [TestMethod]
         public void CommitBatchしていない状態でRestoreすると失敗する()
         {
             var sorter = new FileSorter();

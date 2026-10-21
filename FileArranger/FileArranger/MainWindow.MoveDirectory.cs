@@ -63,7 +63,13 @@ namespace FileArranger
 
             foreach (String selectedName in WpfControlUtils.GetSelectedNames(md_listBox_Listup))
             {
-                Directory.Delete(Path.Combine(md_textBox_SourceDir.Text, selectedName), true);
+                // 親フォルダ("A")と子フォルダ("A\B")を両方選んだ場合、親を消した時点で子も無くなっているので飛ばす
+                String deletePath = Path.Combine(md_textBox_SourceDir.Text, selectedName);
+                if (!Directory.Exists(deletePath))
+                {
+                    continue;
+                }
+                Directory.Delete(deletePath, true);
             }
 
             // リストを更新

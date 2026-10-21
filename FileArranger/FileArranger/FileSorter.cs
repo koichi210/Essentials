@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using StandardTemplate;
 
@@ -28,6 +29,26 @@ namespace FileArranger
                 String destName = folderPath + @"\" + i.ToString("D3") + ext;
                 File.Move(files[i], destName);
                 _pm.AddRestoreItem(files[i], destName);
+            }
+        }
+
+        /// <summary>
+        /// 複数フォルダを連番にリネームし、まとめて1回の「実行」として確定する。
+        /// 途中で失敗して例外になっても、そこまでにリネームした分は確定して Restore() で戻せるようにする
+        /// (確定しないままだと、記録の管理番号がずれて、その分も前回の分も戻せなくなっていた)。
+        /// </summary>
+        public void SortFolders(IEnumerable<String> folderPaths)
+        {
+            try
+            {
+                foreach (String folderPath in folderPaths)
+                {
+                    SortFolder(folderPath);
+                }
+            }
+            finally
+            {
+                CommitBatch();
             }
         }
 
