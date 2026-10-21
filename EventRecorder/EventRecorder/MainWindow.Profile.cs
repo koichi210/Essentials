@@ -41,26 +41,26 @@ namespace EventRecorder
         }
 
         // プレイリスト再生時、各行の設定ファイルを1つずつ読み込む専用(記録データのみ差し替え、プレイリスト自体は触らない)
-        private void LoadProfileForPlayback(String filePath)
+        internal void LoadProfileForPlayback(String filePath)
         {
-            if (!IsJsonFile(filePath))
+            // WPF版は旧XML形式を読めない。また、ファイルが削除されている・壊れていて読めない場合も、
+            // 前のファイル(または元々表示していた)記録データを誤って再生しないよう、空にして何も再生しない
+            // (以前は読込失敗時に表の中身がそのまま残り、直前のファイルがもう一度再生されていた)
+            if (!IsJsonFile(filePath) || !LoadProfileFromJson(filePath, false))
             {
-                // WPF版は旧XML形式を読めない。前のファイルの記録データを誤って再生しないよう、空にして何も再生しない
                 EventRows.Clear();
-                _highlightedEventRowIndex = -1;
-                return;
+                _highlightedEventRow = null;
             }
-
-            LoadProfileFromJson(filePath, false);
         }
 
-        // JSONファイルを読み込み、記録データ(+loadPlaylistAndModeがtrueならプレイリストとモードも)を画面へ反映する
-        internal void LoadProfileFromJson(String filePath, Boolean loadPlaylistAndMode)
+        // JSONファイルを読み込み、記録データ(+loadPlaylistAndModeがtrueならプレイリストとモードも)を画面へ反映する。
+        // ファイルが無い・読めない場合は何も変えずにfalseを返す
+        internal Boolean LoadProfileFromJson(String filePath, Boolean loadPlaylistAndMode)
         {
             EventRecorderProfile profile = JsonFileStorage.Load<EventRecorderProfile>(filePath);
             if (profile == null)
             {
-                return;
+                return false;
             }
 
             // 編集途中のセルがあれば破棄してから入れ替える(古い行へ書き戻されないように)
@@ -86,7 +86,7 @@ namespace EventRecorder
             // 万一、旧形式相当(各行が自分のWaitを持つ)のデータを読み込んでも安全なように、待機をWAIT_MS行へ切り出す
             EventRules.MigrateWaitColumnToRows(rows);
 
-            _highlightedEventRowIndex = -1;
+            _highlightedEventRow = null;
             EventRows.ReplaceAll(rows);
 
             if (loadPlaylistAndMode)
@@ -106,7 +106,7 @@ namespace EventRecorder
                 _isLoadingPlaylist = true;
                 try
                 {
-                    _highlightedPlaylistRowIndex = -1;
+                    _highlightedPlaylistRow = null;
                     PlaylistRows.ReplaceAll(playlist);
                 }
                 finally
@@ -130,6 +130,8 @@ namespace EventRecorder
             {
                 PlaylistUndo.ClearUndoHistory();
             }
+
+            return true;
         }
 
         // 今のグリッドの中身(記録データ+プレイリスト)をJSON保存用のPOCOに詰め替える

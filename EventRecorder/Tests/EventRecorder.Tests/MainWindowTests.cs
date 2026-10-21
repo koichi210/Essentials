@@ -345,5 +345,81 @@ namespace EventRecorder.Tests
                 Assert.AreEqual(3, MainWindow.StepLoopCount(2, 1));
             });
         }
+
+        [TestMethod]
+        public void ループ数が数値として読めない時は例外にせず1回扱い()
+        {
+            StaRunner.Run(() =>
+            {
+                MainWindow window = new MainWindow(_temp.Path);
+                window.PlaylistRows.Clear();
+                window.PlaylistRows.Add(PlaylistRow.FromData(true, "a.json", "abc"));
+                window.PlaylistRows.Add(PlaylistRow.FromData(true, "b.json", ""));
+                window.PlaylistRows.Add(PlaylistRow.FromData(true, "c.json", "1.5"));
+
+                List<MainWindow.PlaylistEntry> entries = window.GetPlaylistEntries();
+
+                CollectionAssert.AreEqual(new[] { 1, 1, 1 }, entries.Select(e => e.LoopCount).ToArray());
+            });
+        }
+
+        [TestMethod]
+        public void 記録後に上の行を削除してから再度記録してもハイライトは最新行の1行だけ()
+        {
+            StaRunner.Run(() =>
+            {
+                MainWindow window = new MainWindow(_temp.Path);
+
+                window.HandleKeyboardStroke(Stroke.KEY_DOWN, Keys.F1, Keys.None);
+                window.HandleKeyboardStroke(Stroke.KEY_UP, Keys.F1, Keys.None);
+                window.HandleKeyboardStroke(Stroke.KEY_DOWN, Keys.A, Keys.None);
+                window.HandleKeyboardStroke(Stroke.KEY_UP, Keys.A, Keys.None);
+                window.HandleKeyboardStroke(Stroke.KEY_DOWN, Keys.F1, Keys.None);
+                window.HandleKeyboardStroke(Stroke.KEY_UP, Keys.F1, Keys.None);
+                EventRow lastRecorded = window.EventRows.Last();
+                Assert.IsTrue(lastRecorded.IsHighlighted);
+
+                // ハイライト行より上の行を消して、行の位置をずらす
+                window.EventRows.Insert(0, EventRow.FromData("LEFT_DOWN", "1", "1", "", "0", ""));
+                window.EventRows.Insert(0, EventRow.FromData("LEFT_UP", "1", "1", "", "0", ""));
+                window.DeleteEventRows(new List<int> { 0 });
+
+                window.HandleKeyboardStroke(Stroke.KEY_DOWN, Keys.F1, Keys.None);
+                window.HandleKeyboardStroke(Stroke.KEY_UP, Keys.F1, Keys.None);
+                window.HandleKeyboardStroke(Stroke.KEY_DOWN, Keys.B, Keys.None);
+                window.HandleKeyboardStroke(Stroke.KEY_DOWN, Keys.F1, Keys.None);
+                window.HandleKeyboardStroke(Stroke.KEY_UP, Keys.F1, Keys.None);
+
+                Assert.IsFalse(lastRecorded.IsHighlighted, "前回の記録の最新行のハイライトは消える");
+                Assert.AreEqual(1, window.EventRows.Count(r => r.IsHighlighted));
+                Assert.IsTrue(window.EventRows.Last().IsHighlighted);
+            });
+        }
+
+        [TestMethod]
+        public void プレイリスト再生で読めないファイルの時は前の記録データを残さない()
+        {
+            StaRunner.Run(() =>
+            {
+                MainWindow window = new MainWindow(_temp.Path);
+                window.EventRows.Add(EventRow.FromData("LEFT_DOWN", "1", "1", "", "0", ""));
+
+                // 削除済み(存在しない)ファイル
+                window.LoadProfileForPlayback(System.IO.Path.Combine(_temp.Path, "deleted.json"));
+                Assert.AreEqual(0, window.EventRows.Count, "直前の記録データをもう一度再生しないよう空になる");
+
+                // 壊れたファイル
+                window.EventRows.Add(EventRow.FromData("LEFT_DOWN", "1", "1", "", "0", ""));
+                _temp.Write("broken.json", "{ これはJSONではない");
+                window.LoadProfileForPlayback(System.IO.Path.Combine(_temp.Path, "broken.json"));
+                Assert.AreEqual(0, window.EventRows.Count);
+
+                // 正常なファイルはそのまま読み込まれる
+                _temp.Write("ok.json", "{ \"Events\": [ { \"Type\": \"KEY_DOWN\", \"Key\": \"A\", \"Wait\": \"0\" } ] }");
+                window.LoadProfileForPlayback(System.IO.Path.Combine(_temp.Path, "ok.json"));
+                Assert.AreEqual(1, window.EventRows.Count);
+                Assert.AreEqual("KEY_DOWN", window.EventRows[0].Type);
+            });
+        }
     }
 }

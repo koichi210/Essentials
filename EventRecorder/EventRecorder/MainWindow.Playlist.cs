@@ -508,10 +508,6 @@ namespace EventRecorder
 
             foreach (int idx in targetIndexes.OrderByDescending(x => x))
             {
-                if (idx == _highlightedPlaylistRowIndex)
-                {
-                    _highlightedPlaylistRowIndex = -1;
-                }
                 PlaylistRows.RemoveAt(idx);
             }
         }

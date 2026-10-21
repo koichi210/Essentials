@@ -96,7 +96,12 @@ namespace EventRecorder
         // ループ回数の入力値を数値にする(0以下・数値以外は1回扱い)。単発再生・プレイリストの全体ループ/各行で共通
         private int ParseLoopCount(String text)
         {
-            int loopCount = _util.GetInteger(text);
+            // _util.GetInteger(int.Parse)は数値以外で例外になり、再生ボタン/ホットキーで落ちていたためTryParseにする
+            int loopCount;
+            if (!int.TryParse(text, out loopCount))
+            {
+                return 1;
+            }
             return loopCount <= 0 ? 1 : loopCount;
         }
 
@@ -131,9 +136,11 @@ namespace EventRecorder
         // (プレイリストの状態表示・行ハイライトは単発再生では元々空なので、共通で消して問題ない)
         private void RunPlayback(Action playBody)
         {
+            Boolean isCompleted = false;
             try
             {
                 playBody();
+                isCompleted = true;
 
                 // マウスカーソルを再生開始前の位置に戻す
                 System.Windows.Forms.Cursor.Position = _cursorPositionBeforePlay;
@@ -144,6 +151,14 @@ namespace EventRecorder
             }
             finally
             {
+                // 中断された場合・例外で止まった場合は、Downのままのキー/マウスボタンを全部Upに戻す。
+                // (以前はPlayRowsの中でだけ戻していたため、例外で止まった時や、プレイリストのファイルの
+                // 切り替わり目(PlayRowsの外)で停止した時に、前のファイルで押したキーが押しっぱなしで残っていた)
+                if (_stopPlayRequested || !isCompleted)
+                {
+                    ReleaseAllPressedInputs();
+                }
+
                 // 途中で例外が起きても、必ず「再生中」状態を解除する(_isPlayingがtrueのまま固まらないように)
                 _isPlaying = false;
                 _stopPlayRequested = false;
@@ -193,20 +208,10 @@ namespace EventRecorder
         }
 
         // rowsをloopCount回再生する処理そのもの(前後の状態管理は呼び出し元の責務)。単発再生・プレイリスト再生の両方から使う
+        // (中断時に押しっぱなしのキー/マウスボタンを離すのは、再生全体の後片付けとしてRunPlaybackで行う)
         private void PlayRows(List<String[]> rows, int loopCount)
         {
-            try
-            {
-                PlayRowsCore(rows, loopCount);
-            }
-            finally
-            {
-                // 中断された場合、Downのままのキー/マウスボタンを全部Upに戻す
-                if (_stopPlayRequested)
-                {
-                    ReleaseAllPressedInputs();
-                }
-            }
+            PlayRowsCore(rows, loopCount);
         }
 
         private void PlayRowsCore(List<String[]> rows, int loopCount)
@@ -232,8 +237,10 @@ namespace EventRecorder
                         return;
                     }
 
-                    int wait = _util.GetInteger(values[4]);
-                    if (wait > 0)
+                    // WAIT_MS以外の行のWait(非表示)は再生前チェックの対象外なので、読めない値は読込時(MigrateWaitColumnToRows)と
+                    // 同じく「待機なし」とみなす(int.Parseだと再生の途中で例外になって止まっていた)
+                    int wait;
+                    if (int.TryParse(values[4], out wait) && wait > 0)
                     {
                         InterruptibleSleep(wait);
                     }
@@ -265,16 +272,20 @@ namespace EventRecorder
 
         // 指定したグリッドのidx行を薄い黄色でハイライトし、一番上に見えるようにスクロールする。idxに-1を渡すとハイライトを消す。
         // 記録中の最新行・単発再生中の実行中行・プレイリスト実行中の実行中行、どれも共通のこの処理を使う
-        private static void HighlightRow<TRow>(DataGrid grid, IList<TRow> rows, int idx, ref int highlightedIndexField, Action<TRow, Boolean> setHighlight)
+        // ハイライト中の行はインデックスではなく行オブジェクトで覚える(以前はインデックスで覚えていたため、記録後に
+        // それより上の行を削除・挿入すると位置がずれ、元のハイライト行が消されないまま黄色で残っていた)
+        private static void HighlightRow<TRow>(DataGrid grid, IList<TRow> rows, int idx, ref TRow highlightedRowField, Action<TRow, Boolean> setHighlight) where TRow : class
         {
-            if (highlightedIndexField >= 0 && highlightedIndexField < rows.Count)
+            if (highlightedRowField != null)
             {
-                setHighlight(rows[highlightedIndexField], false);
+                setHighlight(highlightedRowField, false);
             }
 
+            TRow nextRow = null;
             if (idx >= 0 && idx < rows.Count)
             {
-                setHighlight(rows[idx], true);
+                nextRow = rows[idx];
+                setHighlight(nextRow, true);
 
                 if (grid.IsVisible)
                 {
@@ -282,19 +293,19 @@ namespace EventRecorder
                 }
             }
 
-            highlightedIndexField = idx;
+            highlightedRowField = nextRow;
         }
 
         // 記録中の最新行・単発再生中の実行中行のハイライト(dataGrid_Events側)
         private void HighlightEventRow(int idx)
         {
-            HighlightRow(dataGrid_Events, EventRows, idx, ref _highlightedEventRowIndex, (row, on) => row.IsHighlighted = on);
+            HighlightRow(dataGrid_Events, EventRows, idx, ref _highlightedEventRow, (row, on) => row.IsHighlighted = on);
         }
 
         // プレイリスト実行中、今どのファイル(行)を再生しているかのハイライト(dataGrid_Playlist側)
         private void HighlightPlaylistRow(int idx)
         {
-            HighlightRow(dataGrid_Playlist, PlaylistRows, idx, ref _highlightedPlaylistRowIndex, (row, on) => row.IsHighlighted = on);
+            HighlightRow(dataGrid_Playlist, PlaylistRows, idx, ref _highlightedPlaylistRow, (row, on) => row.IsHighlighted = on);
         }
 
         // *******************************************************************************
@@ -584,10 +595,6 @@ namespace EventRecorder
 
             foreach (int idx in EventRules.CollectRowsToDelete(EventRows, targetIndexes))
             {
-                if (idx == _highlightedEventRowIndex)
-                {
-                    _highlightedEventRowIndex = -1;
-                }
                 EventRows.RemoveAt(idx);
             }
         }

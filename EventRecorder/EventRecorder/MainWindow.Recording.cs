@@ -22,7 +22,7 @@ namespace EventRecorder
             }
 
             EventRows.Clear();
-            _highlightedEventRowIndex = -1;
+            _highlightedEventRow = null;
         }
 
         // 現在の記録中/再生中の状態をタイトルバーに反映する
