@@ -8,6 +8,7 @@ using System.Runtime.InteropServices;
 using System.Security;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Win32.SafeHandles;
 
 namespace DuplicateFinder
 {
@@ -349,6 +350,9 @@ namespace DuplicateFinder
             var readers = new List<ChunkReader>(files.Count);
             try
             {
+                // 同じ実体のファイル(ハードリンクや、subst・ネットワークドライブ・UNCなど別名のパスで2回見つかったもの)は1件にまとめる。
+                // 別々のファイルとして並べると、片方を消しただけで「残したはず」のもう片方も消えてしまうため
+                var fileIds = new HashSet<string>();
                 foreach (FileEntry file in files)
                 {
                     string error;
@@ -356,6 +360,12 @@ namespace DuplicateFinder
                     if (reader == null)
                     {
                         AddError(error);
+                        AddProcessed(length);
+                        continue;
+                    }
+                    if (reader.FileId != null && !fileIds.Add(reader.FileId))
+                    {
+                        reader.Dispose();
                         AddProcessed(length);
                         continue;
                     }
@@ -530,6 +540,79 @@ namespace DuplicateFinder
             }
         }
 
+        // *******************************************************************************
+        // ファイルの実体の識別(ボリュームのシリアル番号 + ファイルID)
+
+        /// <summary>
+        /// パスが指すファイルの実体を表すID。パスの書き方が違っても(ハードリンク・subst・ネットワークドライブ等)、
+        /// 同じ実体なら同じ値になる。開けない・IDを取れないファイルシステムならnull
+        /// </summary>
+        internal static string TryGetFileId(string path)
+        {
+            try
+            {
+                using (FileStream stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete))
+                {
+                    return GetFileId(stream.SafeFileHandle);
+                }
+            }
+            catch (Exception ex) when (ex is IOException || ex is UnauthorizedAccessException || ex is SecurityException)
+            {
+                return null;
+            }
+        }
+
+        private static string GetFileId(SafeFileHandle handle)
+        {
+            // ReFSのファイルIDは128ビットなので、まずは128ビットで取れる方法を使う
+            FILE_ID_INFO idInfo;
+            if (GetFileInformationByHandleEx(handle, _fileIdInfoClass, out idInfo, Marshal.SizeOf(typeof(FILE_ID_INFO)))
+                && (idInfo.FileIdLow != 0 || idInfo.FileIdHigh != 0))
+            {
+                return string.Format("{0:X16}:{1:X16}{2:X16}", idInfo.VolumeSerialNumber, idInfo.FileIdHigh, idInfo.FileIdLow);
+            }
+            BY_HANDLE_FILE_INFORMATION info;
+            if (GetFileInformationByHandle(handle, out info) && (info.FileIndexLow != 0 || info.FileIndexHigh != 0))
+            {
+                return string.Format("{0:X16}:{1:X16}{2:X16}", (ulong)info.VolumeSerialNumber, 0UL, ((ulong)info.FileIndexHigh << 32) | info.FileIndexLow);
+            }
+            // ファイルIDが無い(0を返す)ファイルシステムでは、別のファイルを同じ実体と取り違えないよう「不明」にする
+            return null;
+        }
+
+        private const int _fileIdInfoClass = 18;
+
+        [StructLayout(LayoutKind.Sequential)]
+        private struct FILE_ID_INFO
+        {
+            public ulong VolumeSerialNumber;
+            public ulong FileIdLow;
+            public ulong FileIdHigh;
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
+        private struct BY_HANDLE_FILE_INFORMATION
+        {
+            public uint FileAttributes;
+            public System.Runtime.InteropServices.ComTypes.FILETIME CreationTime;
+            public System.Runtime.InteropServices.ComTypes.FILETIME LastAccessTime;
+            public System.Runtime.InteropServices.ComTypes.FILETIME LastWriteTime;
+            public uint VolumeSerialNumber;
+            public uint FileSizeHigh;
+            public uint FileSizeLow;
+            public uint NumberOfLinks;
+            public uint FileIndexHigh;
+            public uint FileIndexLow;
+        }
+
+        [DllImport("kernel32.dll", SetLastError = true)]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        private static extern bool GetFileInformationByHandleEx(SafeFileHandle hFile, int fileInformationClass, out FILE_ID_INFO lpFileInformation, int dwBufferSize);
+
+        [DllImport("kernel32.dll", SetLastError = true)]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        private static extern bool GetFileInformationByHandle(SafeFileHandle hFile, out BY_HANDLE_FILE_INFORMATION lpFileInformation);
+
         private sealed class ChunkReader : IDisposable
         {
             private FileStream _stream;
@@ -538,11 +621,15 @@ namespace DuplicateFinder
             {
                 Entry = entry;
                 _stream = stream;
+                FileId = GetFileId(stream.SafeFileHandle);
                 Buffer = new byte[chunkSize];
             }
 
             public FileEntry Entry { get; }
             public byte[] Buffer { get; private set; }
+
+            /// <summary>ファイルの実体を表すID(取れなければnull)</summary>
+            public string FileId { get; }
 
             public static ChunkReader Open(FileEntry entry, int chunkSize, out string error)
             {

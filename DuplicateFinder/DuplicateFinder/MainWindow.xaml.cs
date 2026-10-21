@@ -546,8 +546,11 @@ namespace DuplicateFinder
             {
                 return "検索した後に変更・移動されたため削除しませんでした";
             }
-            bool keeperExists = group.Any(r => !r.IsMarked && !deleted.Contains(r) && IsUnchanged(r.Entry));
-            return keeperExists ? null : "残す側のファイルが見つからない(または変更された)ため削除しませんでした";
+            // 残す側が、消す側と同じ実体(ハードリンク・別名のパス)だと、消した時点で残す側も無くなるので、残す側には数えない
+            string targetId = DuplicateScanner.TryGetFileId(target.Path);
+            bool keeperExists = group.Any(r => !r.IsMarked && !deleted.Contains(r) && IsUnchanged(r.Entry)
+                && (targetId == null || DuplicateScanner.TryGetFileId(r.Path) != targetId));
+            return keeperExists ? null : "残す側のファイルが見つからない(または変更された・消す側と同じ実体だった)ため削除しませんでした";
         }
 
         private static bool IsUnchanged(FileEntry entry)

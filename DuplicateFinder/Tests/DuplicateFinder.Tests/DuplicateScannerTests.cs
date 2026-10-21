@@ -410,6 +410,73 @@ namespace DuplicateFinder.Tests
         private static extern bool SetFileTime(Microsoft.Win32.SafeHandles.SafeFileHandle hFile, ref long lpCreationTime, ref long lpLastAccessTime, ref long lpLastWriteTime);
 
         [TestMethod]
+        public void ハードリンクは同じ実体なので重複にしない()
+        {
+            byte[] content = RandomBytes(300 * 1024, 18);
+            string original = Write("original.mp4", content);
+            string link = Path.Combine(_root, @"sub\link.mp4");
+            Directory.CreateDirectory(Path.GetDirectoryName(link));
+            Assert.IsTrue(CreateHardLink(link, original, IntPtr.Zero));
+
+            // 前提: パスは違うが同じ実体
+            Assert.IsNotNull(DuplicateScanner.TryGetFileId(original));
+            Assert.AreEqual(DuplicateScanner.TryGetFileId(original), DuplicateScanner.TryGetFileId(link));
+
+            Assert.AreEqual(0, Scan().Groups.Count);
+
+            // 別の実体のコピーがあれば、それとは重複になる(実体ごとに1件)
+            string copy = Write("copy.mp4", content);
+            Assert.AreNotEqual(DuplicateScanner.TryGetFileId(original), DuplicateScanner.TryGetFileId(copy));
+            DuplicateGroup group = Scan().Groups.Single();
+            Assert.AreEqual(2, group.Files.Count);
+            Assert.IsTrue(group.Files.Any(f => f.Path == copy));
+        }
+
+        [TestMethod]
+        public void 別名のパスで同じフォルダを2回指定しても_同じファイル同士を重複にしない()
+        {
+            // 例: 対象フォルダに「D:\Videos」と、それをsubstした「V:\」を両方入れた場合。
+            // 同じファイルが2件の重複として出ると、片方を消しただけで「残した」方も消えてしまう
+            string real = Path.Combine(_root, "real");
+            string junction = Path.Combine(_root, "alias");
+            Directory.CreateDirectory(real);
+            byte[] content = RandomBytes(300 * 1024, 19);
+            File.WriteAllBytes(Path.Combine(real, "movie.mp4"), content);
+            File.WriteAllBytes(Path.Combine(real, "small.bin"), RandomBytes(1000, 20));
+            CreateJunction(junction, real);
+            try
+            {
+                ScanResult result = DuplicateScanner.Scan(
+                    new ScanOptions { RootFolders = new[] { real, junction } }, null, CancellationToken.None);
+
+                Assert.AreEqual(0, result.Groups.Count);
+                Assert.AreEqual(4, result.ScannedFileCount);
+            }
+            finally
+            {
+                // ジャンクションだけを外す(中身は消さない)
+                Directory.Delete(junction);
+            }
+        }
+
+        private static void CreateJunction(string junction, string target)
+        {
+            var startInfo = new System.Diagnostics.ProcessStartInfo("cmd.exe", "/c mklink /J \"" + junction + "\" \"" + target + "\"")
+            {
+                UseShellExecute = false,
+                CreateNoWindow = true,
+            };
+            using (System.Diagnostics.Process process = System.Diagnostics.Process.Start(startInfo))
+            {
+                process.WaitForExit();
+                Assert.AreEqual(0, process.ExitCode, "ジャンクションを作れませんでした");
+            }
+        }
+
+        [System.Runtime.InteropServices.DllImport("kernel32.dll", CharSet = System.Runtime.InteropServices.CharSet.Unicode, SetLastError = true)]
+        private static extern bool CreateHardLink(string lpFileName, string lpExistingFileName, IntPtr lpSecurityAttributes);
+
+        [TestMethod]
         public void 拡張子の入力を解釈できる()
         {
             ISet<string> extensions = ScanOptions.ParseExtensions(" mp4;.MKV, *.avi　wmv ;; ");
