@@ -297,6 +297,34 @@ namespace Othello.Tests
         }
 
         [TestMethod]
+        public void 時間切れになると一手戻す一手進めるは押せない()
+        {
+            StaRunner.Run(() =>
+            {
+                var original = new GameMaster();
+                original.Initialize();
+                original.TryPut(2, 3);
+                original.TryPut(2, 2);
+
+                string text = Kifu.ToText(original.History);
+
+                var window = new MainWindow();
+                window.menuItem_TimeLimit_Click(window.menuItem_Time30s, null);
+                Assert.IsTrue(window.LoadKifuText(text, false));
+                Assert.IsTrue(window.menuItem_Undo.IsEnabled);
+
+                window.CountDown(30000);
+                Assert.IsFalse(window.menuItem_Undo.IsEnabled);
+                Assert.IsFalse(window.menuItem_Redo.IsEnabled);
+
+                // 棋譜を読み込み直すと時間切れが解除されるので、また戻せる
+                Assert.IsTrue(window.LoadKifuText(text, false));
+                Assert.IsTrue(window.menuItem_Undo.IsEnabled);
+                window.Close();
+            });
+        }
+
+        [TestMethod]
         public void 棋譜テキストを読み込むと盤面が再生される()
         {
             StaRunner.Run(() =>

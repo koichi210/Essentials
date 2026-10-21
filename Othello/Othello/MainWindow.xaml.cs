@@ -231,10 +231,14 @@ namespace Othello
         /// </summary>
         private void menuItem_Undo_Click(object sender, RoutedEventArgs e)
         {
+            // 時間切れはゲーム終了なので、戻して続きを打つことはできない(メニューも無効にしてある)
+            if (_isTimedOut)
+            {
+                return;
+            }
             _comMoveTimer.Stop();
             if (GameMaster.Undo())
             {
-                _isTimedOut = false;
                 RedrawBoard();
             }
         }
@@ -245,10 +249,13 @@ namespace Othello
         /// </summary>
         private void menuItem_Redo_Click(object sender, RoutedEventArgs e)
         {
+            if (_isTimedOut)
+            {
+                return;
+            }
             _comMoveTimer.Stop();
             if (GameMaster.Redo())
             {
-                _isTimedOut = false;
                 RedrawBoard();
             }
         }
@@ -596,7 +603,16 @@ namespace Othello
                 _comMoveTimer.Stop();
                 _isTimedOut = true;
                 UpdateStatusLabel();
+                UpdateUndoRedoMenu();
             }
+        }
+
+        // 時間切れはゲーム終了なので「一手戻す」「一手進める」は押せないようにする
+        // (以前は戻せたが、残り時間が0のままなので次のカウントダウンですぐ時間切れに戻っていた)
+        private void UpdateUndoRedoMenu()
+        {
+            menuItem_Undo.IsEnabled = !_isTimedOut && GameMaster.CanUndo;
+            menuItem_Redo.IsEnabled = !_isTimedOut && GameMaster.CanRedo;
         }
 
         private void boardHost_MouseDown(object sender, MouseButtonEventArgs e)
@@ -702,8 +718,7 @@ namespace Othello
             UpdateStatusLabel();
             UpdateTimeLabel();
 
-            menuItem_Undo.IsEnabled = GameMaster.CanUndo;
-            menuItem_Redo.IsEnabled = GameMaster.CanRedo;
+            UpdateUndoRedoMenu();
 
             if (!_isTimedOut && !GameMaster.IsGameEnd && _timeLimitSeconds >= 0)
             {
