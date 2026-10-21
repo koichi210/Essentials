@@ -202,6 +202,34 @@ namespace Cheetos.Tests
         }
 
         [TestMethod]
+        public void MergeExecuteは前回のマージ元バックアップがあっても上書きして移動する()
+        {
+            // 以前はFile.Moveの移動先が既にあると例外になり、結合元だけ上書きされた状態で止まっていた
+            CreateImage("left.jpg", 8, 8, Color.Red);
+            CreateImage("right.jpg", 8, 8, Color.Blue);
+            string oldBackUp = Path.Combine(tempDirectory, "backup", "right.jpg");
+            File.WriteAllText(oldBackUp, "old");
+
+            var pm = new PictMerge
+            {
+                SourceFolderPath = tempDirectory,
+                BackUpDirPath = Path.Combine(tempDirectory, "backup"),
+                SourceFile1Prefix = "left",
+                SourceFile2Prefix = "right",
+                TrimHeightRanges = new[] { "-,-" },
+            };
+            pm.SetTargetFileName("left.jpg");
+            Assert.IsTrue(pm.IsProcTarget());
+            Assert.IsTrue(pm.BackUpSourceFile());
+            Assert.IsTrue(pm.ResolveMergeFilePath());
+
+            Assert.IsTrue(pm.MergeExecute());
+
+            Assert.IsFalse(File.Exists(Path.Combine(tempDirectory, "right.jpg")));
+            Assert.AreNotEqual("old", File.ReadAllText(oldBackUp), "バックアップは今回のマージ元に置き換わる");
+        }
+
+        [TestMethod]
         public void MergeExecuteは空文字の行を無視する()
         {
             CreateImage("left.jpg", 8, 8, Color.Green);

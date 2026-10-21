@@ -151,7 +151,13 @@ namespace Cheetos
                 // キャンバス保存
                 mrg.SaveCanvas(_sourceFileFullName);
 
-                // マージ元ファイルをバックアップへ移動
+                // マージ元ファイルをバックアップへ移動。
+                // 結合元のバックアップ(File.Copyで上書き)と同じく、前回のバックアップがあれば置き換える
+                // (File.Moveは移動先があると例外になり、結合元だけ結合済みで上書きされた状態で処理が止まっていた)
+                if (File.Exists(_mergeBackUpFullName))
+                {
+                    File.Delete(_mergeBackUpFullName);
+                }
                 File.Move(_mergeFileFullName, _mergeBackUpFullName);
             }
             return true;

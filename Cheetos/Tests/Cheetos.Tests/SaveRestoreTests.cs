@@ -442,5 +442,72 @@ namespace Cheetos.Tests
                 Assert.AreEqual("90", window.pr_Angle.Text);
             });
         }
+
+        // ラジオボタンをクリックしたときと同じく、IsCheckedを変えてからClickイベントを送る。
+        // 画面を表示していないとWPFが同じグループのもう片方を外してくれないので、ここで外す
+        private static void ClickRadio(System.Windows.Controls.RadioButton radio, System.Windows.Controls.RadioButton other)
+        {
+            other.IsChecked = false;
+            radio.IsChecked = true;
+            radio.RaiseEvent(new System.Windows.RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent, radio));
+        }
+
+        [TestMethod]
+        public void PictTrimの終点指定を切り替えると値が換算され押し直しでは変わらない()
+        {
+            // 以前は選択済みのラジオボタンを押し直すたびに基点を足し引きしてしまい、値が壊れていた
+            StaRunner.Run(() =>
+            {
+                MainWindow window = NewWindow();
+                Assert.IsTrue(window.pt_Radio_SelectPointOfEnd.IsChecked == true, "設定ファイルが無ければ終点指定が選ばれている");
+                Assert.IsFalse(window.pt_Radio_SelectSizeOfEnd.IsChecked == true);
+                window.pt_BaseX.Text = "10";
+                window.pt_BaseY.Text = "20";
+                window.pt_TargetX.Text = "110";
+                window.pt_TargetY.Text = "220";
+
+                ClickRadio(window.pt_Radio_SelectSizeOfEnd, window.pt_Radio_SelectPointOfEnd);
+                Assert.AreEqual("100", window.pt_TargetX.Text, "終点→サイズで基点を引く");
+                Assert.AreEqual("200", window.pt_TargetY.Text);
+
+                ClickRadio(window.pt_Radio_SelectSizeOfEnd, window.pt_Radio_SelectPointOfEnd);
+                Assert.AreEqual("100", window.pt_TargetX.Text, "サイズ指定のまま押し直しても変わらない");
+                Assert.AreEqual("200", window.pt_TargetY.Text);
+
+                ClickRadio(window.pt_Radio_SelectPointOfEnd, window.pt_Radio_SelectSizeOfEnd);
+                Assert.AreEqual("110", window.pt_TargetX.Text, "サイズ→終点で基点を足す");
+                Assert.AreEqual("220", window.pt_TargetY.Text);
+
+                ClickRadio(window.pt_Radio_SelectPointOfEnd, window.pt_Radio_SelectSizeOfEnd);
+                Assert.AreEqual("110", window.pt_TargetX.Text, "終点指定のまま押し直しても変わらない");
+                Assert.AreEqual("220", window.pt_TargetY.Text);
+            });
+        }
+
+        [TestMethod]
+        public void PictTrimのサイズ指定を読み込んだ後の切り替えも正しく換算される()
+        {
+            StaRunner.Run(() =>
+            {
+                MainWindow writer = NewWindow();
+                writer.pt_BaseX.Text = "10";
+                writer.pt_BaseY.Text = "20";
+                writer.pt_Radio_SelectSizeOfEnd.IsChecked = true;
+                writer.pt_TargetX.Text = "100";
+                writer.pt_TargetY.Text = "200";
+                string path = PathFor("trimmode");
+                writer._sr.Save(path);
+
+                MainWindow reader = NewWindow();
+                Assert.IsTrue(reader.LoadProfile(path));
+
+                ClickRadio(reader.pt_Radio_SelectSizeOfEnd, reader.pt_Radio_SelectPointOfEnd);
+                Assert.AreEqual("100", reader.pt_TargetX.Text, "読み込んだサイズ指定のまま押しても変わらない");
+
+                ClickRadio(reader.pt_Radio_SelectPointOfEnd, reader.pt_Radio_SelectSizeOfEnd);
+                Assert.AreEqual("110", reader.pt_TargetX.Text, "サイズ→終点で基点を足す");
+                Assert.AreEqual("220", reader.pt_TargetY.Text);
+            });
+        }
     }
 }

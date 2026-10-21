@@ -101,6 +101,7 @@ namespace Cheetos
 
             RegisterSaveRestoreItems();
             _sr.LoadOrDefault(Path.Combine(_userDataFolder, _settingFileName));
+            SyncPictTrimEndMode();
             WpfProfile.UpdateProfileList(Profile, _profileExtensions, "", _userDataFolder);
 
             // CurrentScreenキャプチャで「このウィンドウが今あるモニタ」を判定できるようにする
@@ -127,7 +128,8 @@ namespace Cheetos
             _sr.RegisterCtrl("PictTrim", "pt_SourceFolderPath", pt_SourceFolderPath);
             _sr.RegisterCtrl("PictTrim", "pt_BaseX", pt_BaseX);
             _sr.RegisterCtrl("PictTrim", "pt_BaseY", pt_BaseY);
-            _sr.RegisterCtrl("PictTrim", "pt_Radio_SelectPointOfEnd", pt_Radio_SelectPointOfEnd);
+            // 既定値が無いと、設定ファイルが無いとき(初回起動)に2つとも未選択になっていた(XAMLのIsChecked="True"が上書きされる)
+            _sr.RegisterCtrl("PictTrim", "pt_Radio_SelectPointOfEnd", pt_Radio_SelectPointOfEnd, "True");
             _sr.RegisterCtrl("PictTrim", "pt_Radio_SelectSizeOfEnd", pt_Radio_SelectSizeOfEnd);
             _sr.RegisterCtrl("PictTrim", "pt_TargetX", pt_TargetX);
             _sr.RegisterCtrl("PictTrim", "pt_TargetY", pt_TargetY);
@@ -166,7 +168,9 @@ namespace Cheetos
             // Default値
             do_WhiteCoef.Text = @"30";
 
-            return _sr.Load(loadFileName);
+            Boolean isLoaded = _sr.Load(loadFileName);
+            SyncPictTrimEndMode();
+            return isLoaded;
         }
 
         // *******************************************************************************
