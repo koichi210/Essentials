@@ -200,8 +200,10 @@ namespace Othello
         /// <summary>
         /// 候補手(優先順にソート済み)から、角・星・次星などのマス目の性質を見て最終的に1手選ぶ。
         /// C++版 DetermineLocation を移植したもの:
-        /// 「特に問題ない安全な手」を最優先、無ければ角、無ければ星、無ければ次星、
+        /// 角を最優先、無ければ「特に問題ない安全な手」、無ければ星、無ければ次星、
         /// 最後に「置くと敵に角を取られてしまう手」という優先順位。
+        /// (C++版は角を見つけると決定済みの手(determ_put)を直接上書きしていたため、
+        /// 安全な手より角が優先される。現行C++版 ChooseFrom も 角 > 無難な手 の順)
         /// </summary>
         private static Point DetermineLocation(GameMaster gm, StoneColor color, List<Point> sortedCandidates)
         {
@@ -236,7 +238,7 @@ namespace Othello
             }
 
             // 上の優先順で選ぶ。候補が1つ以上あれば必ずどれかに分類されるので、末尾のsortedCandidates[0]は保険
-            return safe ?? corner ?? star ?? nextStar ?? stealCorner ?? sortedCandidates[0];
+            return corner ?? safe ?? star ?? nextStar ?? stealCorner ?? sortedCandidates[0];
         }
 
         private static bool IsCorner(Point p)

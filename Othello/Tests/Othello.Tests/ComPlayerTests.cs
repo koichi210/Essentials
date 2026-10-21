@@ -44,6 +44,47 @@ namespace Othello.Tests
         }
 
         [TestMethod]
+        public void 角に置けるなら安全な手より角を選ぶ()
+        {
+            var gm = new GameMaster();
+            gm.Initialize();
+            // 序盤2手はランダムなので、先に3手進めておく(黒→白→黒で白の番になる)
+            for (int i = 0; i < 3; i++)
+            {
+                bool[,] moves = gm.GetValidMoves(gm.CurrentTurn);
+                bool put = false;
+                for (int y = 0; y < GameMaster.BoardSize && !put; y++)
+                {
+                    for (int x = 0; x < GameMaster.BoardSize && !put; x++)
+                    {
+                        put = moves[y, x] && gm.TryPut(x, y);
+                    }
+                }
+            }
+            Assert.AreEqual(StoneColor.White, gm.CurrentTurn);
+
+            // 白の置ける場所は角(0,0)と、盤の中ほどの安全な手(3,4)の2か所だけにする
+            for (int y = 0; y < GameMaster.BoardSize; y++)
+            {
+                for (int x = 0; x < GameMaster.BoardSize; x++)
+                {
+                    gm.Table[y, x] = StoneColor.Unknown;
+                }
+            }
+            gm.Table[0, 1] = StoneColor.Black;
+            gm.Table[0, 2] = StoneColor.White;
+            gm.Table[4, 4] = StoneColor.Black;
+            gm.Table[4, 5] = StoneColor.White;
+
+            for (int level = 1; level <= 3; level++)
+            {
+                Assert.IsTrue(ComPlayer.TryGetMove(gm, StoneColor.White, level, out int x, out int y));
+                Assert.AreEqual(0, x, $"level={level}");
+                Assert.AreEqual(0, y, $"level={level}");
+            }
+        }
+
+        [TestMethod]
         public void COMvsCOMで最後まで打つと例外なく終局する()
         {
             var gm = new GameMaster();

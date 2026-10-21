@@ -447,7 +447,16 @@ namespace Othello
 
             if (dialog.ShowDialog(this) == true)
             {
-                System.IO.File.WriteAllText(dialog.FileName, Kifu.ToText(GameMaster.History));
+                // 読み取り専用・他のアプリで開いている等で書けないとき、例外のままだとアプリごと落ちるので知らせて終える
+                try
+                {
+                    System.IO.File.WriteAllText(dialog.FileName, Kifu.ToText(GameMaster.History));
+                }
+                catch (Exception ex) when (ex is System.IO.IOException || ex is UnauthorizedAccessException
+                    || ex is System.Security.SecurityException)
+                {
+                    MessageBox.Show(this, "棋譜ファイルを保存できなかったよ。\n" + ex.Message, "棋譜の保存", MessageBoxButton.OK, MessageBoxImage.Error);
+                }
             }
         }
 
