@@ -508,6 +508,7 @@ void OthelloDlg::EndGame(bool timeout)
 	EnableMenu(ID_MENUITEM_START, true);
 	EnableMenu(ID_MENUITEM_STOP, false);
 	EnableTimeLimitMenus(true);
+	UpdateUndoRedoMenus();
 	UpdateScore();
 
 	CString message;
@@ -680,10 +681,12 @@ void OthelloDlg::UpdateScore()
 	SetDlgItemText(IDC_SCORE, text);
 }
 
+// 終局後は OnUndo / OnRedo が何もしないので、押せないようにする
 void OthelloDlg::UpdateUndoRedoMenus()
 {
-	EnableMenu(ID_MENUITEM_VERS, game_.CanRedo());
-	EnableMenu(ID_MENUITEM_REVERS, game_.CanUndo());
+	const bool ended = (game_.GetGameState() == GameState::kEnd);
+	EnableMenu(ID_MENUITEM_VERS, !ended && game_.CanRedo());
+	EnableMenu(ID_MENUITEM_REVERS, !ended && game_.CanUndo());
 }
 
 // 対局中は持ち時間を変更させない
