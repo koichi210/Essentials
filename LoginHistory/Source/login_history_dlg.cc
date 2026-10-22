@@ -94,6 +94,7 @@ namespace
 	{
 		tm last = {};
 		tm parsed = {};
+		parsed.tm_isdst = -1;	// 夏時間かは mktime に判断させる（0 のままだと夏時間中は1時間ずれて警告になる）
 		char buff[kLineBufferSize] = {};
 
 		fseek(fp, -kLineBufferSize, SEEK_END);
