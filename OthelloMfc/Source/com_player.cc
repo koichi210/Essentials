@@ -92,7 +92,8 @@ bool ComPlayer::Think(const Board& board, Stone color, int level, int move_count
 
 ComPlayer::Candidates ComPlayer::GetCenterCandidates() const
 {
-	const int center = kBoardSize / 2;
+	// 1始まりの座標では中心は (kBoardSize + 1) / 2 = 4.5 なので、2倍した座標で距離を測る
+	const int doubled_center = kBoardSize + 1;
 	Candidates candidates;
 
 	for (int y : kCenterFirstOrder)
@@ -102,7 +103,7 @@ ComPlayer::Candidates ComPlayer::GetCenterCandidates() const
 			const CPoint pos(x, y);
 			if (board_.CanPut(pos, color_))
 			{
-				candidates.push_back({ pos, abs(center - x) + abs(center - y) });
+				candidates.push_back({ pos, abs(doubled_center - x * 2) + abs(doubled_center - y * 2) });
 			}
 		}
 	}
