@@ -407,10 +407,18 @@ void OthelloDlg::OnKifuRead()
 		return;
 	}
 
-	// 最後に打った色の次の手番から再開
-	const Stone next = game_.GetBoard().GetNextTurn(game_.GetTurn());
-	if (next != Stone::kNone)
+	// 最後に打った色の次の手番から再開（1手も無ければ黒番のまま）
+	if (game_.GetMoveCount() > 0)
 	{
+		const Stone next = game_.GetBoard().GetNextTurn(game_.GetTurn());
+		if (next == Stone::kNone)
+		{
+			// 終局まで打ち終えた棋譜
+			EndGame(false);
+			UpdateUndoRedoMenus();
+			Invalidate();
+			return;
+		}
 		ChangeTurn(next);
 	}
 	SetTimer(kComTimerId, kComThinkInterval, nullptr);
