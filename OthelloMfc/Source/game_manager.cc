@@ -78,7 +78,10 @@ void GameManager::Redo()
 	const KifuRecord& record = kifu_[move_count_];
 	move_count_++;
 	board_.Put(record.pos, record.flips, record.color);
-	turn_ = Opponent(record.color);
+
+	// 相手がパスする局面もあるので、次の手番は盤面から決める（終局なら相手の番のままにする）
+	const Stone next = board_.GetNextTurn(record.color);
+	turn_ = (next != Stone::kNone) ? next : Opponent(record.color);
 }
 
 // 書式: " 1 : F.5 黒"（手番号 : 列.行 色名）
