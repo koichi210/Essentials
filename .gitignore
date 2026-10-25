@@ -1,0 +1,82 @@
+# Prerequisites
+*.d
+
+# Object files
+*.o
+*.ko
+*.obj
+*.elf
+
+# Linker output
+*.ilk
+*.map
+*.exp
+
+# Precompiled Headers
+*.gch
+*.pch
+
+# Libraries
+*.lib
+*.a
+*.la
+*.lo
+
+# Shared objects (inc. Windows DLLs)
+#*.dll
+*.so
+*.so.*
+*.dylib
+
+# Executables
+#*.exe
+#*.xml
+*.out
+*.app
+*.i*86
+*.x86_64
+*.hex
+
+# Debug files
+*.dSYM/
+*.su
+*.idb
+*.pdb
+*.clw
+*.ncb
+*.aps
+*.mak
+*.suo
+*.cache
+*.resources
+*.FileListAbsolute.txt
+*.baml
+*.g.cs
+*.g.i.cs
+
+# Kernel Module Compile Results
+*.mod*
+*.cmd
+.tmp_versions/
+modules.order
+Module.symvers
+Mkfile.old
+dkms.conf
+*.manifest
+*.vshost.exe
+
+obj
+*.exe.config
+
+# ビルド出力（Debug構成は丸ごと無視。Release配下のexeはあえてコミットしている）
+**/bin/Debug/
+
+# ツールの設定プリセット（実行するたびに増えるユーザーデータなのでコミットしない）
+**/bin/Release/*.xml
+
+# UserDataLocation([[_Common/UserDataLocation.cs]])が生成する案内板ファイル。
+# 実データは%LOCALAPPDATA%配下にあり、これは各PC固有のポインタなのでコミットしない
+**/DataFolder.txt
+
+# テストプロジェクトのビルド出力（CS_Formと同じく、アプリ本体のRelease exeだけコミットする）
+**/Tests/**/bin/
