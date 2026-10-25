@@ -216,6 +216,56 @@ namespace EventRecorder.Tests
         }
 
         [TestMethod]
+        public void 修飾キー付きのホットキーで記録を止めても修飾キーのDownだけが残らない()
+        {
+            _temp.Write("EventRecorder.json", "{ \"RecordHotkey\": " + (int)(Keys.F5 | Keys.Control) + " }");
+
+            StaRunner.Run(() =>
+            {
+                MainWindow window = new MainWindow(_temp.Path);
+
+                window.HandleKeyboardStroke(Stroke.KEY_DOWN, Keys.F5, Keys.Control);   // 記録開始
+                window.HandleKeyboardStroke(Stroke.KEY_UP, Keys.F5, Keys.Control);
+                window.HandleKeyboardStroke(Stroke.KEY_DOWN, Keys.A, Keys.None);
+                window.HandleKeyboardStroke(Stroke.KEY_UP, Keys.A, Keys.None);
+                window.HandleKeyboardStroke(Stroke.KEY_DOWN, Keys.LControlKey, Keys.Control);
+                window.HandleKeyboardStroke(Stroke.KEY_DOWN, Keys.F5, Keys.Control);   // 記録停止
+                Assert.AreEqual("EventRecorder", window.Title);
+
+                String[] recorded = window.EventRows
+                    .Where(r => r.Type != EventRules.WaitEventType)
+                    .Select(r => r.Type + ":" + r.Key)
+                    .ToArray();
+                CollectionAssert.AreEqual(new[] { "KEY_DOWN:A", "KEY_UP:A" }, recorded, "停止用に押したCtrlのDownは残さない");
+
+                // 次の記録では、前回押されたままだったCtrlを引きずらない
+                window.HandleKeyboardStroke(Stroke.KEY_UP, Keys.LControlKey, Keys.None);   // 停止後のUpは記録されない
+                window.HandleKeyboardStroke(Stroke.KEY_UP, Keys.F5, Keys.None);
+                window.HandleKeyboardStroke(Stroke.KEY_DOWN, Keys.F5, Keys.Control);   // 記録開始
+                window.HandleKeyboardStroke(Stroke.KEY_UP, Keys.F5, Keys.Control);
+                window.HandleKeyboardStroke(Stroke.KEY_DOWN, Keys.F5, Keys.Control);   // 記録停止
+                Assert.AreEqual(2, window.EventRows.Count(r => r.Type != EventRules.WaitEventType));
+            });
+        }
+
+        [TestMethod]
+        public void 記録中はプロファイルのプルダウンを切り替えられない()
+        {
+            StaRunner.Run(() =>
+            {
+                MainWindow window = new MainWindow(_temp.Path);
+                Assert.IsTrue(window.comboBox_Profile.IsEnabled);
+
+                window.HandleKeyboardStroke(Stroke.KEY_DOWN, Keys.F1, Keys.None);   // 記録開始
+                Assert.IsFalse(window.comboBox_Profile.IsEnabled, "記録中に切り替えると表とプレイリストが差し替わるため");
+
+                window.HandleKeyboardStroke(Stroke.KEY_UP, Keys.F1, Keys.None);
+                window.HandleKeyboardStroke(Stroke.KEY_DOWN, Keys.F1, Keys.None);   // 記録停止
+                Assert.IsTrue(window.comboBox_Profile.IsEnabled);
+            });
+        }
+
+        [TestMethod]
         public void WAIT時間の一括変更は1回のUndoで戻る()
         {
             StaRunner.Run(() =>

@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+using Keys = System.Windows.Forms.Keys;
 
 namespace EventRecorder.Tests
 {
@@ -123,6 +124,94 @@ namespace EventRecorder.Tests
             CollectionAssert.AreEqual(new[] { 5, 4 }, EventRules.CollectRowsToDelete(rows, new[] { 4 }));
             // KeyUp行だけを消す場合は、ペアのKeyDown行は残す
             CollectionAssert.AreEqual(new[] { 2 }, EventRules.CollectRowsToDelete(rows, new[] { 2 }));
+        }
+
+        private static String[] TypeAndKeys(List<EventRow> rows)
+        {
+            return rows.Select(r => r.Type + ":" + r.Key).ToArray();
+        }
+
+        [TestMethod]
+        public void 記録停止時_末尾に残った修飾キーのDownだけの行は消す()
+        {
+            // Ctrl+Shift+F5で記録を止めた時: CtrlとShiftのDownだけが記録され、Upは停止後なので記録されない
+            List<EventRow> rows = new List<EventRow>
+            {
+                EventRow.FromData("KEY_DOWN", "", "", "A", "0", ""),
+                EventRow.FromData("KEY_UP", "", "", "A", "0", ""),
+                EventRow.FromData("WAIT_MS", "", "", "", "300", ""),
+                EventRow.FromData("KEY_DOWN", "", "", "LControlKey", "0", ""),
+                EventRow.FromData("WAIT_MS", "", "", "", "100", ""),
+                EventRow.FromData("KEY_DOWN", "", "", "LShiftKey", "0", ""),
+            };
+
+            Assert.IsTrue(EventRules.ReleaseUnpairedModifierKeys(rows, new[] { Keys.LControlKey, Keys.LShiftKey }));
+
+            CollectionAssert.AreEqual(new[] { "KEY_DOWN:A", "KEY_UP:A", "WAIT_MS:", "WAIT_MS:" }, TypeAndKeys(rows));
+        }
+
+        [TestMethod]
+        public void 記録停止時_修飾キーを押したまま他の操作をしていたら末尾にUpを足す()
+        {
+            // Ctrlを押したままクリックしてから、Ctrl+F5で止めた時: Ctrl+クリックの意味を残す
+            List<EventRow> rows = new List<EventRow>
+            {
+                EventRow.FromData("KEY_DOWN", "", "", "LControlKey", "0", ""),
+                EventRow.FromData("LEFT_DOWN", "1", "1", "", "0", ""),
+                EventRow.FromData("LEFT_UP", "1", "1", "", "0", ""),
+                EventRow.FromData("SYSKEY_DOWN", "", "", "LMenu", "0", ""),
+                EventRow.FromData("RIGHT_DOWN", "1", "1", "", "0", ""),
+            };
+
+            Assert.IsTrue(EventRules.ReleaseUnpairedModifierKeys(rows, new[] { Keys.LControlKey, Keys.LMenu }));
+
+            Assert.AreEqual(7, rows.Count);
+            CollectionAssert.AreEquivalent(new[] { "KEY_UP:LControlKey", "SYSKEY_UP:LMenu" }, TypeAndKeys(rows).Skip(5).ToArray());
+            Assert.AreEqual("0", rows[6].Wait);
+        }
+
+        [TestMethod]
+        public void 記録停止時_修飾キー以外や押されていないキーは触らない()
+        {
+            List<EventRow> rows = new List<EventRow>
+            {
+                EventRow.FromData("KEY_DOWN", "", "", "A", "0", ""),
+                EventRow.FromData("KEY_DOWN", "", "", "LControlKey", "0", ""),
+                EventRow.FromData("KEY_UP", "", "", "LControlKey", "0", ""),
+            };
+
+            // Aは押したままだが修飾キーではない。Ctrlは離してあるので押されているキーに入っていない
+            Assert.IsFalse(EventRules.ReleaseUnpairedModifierKeys(rows, new[] { Keys.A }));
+            Assert.IsFalse(EventRules.ReleaseUnpairedModifierKeys(rows, new Keys[0]));
+            Assert.AreEqual(3, rows.Count);
+        }
+
+        [TestMethod]
+        public void 再生時に飛ばされる行は種類ごとに行番号付きでまとめる()
+        {
+            List<String> types = new List<String> { "LEFT_DOWN", "SYSKEY_DOWN", "WAIT_MS", "SYSKEY_UP", "KEY_DOWN", "X1_DOWN" };
+            for (int i = 0; i < 7; i++)
+            {
+                types.Add("WHEEL_DOWN");
+            }
+
+            List<String> lines = EventRules.SummarizeUnsupportedRowsForPlayback(types);
+
+            CollectionAssert.AreEqual(new[]
+            {
+                "SYSKEY_DOWN: 1行(行1)",
+                "SYSKEY_UP: 1行(行3)",
+                "X1_DOWN: 1行(行5)",
+                "WHEEL_DOWN: 7行(行6, 行7, 行8, 行9, 行10, …)",
+            }, lines);
+        }
+
+        [TestMethod]
+        public void 再生できる行だけなら飛ばされる行のまとめは空()
+        {
+            List<String> types = new List<String> { "LEFT_DOWN", "LEFT_UP", "KEY_DOWN", "KEY_UP", "WAIT_MS", "MIDDLE_DOWN" };
+
+            Assert.AreEqual(0, EventRules.SummarizeUnsupportedRowsForPlayback(types).Count);
         }
 
         [TestMethod]

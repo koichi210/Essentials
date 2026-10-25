@@ -157,6 +157,43 @@ namespace EventRecorder
             return false;
         }
 
+        // 記録はされるが、再生時は(まだ再生に対応していないため)飛ばされるイベントの種類。
+        // Altを押しながらのキー・F10(SYSKEY)、マウスのホイール、マウスのX1/X2(サイド)ボタン
+        private static readonly HashSet<String> _unsupportedPlaybackEventTypes = new HashSet<String>
+        {
+            GlobalHook.KeyboardHook.Stroke.SYSKEY_DOWN.ToString(),
+            GlobalHook.KeyboardHook.Stroke.SYSKEY_UP.ToString(),
+            GlobalHook.MouseHook.Stroke.WHEEL_DOWN.ToString(),
+            GlobalHook.MouseHook.Stroke.WHEEL_UP.ToString(),
+            GlobalHook.MouseHook.Stroke.X1_DOWN.ToString(),
+            GlobalHook.MouseHook.Stroke.X1_UP.ToString(),
+            GlobalHook.MouseHook.Stroke.X2_DOWN.ToString(),
+            GlobalHook.MouseHook.Stroke.X2_UP.ToString(),
+        };
+
+        // 再生時に飛ばされる行を、種類ごとに「WHEEL_DOWN: 12行(行3, 5, …)」の形でまとめる(無ければ空のリスト)。
+        // 以前は再生前チェックでも何も言わずに飛ばしていた。typesは各行のEvent列。行番号は種類ごとに先頭の数件だけ
+        public static List<String> SummarizeUnsupportedRowsForPlayback(IList<String> types)
+        {
+            const int maxListedRows = 5;
+
+            List<String> lines = new List<String>();
+            foreach (IGrouping<String, int> group in Enumerable.Range(0, types.Count)
+                .Where(i => _unsupportedPlaybackEventTypes.Contains(types[i]))
+                .GroupBy(i => types[i]))
+            {
+                List<int> indexes = group.ToList();
+                String listed = String.Join(", ", indexes.Take(maxListedRows).Select(i => "行" + i));
+                if (indexes.Count > maxListedRows)
+                {
+                    listed += ", …";
+                }
+                lines.Add(group.Key + ": " + indexes.Count + "行(" + listed + ")");
+            }
+
+            return lines;
+        }
+
         // 旧バージョンの保存形式(各行が自分自身の待機時間をWait列に持つ)を、
         // 新形式(待機を独立したWAIT_MS行として挿入する形式)に変換する。
         // 併せて、Event列の表記が旧版の"WAIT"のままの行があれば"WAIT_MS"に揃える。
@@ -252,6 +289,76 @@ namespace EventRecorder
             }
 
             return indexesToRemove.OrderByDescending(x => x).ToList();
+        }
+
+        // Ctrl/Shift/Alt(左右の区別ありも含む)
+        private static readonly HashSet<Keys> _modifierKeys = new HashSet<Keys>
+        {
+            Keys.ControlKey, Keys.LControlKey, Keys.RControlKey,
+            Keys.ShiftKey, Keys.LShiftKey, Keys.RShiftKey,
+            Keys.Menu, Keys.LMenu, Keys.RMenu,
+        };
+
+        // 記録停止時に、対になるUpが記録されていない修飾キー(Ctrl/Shift/Alt)のDown行を片付ける。行を変えたらtrue。
+        // Ctrl+F5のような修飾キー付きのホットキーで記録を止めると、CtrlのDownだけが記録され(Upは停止後なので記録されない)、
+        // 再生後もCtrlが押されたままになっていた。pressedKeysは記録中にDownしてまだUpしていないキー。
+        // ・後ろにWAIT_MS行(と同じく片付け対象の修飾キーのDown行)しか無い: ホットキーのために押しただけなのでDown行を消す
+        // ・後ろに他の操作がある(Ctrlを押したままクリックした等): Ctrl+クリックの意味を残すため、末尾に対のUp行を足す
+        public static Boolean ReleaseUnpairedModifierKeys(IList<EventRow> rows, IEnumerable<Keys> pressedKeys)
+        {
+            HashSet<String> unpairedKeys = new HashSet<String>(pressedKeys.Where(k => _modifierKeys.Contains(k)).Select(k => k.ToString()));
+            if (unpairedKeys.Count == 0)
+            {
+                return false;
+            }
+
+            Boolean changed = false;
+            for (int i = rows.Count - 1; i >= 0; i--)
+            {
+                EventRow row = rows[i];
+                if (IsWaitEventType(row.Type))
+                {
+                    continue;
+                }
+
+                if (GetPairedKeyUpType(row.Type) == null || !unpairedKeys.Remove(row.Key))
+                {
+                    break;
+                }
+
+                rows.RemoveAt(i);
+                changed = true;
+            }
+
+            foreach (String key in unpairedKeys)
+            {
+                for (int i = rows.Count - 1; i >= 0; i--)
+                {
+                    String upType = GetPairedKeyUpType(rows[i].Type);
+                    if (upType != null && rows[i].Key == key)
+                    {
+                        rows.Add(EventRow.FromData(upType, "", "", key, "0", ""));
+                        changed = true;
+                        break;
+                    }
+                }
+            }
+
+            return changed;
+        }
+
+        // KeyDown/SysKeyDownの行の種類なら、対になるKeyUp/SysKeyUpの種類を返す。それ以外はnull
+        private static String GetPairedKeyUpType(String downType)
+        {
+            if (downType == GlobalHook.KeyboardHook.Stroke.KEY_DOWN.ToString())
+            {
+                return GlobalHook.KeyboardHook.Stroke.KEY_UP.ToString();
+            }
+            if (downType == GlobalHook.KeyboardHook.Stroke.SYSKEY_DOWN.ToString())
+            {
+                return GlobalHook.KeyboardHook.Stroke.SYSKEY_UP.ToString();
+            }
+            return null;
         }
 
         // eventTypeに指定したイベントの各行について、直前がWAIT_MS行ならその待機時間をまとめて指定値に変更する。

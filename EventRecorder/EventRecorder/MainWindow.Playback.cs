@@ -55,7 +55,7 @@ namespace EventRecorder
         // レコードグループの記録データを単発再生する
         private void StartSinglePlayback()
         {
-            if (!ValidateEventsForPlayback())
+            if (!ValidateEventsForPlayback() || !ConfirmUnsupportedEventsForPlayback())
             {
                 return;
             }
@@ -682,6 +682,30 @@ namespace EventRecorder
                 MessageBoxImage.Warning);
 
             return false;
+        }
+
+        // 記録はされるが再生時は飛ばされる行(Altを押しながらのキー・F10、ホイール、マウスのサイドボタン。
+        // まだ再生に対応していない)があれば、知らせてから再生するか確かめる。やめるならfalseを返す
+        // (以前は再生前チェックでも何も言わずに飛ばしていたため、再生しても途中の操作が抜けていることに気付けなかった)
+        private Boolean ConfirmUnsupportedEventsForPlayback()
+        {
+            List<String> lines = EventRules.SummarizeUnsupportedRowsForPlayback(EventRows.Select(r => r.Type).ToList());
+            if (lines.Count == 0)
+            {
+                return true;
+            }
+
+            MessageBoxResult result = MessageBox.Show(
+                this,
+                "再生に対応していない行があるよ。この行は再生時に飛ばされるよ" + Environment.NewLine
+                    + "(Altを押しながらのキー・F10、マウスのホイール・サイドボタン)" + Environment.NewLine + Environment.NewLine
+                    + String.Join(Environment.NewLine, lines) + Environment.NewLine + Environment.NewLine
+                    + "このまま再生する？",
+                "EventRecorder - 再生前チェック",
+                MessageBoxButton.OKCancel,
+                MessageBoxImage.Warning);
+
+            return result == MessageBoxResult.OK;
         }
 
         // 記録した1イベント分をSendInputで再現する(WinForms版と同じ)

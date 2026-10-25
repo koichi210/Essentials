@@ -575,12 +575,26 @@ namespace EventRecorder
             // 「全体ループ」も単発再生の「ループ回数」とtextBox_Loopを共有している
             int overallLoopCount = ParseLoopCount(textBox_Loop.Text);
 
+            // 各ファイルを読み込むたびにtextBox_Loopがそのファイルの値で上書きされるため、
+            // 再生後(停止・エラーでも)に元の値へ戻す(WinForms版と同じ)
+            String loopTextBeforeRun = textBox_Loop.Text;
+
             _playbackOverallLoopNo = 0;
             _playbackOverallLoopMax = overallLoopCount;
             _playbackInnerLoopNo = 0;
             _playbackInnerLoopMax = 0;
 
-            BeginPlayback(() => PlaylistPlayLoop(entries, overallLoopCount));
+            BeginPlayback(() =>
+            {
+                try
+                {
+                    PlaylistPlayLoop(entries, overallLoopCount);
+                }
+                finally
+                {
+                    InvokeOnUi(() => textBox_Loop.Text = loopTextBeforeRun);
+                }
+            });
         }
 
         // プレイリスト全体をoverallLoopCount回繰り返す。各周回の中で、
@@ -588,6 +602,9 @@ namespace EventRecorder
         // (前後の状態管理・カーソル位置の復元はRunPlaybackの担当)
         private void PlaylistPlayLoop(List<PlaylistEntry> entries, int overallLoopCount)
         {
+            // 再生に対応していない行の確認を済ませたファイル(全体ループで同じファイルを何度も確認しないように)
+            HashSet<String> confirmedFiles = new HashSet<String>(StringComparer.OrdinalIgnoreCase);
+
             for (int loopNo = 0; loopNo < overallLoopCount && !_stopPlayRequested; loopNo++)
             {
                 int loopDisplayNo = loopNo + 1;
@@ -612,6 +629,13 @@ namespace EventRecorder
 
                         // 読み込んだファイルに再生できない行が無いか確認する。あればプレイリスト全体を停止する
                         if (!ValidateEventsForPlayback())
+                        {
+                            _stopPlayRequested = true;
+                            return;
+                        }
+
+                        // 再生時に飛ばされる行があれば知らせる(1回の実行で同じファイルは最初の1回だけ)。やめたら全体を停止する
+                        if (confirmedFiles.Add(entry.FileName) && !ConfirmUnsupportedEventsForPlayback())
                         {
                             _stopPlayRequested = true;
                             return;

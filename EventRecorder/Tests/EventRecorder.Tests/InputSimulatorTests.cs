@@ -60,22 +60,42 @@ namespace EventRecorder.Tests
         }
 
         [TestMethod]
-        public void AddMouseInputは絶対座標指定だと画面サイズに応じて座標を換算する()
+        public void AddMouseInputは絶対座標指定だと仮想スクリーン基準で座標を換算する()
         {
-            // 実行環境の画面解像度に依存するため、期待値は ToAbsoluteCoordinate で求める
+            // 実行環境の画面構成に依存するため、期待値は ToAbsoluteCoordinate で求める
             // （固定値をハードコードすると解像度の違う環境で壊れるため）。
-            // 換算そのものの正しさは下の ToAbsoluteCoordinate のテストで確かめる
+            // 換算そのものの正しさは下の ToAbsoluteCoordinate のテストで確かめる。
+            // サブモニタも含めた仮想スクリーンの左上が原点になる(以前はメイン画面基準だった)
             var inputs = new List<InputSimulator.Input>();
-            int screenWidth = System.Windows.Forms.Screen.PrimaryScreen.Bounds.Width;
-            int screenHeight = System.Windows.Forms.Screen.PrimaryScreen.Bounds.Height;
+            System.Drawing.Rectangle virtualScreen = System.Windows.Forms.SystemInformation.VirtualScreen;
 
             InputSimulator.AddMouseInput(ref inputs, InputSimulator.MouseStroke.MOVE, 0, true, 100, 200);
 
-            Assert.AreEqual(InputSimulator.ToAbsoluteCoordinate(100, screenWidth), inputs[0].Mouse.X);
-            Assert.AreEqual(InputSimulator.ToAbsoluteCoordinate(200, screenHeight), inputs[0].Mouse.Y);
+            Assert.AreEqual(InputSimulator.ToAbsoluteCoordinate(100 - virtualScreen.Left, virtualScreen.Width), inputs[0].Mouse.X);
+            Assert.AreEqual(InputSimulator.ToAbsoluteCoordinate(200 - virtualScreen.Top, virtualScreen.Height), inputs[0].Mouse.Y);
 
-            // ABSOLUTE フラグ(0x8000)が立っているはず
+            // ABSOLUTE フラグ(0x8000)と VIRTUALDESK フラグ(0x4000)が立っているはず
             Assert.AreEqual(0x8000, inputs[0].Mouse.Flags & 0x8000);
+            Assert.AreEqual(0x4000, inputs[0].Mouse.Flags & 0x4000);
+        }
+
+        [TestMethod]
+        public void AddMouseInputは仮想スクリーンの左上と右下の座標を端の値に換算する()
+        {
+            // メイン画面の左や上にサブモニタがあると左上はマイナス座標になる。
+            // 以前はメイン画面基準だったため、マイナス座標はすべて0(メイン画面の端)に寄せられていた
+            var inputs = new List<InputSimulator.Input>();
+            System.Drawing.Rectangle virtualScreen = System.Windows.Forms.SystemInformation.VirtualScreen;
+
+            InputSimulator.AddMouseInput(ref inputs, InputSimulator.MouseStroke.MOVE, 0, true, virtualScreen.Left, virtualScreen.Top);
+            InputSimulator.AddMouseInput(ref inputs, InputSimulator.MouseStroke.MOVE, 0, true, virtualScreen.Right - 1, virtualScreen.Bottom - 1);
+
+            Assert.AreEqual(0, inputs[0].Mouse.X);
+            Assert.AreEqual(0, inputs[0].Mouse.Y);
+
+            // Windowsは「n * 仮想スクリーンの幅 / 65536 + 左端」でピクセルに戻す
+            Assert.AreEqual(virtualScreen.Right - 1, (int)((long)inputs[1].Mouse.X * virtualScreen.Width / 65536) + virtualScreen.Left);
+            Assert.AreEqual(virtualScreen.Bottom - 1, (int)((long)inputs[1].Mouse.Y * virtualScreen.Height / 65536) + virtualScreen.Top);
         }
 
         [DataTestMethod]

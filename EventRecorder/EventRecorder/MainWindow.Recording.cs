@@ -25,9 +25,13 @@ namespace EventRecorder
             _highlightedEventRow = null;
         }
 
-        // 現在の記録中/再生中の状態をタイトルバーに反映する
+        // 現在の記録中/再生中の状態をタイトルバーに反映する。
+        // あわせて、記録中・再生中はプロファイルのプルダウンを無効にする(切り替えると読み込みが走り、
+        // 記録中・再生中の表とプレイリストが別のプロファイルの内容に差し替わってしまうため)
         private void UpdateTitle()
         {
+            comboBox_Profile.IsEnabled = !_isRecording && !_isPlaying;
+
             if (_isRecording)
             {
                 Title = _baseTitle + " - 記録中";
@@ -62,6 +66,15 @@ namespace EventRecorder
                 GlobalHook.MouseHook.Stop();
                 _gridFlushTimer.Stop();
                 FlushPendingRows();
+
+                // Ctrl+F5のような修飾キー付きのホットキーで止めた時に、修飾キーのDownだけが残って
+                // 再生後も押されたままにならないよう片付ける
+                if (EventRules.ReleaseUnpairedModifierKeys(EventRows, _pressedKeys))
+                {
+                    HighlightEventRow(EventRows.Count - 1);
+                }
+                _pressedKeys.Clear();
+
                 _isRecording = false;
                 button_Record.Content = "記録";
                 UpdateTitle();
