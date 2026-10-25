@@ -69,6 +69,21 @@ namespace Othello.Tests
 
             Assert.IsTrue(ok, errorMessage);
             Assert.AreEqual(1, gm.History.Count);
+            Assert.IsNull(errorMessage, "読み飛ばしだけなら中断のメッセージは出さない");
+        }
+
+        [TestMethod]
+        public void TryReplayは2手目以降で中断したらtrueでも中断のメッセージを返す()
+        {
+            // 画面側はtrueでもメッセージがあれば表示する(以前は!okのときしか出さず、中断が分からなかった)
+            var gm = new GameMaster();
+            string text = "***** 棋譜 *****\n 1 : C.4 黒\n 2 : A.1 白\n";
+
+            bool ok = Kifu.TryReplay(text, gm, out string errorMessage);
+
+            Assert.IsTrue(ok);
+            Assert.AreEqual(1, gm.History.Count);
+            Assert.AreEqual("2手目(A.1)で読み込みを中断したよ(その場所には置けないみたい)", errorMessage);
         }
     }
 }

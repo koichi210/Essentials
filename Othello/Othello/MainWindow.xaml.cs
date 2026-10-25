@@ -498,7 +498,7 @@ namespace Othello
 
         /// <summary>
         /// 棋譜テキストを最初から再生する(「棋譜」→「読込」のファイル読込以降の処理)。
-        /// 失敗した場合はメッセージを表示する。
+        /// 失敗した場合や、途中の手で中断した場合(それまでの手は反映済み)はメッセージを表示する。
         /// </summary>
         internal bool LoadKifuText(string text, bool showError = true)
         {
@@ -510,7 +510,7 @@ namespace Othello
 
             RedrawBoard();
 
-            if (!ok && showError)
+            if ((!ok || errorMessage != null) && showError)
             {
                 MessageBox.Show(this, errorMessage ?? "棋譜を読み込めなかったよ。", "棋譜の読込", MessageBoxButton.OK, MessageBoxImage.Warning);
             }
