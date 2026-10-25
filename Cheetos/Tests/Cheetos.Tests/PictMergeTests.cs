@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Drawing;
 using System.IO;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
@@ -305,18 +306,72 @@ namespace Cheetos.Tests
         }
 
         [TestMethod]
-        public void GetMinImageHeightは結合対象のうちいちばん低い画像の高さを返す()
+        public void GetImageHeightsは結合対象の画像名と高さを返す()
         {
             CreateImage("a_left.png", 10, 30, Color.Red);
             CreateImage("b_left.png", 10, 20, Color.Red);
             CreateImage("other.png", 10, 5, Color.Red);
             File.WriteAllText(Path.Combine(tempDirectory, "c_left.png"), "not an image");
 
-            int height = PictMerge.GetMinImageHeight(tempDirectory, "left",
+            List<KeyValuePair<String, int>> heights = PictMerge.GetImageHeights(tempDirectory, "left",
                 new[] { "a_left.png", "b_left.png", "other.png", "c_left.png", "none_left.png", "" });
 
-            Assert.AreEqual(20, height, "接頭辞1が無いもの・画像でないもの・無いファイルは数えない");
-            Assert.AreEqual(int.MaxValue, PictMerge.GetMinImageHeight(tempDirectory, "left", new[] { "other.png" }));
+            CollectionAssert.AreEqual(
+                new[] { new KeyValuePair<String, int>("a_left.png", 30), new KeyValuePair<String, int>("b_left.png", 20) },
+                heights,
+                "接頭辞1が無いもの・画像でないもの・無いファイルは入れない");
+            Assert.AreEqual(0, PictMerge.GetImageHeights(tempDirectory, "left", new[] { "other.png" }).Count);
+        }
+
+        // 回帰テスト: いちばん低い画像の高さで判定していたので、高い画像では有効な行まで不正として挙がっていた
+        [TestMethod]
+        public void ClassifyInvalidTrimHeightsは画像ごとに判定して全部の画像で不正な行と一部の画像だけで不正な行を分ける()
+        {
+            var heights = new List<KeyValuePair<String, int>>
+            {
+                new KeyValuePair<String, int>("a_left.png", 100),
+                new KeyValuePair<String, int>("b_left.png", 200),
+            };
+            List<String> invalidForAll;
+            List<KeyValuePair<String, String[]>> invalidForSome;
+
+            PictMerge.ClassifyInvalidTrimHeights(new[] { "", "0,100", "0,150", "0,250", "abc", "100,50", "-5,10", "-,-" }, heights,
+                out invalidForAll, out invalidForSome);
+
+            CollectionAssert.AreEqual(new[] { "0,250", "abc", "100,50", "-5,10" }, invalidForAll);
+            Assert.AreEqual(1, invalidForSome.Count);
+            Assert.AreEqual("0,150", invalidForSome[0].Key);
+            CollectionAssert.AreEqual(new[] { "a_left.png" }, invalidForSome[0].Value);
+        }
+
+        [TestMethod]
+        public void ClassifyInvalidTrimHeightsは高さの分かる画像が無ければ書式の不正だけを全部の画像で不正とする()
+        {
+            List<String> invalidForAll;
+            List<KeyValuePair<String, String[]>> invalidForSome;
+
+            PictMerge.ClassifyInvalidTrimHeights(new[] { "0,99999", "abc" }, new List<KeyValuePair<String, int>>(),
+                out invalidForAll, out invalidForSome);
+
+            CollectionAssert.AreEqual(new[] { "abc" }, invalidForAll);
+            Assert.AreEqual(0, invalidForSome.Count);
+        }
+
+        [TestMethod]
+        public void BuildInvalidTrimHeightsMessageはどの画像で不正かを書く()
+        {
+            var heights = new List<KeyValuePair<String, int>>
+            {
+                new KeyValuePair<String, int>("a_left.png", 100),
+                new KeyValuePair<String, int>("b_left.png", 200),
+            };
+
+            Assert.AreEqual(String.Empty, PictMerge.BuildInvalidTrimHeightsMessage(new[] { "0,100", "-,-" }, heights));
+
+            String message = PictMerge.BuildInvalidTrimHeightsMessage(new[] { "0,150", "abc" }, heights);
+            StringAssert.Contains(message, "全部の画像で不正: [abc]");
+            StringAssert.Contains(message, "[0,150] a_left.png" + Environment.NewLine);
+            Assert.IsFalse(message.Contains("b_left.png"), "高い画像では有効な行なので挙げない");
         }
     }
 }
