@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Text;
 
 namespace Mailer
 {
@@ -43,10 +44,19 @@ namespace Mailer
             destText = ReplaceDay(tomorrow, destText, "%%TOMORROW%%");
             destText = ReplaceDay(tomorrow, destText, "%%tomorrow%%", false);
 
-            DateTime friday = today.AddDays(today.DayOfWeek == DayOfWeek.Friday ? 0 : 5 - (int)today.DayOfWeek);
+            DateTime friday = GetWeekendFriday(today);
             destText = ReplaceDay(friday, destText, "%%WEEKEND%%");
             destText = ReplaceDay(friday, destText, "%%weekend%%", false);
             return destText;
+        }
+
+        /// <summary>
+        /// %%weekend%% の日付。次の金曜日(金曜は当日)。土・日も次の金曜日になる。
+        /// 以前は「5 - 曜日」で求めていたので、土曜は前日の金曜日になっていた。
+        /// </summary>
+        public static DateTime GetWeekendFriday(DateTime today)
+        {
+            return today.AddDays(((int)DayOfWeek.Friday - (int)today.DayOfWeek + 7) % 7);
         }
 
         public static String ReplaceDay(DateTime dt, String srcText, String keyName, bool withYear = true)
@@ -65,8 +75,41 @@ namespace Mailer
         /// </summary>
         public static String EscapeUrlParam(String value)
         {
-            // 改行("\r\n")は以前と同じ"%0D%0A"になる
-            return Uri.EscapeDataString(value);
+            // 改行("\r\n")は以前と同じ"%0D%0A"になる。
+            // .NET FrameworkのUri.EscapeDataStringは約65,520文字を超えるとUriFormatExceptionになるので、区切って変換する
+            // (長すぎてブラウザに渡せないかどうかは、URL全体の長さで IsUrlTooLong が判定する)
+            if (value.Length <= _escapeChunkLength)
+            {
+                return Uri.EscapeDataString(value);
+            }
+
+            var escaped = new StringBuilder();
+            for (int start = 0; start < value.Length;)
+            {
+                int length = Math.Min(_escapeChunkLength, value.Length - start);
+                // サロゲートペアの途中で区切らない
+                if (start + length < value.Length && Char.IsHighSurrogate(value[start + length - 1]))
+                {
+                    length--;
+                }
+                escaped.Append(Uri.EscapeDataString(value.Substring(start, length)));
+                start += length;
+            }
+            return escaped.ToString();
+        }
+
+        private const int _escapeChunkLength = 30000;
+
+        /// <summary>
+        /// ブラウザに渡せるURLの長さの上限。ブラウザはコマンドライン引数で起動するので、
+        /// コマンドライン全体の上限(32,767文字)からブラウザのパスの分を残した長さにする。
+        /// </summary>
+        public const int MaxUrlLength = 32000;
+
+        /// <summary>URLが長すぎてブラウザに渡せないか(本文が長すぎるときなど)。</summary>
+        public static Boolean IsUrlTooLong(String url)
+        {
+            return url.Length > MaxUrlLength;
         }
 
         /// <summary>メール作成する日数分のオフセット一覧を作る。reverse指定で降順にする。</summary>

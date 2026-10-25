@@ -91,12 +91,16 @@ namespace Mailer
             var offsets = Logic.GetDayOffsetList(_param.CreateNum, checkBox_Reverse.IsChecked == true);
             foreach (var offset in offsets)
             {
-                OpenBrowser(offset);
+                if (!OpenBrowser(offset))
+                {
+                    return;
+                }
                 System.Threading.Thread.Sleep(_param.IntervalMsec);
             }
         }
 
-        private void OpenBrowser(int daysOffset = 0)
+        // URLが長すぎてブラウザを開けなかったときはfalse
+        private Boolean OpenBrowser(int daysOffset = 0)
         {
             String browseUrl = _mailUrl;
             if (textBox_MailTo.Text != String.Empty)
@@ -124,10 +128,19 @@ namespace Mailer
                 browseUrl += "&body=" + Logic.EscapeUrlParam(textBox_MailBody.Text);
             }
 
+            // 長すぎるとブラウザを起動できない(以前は例外で落ちていた)
+            if (Logic.IsUrlTooLong(browseUrl))
+            {
+                MessageBox.Show(String.Format("宛先・件名・本文が長すぎて、ブラウザに渡せません(URLにすると{0}文字、{1}文字まで)。" + Environment.NewLine
+                    + "本文などを短くしてください。", browseUrl.Length, Logic.MaxUrlLength));
+                return false;
+            }
+
             // 起動したプロセスのハンドルは使わないので、すぐに解放する
             using (_util.ExecuteProcess(textBox_BrowserPath.Text, browseUrl))
             {
             }
+            return true;
         }
 
         private Boolean TryGetUiParam()

@@ -46,7 +46,7 @@
                 <stc:TextBoxEx Grid.Row="2" Grid.Column="1" x:Name="textBox_MailBcc" stc:Placeholder.Text="例: bcc@example.com" VerticalAlignment="Center" Margin="0,2" />
                 <Label Grid.Row="3" Content="件名：" HorizontalAlignment="Right" />
                 <stc:TextBoxEx Grid.Row="3" Grid.Column="1" x:Name="textBox_MailSubject" stc:Placeholder.Text="例: 日報 %%USERSDAY%%" VerticalAlignment="Center" Margin="0,2"
-                               ToolTip="%%today%% %%tomorrow%% %%weekend%%(今週の金曜)は実行日、%%usersday%% %%dayofweek%%は起点日の日付・曜日に置き換わる。大文字で書くと年付きの日付/曜日の正式名になる" />
+                               ToolTip="%%today%% %%tomorrow%% %%weekend%%(次の金曜。金曜なら当日)は実行日、%%usersday%% %%dayofweek%%は起点日の日付・曜日に置き換わる。大文字で書くと年付きの日付/曜日の正式名になる" />
                 <Label Grid.Row="4" Content="本文：" HorizontalAlignment="Right" VerticalAlignment="Top" />
                 <stc:TextBoxEx Grid.Row="4" Grid.Column="1" x:Name="textBox_MailBody" Margin="0,4,0,2"
                                ToolTip="件名の置換記号(%%today%%等)は本文では置き換わらない"

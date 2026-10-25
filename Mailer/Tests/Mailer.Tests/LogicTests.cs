@@ -127,6 +127,18 @@ namespace Mailer.Tests
             Assert.AreEqual("no placeholder here", result);
         }
 
+        [TestMethod]
+        public void GetWeekendFriday_次の金曜日になり金曜は当日で土日も次の金曜日()
+        {
+            // 2024/6/10は月曜日
+            Assert.AreEqual(new DateTime(2024, 6, 14), Logic.GetWeekendFriday(new DateTime(2024, 6, 10)), "月");
+            Assert.AreEqual(new DateTime(2024, 6, 14), Logic.GetWeekendFriday(new DateTime(2024, 6, 13)), "木");
+            Assert.AreEqual(new DateTime(2024, 6, 14), Logic.GetWeekendFriday(new DateTime(2024, 6, 14)), "金は当日");
+            // 以前は土曜だと前日の金曜日(6/14)になっていた
+            Assert.AreEqual(new DateTime(2024, 6, 21), Logic.GetWeekendFriday(new DateTime(2024, 6, 15)), "土は6日後");
+            Assert.AreEqual(new DateTime(2024, 6, 21), Logic.GetWeekendFriday(new DateTime(2024, 6, 16)), "日は5日後");
+        }
+
         // ------------------------------------------------------------------
         // GetReplaceDay（3種類の置換を組み合わせる）
         // ------------------------------------------------------------------
@@ -181,6 +193,24 @@ namespace Mailer.Tests
         public void EscapeUrlParam_改行は以前と同じく0D0Aになる()
         {
             Assert.AreEqual("a%0D%0Ab", Logic.EscapeUrlParam("a\r\nb"));
+        }
+
+        [TestMethod]
+        public void EscapeUrlParam_約65520文字を超えても例外にならずサロゲートペアも壊さない()
+        {
+            // 以前はUri.EscapeDataStringにそのまま渡していたので、UriFormatExceptionで落ちていた
+            string value = new string('a', 29999) + "\U0001F600" + new string('b', 40000);
+
+            string result = Logic.EscapeUrlParam(value);
+
+            Assert.AreEqual(new string('a', 29999) + "%F0%9F%98%80" + new string('b', 40000), result);
+        }
+
+        [TestMethod]
+        public void IsUrlTooLong_ブラウザに渡せる長さを超えたらtrue()
+        {
+            Assert.IsFalse(Logic.IsUrlTooLong(new string('a', Logic.MaxUrlLength)));
+            Assert.IsTrue(Logic.IsUrlTooLong(new string('a', Logic.MaxUrlLength + 1)));
         }
     }
 }
