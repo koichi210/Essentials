@@ -94,7 +94,8 @@ namespace EventRecorder
         public static Boolean IsKeyIgnoredOnMouseRow(String eventType, String keyValue, out String message)
         {
             InputSim.MouseStroke mouseStroke;
-            Boolean isMouseRow = Enum.TryParse<InputSim.MouseStroke>(eventType, out mouseStroke);
+            int mouseData;
+            Boolean isMouseRow = TryGetPlaybackMouseStroke(eventType, out mouseStroke, out mouseData);
 
             if (isMouseRow && !String.IsNullOrEmpty(keyValue))
             {
@@ -126,7 +127,8 @@ namespace EventRecorder
             }
 
             InputSim.MouseStroke mouseStroke;
-            if (Enum.TryParse<InputSim.MouseStroke>(type, out mouseStroke))
+            int mouseData;
+            if (TryGetPlaybackMouseStroke(type, out mouseStroke, out mouseData))
             {
                 int xValue, yValue;
                 if (!int.TryParse(x, out xValue) || !int.TryParse(y, out yValue))
@@ -140,7 +142,7 @@ namespace EventRecorder
             }
 
             InputSim.KeyboardStroke keyStroke;
-            if (Enum.TryParse<InputSim.KeyboardStroke>(type, out keyStroke))
+            if (TryGetPlaybackKeyboardStroke(type, out keyStroke))
             {
                 Keys keyCode;
                 if (!Enum.TryParse<Keys>(key, out keyCode))
@@ -157,41 +159,86 @@ namespace EventRecorder
             return false;
         }
 
-        // 記録はされるが、再生時は(まだ再生に対応していないため)飛ばされるイベントの種類。
-        // Altを押しながらのキー・F10(SYSKEY)、マウスのホイール、マウスのX1/X2(サイド)ボタン
-        private static readonly HashSet<String> _unsupportedPlaybackEventTypes = new HashSet<String>
+        // ホイール1ノッチ分の回転量(Win32のWHEEL_DELTA)
+        public const int WheelDelta = 120;
+
+        // Win32のXBUTTON1/XBUTTON2(MOUSEEVENTF_XDOWN/XUPのmouseDataに入れる、どちらのサイドボタンか)
+        public const int XButton1 = 0x0001;
+        public const int XButton2 = 0x0002;
+
+        // 記録したEvent列の名前がInputSimulatorのMouseStrokeと違うマウス操作(ホイール・X1/X2(サイド)ボタン)の、
+        // 送るときのMOUSEEVENTF_*とmouseData。ホイールの回転量は記録していないので、1行=1ノッチ(WHEEL_DELTA)で送る
+        // (記録時のフックはノッチごとに1回来るので、普通のマウスなら記録どおりの量になる)
+        private static readonly Dictionary<String, KeyValuePair<InputSim.MouseStroke, int>> _renamedMouseStrokes
+            = new Dictionary<String, KeyValuePair<InputSim.MouseStroke, int>>
         {
-            GlobalHook.KeyboardHook.Stroke.SYSKEY_DOWN.ToString(),
-            GlobalHook.KeyboardHook.Stroke.SYSKEY_UP.ToString(),
-            GlobalHook.MouseHook.Stroke.WHEEL_DOWN.ToString(),
-            GlobalHook.MouseHook.Stroke.WHEEL_UP.ToString(),
-            GlobalHook.MouseHook.Stroke.X1_DOWN.ToString(),
-            GlobalHook.MouseHook.Stroke.X1_UP.ToString(),
-            GlobalHook.MouseHook.Stroke.X2_DOWN.ToString(),
-            GlobalHook.MouseHook.Stroke.X2_UP.ToString(),
+            { GlobalHook.MouseHook.Stroke.WHEEL_UP.ToString(), new KeyValuePair<InputSim.MouseStroke, int>(InputSim.MouseStroke.WHEEL, WheelDelta) },
+            { GlobalHook.MouseHook.Stroke.WHEEL_DOWN.ToString(), new KeyValuePair<InputSim.MouseStroke, int>(InputSim.MouseStroke.WHEEL, -WheelDelta) },
+            { GlobalHook.MouseHook.Stroke.X1_DOWN.ToString(), new KeyValuePair<InputSim.MouseStroke, int>(InputSim.MouseStroke.X_DOWN, XButton1) },
+            { GlobalHook.MouseHook.Stroke.X1_UP.ToString(), new KeyValuePair<InputSim.MouseStroke, int>(InputSim.MouseStroke.X_UP, XButton1) },
+            { GlobalHook.MouseHook.Stroke.X2_DOWN.ToString(), new KeyValuePair<InputSim.MouseStroke, int>(InputSim.MouseStroke.X_DOWN, XButton2) },
+            { GlobalHook.MouseHook.Stroke.X2_UP.ToString(), new KeyValuePair<InputSim.MouseStroke, int>(InputSim.MouseStroke.X_UP, XButton2) },
         };
 
-        // 再生時に飛ばされる行を、種類ごとに「WHEEL_DOWN: 12行(行3, 5, …)」の形でまとめる(無ければ空のリスト)。
-        // 以前は再生前チェックでも何も言わずに飛ばしていた。typesは各行のEvent列。行番号は種類ごとに先頭の数件だけ
-        public static List<String> SummarizeUnsupportedRowsForPlayback(IList<String> types)
+        // 再生でマウス操作として送る行なら、送るMOUSEEVENTF_*(stroke)とmouseData(ホイールの回転量・どのXボタンか)を返す。
+        // 以前はホイールとX1/X2ボタンの行を再生で飛ばしていた
+        public static Boolean TryGetPlaybackMouseStroke(String type, out InputSim.MouseStroke stroke, out int data)
         {
-            const int maxListedRows = 5;
-
-            List<String> lines = new List<String>();
-            foreach (IGrouping<String, int> group in Enumerable.Range(0, types.Count)
-                .Where(i => _unsupportedPlaybackEventTypes.Contains(types[i]))
-                .GroupBy(i => types[i]))
+            KeyValuePair<InputSim.MouseStroke, int> renamed;
+            if (type != null && _renamedMouseStrokes.TryGetValue(type, out renamed))
             {
-                List<int> indexes = group.ToList();
-                String listed = String.Join(", ", indexes.Take(maxListedRows).Select(i => "行" + i));
-                if (indexes.Count > maxListedRows)
-                {
-                    listed += ", …";
-                }
-                lines.Add(group.Key + ": " + indexes.Count + "行(" + listed + ")");
+                stroke = renamed.Key;
+                data = renamed.Value;
+                return true;
             }
 
-            return lines;
+            data = 0;
+            return Enum.TryParse<InputSim.MouseStroke>(type, out stroke);
+        }
+
+        // 再生でキー操作として送る行なら、送るKEY_DOWN/KEY_UPを返す。
+        // SYSKEY(Altを押しながらのキー・F10)も普通のキーとして送る(Altの押下も行として記録されているので、
+        // Alt+F4などは送った側でも元どおりSYSKEYになる)。以前はSYSKEYの行を再生で飛ばしていた
+        public static Boolean TryGetPlaybackKeyboardStroke(String type, out InputSim.KeyboardStroke stroke)
+        {
+            if (type == GlobalHook.KeyboardHook.Stroke.SYSKEY_DOWN.ToString())
+            {
+                stroke = InputSim.KeyboardStroke.KEY_DOWN;
+                return true;
+            }
+            if (type == GlobalHook.KeyboardHook.Stroke.SYSKEY_UP.ToString())
+            {
+                stroke = InputSim.KeyboardStroke.KEY_UP;
+                return true;
+            }
+
+            return Enum.TryParse<InputSim.KeyboardStroke>(type, out stroke);
+        }
+
+        // 記録した1行分を、SendInputに渡す入力イベントに組み立てる(送るのは呼び出し側。再生しない行なら空のリスト)。
+        // マウス操作は、クリックと同じく記録した座標(絶対座標)へ移動させてから行う。
+        // 値が読めない行は再生前チェックで止めている前提(X/Yが数値でなければ例外になる)
+        public static List<InputSim.Input> BuildPlaybackInputs(String type, String x, String y, String key)
+        {
+            List<InputSim.Input> inputs = new List<InputSim.Input>();
+
+            InputSim.MouseStroke mouseStroke;
+            int mouseData;
+            if (TryGetPlaybackMouseStroke(type, out mouseStroke, out mouseData))
+            {
+                List<InputSim.MouseStroke> flags = new List<InputSim.MouseStroke> { InputSim.MouseStroke.MOVE, mouseStroke };
+                InputSim.AddMouseInput(ref inputs, flags, mouseData, true, int.Parse(x), int.Parse(y));
+                return inputs;
+            }
+
+            InputSim.KeyboardStroke keyStroke;
+            Keys keyCode;
+            if (TryGetPlaybackKeyboardStroke(type, out keyStroke) && Enum.TryParse<Keys>(key, out keyCode))
+            {
+                InputSim.AddKeyboardInput(ref inputs, keyStroke, keyCode);
+            }
+
+            return inputs;
         }
 
         // 旧バージョンの保存形式(各行が自分自身の待機時間をWait列に持つ)を、

@@ -602,9 +602,6 @@ namespace EventRecorder
         // (前後の状態管理・カーソル位置の復元はRunPlaybackの担当)
         private void PlaylistPlayLoop(List<PlaylistEntry> entries, int overallLoopCount)
         {
-            // 再生に対応していない行の確認を済ませたファイル(全体ループで同じファイルを何度も確認しないように)
-            HashSet<String> confirmedFiles = new HashSet<String>(StringComparer.OrdinalIgnoreCase);
-
             for (int loopNo = 0; loopNo < overallLoopCount && !_stopPlayRequested; loopNo++)
             {
                 int loopDisplayNo = loopNo + 1;
@@ -629,13 +626,6 @@ namespace EventRecorder
 
                         // 読み込んだファイルに再生できない行が無いか確認する。あればプレイリスト全体を停止する
                         if (!ValidateEventsForPlayback())
-                        {
-                            _stopPlayRequested = true;
-                            return;
-                        }
-
-                        // 再生時に飛ばされる行があれば知らせる(1回の実行で同じファイルは最初の1回だけ)。やめたら全体を停止する
-                        if (confirmedFiles.Add(entry.FileName) && !ConfirmUnsupportedEventsForPlayback())
                         {
                             _stopPlayRequested = true;
                             return;

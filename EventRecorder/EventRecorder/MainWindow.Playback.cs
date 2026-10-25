@@ -55,7 +55,7 @@ namespace EventRecorder
         // レコードグループの記録データを単発再生する
         private void StartSinglePlayback()
         {
-            if (!ValidateEventsForPlayback() || !ConfirmUnsupportedEventsForPlayback())
+            if (!ValidateEventsForPlayback())
             {
                 return;
             }
@@ -684,56 +684,32 @@ namespace EventRecorder
             return false;
         }
 
-        // 記録はされるが再生時は飛ばされる行(Altを押しながらのキー・F10、ホイール、マウスのサイドボタン。
-        // まだ再生に対応していない)があれば、知らせてから再生するか確かめる。やめるならfalseを返す
-        // (以前は再生前チェックでも何も言わずに飛ばしていたため、再生しても途中の操作が抜けていることに気付けなかった)
-        private Boolean ConfirmUnsupportedEventsForPlayback()
-        {
-            List<String> lines = EventRules.SummarizeUnsupportedRowsForPlayback(EventRows.Select(r => r.Type).ToList());
-            if (lines.Count == 0)
-            {
-                return true;
-            }
-
-            MessageBoxResult result = MessageBox.Show(
-                this,
-                "再生に対応していない行があるよ。この行は再生時に飛ばされるよ" + Environment.NewLine
-                    + "(Altを押しながらのキー・F10、マウスのホイール・サイドボタン)" + Environment.NewLine + Environment.NewLine
-                    + String.Join(Environment.NewLine, lines) + Environment.NewLine + Environment.NewLine
-                    + "このまま再生する？",
-                "EventRecorder - 再生前チェック",
-                MessageBoxButton.OKCancel,
-                MessageBoxImage.Warning);
-
-            return result == MessageBoxResult.OK;
-        }
-
-        // 記録した1イベント分をSendInputで再現する(WinForms版と同じ)
-        // ※ マウスのX(サイド)ボタン/ホイールとキーボードのSYSKEYは、HiMacroEx相当を作る段階では未対応(将来の機能拡張項目)
+        // 記録した1イベント分をSendInputで再現する(WinForms版と同じ)。
+        // マウスのホイール・X(サイド)ボタン、キーボードのSYSKEY(Altを押しながらのキー・F10)も再生する
+        // (以前は飛ばしていた。送る中身はEventRules.BuildPlaybackInputsで組み立てる)
         private void PlayOneEvent(String type, String x, String y, String key)
         {
-            List<InputSim.Input> inputs = new List<InputSim.Input>();
+            List<InputSim.Input> inputs = EventRules.BuildPlaybackInputs(type, x, y, key);
+            if (inputs.Count == 0)
+            {
+                return;
+            }
+
+            InputSim.SendInput(inputs);
 
             InputSim.MouseStroke mouseStroke;
-            if (Enum.TryParse<InputSim.MouseStroke>(type, out mouseStroke))
+            int mouseData;
+            if (EventRules.TryGetPlaybackMouseStroke(type, out mouseStroke, out mouseData))
             {
-                List<InputSim.MouseStroke> flags = new List<InputSim.MouseStroke> { InputSim.MouseStroke.MOVE, mouseStroke };
-
-                int ix = _util.GetInteger(x);
-                int iy = _util.GetInteger(y);
-                InputSim.AddMouseInput(ref inputs, flags, 0, true, ix, iy);
-                InputSim.SendInput(inputs);
-                TrackPressedMouseButton(mouseStroke);
+                TrackPressedMouseButton(mouseStroke, mouseData);
                 return;
             }
 
             InputSim.KeyboardStroke keyStroke;
             Keys keyCode;
-            if (Enum.TryParse<InputSim.KeyboardStroke>(type, out keyStroke)
+            if (EventRules.TryGetPlaybackKeyboardStroke(type, out keyStroke)
                 && Enum.TryParse<Keys>(key, out keyCode))
             {
-                InputSim.AddKeyboardInput(ref inputs, keyStroke, keyCode);
-                InputSim.SendInput(inputs);
                 TrackPressedKey(keyStroke, keyCode);
             }
         }
@@ -744,6 +720,9 @@ namespace EventRecorder
         private readonly HashSet<Keys> _playbackPressedKeys = new HashSet<Keys>();
         private readonly HashSet<InputSim.MouseStroke> _pressedMouseUpStrokes
             = new HashSet<InputSim.MouseStroke>();
+
+        // Xボタンは1つのX_UPをmouseData(XBUTTON1/XBUTTON2)で区別するので、押したままのボタンの番号で覚える
+        private readonly HashSet<int> _pressedXButtons = new HashSet<int>();
 
         private void TrackPressedKey(InputSim.KeyboardStroke stroke, Keys keyCode)
         {
@@ -758,10 +737,16 @@ namespace EventRecorder
         }
 
         // ボタンごとに「Down→対応するUp」の組で管理する。Downなら解除用のUpを登録、Upなら登録を外す
-        private void TrackPressedMouseButton(InputSim.MouseStroke stroke)
+        private void TrackPressedMouseButton(InputSim.MouseStroke stroke, int data)
         {
             switch (stroke)
             {
+                case InputSim.MouseStroke.X_DOWN:
+                    _pressedXButtons.Add(data);
+                    break;
+                case InputSim.MouseStroke.X_UP:
+                    _pressedXButtons.Remove(data);
+                    break;
                 case InputSim.MouseStroke.LEFT_DOWN:
                     _pressedMouseUpStrokes.Add(InputSim.MouseStroke.LEFT_UP);
                     break;
@@ -793,12 +778,18 @@ namespace EventRecorder
                 InputSim.AddMouseInput(ref inputs, upStroke, 0, false, 0, 0);
             }
 
+            foreach (int xButton in _pressedXButtons)
+            {
+                InputSim.AddMouseInput(ref inputs, InputSim.MouseStroke.X_UP, xButton, false, 0, 0);
+            }
+
             foreach (Keys keyCode in _playbackPressedKeys)
             {
                 InputSim.AddKeyboardInput(ref inputs, InputSim.KeyboardStroke.KEY_UP, keyCode);
             }
 
             _pressedMouseUpStrokes.Clear();
+            _pressedXButtons.Clear();
             _playbackPressedKeys.Clear();
 
             if (inputs.Count > 0)
