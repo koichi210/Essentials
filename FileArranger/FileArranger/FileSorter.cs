@@ -26,12 +26,24 @@ namespace FileArranger
             // GetFilesの返す順はファイルシステム次第(FAT/exFATでは作成順等になり名前順にならない)なので、
             // 名前順(NTFSで返っていた順と同じ、大文字小文字を区別しない順)に並べてから番号を振る
             Array.Sort(files, StringComparer.OrdinalIgnoreCase);
+
+            // リネーム先の"000.ext"などと同じ名前のファイルが先にフォルダにあると、直接リネームしてはぶつかって
+            // 例外になっていた。いったん全部を重ならない一時名にしてから最終名にする(2段階)。
+            // どちらの段階も1件ずつ履歴に積むので、Restore()で逆順に戻すと元の名前に戻る
+            String[] tempNames = new String[files.Length];
+            for (int i = 0; i < files.Length; i++)
+            {
+                tempNames[i] = Path.Combine(folderPath, Guid.NewGuid().ToString("N") + ".tmp");
+                File.Move(files[i], tempNames[i]);
+                _pm.AddRestoreItem(files[i], tempNames[i]);
+            }
+
             for (int i = 0; i < files.Length; i++)
             {
                 String ext = Path.GetExtension(files[i]);
                 String destName = folderPath + @"\" + i.ToString("D3") + ext;
-                File.Move(files[i], destName);
-                _pm.AddRestoreItem(files[i], destName);
+                File.Move(tempNames[i], destName);
+                _pm.AddRestoreItem(tempNames[i], destName);
             }
         }
 

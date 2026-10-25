@@ -160,20 +160,49 @@ namespace FileArranger.Tests
             Directory.CreateDirectory(dirA);
             Directory.CreateDirectory(dirB);
             File.WriteAllText(Path.Combine(dirA, "x.txt"), "dummy");
-            // "(1).txt"は"000.txt"より先に並ぶので、"000.txt"へリネームしようとして既存の"000.txt"とぶつかり失敗する
-            File.WriteAllText(Path.Combine(dirB, "(1).txt"), "first");
-            File.WriteAllText(Path.Combine(dirB, "000.txt"), "second");
+            // 2つ目のフォルダのファイルを開いたままにして、リネームを失敗させる
+            // (以前は既存の"000.txt"とぶつけて失敗させていたが、2段階リネームにしたのでぶつからなくなった)
+            File.WriteAllText(Path.Combine(dirB, "y.txt"), "locked");
 
             var sorter = new FileSorter();
-            Assert.ThrowsException<IOException>(() => sorter.SortFolders(new[] { dirA, dirB }));
-            // 前提: 1つ目のフォルダはリネーム済み。2つ目は上書きされず元のまま
+            using (new FileStream(Path.Combine(dirB, "y.txt"), FileMode.Open, FileAccess.Read, FileShare.None))
+            {
+                Assert.ThrowsException<IOException>(() => sorter.SortFolders(new[] { dirA, dirB }));
+            }
+            // 前提: 1つ目のフォルダはリネーム済み。2つ目は元のまま
             Assert.IsTrue(File.Exists(Path.Combine(dirA, "000.txt")));
-            Assert.AreEqual("second", File.ReadAllText(Path.Combine(dirB, "000.txt")));
+            Assert.AreEqual("locked", File.ReadAllText(Path.Combine(dirB, "y.txt")));
 
             Assert.IsTrue(sorter.Restore());
 
             Assert.IsTrue(File.Exists(Path.Combine(dirA, "x.txt")), "失敗する前にリネームした分は戻る");
             Assert.IsFalse(File.Exists(Path.Combine(dirA, "000.txt")));
+        }
+
+        [TestMethod]
+        public void SortFolder_リネーム先と同じ名前のファイルが先にあってもぶつからない()
+        {
+            // "(1).txt"は"000.txt"より先に並ぶので、直接リネームすると既存の"000.txt"とぶつかって例外になっていた
+            File.WriteAllText(Path.Combine(tempDirectory, "(1).txt"), "first");
+            File.WriteAllText(Path.Combine(tempDirectory, "000.txt"), "second");
+            File.WriteAllText(Path.Combine(tempDirectory, "001.txt"), "third");
+
+            var sorter = new FileSorter();
+            sorter.SortFolder(tempDirectory);
+            sorter.CommitBatch();
+
+            Assert.AreEqual(3, Directory.GetFiles(tempDirectory).Length, "一時名のファイルが残らない");
+            Assert.AreEqual("first", File.ReadAllText(Path.Combine(tempDirectory, "000.txt")));
+            Assert.AreEqual("second", File.ReadAllText(Path.Combine(tempDirectory, "001.txt")));
+            Assert.AreEqual("third", File.ReadAllText(Path.Combine(tempDirectory, "002.txt")));
+
+            // 元に戻すと、元の名前と中身の組み合わせに戻る
+            Assert.IsTrue(sorter.Restore());
+
+            Assert.AreEqual(3, Directory.GetFiles(tempDirectory).Length);
+            Assert.AreEqual("first", File.ReadAllText(Path.Combine(tempDirectory, "(1).txt")));
+            Assert.AreEqual("second", File.ReadAllText(Path.Combine(tempDirectory, "000.txt")));
+            Assert.AreEqual("third", File.ReadAllText(Path.Combine(tempDirectory, "001.txt")));
         }
 
         [TestMethod]
