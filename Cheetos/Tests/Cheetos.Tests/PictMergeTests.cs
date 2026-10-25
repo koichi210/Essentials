@@ -294,5 +294,29 @@ namespace Cheetos.Tests
 
             CollectionAssert.AreEqual(new[] { "100,50", "-,-5" }, invalid);
         }
+
+        // 回帰テスト: 開始が負の数の行と、終了が画像の高さより大きい行がそのまま処理されていた
+        [TestMethod]
+        public void FindInvalidTrimHeightsは開始が負の数の行と終了が画像の高さより大きい行も返す()
+        {
+            String[] invalid = PictMerge.FindInvalidTrimHeights(new[] { "-5,10", "-5,-", "-,100", "0,101", "50,-", "-,-" }, 100);
+
+            CollectionAssert.AreEqual(new[] { "-5,10", "-5,-", "0,101" }, invalid);
+        }
+
+        [TestMethod]
+        public void GetMinImageHeightは結合対象のうちいちばん低い画像の高さを返す()
+        {
+            CreateImage("a_left.png", 10, 30, Color.Red);
+            CreateImage("b_left.png", 10, 20, Color.Red);
+            CreateImage("other.png", 10, 5, Color.Red);
+            File.WriteAllText(Path.Combine(tempDirectory, "c_left.png"), "not an image");
+
+            int height = PictMerge.GetMinImageHeight(tempDirectory, "left",
+                new[] { "a_left.png", "b_left.png", "other.png", "c_left.png", "none_left.png", "" });
+
+            Assert.AreEqual(20, height, "接頭辞1が無いもの・画像でないもの・無いファイルは数えない");
+            Assert.AreEqual(int.MaxValue, PictMerge.GetMinImageHeight(tempDirectory, "left", new[] { "other.png" }));
+        }
     }
 }

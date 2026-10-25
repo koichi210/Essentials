@@ -204,10 +204,11 @@ namespace Cheetos
                 worker.ReportProgress(itemIdx + 1);      // ⇒ProgressChanged()
 
                 // キャンセルされてないかチェック
+                // (breakだとループ後の全件分の報告まで進み、中断しても「N/N」と出ていた。Trim/Orientと同じくreturnする)
                 if (worker.CancellationPending)
                 {
                     e.Cancel = true;
-                    break;
+                    return;
                 }
             }
             worker.ReportProgress(targetFileNames.Length);      // ⇒ProgressChanged()
