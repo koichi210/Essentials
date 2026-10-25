@@ -14,7 +14,7 @@
     <VCProjectVersion>16.0</VCProjectVersion>
     <Keyword>MFCProj</Keyword>
     <ProjectGuid>{6E13FA3C-C28B-1258-E948-3EC1BE442BCC}</ProjectGuid>
-    <RootNamespace>othello</RootNamespace>
+    <RootNamespace>OthelloMfc</RootNamespace>
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />

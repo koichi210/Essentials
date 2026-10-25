@@ -1,6 +1,6 @@
 # Essentials
 
-ふだんよく使っている Windows 用のツールを集めたリポジトリです（WPF）。
+ふだんよく使っている Windows 用のツールを集めたリポジトリです（C# の WPF と、C++ の MFC）。
 
 | ツール | 説明 | 動作環境 |
 |---|---|---|
@@ -13,8 +13,10 @@
 | [Launcher](Launcher) | よく使う exe や URL を登録して、ワンクリックで起動する | .NET 10（ランタイムが必要） |
 | [Mailer](Mailer) | 宛先・件名・本文を決めておいて、ブラウザのメール作成画面を開く | .NET Framework |
 | [Othello](Othello) | オセロ（人対人・人対COM・COM対COM） | .NET Framework |
+| [OthelloMfc](OthelloMfc) | オセロの C++ 版 | C++ / MFC |
+| [LoginHistory](LoginHistory) | PC が動いていた時刻を、一定の間隔でログファイルに書き残す稼働ログ | C++ / MFC |
 
-各ツールの `bin/Release` に、ビルド済みの exe を置いています。
+各ツールの `bin/Release`（C++ の2本は `Release`）に、ビルド済みの exe を置いています。
 
 ## ビルド
 
@@ -22,6 +24,12 @@
 
 ```
 git clone --recurse-submodules https://github.com/koichi210/Essentials.git
+```
+
+C++ の2本（OthelloMfc / LoginHistory）は Visual Studio 2019（v142、MFC 入り）で、x64 でビルドします。
+
+```
+MSBuild.exe OthelloMfc\OthelloMfc.sln /t:Rebuild /p:Configuration=Release /p:Platform=x64
 ```
 
 ## ライセンス
