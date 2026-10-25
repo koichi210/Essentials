@@ -89,7 +89,7 @@ void LoadIniFile(char * fname, int * cyc)
 			if(strncmp(buff, COMMENT, strlen(COMMENT)) == 0){
 				continue;
 			}else if(strncmp(buff, FILE_NAME, strlen(FILE_NAME)) == 0){
-				sscanf(buff, "FileName=%s", fname) ;
+				sscanf(buff, "FileName=%29s", fname) ;	// width = STR_BUFF - 1
 			}else if(strncmp(buff, CYCLE, strlen(CYCLE)) == 0){
 				sscanf(buff, "Cycle=%d", cyc) ;
 			}
@@ -177,16 +177,18 @@ int	CheckDate(tm *t_time)
 int CheckUpdateTime(tm * o_time, tm * n_time, int cyc)
 {
 	int rt = TRUE ;
-	int new_time ;
-	int old_time ;
-	int diff_time;
+	time_t new_time ;
+	time_t old_time ;
+	time_t diff_time;
 
 	// check time
 	new_time = mktime(n_time) ;
 	old_time = mktime(o_time) ;
 
 	diff_time = new_time - (old_time + cyc * MAX_SEC);
-	diff_time = abs(diff_time);
+	if(diff_time < 0){
+		diff_time = -diff_time;
+	}
 	if(diff_time > DIFFER){
 		// time lag is DIFFER(10) sec over
 		rt = FALSE ;
