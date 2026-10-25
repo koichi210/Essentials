@@ -206,6 +206,33 @@ namespace FileArranger.Tests
         }
 
         [TestMethod]
+        public void SortFolder_リネーム先と同じ名前のフォルダがあるとその番号を飛ばす()
+        {
+            // GetFilesはファイルしか返さないので"001.txt"という名前のサブフォルダは一時名にならず、最終名とぶつかって例外になっていた
+            File.WriteAllText(Path.Combine(tempDirectory, "a.txt"), "a");
+            File.WriteAllText(Path.Combine(tempDirectory, "b.txt"), "b");
+            File.WriteAllText(Path.Combine(tempDirectory, "c.txt"), "c");
+            Directory.CreateDirectory(Path.Combine(tempDirectory, "001.txt"));
+
+            var sorter = new FileSorter();
+            sorter.SortFolder(tempDirectory);
+            sorter.CommitBatch();
+
+            Assert.AreEqual(3, Directory.GetFiles(tempDirectory).Length, "一時名のファイルが残らない");
+            Assert.AreEqual("a", File.ReadAllText(Path.Combine(tempDirectory, "000.txt")));
+            Assert.IsTrue(Directory.Exists(Path.Combine(tempDirectory, "001.txt")), "フォルダはそのまま");
+            Assert.AreEqual("b", File.ReadAllText(Path.Combine(tempDirectory, "002.txt")));
+            Assert.AreEqual("c", File.ReadAllText(Path.Combine(tempDirectory, "003.txt")));
+
+            Assert.IsTrue(sorter.Restore());
+
+            Assert.AreEqual("a", File.ReadAllText(Path.Combine(tempDirectory, "a.txt")));
+            Assert.AreEqual("b", File.ReadAllText(Path.Combine(tempDirectory, "b.txt")));
+            Assert.AreEqual("c", File.ReadAllText(Path.Combine(tempDirectory, "c.txt")));
+            Assert.IsTrue(Directory.Exists(Path.Combine(tempDirectory, "001.txt")));
+        }
+
+        [TestMethod]
         public void CommitBatchしていない状態でRestoreすると失敗する()
         {
             var sorter = new FileSorter();
