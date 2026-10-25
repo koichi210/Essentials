@@ -225,6 +225,26 @@ namespace FFEdit.Tests
             });
         }
 
+        // 実行前の「拡張子」チェック。空欄の場合はメッセージボックスが出るため、
+        // ここでは通る場合(拡張子変更モードで入力あり・拡張子変更モード以外で空欄)だけを確認する
+        [TestMethod]
+        public void IsExtensionValidは拡張子変更モードで入力があれば通し拡張子変更モード以外なら空欄でも通す()
+        {
+            StaRunner.Run(() =>
+            {
+                var window = new MainWindow();
+                MethodInfo isExtensionValid = typeof(MainWindow).GetMethod("IsExtensionValid", BindingFlags.NonPublic | BindingFlags.Instance);
+
+                window.radioButton_ChangeExt.IsChecked = true;
+                window.comboBox_String1.Text = ".jpg";
+                Assert.AreEqual(true, isExtensionValid.Invoke(window, null));
+
+                window.radioButton_ChangeAdd.IsChecked = true;
+                window.comboBox_String1.Text = "";
+                Assert.AreEqual(true, isExtensionValid.Invoke(window, null));
+            });
+        }
+
         [TestMethod]
         public void エラー一覧ダイアログにメッセージが表示される()
         {
