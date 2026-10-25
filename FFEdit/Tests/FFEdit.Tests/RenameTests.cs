@@ -188,6 +188,26 @@ namespace FFEdit.Tests
             Assert.IsTrue(Exists("photo.png"));
         }
 
+        // 回帰テスト: 「.png」とドット付きで入れると「photo..png」になっていた
+        [TestMethod]
+        public void OnlyExt_ドット付きで入れても先頭のドットは無視する()
+        {
+            CreateFile("photo.jpg");
+
+            var rename = new Rename
+            {
+                BaseDir = tempDirectory,
+                FileList = new List<string> { "photo.jpg" },
+                Type = Rename.ChangeType.OnlyExt,
+                Param1 = ".png",
+            };
+
+            rename.Execute();
+
+            Assert.IsTrue(Exists("photo.png"));
+            Assert.IsFalse(Exists("photo..png"));
+        }
+
         [TestMethod]
         public void 変更後の名前が同じなら何もしない()
         {

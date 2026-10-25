@@ -350,6 +350,10 @@ namespace FFEdit
             switch (tabControl.SelectedIndex)
             {
                 case _tabIdxChangeName:
+                    if (!IsFirstNumberValid())
+                    {
+                        return;
+                    }
                     errorList = ChangeName();
                     break;
 
@@ -389,6 +393,20 @@ namespace FFEdit
                 return;
             }
             UpdateListBox();
+        }
+
+        // 連番モードの「最初の値」が整数か確かめる。空欄・数値以外だとChangeNameのint.Parseで
+        // 例外になっていたため、実行前に確かめてメッセージを出す(連番モード以外は見ない)
+        private Boolean IsFirstNumberValid()
+        {
+            int firstNumber;
+            if (radioButton_ChangeNumber.IsChecked != true || Int32.TryParse(textBox_ChangeNumber_FirstVal.Text, out firstNumber))
+            {
+                return true;
+            }
+
+            MessageBox.Show("最初の値には整数を入力してください。");
+            return false;
         }
 
         private String ChangeName()

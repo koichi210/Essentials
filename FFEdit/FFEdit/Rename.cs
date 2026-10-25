@@ -103,7 +103,8 @@ namespace FFEdit
                     break;
                 case ChangeType.OnlyExt:
                     targetName = Path.GetFileNameWithoutExtension(targetName);
-                    targetName += "." + Param1;
+                    // 「.jpg」とドット付きで入れても「name..jpg」にならないよう、先頭のドットは無視する
+                    targetName += "." + Param1.TrimStart('.');
                     break;
                 case ChangeType.AddDirName:
                     targetName = srcName.Replace('\\', '_');

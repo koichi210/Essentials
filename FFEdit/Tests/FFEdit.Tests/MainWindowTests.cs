@@ -205,6 +205,26 @@ namespace FFEdit.Tests
             });
         }
 
+        // 実行前の「最初の値」チェック。整数でない場合はメッセージボックスが出るため、
+        // ここでは通る場合(連番モードで整数・連番モード以外で空欄)だけを確認する
+        [TestMethod]
+        public void IsFirstNumberValidは連番モードで整数なら通し連番モード以外なら空欄でも通す()
+        {
+            StaRunner.Run(() =>
+            {
+                var window = new MainWindow();
+                MethodInfo isFirstNumberValid = typeof(MainWindow).GetMethod("IsFirstNumberValid", BindingFlags.NonPublic | BindingFlags.Instance);
+
+                window.radioButton_ChangeNumber.IsChecked = true;
+                window.textBox_ChangeNumber_FirstVal.Text = "-3";
+                Assert.AreEqual(true, isFirstNumberValid.Invoke(window, null));
+
+                window.radioButton_ChangeAdd.IsChecked = true;
+                window.textBox_ChangeNumber_FirstVal.Text = "";
+                Assert.AreEqual(true, isFirstNumberValid.Invoke(window, null));
+            });
+        }
+
         [TestMethod]
         public void エラー一覧ダイアログにメッセージが表示される()
         {
