@@ -399,7 +399,8 @@ void OthelloDlg::OnKifuRead()
 		return;
 	}
 
-	NewGame();
+	// 対局中に読み込んでも前の対局のタイマー（COM・持ち時間）が残らないよう、リセットしてから読む
+	OnGameReset();
 	if (!game_.LoadKifu(dialog.GetPathName()))
 	{
 		AfxMessageBox(_T("ファイル読み込みエラー"));
@@ -421,7 +422,9 @@ void OthelloDlg::OnKifuRead()
 		}
 		ChangeTurn(next);
 	}
-	SetTimer(kComTimerId, kComThinkInterval, nullptr);
+	// 読み込んだ直後は開始前なので、ChangeTurn が動かした COM と持ち時間のタイマーは止める
+	// （COM の番でも、開始を押すまで打たない。開始すると StartGame が動かす）
+	KillAllTimers();
 
 	UpdateScore();
 	UpdateUndoRedoMenus();
