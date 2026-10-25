@@ -209,9 +209,64 @@ namespace EventRecorder.Tests
                 Assert.AreEqual(click.Mouse.Y, input.Mouse.Y);
             }
 
-            // 奥へ回す(WHEEL_UP)が+、手前へ回す(WHEEL_DOWN)が-。回転量は記録していないので1ノッチ(WHEEL_DELTA=120)
+            // 奥へ回す(WHEEL_UP)が+、手前へ回す(WHEEL_DOWN)が-。回転量の無い行(以前のファイル)は1ノッチ(WHEEL_DELTA=120)
             Assert.AreEqual(120, wheelUp.Mouse.Data);
             Assert.AreEqual(-120, wheelDown.Mouse.Data);
+        }
+
+        [TestMethod]
+        public void ホイールの行は記録した回転量で送る()
+        {
+            // 高分解能ホイールは1ノッチより細かい量(例: 30)で何回も通知してくるので、1行=120で送ると回りすぎていた
+            Assert.AreEqual(30, EventRules.BuildPlaybackInputs("WHEEL_UP", "100", "200", "", "30").Single().Mouse.Data);
+            Assert.AreEqual(-30, EventRules.BuildPlaybackInputs("WHEEL_DOWN", "100", "200", "", "30").Single().Mouse.Data);
+            Assert.AreEqual(240, EventRules.BuildPlaybackInputs("WHEEL_UP", "100", "200", "", "240").Single().Mouse.Data);
+
+            // 回転量が空なら従来どおり1ノッチ
+            Assert.AreEqual(-120, EventRules.BuildPlaybackInputs("WHEEL_DOWN", "100", "200", "", "").Single().Mouse.Data);
+
+            // ホイール以外の行のmouseData(Xボタンの番号)は回転量で変えない
+            Assert.AreEqual(2, EventRules.BuildPlaybackInputs("X2_DOWN", "100", "200", "", "30").Single().Mouse.Data);
+        }
+
+        [TestMethod]
+        public void 記録時のmouseDataの上位ワードから回転量を正の数で取り出す()
+        {
+            Assert.AreEqual("120", EventRules.FormatWheelDelta(120u << 16));
+            Assert.AreEqual("30", EventRules.FormatWheelDelta(30u << 16));
+            // 手前へ回すと上位ワードは負(-120 = 0xFF88)。向きはWHEEL_DOWNで表すので量は正で残す
+            Assert.AreEqual("120", EventRules.FormatWheelDelta(0xFF880000u));
+            Assert.AreEqual("", EventRules.FormatWheelDelta(0u));
+        }
+
+        [TestMethod]
+        public void ホイールの回転量はDetail列に表示し編集すると書き戻す()
+        {
+            EventRow row = EventRow.FromData("WHEEL_UP", "10", "20", "", "0", "", "240");
+            Assert.AreEqual("X:10 Y:20 Delta:240", row.Detail);
+
+            row.Detail = "X:10 Y:20 Delta:60";
+            Assert.AreEqual("60", row.Delta);
+
+            // Delta:を消せば回転量も空になり、1ノッチで送る
+            row.Detail = "X:10 Y:20";
+            Assert.AreEqual("", row.Delta);
+
+            // 回転量の無い行(以前のファイル)の表示は今までどおり
+            Assert.AreEqual("X:10 Y:20", EventRow.FromData("WHEEL_UP", "10", "20", "", "0", "").Detail);
+        }
+
+        [TestMethod]
+        public void ホイールの回転量が正の数値でなければ再生前チェックでエラーにする()
+        {
+            String message;
+            Assert.IsTrue(EventRow.FromData("WHEEL_UP", "10", "20", "", "0", "", "abc").IsInvalidForPlayback(out message));
+            StringAssert.Contains(message, "回転量(abc)");
+            Assert.IsTrue(EventRow.FromData("WHEEL_DOWN", "10", "20", "", "0", "", "-120").IsInvalidForPlayback(out message));
+            Assert.IsTrue(EventRow.FromData("WHEEL_DOWN", "10", "20", "", "0", "", "0").IsInvalidForPlayback(out message));
+
+            Assert.IsFalse(EventRow.FromData("WHEEL_DOWN", "10", "20", "", "0", "", "240").IsInvalidForPlayback(out message));
+            Assert.IsFalse(EventRow.FromData("WHEEL_DOWN", "10", "20", "", "0", "", "").IsInvalidForPlayback(out message));
         }
 
         [TestMethod]

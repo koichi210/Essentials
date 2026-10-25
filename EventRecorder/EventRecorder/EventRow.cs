@@ -2,11 +2,11 @@
 // WPFのDataGridはItemsSourceのオブジェクトを表示する方式なので、行データのクラスを用意した。
 //
 // 列の構成はWinForms版と同じ: 表示するのはEvent(Type)/Detail/備考(Remarks)の3列で、
-// 実データのX/Y/Key/Wait(Delay)は非表示(WPF版では列自体を作らず、この行クラスだけが持つ)。
+// 実データのX/Y/Key/Wait(Delay)/Delta(ホイールの回転量)は非表示(WPF版では列自体を作らず、この行クラスだけが持つ)。
 // Detail列と非表示の実データの相互同期(WinForms版のdataGridView_Events_CellValueChangedでやっていた処理)は、
 // この行クラスの中で行う:
-//   - Type / X / Y / Key / Wait を書き換えたら、Detail列の表示を作り直す(SyncDetailFromHiddenColumns)
-//   - Detail列を書き換えたら、X / Y / Key(WAIT_MS行ならWait)へ書き戻す(SyncHiddenColumnsFromDetail)
+//   - Type / X / Y / Key / Wait / Delta を書き換えたら、Detail列の表示を作り直す(SyncDetailFromHiddenColumns)
+//   - Detail列を書き換えたら、X / Y / Key / Delta(WAIT_MS行ならWait)へ書き戻す(SyncHiddenColumnsFromDetail)
 // 連動して変わったセルは、CellChangedでまとめて1回通知する(Undo/Redoでも1回でまとめて戻せるように)。
 using System;
 using System.Collections.Generic;
@@ -24,6 +24,7 @@ namespace EventRecorder
         public const String ColY = "Y";
         public const String ColKey = "Key";
         public const String ColRemarks = "Remarks";
+        public const String ColDelta = "Delta";
 
         private String _type = "";
         private String _detail = "";
@@ -32,6 +33,7 @@ namespace EventRecorder
         private String _y = "";
         private String _key = "";
         private String _remarks = "";
+        private String _delta = "";
 
         private int _rowNumber;
         private Boolean _isHighlighted;
@@ -46,6 +48,9 @@ namespace EventRecorder
         public String Y { get { return _y; } set { SetCell(ColY, value); } }
         public String Key { get { return _key; } set { SetCell(ColKey, value); } }
         public String Remarks { get { return _remarks; } set { SetCell(ColRemarks, value); } }
+
+        // ホイール行の回転量(非表示の実データ。Detail列には"Delta:240"の形で出す)。空なら1行=1ノッチで再生する
+        public String Delta { get { return _delta; } set { SetCell(ColDelta, value); } }
 
         // 行ヘッダーに表示する行番号(0始まり、WinForms版のRowPostPaintと同じ)
         public int RowNumber
@@ -82,7 +87,7 @@ namespace EventRecorder
             get
             {
                 String errorMessage;
-                if (EventRules.IsRowInvalidForPlayback(_type, _x, _y, _key, _wait, out errorMessage))
+                if (EventRules.IsRowInvalidForPlayback(_type, _x, _y, _key, _wait, _delta, out errorMessage))
                 {
                     return errorMessage;
                 }
@@ -104,11 +109,11 @@ namespace EventRecorder
 
         public Boolean IsInvalidForPlayback(out String message)
         {
-            return EventRules.IsRowInvalidForPlayback(_type, _x, _y, _key, _wait, out message);
+            return EventRules.IsRowInvalidForPlayback(_type, _x, _y, _key, _wait, _delta, out message);
         }
 
         // 保存ファイル(MacroEventData)の値からまとめて作る。Detailは実データから作り直す
-        public static EventRow FromData(String type, String x, String y, String key, String wait, String remarks)
+        public static EventRow FromData(String type, String x, String y, String key, String wait, String remarks, String delta = "")
         {
             EventRow row = new EventRow();
             row._type = type ?? "";
@@ -117,6 +122,7 @@ namespace EventRecorder
             row._key = key ?? "";
             row._wait = wait ?? "";
             row._remarks = remarks ?? "";
+            row._delta = delta ?? "";
             row._detail = row.ComputeDetail();
             return row;
         }
@@ -132,6 +138,7 @@ namespace EventRecorder
                 case ColY: return _y;
                 case ColKey: return _key;
                 case ColRemarks: return _remarks;
+                case ColDelta: return _delta;
                 default: throw new ArgumentException("不明な列名: " + name);
             }
         }
@@ -152,6 +159,7 @@ namespace EventRecorder
                 case ColY:
                 case ColKey:
                 case ColWait:
+                case ColDelta:
                     // Event列(WAIT_MS行への/からの切り替え等)や実データが変わったら、Detail列の表示を追従させる
                     Store(ColDetail, ComputeDetail(), changes);
                     break;
@@ -166,11 +174,12 @@ namespace EventRecorder
                     }
                     else
                     {
-                        String parsedX, parsedY, parsedKey;
-                        EventRules.ParseDetail(_detail, out parsedX, out parsedY, out parsedKey);
+                        String parsedX, parsedY, parsedKey, parsedDelta;
+                        EventRules.ParseDetail(_detail, out parsedX, out parsedY, out parsedKey, out parsedDelta);
                         Store(ColX, parsedX, changes);
                         Store(ColY, parsedY, changes);
                         Store(ColKey, parsedKey, changes);
+                        Store(ColDelta, parsedDelta, changes);
                     }
                     break;
             }
@@ -194,7 +203,7 @@ namespace EventRecorder
             {
                 return EventRules.FormatWaitDetail(_wait);
             }
-            return EventRules.FormatDetail(_x, _y, _key);
+            return EventRules.FormatDetail(_x, _y, _key, _delta);
         }
 
         // 値を1つ書き換える(変わらなければ何もしない)。WinForms版のセルのnullは空文字として扱う
@@ -216,6 +225,7 @@ namespace EventRecorder
                 case ColY: _y = newValue; break;
                 case ColKey: _key = newValue; break;
                 case ColRemarks: _remarks = newValue; break;
+                case ColDelta: _delta = newValue; break;
             }
 
             changes.Add(new GridCellChange(name, oldValue, newValue));

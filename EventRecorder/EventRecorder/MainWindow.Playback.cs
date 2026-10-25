@@ -128,7 +128,7 @@ namespace EventRecorder
 
         internal List<String[]> SnapshotRows()
         {
-            // PlayRows/PlayOneEventは[Type, X, Y, Key, Wait]の順を前提にしている
+            // PlayRows/PlayOneEventは[Type, X, Y, Key, Wait, Delta]の順を前提にしている
             return EventRows.Select(EventRowMapper.ReadFromRow).ToList();
         }
 
@@ -250,7 +250,7 @@ namespace EventRecorder
                         return;
                     }
 
-                    PlayOneEvent(values[0], values[1], values[2], values[3]);
+                    PlayOneEvent(values[0], values[1], values[2], values[3], values[5]);
                 }
             }
         }
@@ -687,9 +687,9 @@ namespace EventRecorder
         // 記録した1イベント分をSendInputで再現する(WinForms版と同じ)。
         // マウスのホイール・X(サイド)ボタン、キーボードのSYSKEY(Altを押しながらのキー・F10)も再生する
         // (以前は飛ばしていた。送る中身はEventRules.BuildPlaybackInputsで組み立てる)
-        private void PlayOneEvent(String type, String x, String y, String key)
+        private void PlayOneEvent(String type, String x, String y, String key, String delta)
         {
-            List<InputSim.Input> inputs = EventRules.BuildPlaybackInputs(type, x, y, key);
+            List<InputSim.Input> inputs = EventRules.BuildPlaybackInputs(type, x, y, key, delta);
             if (inputs.Count == 0)
             {
                 return;

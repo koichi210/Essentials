@@ -80,7 +80,7 @@ namespace EventRecorder
                 {
                     continue;
                 }
-                rows.Add(EventRow.FromData(eventData.Type, eventData.X, eventData.Y, eventData.Key, eventData.Wait, eventData.Remarks));
+                rows.Add(EventRow.FromData(eventData.Type, eventData.X, eventData.Y, eventData.Key, eventData.Wait, eventData.Remarks, eventData.Delta));
             }
 
             // 万一、旧形式相当(各行が自分のWaitを持つ)のデータを読み込んでも安全なように、待機をWAIT_MS行へ切り出す
@@ -152,6 +152,7 @@ namespace EventRecorder
                     Key = row.Key,
                     Wait = row.Wait,
                     Remarks = row.Remarks,
+                    Delta = row.Delta,
                 });
             }
 

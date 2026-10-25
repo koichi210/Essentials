@@ -112,7 +112,11 @@ namespace EventRecorder
                 return;
             }
 
-            QueueRow(s.Stroke.ToString(), s.X.ToString(), s.Y.ToString(), "", TakeElapsedMsAndReset());
+            // ホイールは回転量(mouseDataの上位ワード)も残す。以前は残しておらず、再生は1行=1ノッチ固定だった
+            Boolean isWheel = s.Stroke == GlobalHook.MouseHook.Stroke.WHEEL_UP || s.Stroke == GlobalHook.MouseHook.Stroke.WHEEL_DOWN;
+            String delta = isWheel ? EventRules.FormatWheelDelta(s.Data) : "";
+
+            QueueRow(s.Stroke.ToString(), s.X.ToString(), s.Y.ToString(), "", TakeElapsedMsAndReset(), delta);
         }
 
         private void OnKeyboardEvent(ref GlobalHook.KeyboardHook.StateKeyboard s)
@@ -219,14 +223,14 @@ namespace EventRecorder
 
         // 記録した1件をバッファに貯めるだけ(フックのコールバックを描画待ちで塞がないため)。
         // waitが正の場合、待機だけを表す独立したWAIT_MS行を先に積んでから、実際のイベント行を積む
-        private void QueueRow(String type, String x, String y, String key, int wait)
+        private void QueueRow(String type, String x, String y, String key, int wait, String delta = "")
         {
             if (wait > 0)
             {
-                _pendingRows.Add(new String[] { EventRules.WaitEventType, "", "", "", wait.ToString() });
+                _pendingRows.Add(new String[] { EventRules.WaitEventType, "", "", "", wait.ToString(), "" });
             }
 
-            _pendingRows.Add(new String[] { type, x, y, key, "0" });
+            _pendingRows.Add(new String[] { type, x, y, key, "0", delta });
         }
 
         // 貯まった行をまとめてグリッドに反映する

@@ -32,6 +32,17 @@ namespace EventRecorder
 
         // ユーザーが自由に書けるコメント欄。記録・再生には一切使わない
         public String Remarks { get; set; }
+
+        // ホイール行の回転量(WHEEL_DELTA=120が1ノッチ。向きはTypeのWHEEL_UP/WHEEL_DOWNで表すので正の数)。
+        // 以前は記録していなかったので、この項目が無いファイル(空の行)は従来どおり1行=1ノッチで再生する
+        public String Delta { get; set; }
+
+        // 空なら書き出さない(ホイール以外の行や、回転量の無い行は今までと同じ形のまま保存する)。
+        // Newtonsoft.JsonのShouldSerialize{プロパティ名}の決まりで呼ばれる
+        public Boolean ShouldSerializeDelta()
+        {
+            return !String.IsNullOrEmpty(Delta);
+        }
     }
 
     // dataGrid_Playlistの1行分(実行チェック/設定ファイル名/その行のループ回数)

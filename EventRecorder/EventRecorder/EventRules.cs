@@ -23,8 +23,9 @@ namespace EventRecorder
             return type == WaitEventType || type == LegacyWaitEventType;
         }
 
-        // マウス行は"X:123 Y:456"、キーボード行は"Key:A"の形式でDetail列に表示する
-        public static String FormatDetail(String x, String y, String key)
+        // マウス行は"X:123 Y:456"、キーボード行は"Key:A"の形式でDetail列に表示する。
+        // ホイール行で回転量(delta)を記録してあれば、"X:123 Y:456 Delta:240"のように後ろに付ける
+        public static String FormatDetail(String x, String y, String key, String delta = "")
         {
             if (!String.IsNullOrEmpty(key))
             {
@@ -33,7 +34,12 @@ namespace EventRecorder
 
             if (!String.IsNullOrEmpty(x) || !String.IsNullOrEmpty(y))
             {
-                return "X:" + x + " Y:" + y;
+                String detail = "X:" + x + " Y:" + y;
+                if (!String.IsNullOrEmpty(delta))
+                {
+                    detail += " Delta:" + delta;
+                }
+                return detail;
             }
 
             return String.Empty;
@@ -42,9 +48,17 @@ namespace EventRecorder
         // FormatDetailの逆変換。"X:123 Y:456"や"Key:A"の形式から値を取り出す
         public static void ParseDetail(String detail, out String x, out String y, out String key)
         {
+            String delta;
+            ParseDetail(detail, out x, out y, out key, out delta);
+        }
+
+        // FormatDetailの逆変換(ホイールの回転量"Delta:240"も取り出す)
+        public static void ParseDetail(String detail, out String x, out String y, out String key, out String delta)
+        {
             x = String.Empty;
             y = String.Empty;
             key = String.Empty;
+            delta = String.Empty;
 
             if (String.IsNullOrEmpty(detail))
             {
@@ -64,6 +78,10 @@ namespace EventRecorder
                 else if (token.StartsWith("Key:"))
                 {
                     key = token.Substring(4);
+                }
+                else if (token.StartsWith("Delta:"))
+                {
+                    delta = token.Substring(6);
                 }
             }
         }
@@ -113,6 +131,12 @@ namespace EventRecorder
         // 例外は起きないため、ここではチェック対象にしない
         public static Boolean IsRowInvalidForPlayback(String type, String x, String y, String key, String wait, out String message)
         {
+            return IsRowInvalidForPlayback(type, x, y, key, wait, "", out message);
+        }
+
+        // ホイール行の回転量(delta)も含めてチェックする版
+        public static Boolean IsRowInvalidForPlayback(String type, String x, String y, String key, String wait, String delta, out String message)
+        {
             if (IsWaitEventType(type))
             {
                 int waitValue;
@@ -134,6 +158,13 @@ namespace EventRecorder
                 if (!int.TryParse(x, out xValue) || !int.TryParse(y, out yValue))
                 {
                     message = "マウスイベント(" + type + ")のX/Y(" + x + ", " + y + ")が数値として読み取れないよ";
+                    return true;
+                }
+
+                int deltaValue;
+                if (mouseStroke == InputSim.MouseStroke.WHEEL && !String.IsNullOrEmpty(delta) && !TryParseWheelDelta(delta, out deltaValue))
+                {
+                    message = "ホイールの回転量(" + delta + ")が正の数値として読み取れないよ";
                     return true;
                 }
 
@@ -167,8 +198,8 @@ namespace EventRecorder
         public const int XButton2 = 0x0002;
 
         // 記録したEvent列の名前がInputSimulatorのMouseStrokeと違うマウス操作(ホイール・X1/X2(サイド)ボタン)の、
-        // 送るときのMOUSEEVENTF_*とmouseData。ホイールの回転量は記録していないので、1行=1ノッチ(WHEEL_DELTA)で送る
-        // (記録時のフックはノッチごとに1回来るので、普通のマウスなら記録どおりの量になる)
+        // 送るときのMOUSEEVENTF_*とmouseData。ホイールはここでは1ノッチ(WHEEL_DELTA)の向きだけを決め、
+        // 記録した回転量(Delta)があればBuildPlaybackInputsでその量に置き換える(無い行は1行=1ノッチ)
         private static readonly Dictionary<String, KeyValuePair<InputSim.MouseStroke, int>> _renamedMouseStrokes
             = new Dictionary<String, KeyValuePair<InputSim.MouseStroke, int>>
         {
@@ -220,12 +251,26 @@ namespace EventRecorder
         // 値が読めない行は再生前チェックで止めている前提(X/Yが数値でなければ例外になる)
         public static List<InputSim.Input> BuildPlaybackInputs(String type, String x, String y, String key)
         {
+            return BuildPlaybackInputs(type, x, y, key, "");
+        }
+
+        // ホイール行は、記録した回転量(delta)があればその量で送る。以前は回転量を記録しておらず、常に1行=1ノッチ(120)で
+        // 送っていたため、1ノッチより細かく何回も通知してくる高分解能ホイールだと記録より大きく回りすぎていた。
+        // deltaが空(回転量の無い以前のファイル)なら従来どおり±120で送る
+        public static List<InputSim.Input> BuildPlaybackInputs(String type, String x, String y, String key, String delta)
+        {
             List<InputSim.Input> inputs = new List<InputSim.Input>();
 
             InputSim.MouseStroke mouseStroke;
             int mouseData;
             if (TryGetPlaybackMouseStroke(type, out mouseStroke, out mouseData))
             {
+                int deltaValue;
+                if (mouseStroke == InputSim.MouseStroke.WHEEL && TryParseWheelDelta(delta, out deltaValue))
+                {
+                    mouseData = Math.Sign(mouseData) * deltaValue;
+                }
+
                 List<InputSim.MouseStroke> flags = new List<InputSim.MouseStroke> { InputSim.MouseStroke.MOVE, mouseStroke };
                 InputSim.AddMouseInput(ref inputs, flags, mouseData, true, int.Parse(x), int.Parse(y));
                 return inputs;
@@ -239,6 +284,19 @@ namespace EventRecorder
             }
 
             return inputs;
+        }
+
+        // ホイールの回転量(Delta)の文字列を読む。向きはWHEEL_UP/WHEEL_DOWNで表すので、正の数だけを受け付ける
+        public static Boolean TryParseWheelDelta(String delta, out int value)
+        {
+            return int.TryParse(delta, out value) && value > 0;
+        }
+
+        // 記録時のフックのmouseData(上位ワードが符号付きの回転量)から、保存する回転量(正の数)の文字列を作る
+        public static String FormatWheelDelta(uint mouseData)
+        {
+            int delta = Math.Abs((int)(short)((mouseData >> 16) & 0xffff));
+            return delta > 0 ? delta.ToString() : "";
         }
 
         // 旧バージョンの保存形式(各行が自分自身の待機時間をWait列に持つ)を、

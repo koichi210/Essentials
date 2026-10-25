@@ -52,12 +52,25 @@ namespace EventRecorder.Tests
         {
             EventRow row = new EventRow();
 
-            String[] original = { "KEY_DOWN", "", "", "A", "120" };
+            // [Type, X, Y, Key, Wait, Delta]
+            String[] original = { "WHEEL_DOWN", "10", "20", "", "120", "240" };
             EventRowMapper.ApplyToRow(row, original);
 
             String[] roundTripped = EventRowMapper.ReadFromRow(row);
 
             CollectionAssert.AreEqual(original, roundTripped);
+            Assert.AreEqual("X:10 Y:20 Delta:240", row.Detail);
+        }
+
+        [TestMethod]
+        public void ApplyToRowはDeltaの無い5要素の配列なら回転量を空にする()
+        {
+            EventRow row = EventRow.FromData("WHEEL_UP", "1", "2", "", "0", "", "360");
+
+            EventRowMapper.ApplyToRow(row, new[] { "KEY_DOWN", "", "", "A", "0" });
+
+            Assert.AreEqual("", row.Delta);
+            Assert.AreEqual("", EventRowMapper.ReadFromRow(row)[5]);
         }
     }
 }

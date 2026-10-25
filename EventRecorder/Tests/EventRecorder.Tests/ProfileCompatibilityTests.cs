@@ -150,6 +150,40 @@ namespace EventRecorder.Tests
         }
 
         [TestMethod]
+        public void ホイールの回転量は保存して読み直せて_無いファイルは空として読む()
+        {
+            using (TempFolder temp = new TempFolder())
+            {
+                // 回転量(Delta)の無い以前のファイルと、ある新しいファイル
+                temp.Write("a_old.json",
+                    "{ \"LoopCount\": \"1\", \"Events\": [ { \"Type\": \"WHEEL_UP\", \"X\": \"1\", \"Y\": \"2\", \"Key\": \"\", \"Wait\": \"0\" } ] }");
+                String savedPath = temp.Combine("saved.json");
+
+                StaRunner.Run(() =>
+                {
+                    MainWindow window = new MainWindow(temp.Path);
+                    Assert.AreEqual("", window.EventRows[0].Delta);
+                    Assert.AreEqual("X:1 Y:2", window.EventRows[0].Detail);
+
+                    window.EventRows.Add(EventRow.FromData("WHEEL_DOWN", "3", "4", "", "0", "", "30"));
+                    String errorMessage;
+                    Assert.IsTrue(window.SaveProfile(savedPath, out errorMessage), errorMessage);
+
+                    MainWindow reader = new MainWindow(temp.Path);
+                    reader.LoadProfile(savedPath);
+                    Assert.AreEqual("", reader.EventRows[0].Delta);
+                    Assert.AreEqual("30", reader.EventRows[1].Delta);
+                    Assert.AreEqual("X:3 Y:4 Delta:30", reader.EventRows[1].Detail);
+                });
+
+                // 回転量が空の行はDeltaを書き出さない(今までと同じ形)。ある行だけ"Delta"が増える
+                JObject json = JObject.Parse(File.ReadAllText(savedPath));
+                Assert.IsNull(json["Events"][0]["Delta"]);
+                Assert.AreEqual("30", (String)json["Events"][1]["Delta"]);
+            }
+        }
+
+        [TestMethod]
         public void WinForms版のアプリ設定を読み_同じ形で書き戻す()
         {
             using (TempFolder temp = new TempFolder())
