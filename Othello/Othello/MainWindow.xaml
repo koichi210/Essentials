@@ -8,7 +8,7 @@
              Menuの幅がウィンドウの初期幅(盤面200+余白24)を押し広げないよう、初期幅を224に固定する(Loaded後に解除) -->
         <Menu x:Name="menuStrip1" DockPanel.Dock="Top" Width="224">
             <MenuItem x:Name="menuItem_Game" Header="ゲーム(_G)">
-                <MenuItem x:Name="menuItem_Start" ToolTip="確認なしで初期局面から新しい対局を始める。対戦モード・COMレベル・持ち時間の設定はそのまま" Header="開始(_S)" Click="menuItem_Start_Click" />
+                <MenuItem x:Name="menuItem_Start" ToolTip="確認なしで初期局面から新しい対局を始める。棋譜を読み込んだ後は、読み込んだ局面から対局を始める。対戦モード・COMレベル・持ち時間の設定はそのまま" Header="開始(_S)" Click="menuItem_Start_Click" />
                 <MenuItem x:Name="menuItem_Undo" ToolTip="直前の1手を取り消す。戻した結果がCOMの手番なら、COMがすぐに打ち直す" Header="一手戻す(_U)" Click="menuItem_Undo_Click" />
                 <MenuItem x:Name="menuItem_Redo" ToolTip="「一手戻す」で取り消した手を1手やり直す" Header="一手進める(_R)" Click="menuItem_Redo_Click" />
                 <Separator x:Name="toolStripSeparator1" />
@@ -41,7 +41,7 @@
             <MenuItem x:Name="menuItem_Kifu" Header="棋譜(_K)">
                 <MenuItem x:Name="menuItem_KifuShow" Header="表示(_V)" Click="menuItem_KifuShow_Click" />
                 <MenuItem x:Name="menuItem_KifuSave" ToolTip="手順を「手数 : 列.行 色」形式(例: 1 : C.4 黒)のテキストで保存する。一手戻した手も、やり直せる間は含まれる" Header="保存(_S)..." Click="menuItem_KifuSave_Click" />
-                <MenuItem x:Name="menuItem_KifuLoad" ToolTip="棋譜テキストを最初から再生した局面にする。置けない手があればそこで打ち切る" Header="読込(_L)..." Click="menuItem_KifuLoad_Click" />
+                <MenuItem x:Name="menuItem_KifuLoad" ToolTip="棋譜テキストを最初から再生した局面にする。置けない手があればそこで打ち切る。「開始」を押すまでCOMも人も打たず、持ち時間も減らない" Header="読込(_L)..." Click="menuItem_KifuLoad_Click" />
             </MenuItem>
         </Menu>
 

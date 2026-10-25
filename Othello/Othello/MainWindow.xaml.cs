@@ -37,6 +37,9 @@ namespace Othello
         private int _whiteTimeMs;
         // 時間切れで終局したかどうか(GameMaster.IsGameEndとは別に管理する)
         private bool _isTimedOut;
+        // 棋譜を読み込んで「開始」を待っている間はtrue。この間はCOMも打たず、人も打てず、持ち時間も減らない
+        // (以前は読み込んだ直後にCOMの番だとすぐ打ち始めていた。WinForms版のGameState.Init相当)
+        private bool _isWaitingForStart;
 
         // COMの手を少し間を置いてから打つためのタイマー(人間の手と同じ速さで即打つと
         // 何が起きたか分かりにくいため)。
@@ -211,6 +214,7 @@ namespace Othello
             _countdownTimer.Stop();
 
             GameMaster.Initialize();
+            _isWaitingForStart = false;
             ResetTimeLimit();
         }
 
@@ -277,9 +281,18 @@ namespace Othello
 
         /// <summary>
         /// メニュー「ゲーム」→「開始」。確認なしで新規対局を始める。
+        /// 棋譜を読み込んで開始待ちのときは、新しい対局で上書きせず、読み込んだ局面から対局を始める。
         /// </summary>
-        private void menuItem_Start_Click(object sender, RoutedEventArgs e)
+        internal void menuItem_Start_Click(object sender, RoutedEventArgs e)
         {
+            // 読み込んだ棋譜が終局していれば続きは無いので、いつもどおり新しい対局にする
+            if (_isWaitingForStart && !GameMaster.IsGameEnd)
+            {
+                _isWaitingForStart = false;
+                RedrawBoard();
+                return;
+            }
+
             ResetGame();
             RedrawBoard();
         }
@@ -499,6 +512,7 @@ namespace Othello
         /// <summary>
         /// 棋譜テキストを最初から再生する(「棋譜」→「読込」のファイル読込以降の処理)。
         /// 失敗した場合や、途中の手で中断した場合(それまでの手は反映済み)はメッセージを表示する。
+        /// 読み込んだ後は「開始」を押すまで対局を始めない(開始待ち)。
         /// </summary>
         internal bool LoadKifuText(string text, bool showError = true)
         {
@@ -507,6 +521,7 @@ namespace Othello
 
             bool ok = Kifu.TryReplay(text, GameMaster, out string errorMessage);
             ResetTimeLimit();
+            _isWaitingForStart = true;
 
             RedrawBoard();
 
@@ -540,7 +555,7 @@ namespace Othello
         /// </summary>
         private void MaybeTriggerComMove()
         {
-            if (!GameMaster.IsGameEnd && IsComTurn(GameMaster.CurrentTurn))
+            if (!_isWaitingForStart && !GameMaster.IsGameEnd && IsComTurn(GameMaster.CurrentTurn))
             {
                 _comMoveTimer.Start();
             }
@@ -562,7 +577,7 @@ namespace Othello
         {
             _comMoveTimer.Stop();
 
-            if (_isTimedOut || GameMaster.IsGameEnd || !IsComTurn(GameMaster.CurrentTurn))
+            if (_isWaitingForStart || _isTimedOut || GameMaster.IsGameEnd || !IsComTurn(GameMaster.CurrentTurn))
             {
                 return;
             }
@@ -644,7 +659,8 @@ namespace Othello
         /// </summary>
         internal bool HandleBoardClick(Point position)
         {
-            if (_isTimedOut || GameMaster.IsGameEnd)
+            // 棋譜を読み込んで開始待ちの間も打てない(「開始」で読み込んだ局面から始める)
+            if (_isWaitingForStart || _isTimedOut || GameMaster.IsGameEnd)
             {
                 return false;
             }
@@ -706,11 +722,11 @@ namespace Othello
         /// <summary>
         /// 盤面・置ける場所のマーク・手番表示をまとめて再描画し、COMの手番なら次の一手を予約する。
         /// 終局している場合や、これから打つのがCOMの場合は置ける場所のマークは出さない
-        /// (マークは「あなたがここに置けるよ」という案内なので)。
+        /// (マークは「あなたがここに置けるよ」という案内なので)。開始待ちの間も打てないので出さない。
         /// </summary>
         private void RedrawBoard()
         {
-            bool showNotice = !_isTimedOut && !GameMaster.IsGameEnd && !IsComTurn(GameMaster.CurrentTurn);
+            bool showNotice = !_isWaitingForStart && !_isTimedOut && !GameMaster.IsGameEnd && !IsComTurn(GameMaster.CurrentTurn);
             bool[,] validMoves = showNotice ? GameMaster.GetValidMoves(GameMaster.CurrentTurn) : null;
             BoardRenderer.DrawField(GameMaster.Table, validMoves);
             GetDpiScale(out double scaleX, out double scaleY);
@@ -720,7 +736,7 @@ namespace Othello
 
             UpdateUndoRedoMenu();
 
-            if (!_isTimedOut && !GameMaster.IsGameEnd && _timeLimitSeconds >= 0)
+            if (!_isWaitingForStart && !_isTimedOut && !GameMaster.IsGameEnd && _timeLimitSeconds >= 0)
             {
                 _countdownTimer.Start();
             }
@@ -783,7 +799,8 @@ namespace Othello
             else
             {
                 string turnName = GameMaster.CurrentTurn == StoneColor.Black ? "黒" : "白";
-                label_Status.Text = string.Format("{0}の番 (黒:{1} 白:{2})", turnName, blackCount, whiteCount);
+                string waiting = _isWaitingForStart ? " [「開始」で続きから]" : "";
+                label_Status.Text = string.Format("{0}の番 (黒:{1} 白:{2}){3}", turnName, blackCount, whiteCount, waiting);
             }
         }
     }

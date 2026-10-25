@@ -313,6 +313,8 @@ namespace Othello.Tests
                 Assert.IsTrue(window.LoadKifuText(text, false));
                 Assert.IsTrue(window.menuItem_Undo.IsEnabled);
 
+                // 読み込んだ後は「開始」を押してから時間が減る
+                window.menuItem_Start_Click(null, null);
                 window.CountDown(30000);
                 Assert.IsFalse(window.menuItem_Undo.IsEnabled);
                 Assert.IsFalse(window.menuItem_Redo.IsEnabled);
@@ -338,12 +340,155 @@ namespace Othello.Tests
                 var window = new MainWindow();
                 Assert.IsTrue(window.LoadKifuText(text, false));
                 Assert.AreEqual(2, window.GameMaster.History.Count);
-                Assert.AreEqual("黒の番 (黒:3 白:3)", window.label_Status.Text);
+                Assert.AreEqual("黒の番 (黒:3 白:3) [「開始」で続きから]", window.label_Status.Text);
                 Assert.IsTrue(window.menuItem_Undo.IsEnabled);
 
                 Assert.IsFalse(window.LoadKifuText("でたらめ", false));
                 window.Close();
             });
+        }
+
+        [TestMethod]
+        public void 棋譜を読み込んだ後は開始を押すまでCOMも人も打たず時間も減らない()
+        {
+            StaRunner.Run(() =>
+            {
+                var original = new GameMaster();
+                original.Initialize();
+                original.TryPut(2, 3);
+                original.TryPut(2, 2);
+                string text = Kifu.ToText(original.History);
+
+                var window = ShowWindow();
+                try
+                {
+                    // COM vs 人(COMが黒)・持ち時間あり。読み込んだ局面は黒(COM)の番
+                    window.menuItem_PlayMode_Click(window.menuItem_CP, null);
+                    window.menuItem_TimeLimit_Click(window.menuItem_Time30s, null);
+                    Assert.IsTrue(window.LoadKifuText(text, false));
+
+                    // 以前は読み込んだ直後にCOMが打ち始めていた
+                    Assert.IsFalse(window.IsComMovePending);
+                    Assert.IsFalse(window.IsCountdownRunning);
+                    window.DoComMove();
+                    Assert.AreEqual(2, window.GameMaster.History.Count, "開始前はCOMが打たない");
+                    Assert.AreEqual("残り時間 黒:30秒 白:30秒", window.label_Time.Text);
+
+                    // 一手戻す/進めるで局面を見ても、開始待ちのまま
+                    window.GameMaster.Undo();
+                    window.menuItem_Start_Click(null, null);
+                    Assert.AreEqual(1, window.GameMaster.TurnCount, "開始で新しい対局に上書きしない");
+                    Assert.AreEqual(2, window.GameMaster.History.Count);
+
+                    // 開始すると読み込んだ局面(から1手戻した所)の続きから。白(人)の番なのでCOMは待つ
+                    Assert.AreEqual(StoneColor.White, window.GameMaster.CurrentTurn);
+                    Assert.IsTrue(window.IsCountdownRunning);
+                    Assert.AreEqual("白の番 (黒:4 白:1)", window.label_Status.Text);
+                }
+                finally
+                {
+                    window.Close();
+                }
+            });
+        }
+
+        [TestMethod]
+        public void 棋譜を読み込んだ後は開始を押すまで人のクリックも受け付けない()
+        {
+            StaRunner.Run(() =>
+            {
+                var original = new GameMaster();
+                original.Initialize();
+                original.TryPut(2, 3);
+                string text = Kifu.ToText(original.History);
+
+                var window = ShowWindow();
+                try
+                {
+                    // 人 vs COM(人が黒)。読み込んだ局面は白(COM)の番
+                    window.menuItem_PlayMode_Click(window.menuItem_PC, null);
+                    Assert.IsTrue(window.LoadKifuText(text, false));
+                    Assert.IsFalse(window.IsComMovePending);
+
+                    // 開始すると白(COM)が読み込んだ局面の続きを打ち、黒(人)の番になる
+                    window.menuItem_Start_Click(null, null);
+                    Assert.IsTrue(window.IsComMovePending);
+                    window.DoComMove();
+                    Assert.AreEqual(2, window.GameMaster.History.Count);
+                    Assert.AreEqual(StoneColor.Black, window.GameMaster.CurrentTurn);
+
+                    // もう一度読み込むとまた開始待ち。人(黒)の番でもクリックでは打てない
+                    original.TryPut(2, 2);
+                    Assert.IsTrue(window.LoadKifuText(Kifu.ToText(original.History), false));
+                    Assert.AreEqual(StoneColor.Black, window.GameMaster.CurrentTurn);
+                    Point cell = FindValidCell(window);
+                    Assert.IsFalse(window.HandleBoardClick(cell));
+                    Assert.AreEqual(2, window.GameMaster.History.Count);
+
+                    window.menuItem_Start_Click(null, null);
+                    Assert.IsTrue(window.HandleBoardClick(cell));
+                    Assert.AreEqual(3, window.GameMaster.History.Count);
+                }
+                finally
+                {
+                    window.Close();
+                }
+            });
+        }
+
+        [TestMethod]
+        public void 終局した棋譜を読み込んだ後の開始は新しい対局になる()
+        {
+            StaRunner.Run(() =>
+            {
+                // COM同士で最後まで打った棋譜
+                string text = Kifu.ToText(PlayToEnd().History);
+
+                var window = new MainWindow();
+                window.LoadKifuText(text, false);
+                Assert.IsTrue(window.GameMaster.IsGameEnd);
+
+                window.menuItem_Start_Click(null, null);
+                Assert.AreEqual(0, window.GameMaster.History.Count);
+                Assert.AreEqual("黒の番 (黒:2 白:2)", window.label_Status.Text);
+                window.Close();
+            });
+        }
+
+        /// <summary>
+        /// COM(レベル1)同士で終局まで打った対局
+        /// </summary>
+        private static GameMaster PlayToEnd()
+        {
+            var gm = new GameMaster();
+            gm.Initialize();
+            for (int i = 0; i < 100 && !gm.IsGameEnd; i++)
+            {
+                Assert.IsTrue(ComPlayer.TryGetMove(gm, gm.CurrentTurn, 1, out int x, out int y));
+                Assert.IsTrue(gm.TryPut(x, y));
+            }
+            Assert.IsTrue(gm.IsGameEnd);
+            return gm;
+        }
+
+        /// <summary>
+        /// 今の手番が置けるマスの1つ(の中心のDIP座標)
+        /// </summary>
+        private static Point FindValidCell(MainWindow window)
+        {
+            bool[,] valid = window.GameMaster.GetValidMoves(window.GameMaster.CurrentTurn);
+            for (int y = 0; y < GameMaster.BoardSize; y++)
+            {
+                for (int x = 0; x < GameMaster.BoardSize; x++)
+                {
+                    if (valid[y, x])
+                    {
+                        return CellCenter(window, x, y);
+                    }
+                }
+            }
+            Assert.Fail("置けるマスが無い");
+            return new Point();
         }
     }
 }
