@@ -23,6 +23,9 @@ namespace FileArranger
         public void SortFolder(String folderPath)
         {
             String[] files = Directory.GetFiles(folderPath);
+            // GetFilesの返す順はファイルシステム次第(FAT/exFATでは作成順等になり名前順にならない)なので、
+            // 名前順(NTFSで返っていた順と同じ、大文字小文字を区別しない順)に並べてから番号を振る
+            Array.Sort(files, StringComparer.OrdinalIgnoreCase);
             for (int i = 0; i < files.Length; i++)
             {
                 String ext = Path.GetExtension(files[i]);

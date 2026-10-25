@@ -65,6 +65,40 @@ namespace FileArranger.Tests
         }
 
         // ------------------------------------------------------------------
+        // ReplaceRearNumber
+        // ------------------------------------------------------------------
+
+        [TestMethod]
+        public void ReplaceRearNumber_2桁の番号を付け替える()
+        {
+            Assert.AreEqual("Folder06", Logic.ReplaceRearNumber("Folder05", 5, 1));
+        }
+
+        [TestMethod]
+        public void ReplaceRearNumber_3桁以上の番号も外してから付け替える()
+        {
+            // 以前は番号を外さずに付け足していた(Folder123→Folder123124)
+            Assert.AreEqual("Folder124", Logic.ReplaceRearNumber("Folder123", 123, 1));
+            Assert.AreEqual("Folder100", Logic.ReplaceRearNumber("Folder99", 99, 1));
+        }
+
+        [TestMethod]
+        public void ReplaceRearNumber_末尾に数字が無ければ名前を削らずに付け足す()
+        {
+            // 以前は名前の末尾2文字を削っていた(Folder→Fold01)
+            Assert.AreEqual("Folder01", Logic.ReplaceRearNumber("Folder", 0, 1));
+            Assert.AreEqual("Folder06", Logic.ReplaceRearNumber("Folder5", 5, 1));
+        }
+
+        [TestMethod]
+        public void ReplaceRearNumber_番号より前の数字は残す()
+        {
+            // 番号の検索範囲を末尾2文字にしていた時など、番号の桁数を超えた数字は外さない(従来と同じ)
+            Assert.AreEqual("Folder12346", Logic.ReplaceRearNumber("Folder12345", 45, 1));
+            Assert.AreEqual("Folder006", Logic.ReplaceRearNumber("Folder005", 5, 1));
+        }
+
+        // ------------------------------------------------------------------
         // ChangeWide2Narrow
         // ------------------------------------------------------------------
 

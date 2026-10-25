@@ -13,7 +13,10 @@ namespace FileArranger
     {
         private void sf_button_Listup_TargetFile_Click(object sender, RoutedEventArgs e)
         {
-            ListupInto(sf_listBox_Target, sf_label_TotalNum, "フォルダ数", sf_textBox_TargetFile.Text, Directory.GetDirectories);
+            if (ListupInto(sf_listBox_Target, sf_label_TotalNum, "フォルダ数", sf_textBox_TargetFile.Text, Directory.GetDirectories) != null)
+            {
+                _sfListedDir = sf_textBox_TargetFile.Text;
+            }
         }
 
         private void sf_button_SortFileRename_Click(object sender, RoutedEventArgs e)
@@ -29,7 +32,7 @@ namespace FileArranger
             }
 
             _sorter.SortFolders(WpfControlUtils.GetSelectedNames(sf_listBox_Target)
-                .Select(selectedName => Path.Combine(sf_textBox_TargetFile.Text, selectedName)));
+                .Select(selectedName => Path.Combine(_sfListedDir, selectedName)));
         }
 
         private void sf_button_Sort_Restore_Click(object sender, RoutedEventArgs e)

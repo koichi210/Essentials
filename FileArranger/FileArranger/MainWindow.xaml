@@ -135,7 +135,7 @@
                                     ToolTip="選択したフォルダそのものを格納先の直下へ移動する(途中の階層は持っていかない)。格納先に同名フォルダがあれば、名前の末尾に「_Cnt番号_日時」を付ける" />
                             <Button x:Name="md_button_Delete" Content="削除" Width="100" Margin="6,0,0,0"
                                     Click="md_button_Delete_Click"
-                                    ToolTip="選択したフォルダを中身ごと削除する。確認は出ず、ごみ箱にも入らない" />
+                                    ToolTip="選択したフォルダを中身ごと削除する(実行前に確認が出る)。ごみ箱には入らない" />
                         </StackPanel>
                     </Grid>
                 </Grid>

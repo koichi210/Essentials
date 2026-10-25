@@ -25,7 +25,7 @@ namespace FileArranger
 
         private void rd_button_RenameFolderRestore_Click(object sender, RoutedEventArgs e)
         {
-            if (!_renameDirMemory.RestoreLastBatch(Directory.Move))
+            if (!_renameDirMemory.RestoreLastBatch(Utils.RenameDirectory))
             {
                 MessageBox.Show("これ以上復元できません");
                 return;
@@ -45,11 +45,35 @@ namespace FileArranger
             for (int i = 0; i < selectedIndices.Count; i++)
             {
                 ListViewRow row = (ListViewRow)rd_listView_Target.Items[selectedIndices[i]];
-                String srcName = Path.Combine(rd_comboBox_RenameDir.Text, row[_renameSrcIdx]);
-                String destName = Path.Combine(rd_comboBox_RenameDir.Text, row[_renameDestIdx]);
+                String srcName = Path.Combine(_rdListedDir, row[_renameSrcIdx]);
+                String destName = Path.Combine(_rdListedDir, row[_renameDestIdx]);
+
+                // 変更後が今と同じ名前なら何もしない
+                // (以前は自分自身と重複したとみなして、重複回避の連番付きの名前にリネームしていた)
+                if (srcName == destName)
+                {
+                    continue;
+                }
+
+                if (String.Equals(srcName, destName, StringComparison.OrdinalIgnoreCase))
+                {
+                    // 大文字小文字だけ違う場合も自分自身との重複なので、重複回避せずにその名前へ変える
+                    try
+                    {
+                        Utils.RenameDirectory(srcName, destName);
+                        _renameDirMemory.AddRestoreItem(srcName, destName);
+                    }
+                    catch (Exception)
+                    {
+                        MessageBox.Show("Move処理に失敗しました。" + Environment.NewLine +
+                            "[" + srcName + "]" + Environment.NewLine +
+                            "[" + destName + "]" + Environment.NewLine);
+                    }
+                    continue;
+                }
 
                 // フォルダ名の重複回避
-                _util.AvoidFileNameConflict(ref destName, i);
+                _util.AvoidFolderNameConflict(ref destName, i);
                 _fio.MoveDirectory(srcName, destName);
                 // MoveDirectoryは失敗してもメッセージを出すだけなので、実際にリネームできたものだけ履歴に残す
                 // (失敗分まで残すと「元に戻す」が存在しないフォルダを戻そうとして例外になり、他の分も戻せなくなる)。
@@ -74,6 +98,7 @@ namespace FileArranger
             {
                 return;
             }
+            _rdListedDir = rd_comboBox_RenameDir.Text;
 
             scrollToIdx = Math.Min(scrollToIdx, folders.Length - 1);
             if (scrollToIdx > 0)
@@ -146,7 +171,7 @@ namespace FileArranger
             }
 
             // 先頭の選択項目を開く
-            String openPath = Path.Combine(rd_comboBox_RenameDir.Text, firstRow[_renameSrcIdx]);
+            String openPath = Path.Combine(_rdListedDir, firstRow[_renameSrcIdx]);
             if (!Directory.Exists(openPath))
             {
                 return;

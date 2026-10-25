@@ -17,7 +17,10 @@ namespace FileArranger
 
         private void ListupMoveFileTargets()
         {
-            ListupInto(mf_listBox_Target, mf_label_TotalNum, "ファイル数", mf_textBox_SourceDir.Text, Directory.GetFiles);
+            if (ListupInto(mf_listBox_Target, mf_label_TotalNum, "ファイル数", mf_textBox_SourceDir.Text, Directory.GetFiles) != null)
+            {
+                _mfListedDir = mf_textBox_SourceDir.Text;
+            }
         }
 
         private void mf_listBox_Target_SelectedIndexChanged(object sender, SelectionChangedEventArgs e)
@@ -47,7 +50,7 @@ namespace FileArranger
             // 別スレッドを非同期実行
             MoveFileWorkerParam param = new MoveFileWorkerParam
             {
-                SourceDir = mf_textBox_SourceDir.Text,
+                SourceDir = _mfListedDir,
                 TargetDir = mf_textBox_TargetDir.Text,
             };
             param.TargetNames.AddRange(WpfControlUtils.GetSelectedNames(mf_listBox_Target));

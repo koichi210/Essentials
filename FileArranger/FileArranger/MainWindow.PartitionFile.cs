@@ -46,6 +46,7 @@ namespace FileArranger
             {
                 return;
             }
+            _pfListedDir = pf_textBox_TargetFile.Text;
 
             ResizePartitionColumnsEvenly();
         }
@@ -133,10 +134,7 @@ namespace FileArranger
             long srcNumber = _util.GetNumberFromRear(srcFolderName, pf_textBox_SearchTitleLine.Text, pf_textBox_SearchTitleLength.Text, "0");
             int addCount = Logic.GetAddCount(selectedNames, srcFileName, pf_textBox_TargetSeparator.Text, true);
 
-            String number = Logic.ToPaddedNumberString(srcNumber, addCount);
-            int srcNumberDigits = Logic.GetPaddingDigits(srcNumber);
-
-            return srcFolderName.Substring(0, srcFolderName.Length - srcNumberDigits) + number;
+            return Logic.ReplaceRearNumber(srcFolderName, srcNumber, addCount);
         }
 
         private void pf_button_ClearSelect_Click(object sender, RoutedEventArgs e)
@@ -179,7 +177,7 @@ namespace FileArranger
             // 別スレッドを非同期実行
             PartitionWorkerParam param = new PartitionWorkerParam
             {
-                TargetFilePath = pf_textBox_TargetFile.Text,
+                TargetFilePath = _pfListedDir,
                 TargetDir = pf_textBox_ReferenceFile.Text,
             };
             param.Items.AddRange(selectedRows.Select(row => new PartitionWorkerParam.Item

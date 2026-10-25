@@ -98,6 +98,22 @@ namespace FileArranger.Tests
         }
 
         [TestMethod]
+        public void SortFolder_名前順に番号を振る()
+        {
+            // GetFilesの返す順はFAT/exFATでは名前順にならないため、名前順(大文字小文字は区別しない)に並べてから振る
+            File.WriteAllText(Path.Combine(tempDirectory, "c.txt"), "c");
+            File.WriteAllText(Path.Combine(tempDirectory, "B.txt"), "B");
+            File.WriteAllText(Path.Combine(tempDirectory, "a.txt"), "a");
+
+            var sorter = new FileSorter();
+            sorter.SortFolder(tempDirectory);
+
+            Assert.AreEqual("a", File.ReadAllText(Path.Combine(tempDirectory, "000.txt")));
+            Assert.AreEqual("B", File.ReadAllText(Path.Combine(tempDirectory, "001.txt")));
+            Assert.AreEqual("c", File.ReadAllText(Path.Combine(tempDirectory, "002.txt")));
+        }
+
+        [TestMethod]
         public void RestoreでSortFolderの結果を元に戻せる()
         {
             CreateFile("banana.txt");

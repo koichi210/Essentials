@@ -63,6 +63,7 @@
     <Compile Include="SaveRestoreTests.cs" />
     <Compile Include="WpfControlHelperTests.cs" />
     <Compile Include="MoveDirectoryTabTests.cs" />
+    <Compile Include="RenameDirectoryTabTests.cs" />
     <Compile Include="..\..\..\_Common\Wpf\Tests\StaRunner.cs">
       <Link>StaRunner.cs</Link>
     </Compile>

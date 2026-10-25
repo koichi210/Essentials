@@ -46,6 +46,18 @@ namespace FileArranger
         private readonly FileSorter _sorter = new FileSorter();
         internal WpfSaveRestore SaveRestore { get; } = new WpfSaveRestore();
 
+        // 各タブでリストアップした時のフォルダ。一覧の名前はこのフォルダ基準なので、操作にはこちらを使う
+        // (以前は操作時の入力欄の値を使っていたため、リストアップ後に欄を書き換えると一覧と実際の対象がずれていた)
+        private String _mdListedDir = "";
+        private String _rdListedDir = "";
+        private String _sfListedDir = "";
+        private String _mfListedDir = "";
+        private String _pfListedDir = "";
+
+        // 削除前の確認(はい/いいえ)。テストでは差し替えて、確認の文言と答えを確かめる
+        internal Func<String, Boolean> ConfirmDelete { get; set; } = text =>
+            MessageBox.Show(text, "Warning", MessageBoxButton.YesNo, MessageBoxImage.Warning, MessageBoxResult.No) == MessageBoxResult.Yes;
+
         private readonly BackgroundWorker _bgWorkerMove = new BackgroundWorker { WorkerReportsProgress = true };
         private readonly BackgroundWorker _bgPartition = new BackgroundWorker { WorkerReportsProgress = true };
 

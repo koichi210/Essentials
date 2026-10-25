@@ -11,11 +11,12 @@ namespace FileArranger
     class Utils : StcUtils
     {
         // フォルダ名の重複回避。
-        // フォルダが既に存在すれば、targetPathの末尾に連番と日時を付けた名前に書き換える
+        // 同名のフォルダ/ファイルが既に存在すれば、targetPathの末尾に連番と日時を付けた名前に書き換える
+        // (以前はフォルダしか見ていなかったため、同名のファイルがあると重複回避されずに移動が失敗していた)
         public void AvoidFolderNameConflict(ref String targetPath, int loopIdx)
         {
-            // フォルダが存在しなければ何もしない
-            if (!Directory.Exists(targetPath))
+            // フォルダもファイルも存在しなければ何もしない
+            if (!Directory.Exists(targetPath) && !File.Exists(targetPath))
             {
                 return;
             }
@@ -23,20 +24,37 @@ namespace FileArranger
         }
 
         // ファイル名の重複回避。
-        // 同名のファイル/フォルダが無ければtrue。あればtargetPathの末尾に連番と日時を付けてfalseを返す
+        // 同名のファイル/フォルダが無ければtrue。あればtargetPathの拡張子の前に連番と日時を付けてfalseを返す
+        // (以前は拡張子の後ろに付けていたため、「a.jpg_Cnt0_…」となって拡張子として認識されなかった)
         public Boolean AvoidFileNameConflict(ref String targetPath, int loopIdx)
         {
             if (!File.Exists(targetPath) && !Directory.Exists(targetPath))
             {
                 return true;
             }
-            targetPath = targetPath + CreateConflictSuffix(loopIdx);
+            String extension = Path.GetExtension(targetPath);
+            targetPath = targetPath.Substring(0, targetPath.Length - extension.Length) + CreateConflictSuffix(loopIdx) + extension;
             return false;
         }
 
         private static String CreateConflictSuffix(int loopIdx)
         {
             return "_Cnt" + loopIdx.ToString() + "_" + DateTime.Now.ToString("yyyy_MM_dd_HH_mm_ss");
+        }
+
+        // フォルダのリネーム(大文字小文字だけ違う名前にも変えられる)。
+        // Directory.Moveは大文字小文字だけ違うパスを「同じパス」として例外にするため、その場合は一旦別の名前を経由する
+        public static void RenameDirectory(String sourcePath, String destPath)
+        {
+            if (!String.Equals(sourcePath, destPath, StringComparison.OrdinalIgnoreCase))
+            {
+                Directory.Move(sourcePath, destPath);
+                return;
+            }
+
+            String tempPath = sourcePath + "_" + Guid.NewGuid().ToString("N");
+            Directory.Move(sourcePath, tempPath);
+            Directory.Move(tempPath, destPath);
         }
 
         public String CreateNewFolderName(String srcName, String trimName = "", Boolean isReverse = false)

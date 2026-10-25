@@ -109,7 +109,7 @@ namespace FileArranger.Tests
 
             Assert.IsFalse(result);
             Assert.AreNotEqual(original, path);
-            StringAssert.StartsWith(path, original + "_Cnt2_");
+            StringAssert.StartsWith(path, Path.Combine(tempDirectory, "dup_Cnt2_"));
         }
 
         [TestMethod]
@@ -121,7 +121,86 @@ namespace FileArranger.Tests
 
             util.AvoidFileNameConflict(ref path, 0);
 
+            StringAssert.StartsWith(path, Path.Combine(tempDirectory, "dup_zero_Cnt0_"));
+        }
+
+        [TestMethod]
+        public void AvoidFileNameConflict_連番は拡張子の前に入れる()
+        {
+            // 以前は「a.jpg_Cnt0_日時」と拡張子の後ろに付いて、拡張子として認識されなくなっていた
+            string original = Path.Combine(tempDirectory, "a.jpg");
+            File.WriteAllText(original, "dummy");
+            string path = original;
+
+            util.AvoidFileNameConflict(ref path, 0);
+
+            StringAssert.StartsWith(path, Path.Combine(tempDirectory, "a_Cnt0_"));
+            Assert.AreEqual(".jpg", Path.GetExtension(path));
+        }
+
+        [TestMethod]
+        public void AvoidFileNameConflict_拡張子が無ければ末尾に付ける()
+        {
+            string original = Path.Combine(tempDirectory, "noext");
+            File.WriteAllText(original, "dummy");
+            string path = original;
+
+            util.AvoidFileNameConflict(ref path, 1);
+
+            StringAssert.StartsWith(path, original + "_Cnt1_");
+        }
+
+        [TestMethod]
+        public void AvoidFolderNameConflict_同名のファイルがあっても連番付きの名前にする()
+        {
+            // 以前はフォルダしか見ていなかったため、同名のファイルがあると重複回避されず移動が失敗していた
+            string original = Path.Combine(tempDirectory, "same_name");
+            File.WriteAllText(original, "dummy");
+            string path = original;
+
+            util.AvoidFolderNameConflict(ref path, 2);
+
+            StringAssert.StartsWith(path, original + "_Cnt2_");
+        }
+
+        [TestMethod]
+        public void AvoidFolderNameConflict_ドットを含むフォルダ名でも末尾に付ける()
+        {
+            string original = Path.Combine(tempDirectory, "Vol.1");
+            Directory.CreateDirectory(original);
+            string path = original;
+
+            util.AvoidFolderNameConflict(ref path, 0);
+
             StringAssert.StartsWith(path, original + "_Cnt0_");
+        }
+
+        // ------------------------------------------------------------------
+        // RenameDirectory
+        // ------------------------------------------------------------------
+
+        [TestMethod]
+        public void RenameDirectory_大文字小文字だけ違う名前に変えられる()
+        {
+            string original = Path.Combine(tempDirectory, "abc");
+            Directory.CreateDirectory(original);
+            File.WriteAllText(Path.Combine(original, "x.txt"), "dummy");
+
+            Utils.RenameDirectory(original, Path.Combine(tempDirectory, "ABC"));
+
+            CollectionAssert.AreEqual(new[] { "ABC" }, Directory.GetDirectories(tempDirectory).Select(Path.GetFileName).ToArray());
+            Assert.IsTrue(File.Exists(Path.Combine(tempDirectory, @"ABC\x.txt")), "中身はそのまま");
+        }
+
+        [TestMethod]
+        public void RenameDirectory_別の名前ならそのままリネームする()
+        {
+            string original = Path.Combine(tempDirectory, "before");
+            Directory.CreateDirectory(original);
+
+            Utils.RenameDirectory(original, Path.Combine(tempDirectory, "after"));
+
+            CollectionAssert.AreEqual(new[] { "after" }, Directory.GetDirectories(tempDirectory).Select(Path.GetFileName).ToArray());
         }
 
         [TestMethod]

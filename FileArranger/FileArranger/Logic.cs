@@ -39,6 +39,20 @@ namespace FileArranger
             return destNumber.ToString().PadLeft(paddingDigits, '0');
         }
 
+        /// <summary>
+        /// 名前の末尾の番号(srcNumber)を外し、加算数を足した番号(ToPaddedNumberString)に付け替える。
+        /// 外すのは末尾に実際に並んでいる数字だけで、srcNumberをゼロ埋めした桁数までにする
+        /// (以前はGetPaddingDigitsを桁数として流用していたため、番号が3桁以上だと外さずに付け足し(Folder123→Folder123124)、
+        ///  末尾に数字が無いと名前の文字を2文字削っていた)。
+        /// </summary>
+        public static String ReplaceRearNumber(String srcName, long srcNumber, int addCount)
+        {
+            int rearDigits = srcName.Length - srcName.TrimEnd('0', '1', '2', '3', '4', '5', '6', '7', '8', '9').Length;
+            int removeDigits = Math.Min(rearDigits, ToPaddedNumberString(srcNumber).Length);
+
+            return srcName.Substring(0, srcName.Length - removeDigits) + ToPaddedNumberString(srcNumber, addCount);
+        }
+
         /// <summary>全角の数字・英字・スペースを半角に変換する。</summary>
         public static String ChangeWide2Narrow(String srcString)
         {
