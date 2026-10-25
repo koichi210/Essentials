@@ -106,7 +106,20 @@ namespace Cheetos
         {
             int height;
             return range.Length == 2
-                && range.All(text => text == "-" || int.TryParse(text, out height));
+                && range.All(text => text == "-" || int.TryParse(text, out height))
+                && !IsEndBeforeStart(range);
+        }
+
+        // 終了が数値で、開始("-"は0)より小さいか。以前は高さがマイナスの矩形のまま描いていた
+        // (終了が"-"(画像の高さ)の場合は、開始が画像より下なら結合時に打ち切る)
+        private static bool IsEndBeforeStart(String[] range)
+        {
+            if (range[1] == "-")
+            {
+                return false;
+            }
+            int startHeight = (range[0] == "-") ? 0 : int.Parse(range[0]);
+            return int.Parse(range[1]) < startHeight;
         }
 
         private static String[] SplitTrimHeight(String line)
@@ -194,7 +207,7 @@ namespace Cheetos
             String[] invalidTrimHeights = global::Cheetos.PictMerge.FindInvalidTrimHeights(trimHeightRanges);
             if (invalidTrimHeights.Length > 0)
             {
-                MessageBoxResult dr = MessageBox.Show("フォーマットが不正な行があります。" + Environment.NewLine
+                MessageBoxResult dr = MessageBox.Show("フォーマットが不正な行(「開始,終了」の形でない・終了が開始より小さい)があります。" + Environment.NewLine
                     + "[" + String.Join("] [", invalidTrimHeights) + "]" + Environment.NewLine
                     + "不正な行を飛ばして結合しますか？",
                     "Error",
@@ -258,6 +271,14 @@ namespace Cheetos
 
             for (int itemIdx = 0; itemIdx < targetFileNames.Length; itemIdx++)
             {
+                // キャンセルされてないかチェック。結合した項目のあとでだけ見ていたため、
+                // 飛ばす項目(対象外・ファイルが無い)が続く間は中断できなかった。各項目の前で見る
+                if (worker.CancellationPending)
+                {
+                    e.Cancel = true;
+                    break;
+                }
+
                 // 空行・対象外・ファイルが無いものは飛ばす
                 if (!pm.SetTargetFileName(targetFileNames[itemIdx])
                     || !pm.IsProcTarget()
@@ -268,12 +289,7 @@ namespace Cheetos
                 }
 
                 pm.MergeExecute();
-                worker.ReportProgress(itemIdx);      // ⇒ProgressChanged()
-                if (worker.CancellationPending)
-                {
-                    e.Cancel = true;
-                    break;
-                }
+                worker.ReportProgress(itemIdx + 1);      // ⇒ProgressChanged()(終わった件数)
             }
             e.Result = pm.GetErrorMessage();
             worker.ReportProgress(targetFileNames.Length);      // ⇒ProgressChanged()

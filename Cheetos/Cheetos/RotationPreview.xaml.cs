@@ -111,9 +111,10 @@ namespace Cheetos
                 return false;
             }
 
-            WpfUtils.ClearIfNotInteger(textBox_OriginX);
-            WpfUtils.ClearIfNotInteger(textBox_OriginY);
-            WpfUtils.ClearIfNotInteger(textBox_angle);
+            // 入力のたびに呼ばれるので、「-」は負の数の入力途中として残す(描画では0として扱う)
+            WpfUtils.ClearIfNotInteger(textBox_OriginX, true);
+            WpfUtils.ClearIfNotInteger(textBox_OriginY, true);
+            WpfUtils.ClearIfNotInteger(textBox_angle, true);
             return true;
         }
 

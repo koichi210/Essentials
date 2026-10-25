@@ -269,7 +269,13 @@ namespace Cheetos
             for (int i = 0; i < files.Length; i++)
             {
                 String destPath = fc_DestFolderPath.Text + @"\" + Path.GetFileName(files[i]);
-                File.Move(files[i], destPath);
+
+                // 移動元と移動先が同じフォルダなら、そのファイル自身と重なるだけなので動かさない
+                if (!String.Equals(Path.GetFullPath(files[i]), Path.GetFullPath(destPath), StringComparison.OrdinalIgnoreCase))
+                {
+                    // File.Moveは移動先に同名ファイルがあると例外になり、途中で止まっていたため、連番を付けて避ける
+                    File.Move(files[i], Logic.GetNonConflictFilePath(destPath));
+                }
 
                 // 進捗率の表示
                 ShowProgress(i + 1);
@@ -293,14 +299,13 @@ namespace Cheetos
             textBox_ExpectEndTime.Text = "";
         }
 
-        public void SetExpectEndTime(int totalCount)
+        // doneCount件が終わった時点で呼ぶ(開始からの経過時間をdoneCountで割って1件分の処理時間とする)
+        public void SetExpectEndTime(int totalCount, int doneCount = 1)
         {
             // 開始時間
             DateTime dtStart = DateTime.Parse(textBox_StartTime.Text);
 
-            // 一個分の処理時間(開始から今=一個目の終了まで)
-            long procTime = DateTime.Now.Ticks - dtStart.Ticks;
-            DateTime dtExpect = new DateTime(dtStart.Ticks + procTime * totalCount);
+            DateTime dtExpect = Logic.CalcExpectEndTime(dtStart, DateTime.Now, doneCount, totalCount);
 
             textBox_ExpectEndTime.Text = dtExpect.ToString();
         }
@@ -379,17 +384,35 @@ namespace Cheetos
         }
 
         // 各タブのBackgroundWorker(Trim/Merge/Rotation/Orient)は進捗表示がまったく同じだったため、
-        // 1つのハンドラを4つのProgressChangedから共有する
+        // 1つのハンドラを4つのProgressChangedから共有する。
+        // 各Workerは「終わった件数」(1件目が終わったら1)を報告する
+        // (以前は終わった項目の添字を報告していたため、1件目が終わっても「0/N」のままだった)
         private void BkgWorker_ProgressChanged(object sender, ProgressChangedEventArgs e)
         {
             // 進捗率の表示
             ShowProgress(e.ProgressPercentage);
 
-            // 一回目の更新時に、予想終了時間を表示
-            if (e.ProgressPercentage == 0)
+            // 最初の報告で予想終了時間を表示(SetStartTimeで空欄にしてある)。
+            // Mergeは対象外の項目を報告せずに飛ばすため、最初の報告が1とは限らない
+            if (textBox_ExpectEndTime.Text == "" && e.ProgressPercentage > 0)
             {
-                SetExpectEndTime((int)ProgressBar_Status.Maximum);
+                SetExpectEndTime((int)ProgressBar_Status.Maximum, e.ProgressPercentage);
             }
+        }
+
+        // 数値欄を整数として読む。空欄・数値以外・minValue未満ならメッセージを出してfalseを返す
+        // (int.Parseのままだと空欄・数値以外で例外になっていた)
+        private Boolean TryGetIntWithMessage(TextBox ctrl, String itemName, int minValue, out int value)
+        {
+            if (Logic.TryParseInt(ctrl.Text, minValue, out value))
+            {
+                return true;
+            }
+
+            MessageBox.Show((minValue == int.MinValue)
+                ? itemName + "には整数を入力してください。"
+                : itemName + "には" + minValue + "以上の整数を入力してください。");
+            return false;
         }
 
         // 各タブのRunWorkerCompletedで共通の「キャンセル/エラー」表示。

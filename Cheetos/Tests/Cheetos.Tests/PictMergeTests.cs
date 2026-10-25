@@ -285,5 +285,14 @@ namespace Cheetos.Tests
 
             CollectionAssert.AreEqual(new[] { "abc", "1,2,3", "a,5" }, invalid);
         }
+
+        // 回帰テスト: 終了<開始の行は高さがマイナスの矩形のまま描いていた
+        [TestMethod]
+        public void FindInvalidTrimHeightsは終了が開始より小さい行も返す()
+        {
+            String[] invalid = PictMerge.FindInvalidTrimHeights(new[] { "100,50", "-,-5", "50,50", "100,-", "-,10" });
+
+            CollectionAssert.AreEqual(new[] { "100,50", "-,-5" }, invalid);
+        }
     }
 }

@@ -45,11 +45,13 @@ namespace Cheetos
             }
         }
 
-        // 整数として読めないテキストボックスを空欄にする
-        public static void ClearIfNotInteger(TextBox ctrl)
+        // 整数として読めないテキストボックスを空欄にする。
+        // allowMinusSign=trueなら「-」だけの状態は負の数の入力途中として残す
+        // (入力のたびにチェックする欄で、「-5」を「-」の時点で消してしまわないように)
+        public static void ClearIfNotInteger(TextBox ctrl, Boolean allowMinusSign = false)
         {
             int val;
-            if (!Int32.TryParse(ctrl.Text, out val))
+            if (!Int32.TryParse(ctrl.Text, out val) && !(allowMinusSign && ctrl.Text == "-"))
             {
                 ctrl.Text = "";
             }

@@ -42,10 +42,12 @@ namespace Cheetos
             _fio.EnsureDirectory(cw_TextBox_SavePath.Text, true);
             String filePathPrefix = Logic.BuildFilePathPrefix(cw_TextBox_SavePath.Text, cw_TextBox_SaveFilePrefix.Text, cw_checkBox_AddTimeStamp.IsChecked == true);
 
+            // 空欄なら1回。数値以外はint.Parseで例外になっていたので先に確かめる
             int loopCount = 1;
-            if (cw_TextBox_Loop.Text != String.Empty)
+            if (cw_TextBox_Loop.Text != String.Empty
+                && !TryGetIntWithMessage(cw_TextBox_Loop, "繰り返し数", 1, out loopCount))
             {
-                loopCount = int.Parse(cw_TextBox_Loop.Text);
+                return;
             }
             InitProgressBar(loopCount);
             SetStartTime();

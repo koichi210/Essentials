@@ -1,5 +1,6 @@
 using System;
 using System.Drawing;
+using System.IO;
 using System.Windows.Input;
 using Picture;
 
@@ -99,6 +100,39 @@ namespace Cheetos
             }
 
             return filePathPrefix;
+        }
+
+        /// <summary>
+        /// 予想終了時間を求める。開始からnowまででdoneCount件終わったとして、totalCount件分かかる時刻を返す。
+        /// </summary>
+        public static DateTime CalcExpectEndTime(DateTime start, DateTime now, int doneCount, int totalCount)
+        {
+            long elapsedTicks = now.Ticks - start.Ticks;
+            return new DateTime(start.Ticks + elapsedTicks * totalCount / doneCount);
+        }
+
+        /// <summary>
+        /// 整数として読めて、minValue以上ならtrue(数値欄の入力チェック用。int.Parseは空欄・数値以外で例外になる)。
+        /// </summary>
+        public static bool TryParseInt(String text, int minValue, out int value)
+        {
+            return Int32.TryParse(text, out value) && minValue <= value;
+        }
+
+        /// <summary>
+        /// filePathと同名のファイル/フォルダがあれば、拡張子の前に「 (2)」「 (3)」…と連番を付けた、まだ無いパスを返す。
+        /// </summary>
+        public static String GetNonConflictFilePath(String filePath)
+        {
+            String candidate = filePath;
+            String directoryPath = Path.GetDirectoryName(filePath);
+            String nameWithoutExt = Path.GetFileNameWithoutExtension(filePath);
+            String extension = Path.GetExtension(filePath);
+            for (int number = 2; File.Exists(candidate) || Directory.Exists(candidate); number++)
+            {
+                candidate = Path.Combine(directoryPath, nameWithoutExt + " (" + number + ")" + extension);
+            }
+            return candidate;
         }
 
         /// <summary>
