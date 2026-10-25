@@ -173,5 +173,87 @@ namespace EventRecorder.Tests
             Assert.AreEqual(1, inputs.Count);
             Assert.AreEqual((short)System.Windows.Forms.Keys.Enter, inputs[0].Keyboard.VirtualKey);
         }
+
+        [TestMethod]
+        public void AddKeyboardInputはKeys指定ならUNICODEを付けずに仮想キーで積む()
+        {
+            // 仮想キーで送るときにKEYEVENTF_UNICODE(0x0004)が付いていると、
+            // Alt+F4などの組み合わせが届かないことがある
+            var inputs = new List<InputSimulator.Input>();
+
+            InputSimulator.AddKeyboardInput(ref inputs, InputSimulator.KeyboardStroke.KEY_DOWN, System.Windows.Forms.Keys.Menu);
+            InputSimulator.AddKeyboardInput(ref inputs, InputSimulator.KeyboardStroke.KEY_DOWN, System.Windows.Forms.Keys.F4);
+            InputSimulator.AddKeyboardInput(ref inputs, InputSimulator.KeyboardStroke.KEY_UP, System.Windows.Forms.Keys.F4);
+            InputSimulator.AddKeyboardInput(ref inputs, InputSimulator.KeyboardStroke.KEY_UP, System.Windows.Forms.Keys.Menu);
+
+            Assert.AreEqual(4, inputs.Count);
+            Assert.AreEqual((int)InputSimulator.KeyboardStroke.KEY_DOWN, inputs[0].Keyboard.Flags);
+            Assert.AreEqual((int)InputSimulator.KeyboardStroke.KEY_DOWN, inputs[1].Keyboard.Flags);
+            Assert.AreEqual((int)InputSimulator.KeyboardStroke.KEY_UP, inputs[2].Keyboard.Flags);
+            Assert.AreEqual((int)InputSimulator.KeyboardStroke.KEY_UP, inputs[3].Keyboard.Flags);
+            Assert.AreEqual((short)System.Windows.Forms.Keys.Menu, inputs[0].Keyboard.VirtualKey);
+            Assert.AreEqual((short)System.Windows.Forms.Keys.F4, inputs[1].Keyboard.VirtualKey);
+        }
+
+        [TestMethod]
+        [DataRow(System.Windows.Forms.Keys.Left)]
+        [DataRow(System.Windows.Forms.Keys.Right)]
+        [DataRow(System.Windows.Forms.Keys.Up)]
+        [DataRow(System.Windows.Forms.Keys.Down)]
+        [DataRow(System.Windows.Forms.Keys.Insert)]
+        [DataRow(System.Windows.Forms.Keys.Delete)]
+        [DataRow(System.Windows.Forms.Keys.Home)]
+        [DataRow(System.Windows.Forms.Keys.End)]
+        [DataRow(System.Windows.Forms.Keys.PageUp)]
+        [DataRow(System.Windows.Forms.Keys.PageDown)]
+        [DataRow(System.Windows.Forms.Keys.RControlKey)]
+        [DataRow(System.Windows.Forms.Keys.RMenu)]
+        [DataRow(System.Windows.Forms.Keys.LWin)]
+        [DataRow(System.Windows.Forms.Keys.RWin)]
+        [DataRow(System.Windows.Forms.Keys.Apps)]
+        [DataRow(System.Windows.Forms.Keys.NumLock)]
+        [DataRow(System.Windows.Forms.Keys.Divide)]
+        [DataRow(System.Windows.Forms.Keys.PrintScreen)]
+        public void AddKeyboardInputは拡張キーにEXTENDEDKEYを付ける(System.Windows.Forms.Keys key)
+        {
+            var inputs = new List<InputSimulator.Input>();
+
+            InputSimulator.AddKeyboardInput(ref inputs, InputSimulator.KeyboardStroke.KEY_DOWN, key);
+            InputSimulator.AddKeyboardInput(ref inputs, InputSimulator.KeyboardStroke.KEY_UP, key);
+
+            Assert.AreEqual(0x0001, inputs[0].Keyboard.Flags, "押す: EXTENDEDKEYだけ");
+            Assert.AreEqual(0x0002 | 0x0001, inputs[1].Keyboard.Flags, "離す: KEYUP+EXTENDEDKEY");
+            Assert.AreEqual((short)key, inputs[0].Keyboard.VirtualKey);
+        }
+
+        [TestMethod]
+        [DataRow(System.Windows.Forms.Keys.A)]
+        [DataRow(System.Windows.Forms.Keys.Enter)]
+        [DataRow(System.Windows.Forms.Keys.LControlKey)]
+        [DataRow(System.Windows.Forms.Keys.LMenu)]
+        [DataRow(System.Windows.Forms.Keys.ShiftKey)]
+        [DataRow(System.Windows.Forms.Keys.NumPad4)]
+        [DataRow(System.Windows.Forms.Keys.F4)]
+        public void AddKeyboardInputは拡張キーでなければEXTENDEDKEYを付けない(System.Windows.Forms.Keys key)
+        {
+            var inputs = new List<InputSimulator.Input>();
+
+            InputSimulator.AddKeyboardInput(ref inputs, InputSimulator.KeyboardStroke.KEY_DOWN, key);
+
+            Assert.AreEqual(0, inputs[0].Keyboard.Flags & 0x0001);
+            Assert.AreEqual(0, inputs[0].Keyboard.Flags & 0x0004, "UNICODEも付かない");
+        }
+
+        [TestMethod]
+        public void AddKeyboardInputは文字列ならUNICODEを付けて積む()
+        {
+            var inputs = new List<InputSimulator.Input>();
+
+            InputSimulator.AddKeyboardInput(ref inputs, "あ");
+
+            Assert.AreEqual(0x0004, inputs[0].Keyboard.Flags);
+            Assert.AreEqual(0x0002 | 0x0004, inputs[1].Keyboard.Flags);
+            Assert.AreEqual((short)'あ', inputs[0].Keyboard.ScanCode);
+        }
     }
 }
