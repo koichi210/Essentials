@@ -6,9 +6,11 @@ using Newtonsoft.Json;
 
 namespace DuplicateFinder
 {
-    /// <summary>前回の入力内容(%LOCALAPPDATA%\DuplicateFinder\settings.json)</summary>
+    /// <summary>前回の入力内容(データ保存先フォルダのsettings.json。置き場はUserDataLocationが決める)</summary>
     internal sealed class AppSettings
     {
+        public const string FileName = "settings.json";
+
         public List<string> RootFolders { get; set; } = new List<string>();
         public bool CrossRootOnly { get; set; }
         public string MinSizeMb { get; set; } = "0";
@@ -17,15 +19,6 @@ namespace DuplicateFinder
         public int MaxParallelism { get; set; } = 1;
         public bool UseRecycleBin { get; set; } = true;
         public KeepRule KeepRule { get; set; } = KeepRule.RootOrder;
-
-        public static string DefaultFilePath
-        {
-            get
-            {
-                return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                    "DuplicateFinder", "settings.json");
-            }
-        }
 
         public static AppSettings Load(string filePath)
         {

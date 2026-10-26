@@ -16,6 +16,8 @@
 
   <ItemGroup>
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+    <!-- 「データ保存先を変更」のフォルダ選択ダイアログ(DataFolderChooser)で使う -->
+    <PackageReference Include="WindowsAPICodePack-Shell" Version="1.1.1" />
   </ItemGroup>
 
   <ItemGroup>
@@ -26,6 +28,10 @@
 
   <ItemGroup>
     <Compile Include="..\..\_Common\StcWpfExceptionGuard.cs" Link="_Common\StcWpfExceptionGuard.cs" />
+    <Compile Include="..\..\_Common\UserDataLocation.cs" Link="_Common\UserDataLocation.cs" />
+    <Compile Include="..\..\_Common\DataFolderMenu.cs" Link="_Common\DataFolderMenu.cs" />
+    <Compile Include="..\..\_Common\DataFolderChooser.cs" Link="_Common\DataFolderChooser.cs" />
+    <Compile Include="..\..\_Common\Wpf\WpfDataFolderMenu.cs" Link="_Common\WpfDataFolderMenu.cs" />
   </ItemGroup>
 
 </Project>

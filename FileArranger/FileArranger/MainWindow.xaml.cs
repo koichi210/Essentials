@@ -37,7 +37,7 @@ namespace FileArranger
 
         public String[] ReferenceCandidateFolders { get; set; }     // リファレンス名の候補
 
-        private readonly String _userDataFolder;
+        private String _userDataFolder;
         private readonly StcFileInputOutput _fio = new StcFileInputOutput();
         // FileArranger固有の拡張メソッド(AvoidFolderNameConflict等)を持つUtils(StcUtilsを継承)
         private readonly Utils _util = new Utils();
@@ -80,15 +80,31 @@ namespace FileArranger
 
             RegisterLoadItem();
 
-            // 起動時は既定の設定ファイル(FileArranger.json)を読む。旧XMLからの移行はWinForms版で済んでいる前提
+            LoadUserDataFolderContents();
+
+            WpfDataFolderMenu.Attach(this, () => DataFolderMenu.ChangeDataFolder(_appName, _userDataFolder,
+                (oldFolder, newFolder) => DataFolderMenu.MoveProfiles(oldFolder, newFolder, _appName),
+                ReloadUserDataFolder));
+        }
+
+        // _userDataFolder配下の既定の設定ファイルとプロファイル一覧を読み込む。起動時と、データ保存先を変更した直後(再起動なし)の両方から呼ばれる
+        private void LoadUserDataFolderContents()
+        {
+            // 既定の設定ファイル(FileArranger.json)を読む。旧XMLからの移行はWinForms版で済んでいる前提
             SaveRestore.ApplyGenericProfile(LoadGenericProfile(Path.Combine(_userDataFolder, _settingFileName)));
             RefreshAfterLoad();
 
             // 一覧の先頭が選ばれ、SelectionChangedでそのプロファイルが読み込まれる(WinForms版と同じ)
             WpfProfile.UpdateProfileList(comboBox_LoadSetting, _profileExtensions, "", _userDataFolder);
+        }
 
-            WpfDataFolderMenu.Attach(this, () => DataFolderMenu.ChangeDataFolder(_appName, _userDataFolder,
-                (oldFolder, newFolder) => DataFolderMenu.MoveProfiles(oldFolder, newFolder, _appName)));
+        // データ保存先を変更した直後に、新しい保存先から読み直す(再起動した時と同じ状態にする)
+        private void ReloadUserDataFolder(String newFolder)
+        {
+            _userDataFolder = newFolder;
+            // 設定ファイルに保存されない入力欄(フォルダ格納先)に、前の保存先で入れた文字列が残らないようにする
+            pf_comboBox_MoveDestDirName.Text = String.Empty;
+            LoadUserDataFolderContents();
         }
 
         private void InitializeControls()

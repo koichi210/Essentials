@@ -13,6 +13,8 @@ using System.Windows.Data;
 using System.Windows.Input;
 using System.Windows.Interop;
 using System.Windows.Threading;
+using StandardTemplate;
+using StandardTemplate.Wpf;
 
 namespace DuplicateFinder
 {
@@ -31,7 +33,12 @@ namespace DuplicateFinder
         // エラー一覧のダイアログに出す最大件数(残りは件数だけ出す)
         private const int _maxErrorLines = 30;
 
-        private readonly string _settingsPath = AppSettings.DefaultFilePath;
+        // 設定(settings.json)の置き場。実データは既定で%LOCALAPPDATA%\DuplicateFinder\にあり、
+        // exe直下にはその場所を示す案内板ファイル(DataFolder.txt)だけを置く([[_Common/UserDataLocation.cs]])。
+        // システムメニューの「データ保存先を変更」で差し替わるので readonly にしない
+        private const string _appName = "DuplicateFinder";
+        private string _userDataFolder = UserDataLocation.GetUserDataFolder(_appName);
+        private string SettingsPath => Path.Combine(_userDataFolder, AppSettings.FileName);
         // 対象フォルダ(並び順は自動選択「リストの上の対象フォルダにあるものを残す」の優先順)
         private readonly List<string> _rootFolders = new List<string>();
         private List<FileRow> _rows = new List<FileRow>();
@@ -51,8 +58,19 @@ namespace DuplicateFinder
             ParallelCombo.ItemsSource = _parallelChoices;
             KeepRuleCombo.ItemsSource = _keepRuleChoices;
 
-            AppSettings settings = AppSettings.Load(_settingsPath);
+            ApplySettings(AppSettings.Load(SettingsPath));
+
+            UpdateMarkedSummary();
+            UpdateControlState();
+
+            WpfDataFolderMenu.Attach(this, ChangeDataFolder);
+        }
+
+        private void ApplySettings(AppSettings settings)
+        {
+            _rootFolders.Clear();
             AddFolders(settings.RootFolders);
+            RefreshFolderList(new int[0]);
             CrossRootCheck.IsChecked = settings.CrossRootOnly;
             MinSizeBox.Text = settings.MinSizeMb;
             ExtensionsBox.Text = settings.Extensions;
@@ -64,9 +82,60 @@ namespace DuplicateFinder
             {
                 KeepRuleCombo.SelectedIndex = 0;
             }
+        }
 
-            UpdateMarkedSummary();
-            UpdateControlState();
+        // *******************************************************************************
+        // データ保存先フォルダの変更(システムメニューの「データ保存先を変更」から呼ばれる)
+
+        private void ChangeDataFolder()
+        {
+            // 検索・削除の最中に入力欄を差し替えると結果と食い違うので、終わってからにしてもらう
+            if (_isScanning || _isDeleting)
+            {
+                MessageBox.Show(this, "検索中・削除中は保存先を変更できません。終わってからやり直してください。",
+                    Title, MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            DataFolderMenu.ChangeDataFolder(_appName, _userDataFolder, MoveSettingFile, newFolder =>
+            {
+                _userDataFolder = newFolder;
+                ApplySettings(AppSettings.Load(SettingsPath));
+                UpdateControlState();
+            });
+        }
+
+        // 設定ファイルは1つだけなので、全プロファイルの引っ越しではなくこの1ファイルだけを移す
+        private void MoveSettingFile(string oldFolder, string newFolder)
+        {
+            string oldPath = Path.Combine(oldFolder, AppSettings.FileName);
+            string newPath = Path.Combine(newFolder, AppSettings.FileName);
+            if (!File.Exists(oldPath) || File.Exists(newPath))
+            {
+                return;
+            }
+
+            MessageBoxResult moveResult = MessageBox.Show(this,
+                "既存の設定ファイルを新しい保存先に移動しますか？" + Environment.NewLine + Environment.NewLine
+                    + "移動元: " + oldPath + Environment.NewLine
+                    + "移動先: " + newPath,
+                _appName + " - 設定ファイルの引っ越し",
+                MessageBoxButton.YesNo,
+                MessageBoxImage.Question);
+            if (moveResult != MessageBoxResult.Yes)
+            {
+                return;
+            }
+
+            try
+            {
+                File.Move(oldPath, newPath);
+            }
+            catch (Exception ex) when (ex is IOException || ex is UnauthorizedAccessException)
+            {
+                MessageBox.Show(this, "移動に失敗したよ: " + ex.Message,
+                    _appName + " - 設定ファイルの引っ越し", MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
         }
 
         // *******************************************************************************
@@ -751,7 +820,7 @@ namespace DuplicateFinder
             };
             try
             {
-                settings.Save(_settingsPath);
+                settings.Save(SettingsPath);
             }
             catch (Exception ex) when (ex is IOException || ex is UnauthorizedAccessException)
             {

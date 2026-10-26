@@ -64,7 +64,7 @@ namespace Cheetos
         private const String _settingFileName = "Cheetos.json";
         private static readonly String[] _profileExtensions = { "*.json" };
 
-        private readonly String _userDataFolder;
+        private String _userDataFolder;
         private readonly StcUtils _util = new StcUtils();
         private readonly StcFileInputOutput _fio = new StcFileInputOutput();
         private readonly StcDebug _debug = new StcDebug();
@@ -100,15 +100,29 @@ namespace Cheetos
             InitializeDataGridView();
 
             RegisterSaveRestoreItems();
-            _sr.LoadOrDefault(Path.Combine(_userDataFolder, _settingFileName));
-            SyncPictTrimEndMode();
-            WpfProfile.UpdateProfileList(Profile, _profileExtensions, "", _userDataFolder);
+            LoadUserDataFolderContents();
 
             // CurrentScreenキャプチャで「このウィンドウが今あるモニタ」を判定できるようにする
             SourceInitialized += (s, e) => _cw.TargetWindow = WpfUtils.CreateScreenAnchor(this);
 
             WpfDataFolderMenu.Attach(this, () => DataFolderMenu.ChangeDataFolder(_appName, _userDataFolder,
-                (oldFolder, newFolder) => DataFolderMenu.MoveProfiles(oldFolder, newFolder, _appName)));
+                (oldFolder, newFolder) => DataFolderMenu.MoveProfiles(oldFolder, newFolder, _appName),
+                ReloadUserDataFolder));
+        }
+
+        // _userDataFolder配下の既定の設定ファイルとプロファイル一覧を読み込む。起動時と、データ保存先を変更した直後(再起動なし)の両方から呼ばれる
+        private void LoadUserDataFolderContents()
+        {
+            _sr.LoadOrDefault(Path.Combine(_userDataFolder, _settingFileName));
+            SyncPictTrimEndMode();
+            WpfProfile.UpdateProfileList(Profile, _profileExtensions, "", _userDataFolder);
+        }
+
+        // データ保存先を変更した直後に、新しい保存先から読み直す(再起動した時と同じ状態にする)
+        private void ReloadUserDataFolder(String newFolder)
+        {
+            _userDataFolder = newFolder;
+            LoadUserDataFolderContents();
         }
 
         internal void RegisterSaveRestoreItems()

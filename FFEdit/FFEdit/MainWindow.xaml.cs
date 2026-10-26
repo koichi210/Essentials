@@ -23,7 +23,8 @@ namespace FFEdit
         private const int _tabIdxTimeStamp = 1;
         private const int _tabIdxFunction = 2;
 
-        private readonly String _userDataFolder = UserDataLocation.GetUserDataFolder(_appName);
+        // 「データ保存先を変更」で切り替わるので readonly にしない
+        private String _userDataFolder = UserDataLocation.GetUserDataFolder(_appName);
         private readonly StcUtils _util = new StcUtils();
         internal WpfSaveRestore SaveRestore { get; } = new WpfSaveRestore();
 
@@ -64,7 +65,13 @@ namespace FFEdit
             dateTimePicker_Days.SelectedDate = now.Date;
             SetTime(new TimeSpan(now.Hour, now.Minute, now.Second));
 
-            WpfDataFolderMenu.Attach(this, () => DataFolderMenu.ChangeDataFolder(_appName, _userDataFolder, MoveSettingFile));
+            WpfDataFolderMenu.Attach(this, () => DataFolderMenu.ChangeDataFolder(_appName, _userDataFolder, MoveSettingFile,
+                newFolder =>
+                {
+                    // 保存先を変更したら、再起動しなくても新しい保存先の設定ファイルを読み込み直す
+                    _userDataFolder = newFolder;
+                    LoadProc(Path.Combine(_userDataFolder, _settingFileName));
+                }));
 
             _isUiReady = true;
         }
@@ -92,6 +99,10 @@ namespace FFEdit
 
             // Default設定
             textBox_Target_Extension.Text = "*";
+            // 履歴(Items)を入れ替えても入力欄の文字列は残ることがあるので、前の保存先で入れた文字列を消しておく(起動時は元々空)
+            comboBox_TargetDir.Text = String.Empty;
+            comboBox_String1.Text = String.Empty;
+            comboBox_String2.Text = String.Empty;
 
             GenericProfile profile = JsonFileStorage.Load<GenericProfile>(loadFileName);
             SaveRestore.ApplyGenericProfile(profile);

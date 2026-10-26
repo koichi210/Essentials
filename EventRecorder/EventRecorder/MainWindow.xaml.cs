@@ -86,7 +86,7 @@ namespace EventRecorder
         // マクロ・プレイリストのユーザーデータ置き場。WinForms版と同じ%LOCALAPPDATA%\EventRecorder\(既定)を使うので、
         // WinForms版で保存したプロファイル・設定をそのまま読める([[_Common\UserDataLocation.cs]])
         private const String _appName = "EventRecorder";
-        private readonly String _userDataFolder;
+        private String _userDataFolder;
 
         // グローバルフック(キーボード/マウス)を張ってよいか。テスト用のコンストラクタではfalseにして、
         // このPCのキーボード/マウスに一切影響しないようにする
@@ -164,6 +164,16 @@ namespace EventRecorder
             Loaded += MainWindow_Loaded;
             StateChanged += (s, e) => UpdateTaskbarVisibility();
 
+            LoadUserDataFolderContents();
+
+            // システムメニュー(タイトルバー右クリック/左上アイコン)に「データ保存先を変更」「キーバインドを設定」を足す
+            WpfDataFolderMenu.Attach(this, ChangeDataFolder);
+            SourceInitialized += (s, e) => AppendHotkeyMenu();
+        }
+
+        // _userDataFolder配下の内容を画面へ読み込む。起動時と、データ保存先を変更した直後(再起動なし)の両方から呼ばれる
+        private void LoadUserDataFolderContents()
+        {
             // _userDataFolder配下のプロファイル一覧をコンボボックスに表示する。一覧の先頭が選ばれ、
             // そのまま読み込まれる(=起動時は一覧の先頭を読み込む。WinForms版と同じ)
             UpdateProfileListAll("");
@@ -189,10 +199,35 @@ namespace EventRecorder
                 radioButton_Record.IsChecked = true;
             }
             UpdateModeHighlight();
+        }
 
-            // システムメニュー(タイトルバー右クリック/左上アイコン)に「データ保存先を変更」「キーバインドを設定」を足す
-            WpfDataFolderMenu.Attach(this, ChangeDataFolder);
-            SourceInitialized += (s, e) => AppendHotkeyMenu();
+        // データ保存先を変更した直後に、新しい保存先から読み直す(再起動した時と同じ状態にする)。
+        // ウィンドウサイズ・境界線位置は今の表示をそのまま使い、ホットキーと設定ファイル(プロファイル)を読み直す
+        private void ReloadUserDataFolder(String newFolder)
+        {
+            _userDataFolder = newFolder;
+
+            // 新しい保存先にEventRecorder.jsonが無ければ既定のホットキーに戻す(再起動した時と同じ)
+            _hotkeyToggleRecord = HotkeyDefaults.Record;
+            _hotkeyTogglePlay = HotkeyDefaults.Play;
+            LoadAppSettings(false);
+
+            // 前の保存先の中身(記録データ・プレイリスト・ループ数・最小化)をいったん起動直後の状態に戻す。
+            // 新しい保存先にプロファイルが無い時(一覧が空だとSelectionChangedが発火しない)や、
+            // 先頭のプロファイルが壊れていて読めない時に、前の中身が残らないようにするため。
+            // プロファイルがあれば、この後の読み込みで上書きされる
+            dataGrid_Events.CancelEdit(System.Windows.Controls.DataGridEditingUnit.Row);
+            dataGrid_Playlist.CancelEdit(System.Windows.Controls.DataGridEditingUnit.Row);
+            EventRows.Clear();
+            PlaylistRows.Clear();
+            _highlightedEventRow = null;
+            _highlightedPlaylistRow = null;
+            EventsUndo.ClearUndoHistory();
+            PlaylistUndo.ClearUndoHistory();
+            textBox_Loop.Text = "1";
+            checkBox_MinimizeOnPlay.IsChecked = false;
+
+            LoadUserDataFolderContents();
         }
 
         private void MainWindow_Loaded(object sender, RoutedEventArgs e)
@@ -402,7 +437,7 @@ namespace EventRecorder
         }
 
         // 保存先フォルダを選び直し、exe直下のポインタファイル(DataFolder.txt)を書き換える。
-        // 実行中の_userDataFolderはその場では切り替えない(変更は次回起動時から反映される、WinForms版と同じ)
+        // 変更後は再起動せず、新しい保存先からホットキーとプロファイルを読み直す
         private void ChangeDataFolder()
         {
             if (WarnIfBusy(_appName + " - データ保存先の変更"))
@@ -412,7 +447,8 @@ namespace EventRecorder
 
             // EventRecorder.json(アプリの設定ファイル、プロファイルではない)は引っ越し対象から外す
             DataFolderMenu.ChangeDataFolder(_appName, _userDataFolder,
-                (oldFolder, newFolder) => DataFolderMenu.MoveProfiles(oldFolder, newFolder, _appName, IsNonProfileSettingFile));
+                (oldFolder, newFolder) => DataFolderMenu.MoveProfiles(oldFolder, newFolder, _appName, IsNonProfileSettingFile),
+                ReloadUserDataFolder);
         }
 
         // *******************************************************************************
@@ -693,8 +729,9 @@ namespace EventRecorder
         }
 
         // 起動時、前回終了時のウィンドウサイズ+境界線位置+ホットキーを復元する。保存ファイルが
-        // 無い/壊れている場合は何もしない(XAML既定のサイズ・境界線位置、HotkeyDefaultsのままで動く)
-        private void LoadAppSettings()
+        // 無い/壊れている場合は何もしない(XAML既定のサイズ・境界線位置、HotkeyDefaultsのままで動く)。
+        // applyWindowLayoutがfalseの時はホットキーだけ復元する(保存先変更後の読み直し用)
+        private void LoadAppSettings(Boolean applyWindowLayout = true)
         {
             AppSettings settings = JsonFileStorage.Load<AppSettings>(Path.Combine(_userDataFolder, _appSettingsFileName));
             if (settings == null)
@@ -702,14 +739,14 @@ namespace EventRecorder
                 return;
             }
 
-            if (settings.Width > 0 && settings.Height > 0)
+            if (applyWindowLayout && settings.Width > 0 && settings.Height > 0)
             {
                 // MinWidth/MinHeightより小さい値が保存されていてもWPF側で自動的に補正される
                 Width = settings.Width;
                 Height = settings.Height;
             }
 
-            if (settings.SplitterDistance > 0)
+            if (applyWindowLayout && settings.SplitterDistance > 0)
             {
                 _pendingSplitterDistance = settings.SplitterDistance;
             }

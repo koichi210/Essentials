@@ -18,7 +18,8 @@ namespace Mailer
 
         private const String _mailUrl = @"https://mail.google.com/mail/?view=cm&fs=1";
 
-        private readonly String _userDataFolder = UserDataLocation.GetUserDataFolder(_appName);
+        // 「データ保存先を変更」で切り替わるので readonly にしない
+        private String _userDataFolder = UserDataLocation.GetUserDataFolder(_appName);
         private readonly StcUtils _util = new StcUtils();
         private readonly StcFileInputOutput _fio = new StcFileInputOutput();
         internal WpfSaveRestore SaveRestore { get; } = new WpfSaveRestore();
@@ -39,11 +40,23 @@ namespace Mailer
             dateTimePicker_Calendar.SelectedDate = DateTime.Today;
 
             RegisterSettingItems();
+            LoadProfilesFromDataFolder();
+
+            // 保存先を変更したら、再起動しなくても新しい保存先のプロファイルを読み込み直す
+            WpfDataFolderMenu.Attach(this, () => DataFolderMenu.ChangeDataFolder(_appName, _userDataFolder,
+                (oldFolder, newFolder) => DataFolderMenu.MoveProfiles(oldFolder, newFolder, _appName),
+                newFolder =>
+                {
+                    _userDataFolder = newFolder;
+                    LoadProfilesFromDataFolder();
+                }));
+        }
+
+        // 現在のデータ保存先から、既定の設定ファイルとプロファイル一覧を読み込む(起動時と保存先変更時に使う)
+        private void LoadProfilesFromDataFolder()
+        {
             SaveRestore.LoadOrDefault(Path.Combine(_userDataFolder, _settingFileName));
             WpfProfile.UpdateProfileList(comboBox_LoadSetting, _profileExtensions, "", _userDataFolder);
-
-            WpfDataFolderMenu.Attach(this, () => DataFolderMenu.ChangeDataFolder(_appName, _userDataFolder,
-                (oldFolder, newFolder) => DataFolderMenu.MoveProfiles(oldFolder, newFolder, _appName)));
         }
 
         internal void RegisterSettingItems()
