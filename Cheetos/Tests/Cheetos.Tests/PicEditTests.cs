@@ -80,11 +80,13 @@ namespace Cheetos.Tests
         {
             string path = CreateQuadrantImage("base.bmp", 3);
 
-            var edit = new PicEdit(path);
-
-            Size size = edit.GetCanvasSize();
-            Assert.AreEqual(6, size.Width);
-            Assert.AreEqual(6, size.Height);
+            // PicEditは読み込んだ画像を保持してファイルを掴むため、後片付けで消せるようusingで閉じる
+            using (var edit = new PicEdit(path))
+            {
+                Size size = edit.GetCanvasSize();
+                Assert.AreEqual(6, size.Width);
+                Assert.AreEqual(6, size.Height);
+            }
         }
 
         [TestMethod]
@@ -98,9 +100,9 @@ namespace Cheetos.Tests
             // 左上の赤い区画(cell x cell)を、キャンバスの右下へコピーする
             edit.TrimExec(basePath, new Rectangle(0, 0, cell, cell), new Point(cell, cell));
 
-            using (Bitmap canvasCopy = new Bitmap(TakeSnapshot(edit, basePath, cell)))
+            using (Bitmap canvasCopy = TakeSnapshot(edit, basePath, cell))
             {
-                AssertPixel(canvasCopy, cell + 1, cell + 1, Color.Red, "コピー先には元の左上(赤)が来るはず");
+                AssertPixel(canvasCopy, cell + 1, cell + 1, Color.Red,"コピー先には元の左上(赤)が来るはず");
 
                 // 未加工の白紙キャンバスは真っ黒とは限らない（Bitmap の初期値はアルファ0の透明で、
                 // 保存形式によって見え方が変わる）ため、ここでは「コピー先の色が来ていないこと」だけを見る
@@ -118,9 +120,9 @@ namespace Cheetos.Tests
             var edit = new PicEdit(cell * 2, cell * 2);
             edit.TrimExec(basePath, new Rectangle(cell, 0, cell, cell)); // 右上(青)をそのままの位置へ
 
-            using (Bitmap canvasCopy = new Bitmap(TakeSnapshot(edit, basePath, cell)))
+            using (Bitmap canvasCopy = TakeSnapshot(edit, basePath, cell))
             {
-                AssertPixel(canvasCopy, cell + 1, 1, Color.Blue, "PutParam省略時はCutParamと同じ位置に描かれる");
+                AssertPixel(canvasCopy, cell + 1, 1, Color.Blue,"PutParam省略時はCutParamと同じ位置に描かれる");
             }
         }
 
@@ -137,7 +139,7 @@ namespace Cheetos.Tests
             edit.MergeExec(new Rectangle(cell, cell, cell, cell), new Point(0, 0));
             edit.ReleaseSourceImg();
 
-            using (Bitmap canvasCopy = new Bitmap(TakeSnapshot(edit, sourcePath, cell)))
+            using (Bitmap canvasCopy = TakeSnapshot(edit, sourcePath, cell))
             {
                 AssertPixel(canvasCopy, 1, 1, Color.Yellow, "合成元(右下・黄)がキャンバス左上に来るはず");
             }
@@ -184,7 +186,13 @@ namespace Cheetos.Tests
         {
             string path = Path.Combine(tempDirectory, "snapshot_" + Guid.NewGuid().ToString("N") + ".bmp");
             alreadyEdited.SaveCanvas(path);
-            return new Bitmap(path);
+
+            // new Bitmap(path)はファイルを掴んだままになり、後片付けでフォルダを消せずに残ってしまうため、
+            // ファイルから読んだものはここで閉じて、ファイルと切り離したコピーを返す
+            using (Bitmap fromFile = new Bitmap(path))
+            {
+                return new Bitmap(fromFile);
+            }
         }
 
         // ---- IDisposable ----
