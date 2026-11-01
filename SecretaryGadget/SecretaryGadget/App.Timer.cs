@@ -43,7 +43,7 @@ namespace SecretaryGadget
             foreach (TimerEntry due in _timers.TakeDue(now))
             {
                 Log.Write($"タイマーの時間: {due.Label}");
-                Enqueue(NoticeTexts.TimerDue(now, due));
+                Enqueue(NoticeTexts.TimerDue(due));
             }
         }
     }

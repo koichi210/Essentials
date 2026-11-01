@@ -316,10 +316,9 @@ namespace SecretaryGadget
         }
 
         /// <summary>時間になったときの吹き出し。クリックされるまで消えない。</summary>
-        public static Notice TimerDue(DateTime now, TimerEntry t)
+        public static Notice TimerDue(TimerEntry t)
         {
-            string line2 = now - t.Due >= TimeSpan.FromMinutes(1) ? $"{t.Due:HH:mm} の予定でした。" : "クリックすると閉じます。";
-            return new Notice(NoticeKind.Timer, "タイマーの時間です", $"{t.Label}にセットしたタイマーです。", line2);
+            return new Notice(NoticeKind.Timer, "タイマーの時間です", $"{t.Due:H時mm分}になりました。", "クリックすると閉じます。");
         }
 
         public static Notice TimerCanceled(TimerEntry t)
