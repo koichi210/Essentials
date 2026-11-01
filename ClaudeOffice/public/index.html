@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Claude Office</title>
+  <link rel="stylesheet" href="style.css">
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "./vendor/three.module.js",
+        "three/addons/": "./vendor/addons/"
+      }
+    }
+  </script>
+</head>
+<body class="skin-default">
+  <div id="stage"></div>
+  <div id="labels"></div>
+  <section id="hud" class="panel"></section>
+  <section id="side" class="panel"></section>
+  <section id="timeline" class="panel"></section>
+  <div id="windows"></div>
+  <div id="toasts"></div>
+  <div id="tip" hidden></div>
+  <div id="loading" hidden><div>🏗️ 箱庭を準備中…</div></div>
+  <script type="module" src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,771 @@
+/* パネル・スキン別配色・時間帯配色 */
+:root {
+  --accent: #d97757;
+  --fs: 1;
+  --panel-bg: rgba(255, 255, 255, 0.8);
+  --panel-fg: #2b2f3a;
+  --panel-sub: #6b7080;
+  --panel-line: rgba(40, 50, 80, 0.12);
+  --chip-bg: rgba(40, 50, 80, 0.07);
+  --input-bg: rgba(255, 255, 255, 0.9);
+  --shadow: 0 6px 24px rgba(20, 30, 60, 0.18);
+}
+
+body.night {
+  --panel-bg: rgba(22, 28, 58, 0.82);
+  --panel-fg: #e8ebf7;
+  --panel-sub: #a7aed0;
+  --panel-line: rgba(255, 255, 255, 0.12);
+  --chip-bg: rgba(255, 255, 255, 0.08);
+  --input-bg: rgba(20, 24, 50, 0.9);
+}
+
+/* 冒険者の酒場: 羊皮紙風 */
+body.skin-isekai {
+  --panel-bg: rgba(243, 228, 196, 0.88);
+  --panel-fg: #3b2a1a;
+  --panel-sub: #7a5c3c;
+  --panel-line: rgba(90, 60, 30, 0.2);
+  --chip-bg: rgba(120, 80, 40, 0.1);
+  --input-bg: rgba(255, 248, 230, 0.9);
+}
+
+body.skin-isekai.night {
+  --panel-bg: rgba(52, 36, 70, 0.86);
+  --panel-fg: #f3e6cc;
+  --panel-sub: #c9b28c;
+  --panel-line: rgba(243, 228, 196, 0.18);
+  --chip-bg: rgba(243, 228, 196, 0.1);
+  --input-bg: rgba(40, 28, 56, 0.9);
+}
+
+/* 魔界: 黒曜石風(昼夜とも暗い) */
+body.skin-makai {
+  --panel-bg: rgba(20, 12, 24, 0.86);
+  --panel-fg: #f1dfe6;
+  --panel-sub: #b98fa0;
+  --panel-line: rgba(255, 80, 140, 0.25);
+  --chip-bg: rgba(255, 80, 140, 0.1);
+  --input-bg: rgba(30, 16, 34, 0.92);
+  --shadow: 0 0 22px rgba(255, 40, 120, 0.25);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+  background: #0b1030;
+  font-family: "Segoe UI", "Yu Gothic UI", "Meiryo", sans-serif;
+  color: var(--panel-fg);
+}
+
+#stage,
+#labels {
+  position: fixed;
+  inset: 0;
+}
+
+#labels {
+  pointer-events: none;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+  color: inherit;
+}
+
+.panel {
+  position: fixed;
+  background: var(--panel-bg);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border-radius: 16px;
+  box-shadow: var(--shadow);
+  font-size: calc(13px * var(--fs));
+  z-index: 10;
+}
+
+#hud {
+  left: 16px;
+  top: 16px;
+  width: calc(300px * var(--fs));
+  padding: 12px 14px;
+  max-height: calc(100vh - 32px);
+  overflow: auto;
+}
+
+#side {
+  right: 16px;
+  top: 16px;
+  bottom: 16px;
+  width: calc(330px * var(--fs));
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+#timeline {
+  left: 16px;
+  right: calc(362px * var(--fs));
+  bottom: 16px;
+  padding: 8px 12px 10px;
+  max-height: 36vh;
+  display: flex;
+  flex-direction: column;
+}
+
+#timeline.collapsed .tl-body {
+  display: none;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.spacer {
+  flex: 1;
+}
+
+.sub {
+  color: var(--panel-sub);
+}
+
+.logo {
+  font-weight: 700;
+}
+
+.logo .star {
+  color: var(--accent);
+}
+
+.conn {
+  font-size: 0.85em;
+}
+
+.conn.ok {
+  color: #2bb36b;
+}
+
+.conn.ng {
+  color: #e04848;
+}
+
+.clock {
+  font-size: 2.3em;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  line-height: 1.1;
+  margin-top: 4px;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--chip-bg);
+  border-radius: 999px;
+  padding: 2px 9px;
+  font-size: 0.9em;
+  white-space: nowrap;
+}
+
+.chip.state-working {
+  background: rgba(217, 119, 87, 0.18);
+}
+
+.chip.state-thinking {
+  background: rgba(92, 122, 234, 0.18);
+}
+
+.chip.state-waiting {
+  background: rgba(233, 180, 76, 0.22);
+}
+
+.chip.state-sleeping {
+  background: rgba(120, 120, 160, 0.18);
+}
+
+.badge.done {
+  background: rgba(43, 179, 107, 0.18);
+}
+
+.badge.q {
+  background: rgba(224, 72, 72, 0.18);
+}
+
+.badge.bg {
+  background: rgba(233, 180, 76, 0.22);
+}
+
+.btn {
+  border: 1px solid var(--panel-line);
+  background: var(--chip-bg);
+  border-radius: 10px;
+  padding: 4px 10px;
+  cursor: pointer;
+}
+
+.btn:hover {
+  border-color: var(--accent);
+}
+
+.btn.on {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+}
+
+.btn.primary {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+}
+
+.btn:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+hr.sep {
+  border: none;
+  border-top: 1px solid var(--panel-line);
+  margin: 10px 0;
+}
+
+.meter {
+  flex: 1;
+  height: 7px;
+  background: var(--chip-bg);
+  border-radius: 99px;
+  overflow: hidden;
+}
+
+.meter > i {
+  display: block;
+  height: 100%;
+  background: #5c9ded;
+  border-radius: 99px;
+}
+
+.meter.mid > i {
+  background: #e9b44c;
+}
+
+.meter.high > i {
+  background: #e04848;
+}
+
+.settings .row {
+  margin: 5px 0;
+}
+
+.settings .label {
+  width: 6.5em;
+}
+
+.settings select {
+  flex: 1;
+  background: var(--input-bg);
+  border: 1px solid var(--panel-line);
+  border-radius: 8px;
+  padding: 3px 6px;
+}
+
+.seg {
+  display: flex;
+  gap: 4px;
+  flex: 1;
+}
+
+.seg .btn {
+  flex: 1;
+  padding: 3px 4px;
+  text-align: center;
+}
+
+/* 右パネル */
+.tabs {
+  display: flex;
+  gap: 4px;
+  padding: 10px 10px 6px;
+}
+
+.tabs .btn {
+  flex: 1;
+}
+
+.side-body {
+  flex: 1;
+  overflow: auto;
+  padding: 4px 10px 12px;
+}
+
+.h {
+  font-weight: 700;
+  margin: 10px 0 6px;
+}
+
+.card {
+  position: relative;
+  border: 1px solid var(--panel-line);
+  border-radius: 12px;
+  padding: 7px 9px 7px 14px;
+  margin-bottom: 7px;
+  cursor: pointer;
+  overflow: hidden;
+  background: var(--chip-bg);
+}
+
+.card:hover {
+  border-color: var(--accent);
+}
+
+.card .band {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 5px;
+}
+
+.card .t {
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ellipsis {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.stats4 {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+}
+
+.stats4 > div {
+  background: var(--chip-bg);
+  border-radius: 10px;
+  padding: 6px;
+  text-align: center;
+}
+
+.stats4 b {
+  display: block;
+  font-size: 1.3em;
+  color: var(--accent);
+}
+
+.bars .bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 3px 0;
+}
+
+.bars .bar span:first-child {
+  width: 7.5em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.bars .bar i {
+  display: block;
+  height: 8px;
+  border-radius: 99px;
+  background: #e07a5f;
+}
+
+.tree summary {
+  cursor: pointer;
+  padding: 3px 0;
+  font-weight: 600;
+}
+
+.tree details {
+  margin-left: 6px;
+}
+
+.item {
+  padding: 3px 6px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.item:hover {
+  background: var(--chip-bg);
+}
+
+.dot {
+  display: inline-block;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  flex: none;
+}
+
+.search {
+  width: 100%;
+  background: var(--input-bg);
+  border: 1px solid var(--panel-line);
+  border-radius: 9px;
+  padding: 5px 8px;
+}
+
+/* タイムライン */
+.tl-body {
+  overflow: auto;
+  position: relative;
+  margin-top: 6px;
+}
+
+.tl-grid {
+  position: relative;
+}
+
+.tl-hours {
+  position: relative;
+  height: 18px;
+  font-size: 0.85em;
+  color: var(--panel-sub);
+}
+
+.tl-hours span {
+  position: absolute;
+  transform: translateX(-50%);
+}
+
+.tl-row {
+  position: relative;
+  height: 20px;
+  display: flex;
+  align-items: center;
+}
+
+.tl-name {
+  width: 190px;
+  flex: none;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: pointer;
+  padding-right: 6px;
+}
+
+.tl-track {
+  position: relative;
+  flex: 1;
+  height: 100%;
+}
+
+.tl-bar {
+  position: absolute;
+  top: 5px;
+  height: 10px;
+  border-radius: 99px;
+  opacity: 0.55;
+  cursor: pointer;
+  min-width: 3px;
+}
+
+.tl-bar.strong {
+  opacity: 1;
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.6);
+}
+
+.tl-now {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: #e04848;
+  pointer-events: none;
+}
+
+.tl-proj {
+  font-weight: 700;
+  margin-top: 4px;
+}
+
+/* 詳細の窓 */
+.win {
+  position: fixed;
+  width: 440px;
+  height: 560px;
+  min-width: 320px;
+  min-height: 240px;
+  resize: both;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  z-index: 20;
+}
+
+.win .head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 9px 12px;
+  cursor: move;
+  border-bottom: 1px solid var(--panel-line);
+  font-weight: 700;
+}
+
+.win .head .x {
+  cursor: pointer;
+  border: none;
+  background: none;
+  font-size: 1.2em;
+}
+
+.win .content {
+  flex: 1;
+  overflow: auto;
+  padding: 8px 12px 14px;
+}
+
+.win .chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin: 4px 0 8px;
+}
+
+.kv {
+  display: grid;
+  grid-template-columns: 4.5em 1fr;
+  gap: 2px 8px;
+}
+
+.notice {
+  background: rgba(233, 180, 76, 0.18);
+  border-radius: 9px;
+  padding: 6px 9px;
+  margin: 6px 0;
+}
+
+.notice.warn {
+  background: rgba(224, 72, 72, 0.15);
+}
+
+.chat textarea {
+  width: 100%;
+  min-height: 64px;
+  resize: vertical;
+  background: var(--input-bg);
+  border: 1px solid var(--panel-line);
+  border-radius: 10px;
+  padding: 6px 8px;
+}
+
+.chat .out {
+  white-space: pre-wrap;
+  background: var(--chip-bg);
+  border-radius: 10px;
+  padding: 6px 9px;
+  margin-top: 6px;
+  max-height: 260px;
+  overflow: auto;
+}
+
+.chat .out:empty {
+  display: none;
+}
+
+.act {
+  display: flex;
+  gap: 6px;
+  padding: 2px 0;
+  border-bottom: 1px dashed var(--panel-line);
+}
+
+.act .tm {
+  color: var(--panel-sub);
+  flex: none;
+  width: 3.2em;
+}
+
+/* 吹き出し・名札(CSS2D) */
+.bubble {
+  background: rgba(255, 255, 255, 0.95);
+  color: #2b2f3a;
+  border-radius: 12px;
+  padding: 3px 9px;
+  font-size: calc(12px * var(--fs));
+  white-space: nowrap;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+  pointer-events: auto;
+  cursor: pointer;
+  max-width: 330px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.bubble .em {
+  display: inline-block;
+}
+
+.bubble.working .em {
+  animation: hop 0.6s ease-in-out infinite;
+}
+
+.bubble.thinking .em {
+  animation: float 2s ease-in-out infinite;
+}
+
+.bubble.waiting .em {
+  animation: wave 1s ease-in-out infinite;
+  transform-origin: 70% 80%;
+}
+
+@keyframes hop {
+  50% {
+    transform: translateY(-4px);
+  }
+}
+
+@keyframes float {
+  50% {
+    transform: translateY(-3px) rotate(-6deg);
+  }
+}
+
+@keyframes wave {
+  50% {
+    transform: rotate(18deg);
+  }
+}
+
+.nametag {
+  background: rgba(30, 34, 50, 0.82);
+  color: #fff;
+  border-radius: 8px;
+  padding: 2px 7px;
+  font-size: calc(11px * var(--fs));
+  white-space: nowrap;
+  pointer-events: auto;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.floaty {
+  font-size: calc(15px * var(--fs));
+  pointer-events: none;
+  animation: float 2s ease-in-out infinite;
+}
+
+.spot {
+  background: rgba(255, 255, 255, 0.85);
+  color: #333;
+  border-radius: 8px;
+  padding: 1px 7px;
+  font-size: calc(11px * var(--fs));
+  pointer-events: none;
+}
+
+#toasts {
+  position: fixed;
+  top: 14px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: center;
+}
+
+.toast {
+  background: rgba(30, 34, 50, 0.92);
+  color: #fff;
+  border-radius: 12px;
+  padding: 7px 14px;
+  box-shadow: var(--shadow);
+}
+
+.toast.err {
+  background: rgba(200, 50, 50, 0.95);
+}
+
+#tip {
+  position: fixed;
+  z-index: 60;
+  background: rgba(30, 34, 50, 0.92);
+  color: #fff;
+  border-radius: 8px;
+  padding: 4px 9px;
+  font-size: 12px;
+  pointer-events: none;
+}
+
+#loading {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(10, 14, 40, 0.55);
+  color: #fff;
+  font-size: 22px;
+  z-index: 70;
+}
+
+/* display を指定した要素でも hidden 属性で確実に消す */
+[hidden] {
+  display: none !important;
+}
+
+dialog.notify {
+  border: none;
+  border-radius: 16px;
+  background: var(--panel-bg);
+  color: var(--panel-fg);
+  backdrop-filter: blur(10px);
+  box-shadow: var(--shadow);
+  width: 460px;
+  font-size: calc(13px * var(--fs));
+}
+
+dialog.notify::backdrop {
+  background: rgba(0, 0, 0, 0.35);
+}
+
+dialog.notify input[type=text],
+dialog.notify input[type=time],
+dialog.notify input[type=number],
+dialog.notify select {
+  background: var(--input-bg);
+  border: 1px solid var(--panel-line);
+  border-radius: 8px;
+  padding: 3px 6px;
+}
+
+dialog.notify input[type=text] {
+  width: 100%;
+}
+
+dialog.notify pre {
+  white-space: pre-wrap;
+  word-break: break-all;
+  background: var(--chip-bg);
+  padding: 6px;
+  border-radius: 8px;
+  font-size: 0.85em;
+}
