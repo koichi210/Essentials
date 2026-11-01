@@ -1,0 +1,78 @@
+<Window x:Class="HeifToPng.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="HEIF→PNG 一括変換" Height="560" Width="820"
+        Language="ja-JP" AllowDrop="True"
+        PreviewDragOver="Window_PreviewDragOver" PreviewDrop="Window_PreviewDrop" Closing="Window_Closing">
+    <DockPanel>
+        <StatusBar DockPanel.Dock="Bottom">
+            <StatusBar.ItemsPanel>
+                <ItemsPanelTemplate>
+                    <DockPanel LastChildFill="True" />
+                </ItemsPanelTemplate>
+            </StatusBar.ItemsPanel>
+            <StatusBarItem DockPanel.Dock="Right">
+                <ProgressBar x:Name="WorkProgressBar" Width="240" Height="14" Maximum="1000" />
+            </StatusBarItem>
+            <StatusBarItem>
+                <TextBlock x:Name="StatusText" TextTrimming="CharacterEllipsis"
+                           Text="変換したいフォルダかファイルを追加(ドラッグ＆ドロップも可・複数可)して「変換開始」を押してください。" />
+            </StatusBarItem>
+        </StatusBar>
+
+        <Grid DockPanel.Dock="Top" Margin="8,8,8,0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+
+            <TextBlock Grid.Row="0" Grid.Column="0" Text="変換元" VerticalAlignment="Top" Margin="0,3,6,0" />
+            <ListBox x:Name="SourceList" Grid.Row="0" Grid.Column="1" Height="120" SelectionMode="Extended"
+                     KeyDown="SourceList_KeyDown"
+                     ToolTip="ここに登録したフォルダ(とそのサブフォルダ)・ファイルのHEIF画像を変換します。ドラッグ＆ドロップでも追加できます" />
+            <StackPanel Grid.Row="0" Grid.Column="2" Margin="6,0,0,0">
+                <Button x:Name="AddFolderButton" Content="フォルダを追加…" Padding="10,2" Click="AddFolderButton_Click" />
+                <Button x:Name="AddFileButton" Content="ファイルを追加…" Padding="10,2" Margin="0,4,0,0" Click="AddFileButton_Click" />
+                <Button x:Name="RemoveSourceButton" Content="外す" Padding="10,2" Margin="0,4,0,0" Click="RemoveSourceButton_Click"
+                        ToolTip="選んだ行を変換元から外します(Deleteキーでも可)。ファイル自体は消しません" />
+                <Button x:Name="ClearSourceButton" Content="すべて外す" Padding="10,2" Margin="0,4,0,0" Click="ClearSourceButton_Click" />
+            </StackPanel>
+
+            <WrapPanel Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="2" Margin="0,8,0,0">
+                <CheckBox x:Name="SubfolderCheck" Content="サブフォルダも含める" VerticalAlignment="Center" Margin="0,0,16,0" />
+                <CheckBox x:Name="OverwriteCheck" Content="同じ名前のPNGがあれば上書きする" VerticalAlignment="Center" Margin="0,0,16,0"
+                          ToolTip="オフのときは、同じ名前のPNGがすでにあるファイルを飛ばします(途中で中止してからの再開にも使えます)" />
+                <CheckBox x:Name="TimestampCheck" Content="日時を元ファイルに合わせる" VerticalAlignment="Center" Margin="0,0,16,0"
+                          ToolTip="PNGの作成日時・更新日時を元のHEIFと同じにします(撮影順に並べたいとき用)" />
+                <TextBlock Text="並列数" VerticalAlignment="Center" Margin="0,0,4,0" />
+                <ComboBox x:Name="ParallelCombo" Width="56"
+                          ToolTip="同時に変換するファイル数。増やすと速くなりますが、そのぶんCPUとメモリを使います" />
+            </WrapPanel>
+
+            <StackPanel Grid.Row="2" Grid.Column="1" Grid.ColumnSpan="2" Orientation="Horizontal" Margin="0,8,0,8">
+                <Button x:Name="ConvertButton" Content="変換開始" Padding="16,3" FontWeight="Bold" Click="ConvertButton_Click" />
+                <Button x:Name="CancelButton" Content="中止" Padding="16,3" Margin="8,0,0,0" Click="CancelButton_Click" />
+                <TextBlock Text="PNGは元のファイルと同じフォルダに、同じ名前(拡張子だけ .png)で作ります。元のファイルはそのまま残します。"
+                           VerticalAlignment="Center" Margin="12,0,0,0" Foreground="Gray" TextWrapping="Wrap" />
+            </StackPanel>
+        </Grid>
+
+        <GroupBox Header="ログ" Margin="8,0,8,8">
+            <ListBox x:Name="LogList" BorderThickness="0" VirtualizingPanel.IsVirtualizing="True"
+                     SelectionMode="Extended" KeyDown="LogList_KeyDown">
+                <ListBox.ContextMenu>
+                    <ContextMenu>
+                        <MenuItem Header="選んだ行をコピー" InputGestureText="Ctrl+C" Click="CopyLogMenu_Click" />
+                        <MenuItem Header="ログを消去" Click="ClearLogMenu_Click" />
+                    </ContextMenu>
+                </ListBox.ContextMenu>
+            </ListBox>
+        </GroupBox>
+    </DockPanel>
+</Window>

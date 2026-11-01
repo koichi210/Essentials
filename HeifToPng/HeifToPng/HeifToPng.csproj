@@ -1,0 +1,42 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net48</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <LangVersion>7.3</LangVersion>
+    <RootNamespace>HeifToPng</RootNamespace>
+    <AssemblyName>HeifToPng</AssemblyName>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+    <!-- 4000万画素級の写真を並列で何枚も展開するので、32bitプロセスにしない -->
+    <Prefer32Bit>false</Prefer32Bit>
+    <PlatformTarget>x64</PlatformTarget>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+    <!-- 「データ保存先を変更」のフォルダ選択ダイアログ(DataFolderChooser)で使う -->
+    <PackageReference Include="WindowsAPICodePack-Shell" Version="1.1.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- フォルダ選択ダイアログ(FolderBrowserDialog)で使う -->
+    <Reference Include="System.Windows.Forms" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Include="..\..\_Common\StcWpfExceptionGuard.cs" Link="_Common\StcWpfExceptionGuard.cs" />
+    <Compile Include="..\..\_Common\UserDataLocation.cs" Link="_Common\UserDataLocation.cs" />
+    <Compile Include="..\..\_Common\DataFolderMenu.cs" Link="_Common\DataFolderMenu.cs" />
+    <Compile Include="..\..\_Common\DataFolderChooser.cs" Link="_Common\DataFolderChooser.cs" />
+    <Compile Include="..\..\_Common\Wpf\WpfDataFolderMenu.cs" Link="_Common\WpfDataFolderMenu.cs" />
+    <Compile Include="..\..\_Common\AtomicFile.cs" Link="_Common\AtomicFile.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- HEIF拡張機能が入っているかを変換前に確かめるための、64x32の小さなHEIC -->
+    <EmbeddedResource Include="Probe.heic" LogicalName="HeifToPng.Probe.heic" />
+  </ItemGroup>
+
+</Project>
