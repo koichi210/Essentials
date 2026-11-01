@@ -56,7 +56,8 @@ powershell -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File autostar
 - 右: 在席・グループ（VSCode のグループ）・履歴
 - 下: 日別タイムライン（◀▶ で日付移動、時間プレビューで空の色を任意の時刻に）
 - 箱庭: 人をクリックで詳細の窓、ダブルクリックで VSCode で開く。本棚の本は過去のセッション
-- スキン: 🏫 教室（既定）／🍺 冒険者の酒場／😈 魔界
+- スキン: 🏫 教室（ほかのスキンは作り直し中）
+- 動作モード: ☀️ 標準（ネオン・ミラーボール・花火・紙吹雪などハデな演出あり）／🍃 軽量（演出なし）
 
 URL 引数: `?t=18.5`（時間プレビュー）、`?session=<id>`（詳細を開いて開始）、`?first`、`?tab=groups|history`
 
