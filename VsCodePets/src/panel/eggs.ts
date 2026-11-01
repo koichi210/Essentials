@@ -1,7 +1,7 @@
 import { IPetType } from './states';
 
-// 確認用の一時値(9匹で約10秒に1個)。本来値は 0.0001(1匹あたり約17分に1回)
-export const EGG_CHANCE_PER_TICK = 0.0011;
+// 動いているペット1匹あたり約2分に1個(1tick=0.1秒なので 1/1200)
+export const EGG_CHANCE_PER_TICK = 1 / 1200;
 export const POOP_CHANCE = 1 / 3;
 export const MAX_EGGS = 5;
 export const EGG_SIZE_RATIO = 1 / 2;

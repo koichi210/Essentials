@@ -379,6 +379,22 @@ export function activate(context: vscode.ExtensionContext) {
         ),
     );
 
+    // マウスでボールを投げる機能の ON/OFF を切り替える(設定 throwBallWithMouse を反転)
+    context.subscriptions.push(
+        vscode.commands.registerCommand(
+            'vscode-pets.throw-with-mouse',
+            async () => {
+                await vscode.workspace
+                    .getConfiguration('vscode-pets')
+                    .update(
+                        'throwBallWithMouse',
+                        !getThrowWithMouseConfiguration(),
+                        vscode.ConfigurationTarget.Global,
+                    );
+            },
+        ),
+    );
+
     context.subscriptions.push(
         vscode.commands.registerCommand('vscode-pets.throw-ball', () => {
             const panel = getPetPanel();
