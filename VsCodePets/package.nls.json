@@ -40,6 +40,7 @@
     "vscode-pets.petColor.magical" : "Magical",
     "vscode-pets.petColor.warrior" : "Warrior",
     "vscode-pets.petColor.pink" : "Pink",
+    "vscode-pets.petColor.enji": "Kindergartener",
 
     "vscode-pets.petType.cat": "Cat",
     "vscode-pets.petType.chicken": "Chicken",
@@ -55,6 +56,7 @@
     "vscode-pets.petType.rat": "Rat",
     "vscode-pets.petType.rocky": "Rocky",
     "vscode-pets.petType.rubber-duck": "Rubber Duck",
+    "vscode-pets.petType.secretary": "Secretary",
     "vscode-pets.petType.snake": "Snake",
     "vscode-pets.petType.totoro": "Totoro",
     "vscode-pets.petType.turtle": "Turtle",

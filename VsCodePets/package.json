@@ -183,7 +183,8 @@
                             "paint brown",
                             "magical",
                             "warrior",
-                            "pink"
+                            "pink",
+                            "enji"
                         ],
                         "default": "brown",
                         "description": "%vscode-pets.petColor.description%",
@@ -209,7 +210,8 @@
                             "%vscode-pets.petColor.paint brown%",
                             "%vscode-pets.petColor.magical%",
                             "%vscode-pets.petColor.warrior%",
-                            "%vscode-pets.petColor.pink%"
+                            "%vscode-pets.petColor.pink%",
+                            "%vscode-pets.petColor.enji%"
                         ]
                     },
                     "vscode-pets.petType": {
@@ -224,6 +226,7 @@
                             "monkey",
                             "rat",
                             "rubber-duck",
+                            "secretary",
                             "snake",
                             "turtle",
                             "snail",
@@ -243,6 +246,7 @@
                             "%vscode-pets.petType.monkey%",
                             "%vscode-pets.petType.rat%",
                             "%vscode-pets.petType.rubber-duck%",
+                            "%vscode-pets.petType.secretary%",
                             "%vscode-pets.petType.snake%",
                             "%vscode-pets.petType.turtle%",
                             "%vscode-pets.petType.snail%",

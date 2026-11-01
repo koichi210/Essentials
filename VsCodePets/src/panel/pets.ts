@@ -18,6 +18,7 @@ import { Rat } from './pets/rat';
 import { Rocky } from './pets/rocky';
 import { RubberDuck } from './pets/rubberduck';
 import { Raccoon } from './pets/raccoon';
+import { Secretary } from './pets/secretary';
 import { Skeleton } from './pets/skeleton';
 import { Snail } from './pets/snail';
 import { Snake } from './pets/snake';
@@ -250,6 +251,8 @@ export function createPet(
             return new Panda(...standardPetArguments, PetSpeed.slow);
         case PetType.morph:
             return new Morph(...standardPetArguments, PetSpeed.normal);
+        case PetType.secretary:
+            return new Secretary(...standardPetArguments, PetSpeed.normal);
         case PetType.skeleton:
             return new Skeleton(...standardPetArguments, PetSpeed.normal);
         case PetType.raccoon:
@@ -309,6 +312,8 @@ export function availableColors(petType: PetType): PetColor[] {
             return Horse.possibleColors;
         case PetType.panda:
             return Panda.possibleColors;
+        case PetType.secretary:
+            return Secretary.possibleColors;
         case PetType.skeleton:
             return Skeleton.possibleColors;
         case PetType.raccoon:

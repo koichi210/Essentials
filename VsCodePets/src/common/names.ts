@@ -13,6 +13,7 @@ import { MOD_NAMES } from '../panel/pets/mod';
 import { PANDA_NAMES } from '../panel/pets/panda';
 import { ROCKY_NAMES } from '../panel/pets/rocky';
 import { DUCK_NAMES } from '../panel/pets/rubberduck';
+import { SECRETARY_NAMES } from '../panel/pets/secretary';
 import { SKELETON_NAMES } from '../panel/pets/skeleton';
 import { SNAIL_NAMES } from '../panel/pets/snail';
 import { SNAKE_NAMES } from '../panel/pets/snake';
@@ -45,6 +46,7 @@ export function randomName(type: PetType): string {
                 [PetType.snake]: SNAKE_NAMES,
                 [PetType.squirrel]: SQUIRREL_NAMES,
                 [PetType.rubberduck]: DUCK_NAMES,
+                [PetType.secretary]: SECRETARY_NAMES,
                 [PetType.zappy]: ZAPPY_NAMES,
                 [PetType.rocky]: ROCKY_NAMES,
                 [PetType.cockatiel]: COCKATIEL_NAMES,

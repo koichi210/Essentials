@@ -21,6 +21,7 @@ export const enum PetColor {
     magical = 'magical',
     warrior = 'warrior',
     pink = 'pink',
+    enji = 'enji',
     null = 'null',
 }
 
@@ -44,6 +45,7 @@ export const enum PetType {
     rat = 'rat',
     rocky = 'rocky',
     rubberduck = 'rubber-duck',
+    secretary = 'secretary',
     skeleton = 'skeleton',
     snail = 'snail',
     snake = 'snake',
@@ -116,6 +118,7 @@ export const ALL_PETS = [
     PetType.raccoon,
     PetType.rat,
     PetType.rubberduck,
+    PetType.secretary,
     PetType.skeleton,
     PetType.snail,
     PetType.snake,
@@ -142,6 +145,7 @@ export const ALL_COLORS = [
     PetColor.paintbrown,
     PetColor.magical,
     PetColor.warrior,
+    PetColor.enji,
     PetColor.null,
 ];
 export const ALL_SCALES = [
