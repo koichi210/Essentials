@@ -1,0 +1,343 @@
+/* デザイントークン */
+:root {
+  --bg: #f4f5f7;
+  --panel: #fff;
+  --line: #dcdfe4;
+  --text: #1f2328;
+  --sub: #6b7280;
+  --accent: #1a73e8;
+  --accent-hover: #1765cc;
+  --accent-weak: #e3edfd;
+  --hover: #f0f3f7;
+  --stage: #e6e8ec;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+  background: var(--bg);
+  color: var(--text);
+  font: 13px "Segoe UI", "Yu Gothic UI", "Meiryo", sans-serif;
+  user-select: none;
+}
+
+[hidden] {
+  display: none !important;
+}
+
+body {
+  display: flex;
+  flex-direction: column;
+}
+
+svg {
+  width: 20px;
+  height: 20px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.bar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+  background: var(--panel);
+  border-bottom: 1px solid var(--line);
+  padding: 6px 10px;
+}
+
+#topbar {
+  gap: 6px;
+}
+
+.spacer {
+  flex: 1;
+}
+
+.sep {
+  width: 1px;
+  height: 22px;
+  background: var(--line);
+  margin: 0 4px;
+}
+
+.sub {
+  color: var(--sub);
+}
+
+.num {
+  font-variant-numeric: tabular-nums;
+}
+
+#zoomLabel {
+  min-width: 44px;
+  text-align: center;
+}
+
+.btn,
+select {
+  height: 30px;
+  border-radius: 6px;
+  border: 1px solid var(--line);
+  background: #fff;
+  color: var(--text);
+  font: inherit;
+  padding: 0 10px;
+  cursor: pointer;
+}
+
+.btn:hover:not(:disabled),
+select:hover:not(:disabled) {
+  background: var(--hover);
+}
+
+.btn.icon {
+  width: 30px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn.primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+.btn.primary:hover:not(:disabled) {
+  background: var(--accent-hover);
+}
+
+.btn:disabled,
+select:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+#main {
+  flex: 1;
+  display: flex;
+  min-height: 0;
+}
+
+#tools {
+  width: 54px;
+  flex: none;
+  background: #fff;
+  border-right: 1px solid var(--line);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 0;
+}
+
+.tool {
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  background: none;
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.tool:hover {
+  background: var(--hover);
+}
+
+.tool.active {
+  background: var(--accent-weak);
+  border-color: #b5cdf7;
+  color: var(--accent);
+}
+
+#workspace {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+#props {
+  min-height: 43px;
+}
+
+.group {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.label {
+  color: var(--text);
+}
+
+.swatches {
+  display: inline-flex;
+  gap: 5px;
+}
+
+.swatch {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 2px solid #fff;
+  box-shadow: 0 0 0 1px #c4c8cf;
+  padding: 0;
+  cursor: pointer;
+}
+
+.swatch.on {
+  box-shadow: 0 0 0 2px var(--accent);
+}
+
+input[type=color] {
+  width: 28px;
+  height: 24px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 1px;
+  background: #fff;
+  cursor: pointer;
+}
+
+input[type=range] {
+  width: 110px;
+  accent-color: var(--accent);
+}
+
+.val {
+  min-width: 22px;
+  text-align: right;
+}
+
+.check {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+}
+
+.hint {
+  color: var(--sub);
+}
+
+#stage {
+  position: relative;
+  flex: 1;
+  background: var(--stage);
+  overflow: auto;
+  min-height: 0;
+}
+
+#stage.dragover {
+  outline: 3px dashed var(--accent);
+  outline-offset: -6px;
+}
+
+#canvasWrap {
+  min-width: 100%;
+  min-height: 100%;
+  padding: 20px;
+  display: grid;
+  place-items: center;
+  width: max-content;
+}
+
+#canvasBox {
+  position: relative;
+  line-height: 0;
+}
+
+#canvas {
+  display: block;
+  touch-action: none;
+  box-shadow: 0 2px 14px rgba(0, 0, 0, 0.2);
+  /* 透過部の 16px チェッカー柄 */
+  background-color: #fff;
+  background-image: conic-gradient(#e9e9e9 25%, #fff 0 50%, #e9e9e9 0 75%, #fff 0);
+  background-size: 32px 32px;
+}
+
+#textInput {
+  position: absolute;
+  margin: 0;
+  padding: 0;
+  border: 1px dashed var(--accent);
+  background: rgba(255, 255, 255, 0.55);
+  font-weight: bold;
+  line-height: 1.25;
+  white-space: pre;
+  overflow: hidden;
+  resize: none;
+  outline: none;
+  user-select: text;
+}
+
+#empty {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  color: var(--text);
+  text-align: center;
+}
+
+.empty-icon {
+  width: 64px;
+  height: 64px;
+  color: var(--sub);
+  stroke-width: 1.5;
+}
+
+.empty-main {
+  font-size: 20px;
+  font-weight: 600;
+}
+
+kbd {
+  display: inline-block;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-bottom-width: 2px;
+  border-radius: 4px;
+  padding: 0 5px;
+  font: inherit;
+  line-height: 1.5;
+}
+
+#toast {
+  position: fixed;
+  left: 50%;
+  bottom: 28px;
+  transform: translateX(-50%);
+  background: rgba(32, 33, 36, 0.92);
+  color: #fff;
+  border-radius: 6px;
+  padding: 8px 16px;
+  transition: opacity 0.2s;
+  pointer-events: none;
+  z-index: 10;
+}
+
+#toast.fade {
+  opacity: 0;
+}
