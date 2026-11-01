@@ -1,0 +1,7 @@
+<Project>
+  <!-- ソースが共有フォルダ(OneDrive等)にあっても bin/obj を同期させないよう、ビルド出力はPCごとのLOCALAPPDATAへ逃がす -->
+  <PropertyGroup>
+    <BaseOutputPath>$(LOCALAPPDATA)\SecGad\build\bin\</BaseOutputPath>
+    <BaseIntermediateOutputPath>$(LOCALAPPDATA)\SecGad\build\obj\</BaseIntermediateOutputPath>
+  </PropertyGroup>
+</Project>
