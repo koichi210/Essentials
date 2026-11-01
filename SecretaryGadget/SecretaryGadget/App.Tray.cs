@@ -115,6 +115,7 @@ namespace SecretaryGadget
 
             menu.Items.Add(Item("秘書さんを呼ぶ", Call));
             menu.Items.Add(Item("本日の予定", ShowSchedule));
+            menu.Items.Add(Item("箱庭", OpenHakoniwa));
             menu.Items.Add(new Forms.ToolStripSeparator());
 
             var breakMenu = new Forms.ToolStripMenuItem(_onBreak && _breakUntil != null ? $"休憩（{_breakUntil.Value:HH:mm} 再開予定）" : "休憩");
@@ -183,6 +184,16 @@ namespace SecretaryGadget
             menu.Items.Add(Item("PC起動時に自動で起動", () => SetAutoStart(!IsAutoStart()), check: IsAutoStart()));
             menu.Items.Add(new Forms.ToolStripSeparator());
             menu.Items.Add(Item("終了", ExitApp));
+        }
+
+        /// <summary>箱庭(Claude Office)をブラウザで開く。開けなかったときだけ吹き出しで知らせる。</summary>
+        private async void OpenHakoniwa()
+        {
+            string? error = await HakoniwaLauncher.OpenAsync();
+            if (error != null)
+            {
+                Enqueue(new Notice(NoticeKind.Greeting, "箱庭を開けませんでした", error));
+            }
         }
 
         /// <summary>メニュー項目。クリックしたら動作のあと設定の全項目を書き戻す。</summary>

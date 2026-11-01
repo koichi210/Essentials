@@ -686,6 +686,10 @@ namespace SecretaryGadget
             {
                 StartBreak(TimeSpan.FromMinutes(1));
             }
+            if (_options.HasDiag("hakoniwa"))
+            {
+                OpenHakoniwa();
+            }
             if (_options.HasDiag("summary"))
             {
                 for (int i = 1; i <= 3; i++)
