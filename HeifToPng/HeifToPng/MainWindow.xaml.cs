@@ -187,17 +187,6 @@ namespace HeifToPng
         private void ShowResult(ConvertResult result)
         {
             WorkProgressBar.IsIndeterminate = false;
-            if (result.DecoderMissing)
-            {
-                const string message = "このPCではHEIF画像を読めません。Microsoft Store から「HEIF画像拡張機能」と「HEVCビデオ拡張機能」を入れてから、もう一度変換してください。";
-                AddLog(string.Format("{0:HH:mm:ss} 中止: HEIFを読むための拡張機能が入っていません", DateTime.Now));
-                StatusText.Text = message;
-                if (!_closeRequested)
-                {
-                    MessageBox.Show(this, message, Title, MessageBoxButton.OK, MessageBoxImage.Warning);
-                }
-                return;
-            }
             if (!result.Cancelled)
             {
                 WorkProgressBar.Value = WorkProgressBar.Maximum;

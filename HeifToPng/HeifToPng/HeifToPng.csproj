@@ -9,7 +9,7 @@
     <AssemblyName>HeifToPng</AssemblyName>
     <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
     <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
-    <!-- 4000万画素級の写真を並列で何枚も展開するので、32bitプロセスにしない -->
+    <!-- 4000万画素級の写真を並列で何枚も展開するので、32bitプロセスにしない(Magick.NETもx64版を使う) -->
     <Prefer32Bit>false</Prefer32Bit>
     <PlatformTarget>x64</PlatformTarget>
   </PropertyGroup>
@@ -18,6 +18,8 @@
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
     <!-- 「データ保存先を変更」のフォルダ選択ダイアログ(DataFolderChooser)で使う -->
     <PackageReference Include="WindowsAPICodePack-Shell" Version="1.1.1" />
+    <!-- HEIFの読み込み(libheif・libde265内蔵)とPNGの書き出し。出力は8bitのPNGなので8bit版(Q8)で足りる -->
+    <PackageReference Include="Magick.NET-Q8-x64" Version="14.17.2" />
   </ItemGroup>
 
   <ItemGroup>
@@ -32,11 +34,6 @@
     <Compile Include="..\..\_Common\DataFolderChooser.cs" Link="_Common\DataFolderChooser.cs" />
     <Compile Include="..\..\_Common\Wpf\WpfDataFolderMenu.cs" Link="_Common\WpfDataFolderMenu.cs" />
     <Compile Include="..\..\_Common\AtomicFile.cs" Link="_Common\AtomicFile.cs" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <!-- HEIF拡張機能が入っているかを変換前に確かめるための、64x32の小さなHEIC -->
-    <EmbeddedResource Include="Probe.heic" LogicalName="HeifToPng.Probe.heic" />
   </ItemGroup>
 
 </Project>

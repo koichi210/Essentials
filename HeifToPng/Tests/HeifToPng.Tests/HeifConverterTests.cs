@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Text;
 using System.Threading;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
@@ -153,14 +154,26 @@ namespace HeifToPng.Tests
             StringAssert.Contains(failures[0], "nothing");
         }
 
-        // *******************************************************************************
-        // 変換(このPCに「HEIF画像拡張機能」「HEVCビデオ拡張機能」が入っている前提)
-
-        [TestMethod]
-        public void IsDecoderAvailable_TrueOnThisPc()
+        // PNGのチャンクを (種類, 中身) の並びで返す
+        private static List<KeyValuePair<string, byte[]>> ReadPngChunks(string path)
         {
-            Assert.IsTrue(HeifConverter.IsDecoderAvailable());
+            byte[] data = File.ReadAllBytes(path);
+            var chunks = new List<KeyValuePair<string, byte[]>>();
+            int pos = 8;
+            while (pos + 8 <= data.Length)
+            {
+                int length = (data[pos] << 24) | (data[pos + 1] << 16) | (data[pos + 2] << 8) | data[pos + 3];
+                string type = Encoding.ASCII.GetString(data, pos + 4, 4);
+                var body = new byte[length];
+                Array.Copy(data, pos + 8, body, 0, length);
+                chunks.Add(new KeyValuePair<string, byte[]>(type, body));
+                pos += 12 + length;
+            }
+            return chunks;
         }
+
+        // *******************************************************************************
+        // 変換
 
         [TestMethod]
         public void ConvertFile_ProducesPngWithSameLook()
@@ -221,6 +234,29 @@ namespace HeifToPng.Tests
             Assert.AreEqual(64, LoadPng(output).PixelWidth);
         }
 
+        // 写真のEXIF(撮影位置など)はPNGに持っていかず、色のプロファイル(iCCP)だけ残す
+        [TestMethod]
+        public void ConvertFile_DropsExifAndGps_KeepsColorProfile()
+        {
+            string source = CopyFixture("withexif.heic", "a.heic");
+            string output = HeifConverter.GetOutputPath(source);
+
+            HeifConverter.ConvertFile(source, output, false, false);
+
+            List<KeyValuePair<string, byte[]>> chunks = ReadPngChunks(output);
+            List<string> types = chunks.Select(c => c.Key).ToList();
+            CollectionAssert.Contains(types, "iCCP");
+            CollectionAssert.DoesNotContain(types, "eXIf");
+            CollectionAssert.DoesNotContain(types, "tEXt");
+            CollectionAssert.DoesNotContain(types, "iTXt");
+            foreach (KeyValuePair<string, byte[]> chunk in chunks.Where(c => c.Key != "IDAT"))
+            {
+                string text = Encoding.ASCII.GetString(chunk.Value);
+                Assert.IsFalse(text.Contains("GPS") || text.Contains("TestMaker"), chunk.Key + " にEXIFが残っている");
+            }
+            AssertRed(PixelAt(LoadPng(output), 8, 16));
+        }
+
         [TestMethod]
         public void ConvertFile_KeepTimestamps_CopiesSourceTimes()
         {
@@ -261,9 +297,7 @@ namespace HeifToPng.Tests
             Assert.AreEqual(1, result.Skipped);
             Assert.AreEqual(1, result.Failures.Count);
             StringAssert.Contains(result.Failures[0], "broken.heic");
-            // 拡張機能はあるので、「拡張機能を入れて」ではなく「壊れている」と出す
             StringAssert.Contains(result.Failures[0], "壊れている");
-            Assert.IsFalse(result.DecoderMissing);
             Assert.IsFalse(File.Exists(Path.Combine(_root, @"p\broken.png")), "失敗したのにPNGが残っている");
             Assert.IsTrue(File.Exists(Path.Combine(_root, @"p\sub\3.png")));
         }

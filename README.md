@@ -12,7 +12,7 @@
 | [EventRecorder](EventRecorder) | キーボードとマウスの操作を記録して再生する（プレイリスト・ループ再生） | .NET Framework 4.8 / x64 |
 | [FFEdit](FFEdit) | フォルダ内のファイル・フォルダの名前を、通し番号などでまとめて変換する | .NET Framework |
 | [FileArranger](FileArranger) | フォルダの移動や名前変更、ファイルの移動・振り分けをまとめて行う | .NET Framework |
-| [HeifToPng](HeifToPng) | iPhone などの HEIF 画像（.heic / .heif / .hif）を、フォルダごとまとめて PNG に変換する | .NET Framework 4.8 / x64（Windows の「HEIF 画像拡張機能」と「HEVC ビデオ拡張機能」が必要） |
+| [HeifToPng](HeifToPng) | iPhone などの HEIF 画像（.heic / .heif / .hif）を、フォルダごとまとめて PNG に変換する | .NET Framework 4.8 / x64 |
 | [VsCodePets](VsCodePets) | VS Code のパネルでペットが飛び回る拡張機能（vscode-pets の改造版・画像はすべてオリジナル） | VS Code 1.73 以上 |
 | [Launcher](Launcher) | よく使う exe や URL を登録して、ワンクリックで起動する | .NET 10（ランタイムが必要） |
 | [Mailer](Mailer) | 宛先・件名・本文を決めておいて、ブラウザのメール作成画面を開く | .NET Framework |

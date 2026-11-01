@@ -4,8 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using System.Windows.Media;
-using System.Windows.Media.Imaging;
+using ImageMagick;
 using StandardTemplate;
 
 namespace HeifToPng
@@ -36,8 +35,6 @@ namespace HeifToPng
         // 「パス: 理由」の形
         public List<string> Failures { get; } = new List<string>();
         public bool Cancelled { get; set; }
-        // このPCでHEIFを読めない(拡張機能が入っていない)ので、1件も変換していない
-        public bool DecoderMissing { get; set; }
     }
 
     // 1ファイル分の変換予定。出力先が他と重なるものは Conflict に理由を入れて変換しない
@@ -55,9 +52,11 @@ namespace HeifToPng
     }
 
     /// <summary>
-    /// HEIF(.heic/.heif/.hif)をPNGに変換する。デコードはWindowsのWIC(「HEIF画像拡張機能」と「HEVCビデオ拡張機能」)に任せるので、
-    /// 追加のライブラリは要らない。回転(irot/imir)はデコーダーが適用済みの画素を返すので、EXIFの向きをこちらで当て直さない
-    /// (iPhoneの写真はEXIFにも向きが残っていて、当て直すと二重に回ってしまう)。
+    /// HEIF(.heic/.heif/.hif)をPNGに変換する。読み書きはMagick.NET(libheif内蔵)で行うので、Windowsの「HEIF画像拡張機能」は要らない。
+    /// 最初はWindowsのWIC(HEIF画像拡張機能)で読んでいたが、WICのHEIFデコーダーはプロセス内で1枚ずつしか動かず、
+    /// 並列にしても約2秒/枚から縮まなかったので差し替えた(Magick.NETは約0.3秒/枚で、並列にすると素直に速くなる)。
+    /// 回転(irot/imir)はlibheifが適用済みの画素を返すので、EXIFの向きをこちらで当て直さない
+    /// (iPhoneの写真はEXIFにも向きが残っていることがあり、当て直すと二重に回ってしまう)。
     /// </summary>
     internal static class HeifConverter
     {
@@ -66,13 +65,9 @@ namespace HeifToPng
         // 進捗の通知は間引く(1件ごとに出すと数千件で画面が詰まる)
         private const int _progressIntervalMs = 100;
 
-        // PNGエンコーダーがそのまま書ける画素形式。それ以外(HDRの浮動小数点など)は変換してから書く
-        private static readonly PixelFormat[] _pngPixelFormats =
-        {
-            PixelFormats.Bgr24, PixelFormats.Bgr32, PixelFormats.Bgra32, PixelFormats.Pbgra32,
-            PixelFormats.Rgb24, PixelFormats.Rgb48, PixelFormats.Rgba64,
-            PixelFormats.Gray8, PixelFormats.Gray16, PixelFormats.Indexed8,
-        };
+        // PNGの圧縮レベル(0〜9)。ImageMagickの既定(7相当)だと書き出しが約5秒/枚かかる。
+        // 1なら約0.8秒/枚で、サイズは既定より2割増える程度(それでもWICで書いていた頃より小さい)
+        private const string _pngCompressionLevel = "1";
 
         public static bool IsHeif(string path)
         {
@@ -181,29 +176,12 @@ namespace HeifToPng
                 return JobOutcome.Skipped;
             }
 
-            using (var input = new FileStream(sourcePath, FileMode.Open, FileAccess.Read, FileShare.Read))
+            using (var image = new MagickImage(sourcePath))
             {
-                // 色はカラープロファイルごとPNGへ持っていく(iPhoneの写真はDisplay P3なので、ここで落とすと色が薄くなる)
-                BitmapDecoder decoder = BitmapDecoder.Create(input,
-                    BitmapCreateOptions.PreservePixelFormat | BitmapCreateOptions.IgnoreColorProfile, BitmapCacheOption.OnLoad);
-                BitmapFrame frame = decoder.Frames[0];
-                BitmapSource pixels = frame;
-                if (!_pngPixelFormats.Contains(frame.Format))
-                {
-                    PixelFormat target = frame.Format.BitsPerPixel > 32 ? PixelFormats.Rgba64 : PixelFormats.Bgra32;
-                    pixels = new FormatConvertedBitmap(frame, target, null, 0);
-                }
-
-                var encoder = new PngBitmapEncoder();
-                encoder.Frames.Add(BitmapFrame.Create(pixels, null, null, frame.ColorContexts));
-                // 途中で中止・失敗しても書きかけのPNGを残さない
-                AtomicFile.Write(outputPath, tempPath =>
-                {
-                    using (var output = new FileStream(tempPath, FileMode.Create, FileAccess.Write, FileShare.None))
-                    {
-                        encoder.Save(output);
-                    }
-                });
+                RemoveMetadataExceptColor(image);
+                image.Settings.SetDefine(MagickFormat.Png, "compression-level", _pngCompressionLevel);
+                // 途中で中止・失敗しても書きかけのPNGを残さない(一時ファイルは拡張子が .tmp なので形式を明示する)
+                AtomicFile.Write(outputPath, tempPath => image.Write(tempPath, MagickFormat.Png));
             }
 
             if (keepTimestamps)
@@ -216,33 +194,29 @@ namespace HeifToPng
         }
 
         /// <summary>
-        /// このPCでHEIFを読めるか。WICは「デコーダーが無い」も「ファイルが壊れている」も同じエラー(コンポーネントが見つからない)を返すので、
-        /// 個々のファイルの失敗からは見分けられない。そこで確実に読めるはずの小さなHEICを同梱しておき、それを読めるかで判断する
+        /// カラープロファイル(ICC)以外のメタデータを消す。ImageMagickは何もしないとEXIF(撮影位置のGPSを含む)とXMPを
+        /// eXIfチャンクと大量のtEXtチャンクにしてPNGへ書き出すので、PNGを人に渡したとき撮影場所まで伝わってしまう。
+        /// 色はプロファイルごと持っていく(iPhoneの写真はDisplay P3なので、ここで落とすと色が薄くなる)
         /// </summary>
-        public static bool IsDecoderAvailable()
+        private static void RemoveMetadataExceptColor(MagickImage image)
         {
-            using (Stream probe = typeof(HeifConverter).Assembly.GetManifestResourceStream("HeifToPng.Probe.heic"))
+            foreach (string profileName in image.ProfileNames.ToList())
             {
-                try
+                if (!string.Equals(profileName, "icc", StringComparison.OrdinalIgnoreCase))
                 {
-                    BitmapDecoder decoder = BitmapDecoder.Create(probe, BitmapCreateOptions.None, BitmapCacheOption.OnLoad);
-                    return decoder.Frames[0].PixelWidth > 0;
+                    image.RemoveProfile(profileName);
                 }
-                catch (Exception ex) when (ex is NotSupportedException || ex is FileFormatException || ex is System.Runtime.InteropServices.COMException)
-                {
-                    return false;
-                }
+            }
+            // exif:GPSLatitude などはプロファイルを消しても属性として残り、tEXtチャンクになる
+            foreach (string attributeName in image.AttributeNames.ToList())
+            {
+                image.RemoveAttribute(attributeName);
             }
         }
 
         public static ConvertResult Run(ConvertOptions options, IProgress<ConvertProgress> progress, CancellationToken token)
         {
             var result = new ConvertResult();
-            if (!IsDecoderAvailable())
-            {
-                result.DecoderMissing = true;
-                return result;
-            }
             List<ConvertJob> jobs;
             int lastReport = Environment.TickCount;
             try
@@ -295,9 +269,7 @@ namespace HeifToPng
                                 Interlocked.Increment(ref skipped);
                             }
                         }
-                        catch (Exception ex) when (ex is IOException || ex is UnauthorizedAccessException
-                            || ex is NotSupportedException || ex is FileFormatException || ex is InvalidOperationException
-                            || ex is ArgumentException || ex is System.Runtime.InteropServices.COMException)
+                        catch (Exception ex) when (ex is IOException || ex is UnauthorizedAccessException || ex is MagickException)
                         {
                             failure = DescribeFailure(ex);
                         }
@@ -330,14 +302,12 @@ namespace HeifToPng
             return result;
         }
 
-        // 中身がHEIFとして読めないと「コンポーネントが見つかりません」というCOMのエラーになるので、何が起きたかわかる文にする
-        // (デコーダーがあることは Run の最初に確かめ済み)
+        // ImageMagickのエラー文は英語で長い(パスや内部の関数名まで入る)ので、何が起きたかわかる日本語にする
         private static string DescribeFailure(Exception ex)
         {
-            const int wincodecErrComponentNotFound = unchecked((int)0x88982F50);
-            if (ex.HResult == wincodecErrComponentNotFound || (ex.InnerException != null && ex.InnerException.HResult == wincodecErrComponentNotFound))
+            if (ex is MagickException)
             {
-                return "HEIFとして読めません(ファイルが壊れているか、中身がHEIFではありません)";
+                return "画像として読めません(ファイルが壊れているか、中身がHEIFではありません)";
             }
             return ex.Message;
         }
