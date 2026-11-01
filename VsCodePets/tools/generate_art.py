@@ -1,4 +1,4 @@
-# オリジナルのペット画像(GIF)・アイコン・背景(PNG)を生成する。
+# オリジナルのペット画像(GIF)・アイコンを生成する。背景は tools/cut_seasons.py(四季の絵を切り出す)。
 # 上流の画像は権利の都合ですべて削除し、ここで手続き的に描いたものに置き換えている。
 # 使い方: py -3 tools/generate_art.py <media フォルダ>
 import math
@@ -575,173 +575,9 @@ def generate_pets(media):
     return count
 
 
-# ---------------------------------------------------------------- 背景(横に繋がる・空は透明)
-
-BG_W, BG_H = 117, 100
-SIZES = {'nano': 3, 'small': 4, 'medium': 5, 'large': 8}
-FLOOR = {'forest': 8, 'castle': 15, 'beach': 15, 'winter': 5, 'autumn': 3}
-
-
 def hexrgb(h, a=255):
     h = h.lstrip('#')
-    return tuple(int(h[i:i + 2], 16) for i in (0, 2, 4)) + (a,)
-
-
-class Scene:
-    def __init__(self):
-        self.im = Image.new('RGBA', (BG_W, BG_H), (0, 0, 0, 0))
-
-    def set(self, x, y, c, a=255):
-        x = int(x) % BG_W
-        y = int(y)
-        if 0 <= y < BG_H:
-            self.im.putpixel((x, y), hexrgb(c, a))
-
-    def rect(self, x0, y0, x1, y1, c, a=255):
-        for y in range(int(y0), int(y1) + 1):
-            for x in range(int(x0), int(x1) + 1):
-                self.set(x, y, c, a)
-
-    def tri(self, cx, top, half, height, c):
-        for i in range(height):
-            w = int(half * i / height)
-            self.rect(cx - w, top + i, cx + w, top + i, c)
-
-    def circle(self, cx, cy, r, c, a=255):
-        for y in range(int(cy - r), int(cy + r) + 1):
-            for x in range(int(cx - r), int(cx + r) + 1):
-                if (x - cx) ** 2 + (y - cy) ** 2 <= r * r:
-                    self.set(x, y, c, a)
-
-    def hills(self, base, amp, period, phase, c):
-        for x in range(BG_W):
-            h = base - amp * (0.5 + 0.5 * math.sin(2 * math.pi * x / BG_W * period + phase))
-            self.rect(x, h, x, BG_H - 1, c)
-
-
-def theme_colors(dark):
-    return {
-        'sky_obj': '#f4f1d0' if dark else '#ffd75e',
-        'far': '#2c3a5a' if dark else '#a8d0e8',
-        'mid': '#2d4a3e' if dark else '#7cc472',
-        'ground': '#2f5a2a' if dark else '#5aa64a',
-        'dirt': '#3a2c22' if dark else '#8a5a34',
-        'leaf': '#1f4030' if dark else '#3f8f4a',
-        'trunk': '#3a2a1e' if dark else '#6b4a2f',
-        'stone': '#4a4e5c' if dark else '#a6a8b4',
-        'stone2': '#3a3e4a' if dark else '#8a8c98',
-        'sea': '#1e3a6a' if dark else '#4fa8e0',
-        'sand': '#6a5a3c' if dark else '#f0d9a0',
-        'snow': '#b8c4d8' if dark else '#ffffff',
-        'snow2': '#8a96ac' if dark else '#dde8f4',
-        'autumn1': '#7a3a1e' if dark else '#e0782c',
-        'autumn2': '#6a4a1a' if dark else '#f2b03a',
-        'window': '#f2d27a' if dark else '#bfe0f8',
-    }
-
-
-def background(theme, dark):
-    s = Scene()
-    c = theme_colors(dark)
-    floor = BG_H - FLOOR[theme]
-    if theme == 'forest':
-        s.hills(floor - 18, 10, 2, 0.3, c['far'])
-        for x in range(4, BG_W, 13):
-            h = 16 + (x * 7) % 9
-            s.rect(x, floor - 4, x + 1, floor, c['trunk'])
-            s.tri(x, floor - 4 - h, 5, h, c['leaf'])
-        s.rect(0, floor, BG_W - 1, BG_H - 1, c['ground'])
-        s.rect(0, floor + 3, BG_W - 1, BG_H - 1, c['dirt'])
-    elif theme == 'castle':
-        s.rect(0, floor - 46, BG_W - 1, floor, c['stone'])
-        for y in range(floor - 46, floor, 5):
-            off = 0 if (y // 5) % 2 == 0 else 6
-            for x in range(off, BG_W, 12):
-                s.rect(x, y, x, y + 4, c['stone2'])
-            s.rect(0, y, BG_W - 1, y, c['stone2'])
-        for x in range(0, BG_W, 8):
-            s.rect(x, floor - 50, x + 3, floor - 47, c['stone'])
-        for x in (20, 78):
-            s.rect(x, floor - 34, x + 10, floor - 18, c['window'])
-            s.rect(x + 5, floor - 34, x + 5, floor - 18, c['stone2'])
-            s.rect(x, floor - 26, x + 10, floor - 26, c['stone2'])
-        for x in (52,):
-            s.rect(x, floor - 42, x + 8, floor - 22, '#a83a3a' if not dark else '#5a1e28')
-            s.tri(x + 4, floor - 22, 4, 4, '#a83a3a' if not dark else '#5a1e28')
-        s.rect(0, floor, BG_W - 1, BG_H - 1, c['stone2'])
-    elif theme == 'beach':
-        s.circle(90, floor - 34, 6, c['sky_obj'])
-        s.rect(0, floor - 14, BG_W - 1, floor, c['sea'])
-        for x in range(0, BG_W, 9):
-            s.rect(x, floor - 10 + (x // 9) % 3 * 3, x + 3, floor - 10 + (x // 9) % 3 * 3, '#ffffff' if not dark else '#5a7aa8')
-        s.rect(0, floor, BG_W - 1, BG_H - 1, c['sand'])
-        s.rect(26, floor - 24, 27, floor, c['trunk'])
-        for dx, dy in ((-6, 1), (6, 1), (-4, -1), (4, -1), (0, -2)):
-            s.rect(26 + min(0, dx), floor - 25 + dy, 27 + max(0, dx), floor - 25 + dy, c['leaf'])
-    elif theme == 'winter':
-        s.hills(floor - 14, 9, 2, 1.0, c['snow2'])
-        for x in range(8, BG_W, 17):
-            h = 14 + (x * 5) % 7
-            s.rect(x, floor - 3, x + 1, floor, c['trunk'])
-            s.tri(x, floor - 3 - h, 5, h, c['leaf'])
-            s.tri(x, floor - 3 - h, 3, h // 2, c['snow'])
-        s.rect(0, floor, BG_W - 1, BG_H - 1, c['snow'])
-    elif theme == 'autumn':
-        s.hills(floor - 16, 8, 3, 2.0, c['far'])
-        for x in range(6, BG_W, 19):
-            s.rect(x, floor - 10, x + 1, floor, c['trunk'])
-            s.circle(x, floor - 15, 6, c['autumn1'])
-            s.circle(x + 3, floor - 17, 4, c['autumn2'])
-        for x in range(0, BG_W, 6):
-            s.rect(x, floor - 6, x, floor, c['trunk'])
-        s.rect(0, floor - 5, BG_W - 1, floor - 5, c['trunk'])
-        s.rect(0, floor, BG_W - 1, BG_H - 1, c['dirt'])
-    return s.im
-
-
-def foreground(theme, dark):
-    s = Scene()
-    c = theme_colors(dark)
-    floor = BG_H - FLOOR[theme]
-    if theme == 'forest':
-        for x in range(2, BG_W, 23):
-            s.circle(x, floor + 1, 3, c['leaf'])
-            s.circle(x + 3, floor, 2.5, shade(c['leaf'], 0.15))
-    elif theme == 'castle':
-        for x in (10, 106):
-            s.rect(x, floor - 16, x + 1, floor - 10, c['trunk'])
-            s.circle(x + 0.5, floor - 18, 1.5, '#ffb340')
-    elif theme == 'beach':
-        for x in (60, 100):
-            s.circle(x, floor + 2, 1.5, '#f4a6b8')
-    elif theme == 'winter':
-        s.circle(98, floor - 3, 4, c['snow'])
-        s.circle(98, floor - 9, 3, c['snow'])
-        s.set(99, floor - 10, '#2a2230')
-        s.rect(100, floor - 9, 101, floor - 9, '#e0782c')
-    elif theme == 'autumn':
-        for x in range(4, BG_W, 15):
-            s.rect(x, floor, x + 1, floor, c['autumn2'])
-            s.set(x + 3, floor, c['autumn1'])
-    return s.im
-
-
-def generate_backgrounds(media):
-    count = 0
-    for theme in FLOOR:
-        folder = os.path.join(media, 'backgrounds', theme)
-        os.makedirs(folder, exist_ok=True)
-        for dark in (True, False):
-            kind = 'dark' if dark else 'light'
-            bg = background(theme, dark)
-            fg = foreground(theme, dark)
-            for size, k in SIZES.items():
-                bg.resize((BG_W * k, BG_H * k), Image.NEAREST).save(os.path.join(folder, f'background-{kind}-{size}.png'))
-                fg.resize((BG_W * k, BG_H * k), Image.NEAREST).save(os.path.join(folder, f'foreground-{kind}-{size}.png'))
-                count += 2
-        background(theme, False).resize((BG_W * 4, BG_H * 4), Image.NEAREST).save(os.path.join(folder, 'background.png'))
-        foreground(theme, False).resize((BG_W * 4, BG_H * 4), Image.NEAREST).save(os.path.join(folder, 'foreground.png'))
-    return count
+    return (int(h[0:2], 16), int(h[2:4], 16), int(h[4:6], 16), a)
 
 
 def generate_extension_icons(root):
@@ -755,5 +591,4 @@ def generate_extension_icons(root):
 if __name__ == '__main__':
     media = sys.argv[1]
     print('pets', generate_pets(media))
-    print('backgrounds', generate_backgrounds(media))
     generate_extension_icons(os.path.dirname(os.path.abspath(media)))

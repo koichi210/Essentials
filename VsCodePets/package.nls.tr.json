@@ -69,9 +69,8 @@
     "vscode-pets.position.panel": "Panel",
     "vscode-pets.position.explorer": "Gezgin",
     "vscode-pets.theme.none": "Hiçbiri",
-    "vscode-pets.theme.forest": "Orman",
-    "vscode-pets.theme.castle": "Kale",
-    "vscode-pets.theme.beach": "Kumsal",
-    "vscode-pets.theme.winter": "Kış",
-    "vscode-pets.theme.autumn": "Autumn"
+    "vscode-pets.theme.spring": "Spring",
+    "vscode-pets.theme.summer": "Summer",
+    "vscode-pets.theme.autumn": "Autumn",
+    "vscode-pets.theme.winter": "Winter"
 }

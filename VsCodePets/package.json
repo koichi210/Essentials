@@ -284,21 +284,19 @@
                         "type": "string",
                         "enum": [
                             "none",
-                            "forest",
-                            "castle",
-                            "beach",
-                            "winter",
-                            "autumn"
+                            "spring",
+                            "summer",
+                            "autumn",
+                            "winter"
                         ],
                         "default": "none",
                         "description": "%vscode-pets.theme.description%",
                         "enumItemLabels": [
                             "%vscode-pets.theme.none%",
-                            "%vscode-pets.theme.forest%",
-                            "%vscode-pets.theme.castle%",
-                            "%vscode-pets.theme.beach%",
-                            "%vscode-pets.theme.winter%",
-                            "%vscode-pets.theme.autumn%"
+                            "%vscode-pets.theme.spring%",
+                            "%vscode-pets.theme.summer%",
+                            "%vscode-pets.theme.autumn%",
+                            "%vscode-pets.theme.winter%"
                         ]
                     },
                     "vscode-pets.throwBallWithMouse": {

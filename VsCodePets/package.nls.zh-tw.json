@@ -69,9 +69,8 @@
     "vscode-pets.position.panel": "面板",
     "vscode-pets.position.explorer": "檔案總管",
     "vscode-pets.theme.none": "無",
-    "vscode-pets.theme.forest": "森林",
-    "vscode-pets.theme.castle": "城堡",
-    "vscode-pets.theme.beach": "海灘",
-    "vscode-pets.theme.winter": "冬日",
-    "vscode-pets.theme.autumn": "秋"
+    "vscode-pets.theme.spring": "Spring",
+    "vscode-pets.theme.summer": "Summer",
+    "vscode-pets.theme.autumn": "Autumn",
+    "vscode-pets.theme.winter": "Winter"
 }

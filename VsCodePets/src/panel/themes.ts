@@ -1,23 +1,7 @@
 import { ColorThemeKind, PetSize, Theme } from '../common/types';
 import { Effect } from './effects/effect';
 import { SnowEffect } from './effects/snow';
-import { StarEffect } from './effects/stars';
 import { LeafEffect } from './effects/leaves';
-
-function normalizeColorThemeKind(kind: ColorThemeKind): 'dark' | 'light' {
-    switch (kind) {
-        case ColorThemeKind.light:
-            return 'light';
-        case ColorThemeKind.dark:
-            return 'dark';
-        case ColorThemeKind.highContrast:
-            return 'dark';
-        case ColorThemeKind.highContrastLight:
-            return 'light';
-        default:
-            return 'light';
-    }
-}
 
 interface AbstractThemeInfo {
     name: string;
@@ -46,121 +30,54 @@ export class ThemeInfo implements AbstractThemeInfo {
     floor(size: PetSize): number {
         return 0;
     }
+    /* eslint-disable no-unused-vars */
+    // 背景はライト/ダークで共通の1枚(暗くしない)
     backgroundImageUrl(
         basePetUri: string,
         themeKind: ColorThemeKind,
         petSize: PetSize,
     ): string {
-        var _themeKind = normalizeColorThemeKind(themeKind);
-        return `url('${basePetUri}/backgrounds/${this.name}/background-${_themeKind}-${petSize}.png')`;
+        return `url('${basePetUri}/backgrounds/${this.name}/background.jpg')`;
     }
     foregroundImageUrl(
         basePetUri: string,
         themeKind: ColorThemeKind,
         petSize: PetSize,
     ): string {
-        var _themeKind = normalizeColorThemeKind(themeKind);
-        return `url('${basePetUri}/backgrounds/${this.name}/foreground-${_themeKind}-${petSize}.png')`;
+        return '';
     }
+    /* eslint-enable no-unused-vars */
 }
 
-class ForestThemeInfo extends ThemeInfo {
-    name = 'forest';
-    description = 'A forest theme';
-    effect = new StarEffect();
+// 季節の背景は1枚絵(横に繋げて並べる)。ペットの手前に重ねる前景は持たない
+class SeasonThemeInfo extends ThemeInfo {
+    floorBySize = { nano: 25, small: 35, medium: 45, large: 70 };
 
     floor(size: PetSize): number {
-        switch (size) {
-            case PetSize.small:
-                return 30;
-            case PetSize.medium:
-                return 40;
-            case PetSize.large:
-                return 65;
-            case PetSize.nano:
-            default:
-                return 23;
-        }
+        return this.floorBySize[size] ?? this.floorBySize.nano;
     }
 }
 
-class CastleThemeInfo extends ThemeInfo {
-    name = 'castle';
-    description = 'A castle theme';
-
-    floor(size: PetSize): number {
-        switch (size) {
-            case PetSize.small:
-                return 60;
-            case PetSize.medium:
-                return 80;
-            case PetSize.large:
-                return 120;
-            case PetSize.nano:
-            default:
-                return 45;
-        }
-    }
+class SpringThemeInfo extends SeasonThemeInfo {
+    name = 'spring';
+    description = 'A spring theme';
 }
 
-class BeachThemeInfo extends ThemeInfo {
-    name = 'beach';
-    description = 'A beach theme';
-    effect = new StarEffect();
-
-    floor(size: PetSize): number {
-        switch (size) {
-            case PetSize.small:
-                return 60;
-            case PetSize.medium:
-                return 80;
-            case PetSize.large:
-                return 120;
-            case PetSize.nano:
-            default:
-                return 45;
-        }
-    }
+class SummerThemeInfo extends SeasonThemeInfo {
+    name = 'summer';
+    description = 'A summer theme';
 }
 
-class WinterThemeInfo extends ThemeInfo {
-    name = 'winter';
-    description = 'A winter theme';
-    effect = new SnowEffect();
-
-    floor(size: PetSize): number {
-        switch (size) {
-            case PetSize.small:
-                return 20;
-            case PetSize.medium:
-                return 30;
-            case PetSize.large:
-                return 45;
-            case PetSize.nano:
-            default:
-                return 18;
-        }
-    }
-}
-
-class AutumnThemeInfo extends ThemeInfo {
+class AutumnThemeInfo extends SeasonThemeInfo {
     name = 'autumn';
     description = 'An autumn theme';
     effect = new LeafEffect();
+}
 
-    floor(size: PetSize): number {
-        switch (size) {
-            case PetSize.small:
-                return 9;
-            case PetSize.medium:
-                return 15;
-            case PetSize.large:
-                return 20;
-            case PetSize.nano:
-            default:
-                return 7;
-        }
-    }
+class WinterThemeInfo extends SeasonThemeInfo {
+    name = 'winter';
+    description = 'A winter theme';
+    effect = new SnowEffect();
 }
 
 // Map of theme name to theme info
@@ -182,9 +99,8 @@ export const THEMES: Record<Theme, ThemeInfo> = {
         ) => '',
         /* eslint-enable no-unused-vars */
     },
-    forest: new ForestThemeInfo(),
-    castle: new CastleThemeInfo(),
-    beach: new BeachThemeInfo(),
-    winter: new WinterThemeInfo(),
+    spring: new SpringThemeInfo(),
+    summer: new SummerThemeInfo(),
     autumn: new AutumnThemeInfo(),
+    winter: new WinterThemeInfo(),
 };

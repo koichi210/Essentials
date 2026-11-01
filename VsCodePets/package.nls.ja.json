@@ -70,9 +70,8 @@
     "vscode-pets.position.panel": "パネル",
     "vscode-pets.position.explorer": "エクスプローラ",
     "vscode-pets.theme.none": "なし",
-    "vscode-pets.theme.forest": "森",
-    "vscode-pets.theme.castle": "城",
-    "vscode-pets.theme.beach": "海辺",
-    "vscode-pets.theme.winter": "冬",
-    "vscode-pets.theme.autumn": "秋"
+    "vscode-pets.theme.spring": "春",
+    "vscode-pets.theme.summer": "夏",
+    "vscode-pets.theme.autumn": "秋",
+    "vscode-pets.theme.winter": "冬"
 }

@@ -322,14 +322,14 @@ suite('Change Theme Test Suite', () => {
     test('Test change-theme cancel leaves theme unchanged', async () => {
         await vscode.workspace
             .getConfiguration('vscode-pets')
-            .update('theme', Theme.forest, vscode.ConfigurationTarget.Global);
+            .update('theme', Theme.spring, vscode.ConfigurationTarget.Global);
         (vscode.window as any).showQuickPick = () => Promise.resolve(undefined);
         await vscode.commands.executeCommand(COMMAND);
         assert.strictEqual(
             vscode.workspace
                 .getConfiguration('vscode-pets')
                 .get<Theme>('theme'),
-            Theme.forest,
+            Theme.spring,
         );
     });
 });

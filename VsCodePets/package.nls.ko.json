@@ -69,9 +69,8 @@
     "vscode-pets.position.panel": "패널",
     "vscode-pets.position.explorer": "탐색기",
     "vscode-pets.theme.none": "없음",
-    "vscode-pets.theme.forest": "숲",
-    "vscode-pets.theme.castle": "성",
-    "vscode-pets.theme.beach": "해변",
-    "vscode-pets.theme.winter": "겨울",
-    "vscode-pets.theme.autumn": "Autumn"
+    "vscode-pets.theme.spring": "Spring",
+    "vscode-pets.theme.summer": "Summer",
+    "vscode-pets.theme.autumn": "Autumn",
+    "vscode-pets.theme.winter": "Winter"
 }

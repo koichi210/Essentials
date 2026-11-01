@@ -76,9 +76,8 @@
     "vscode-pets.position.explorer" : "Explorer",
 
     "vscode-pets.theme.none" : "None",
-    "vscode-pets.theme.forest" : "Forest",
-    "vscode-pets.theme.castle" : "Castle",
-    "vscode-pets.theme.beach" : "Beach",
-    "vscode-pets.theme.winter" : "Winter",
-    "vscode-pets.theme.autumn" : "Autumn"
+    "vscode-pets.theme.spring": "Spring",
+    "vscode-pets.theme.summer": "Summer",
+    "vscode-pets.theme.autumn": "Autumn",
+    "vscode-pets.theme.winter": "Winter"
 }

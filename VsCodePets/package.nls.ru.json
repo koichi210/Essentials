@@ -69,9 +69,8 @@
     "vscode-pets.position.panel": "Панель",
     "vscode-pets.position.explorer": "Проводник",
     "vscode-pets.theme.none": "Ничего",
-    "vscode-pets.theme.forest": "Лес",
-    "vscode-pets.theme.castle": "Замок",
-    "vscode-pets.theme.beach": "Пляж",
-    "vscode-pets.theme.winter": "Зимний Лес",
-    "vscode-pets.theme.autumn": "Осень"
+    "vscode-pets.theme.spring": "Spring",
+    "vscode-pets.theme.summer": "Summer",
+    "vscode-pets.theme.autumn": "Autumn",
+    "vscode-pets.theme.winter": "Winter"
 }

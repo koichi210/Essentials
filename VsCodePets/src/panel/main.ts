@@ -324,6 +324,9 @@ export function petPanelApp(
         themeKind,
         petSize,
     );
+    // 背景はパネルの高さに合わせて全体を表示し、横方向にだけ繰り返す(切り落とさない)
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+    backgroundEl!.style.backgroundSize = 'auto 100%';
     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     foregroundEl!.style.backgroundImage = themeInfo.foregroundImageUrl(
         basePetUri,

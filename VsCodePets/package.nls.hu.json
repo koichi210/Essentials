@@ -69,9 +69,8 @@
     "vscode-pets.position.panel": "Panel",
     "vscode-pets.position.explorer": "Felfedező",
     "vscode-pets.theme.none": "Semmi",
-    "vscode-pets.theme.forest": "Erdő",
-    "vscode-pets.theme.castle": "Kastély",
-    "vscode-pets.theme.beach": "Part",
-    "vscode-pets.theme.winter": "Tél",
-    "vscode-pets.theme.autumn": "Ősz"
+    "vscode-pets.theme.spring": "Spring",
+    "vscode-pets.theme.summer": "Summer",
+    "vscode-pets.theme.autumn": "Autumn",
+    "vscode-pets.theme.winter": "Winter"
 }

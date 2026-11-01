@@ -77,11 +77,10 @@ export const enum ExtPosition {
 
 export const enum Theme {
     none = 'none',
-    forest = 'forest',
-    castle = 'castle',
-    beach = 'beach',
-    winter = 'winter',
+    spring = 'spring',
+    summer = 'summer',
     autumn = 'autumn',
+    winter = 'winter',
 }
 
 export const enum ColorThemeKind {
@@ -153,9 +152,8 @@ export const ALL_SCALES = [
 ];
 export const ALL_THEMES = [
     Theme.none,
-    Theme.forest,
-    Theme.castle,
-    Theme.beach,
-    Theme.winter,
+    Theme.spring,
+    Theme.summer,
     Theme.autumn,
+    Theme.winter,
 ];
