@@ -195,12 +195,216 @@ export function lookFor(id, colorHex) {
     clothes: (h >>> 3) % 4,
     clothesName: CLOTHES[(h >>> 3) % 4],
     headphones: ((h >>> 7) % 4) === 0,
+    race: raceFor(id),
+    job: fnv1a(`${id}:job`) % 5,
     color: colorHex,
   };
 }
 
-export function createAvatar({ id, color, skin = 'default', standing = false, scale = 1 }) {
+// ---------------------------------------------------------------- 異世界スキン: 亜人(耳・しっぽ)と冒険者の職業装備
+
+// 重み(合計100)。人間は少なめで、猫耳が一番多い
+const RACES = [['neko', 28], ['inu', 12], ['kitsune', 14], ['usagi', 8], ['elf', 8], ['ryu', 6], ['human', 24]];
+// 魔界スキンの種族(角・コウモリの羽・赤い目の悪魔が中心)
+const RACES_MAKAI = [['akuma', 40], ['kyuuketsuki', 20], ['neko', 15], ['ryu', 10], ['human', 15]];
+const MAKAI_TONES = ['#e8d8e8', '#d8c4e0', '#c8b8d8', '#f0d0d0', '#b8d8d0', '#c9a0c0'];
+export const RACE_NAMES = { akuma: '悪魔', kyuuketsuki: '吸血鬼', neko: '猫耳族', inu: '犬耳族', kitsune: '狐耳族', usagi: '兎耳族', elf: 'エルフ', ryu: '竜人', human: '人間' };
+export const JOB_NAMES = ['戦士', '魔法使い', '僧侶', '盗賊', '弓使い'];
+
+function raceFor(id, table = RACES) {
+  let n = fnv1a(`${id}:race`) % 100;
+  for (const [key, weight] of table) {
+    if (n < weight) {
+      return key;
+    }
+    n -= weight;
+  }
+  return 'human';
+}
+
+// 耳。頭グループに付ける
+function addEars(head, look) {
+  const inner = '#ffb3c1';
+  const hairColor = look.hair;
+  for (const s of [-1, 1]) {
+    const g = new THREE.Group();
+    head.add(g);
+    switch (look.race) {
+      case 'neko':
+        g.position.set(s * 0.27, 0.5, -0.02);
+        g.rotation.z = -s * 0.35;
+        part(g, geo('cone', 0.14, 0.34, 4), hairColor, 0, 0.12, 0);
+        part(g, geo('cone', 0.08, 0.24, 4), inner, 0, 0.1, 0.06, false);
+        break;
+      case 'kitsune':
+        g.position.set(s * 0.26, 0.5, -0.04);
+        g.rotation.z = -s * 0.2;
+        part(g, geo('cone', 0.15, 0.44, 4), hairColor, 0, 0.14, 0);
+        part(g, geo('cone', 0.09, 0.3, 4), '#fff0dc', 0, 0.12, 0.06, false);
+        part(g, geo('cone', 0.075, 0.14, 4), '#2a2230', 0, 0.36, 0, false);
+        break;
+      case 'inu':
+        // たれ耳
+        g.position.set(s * 0.4, 0.22, 0);
+        g.rotation.z = s * 0.45;
+        part(g, geo('cap', 0.1, 0.26, 4, 8), darken(hairColor, 0.2), 0, 0, 0).scale.z = 0.55;
+        break;
+      case 'usagi':
+        g.position.set(s * 0.16, 0.74, -0.06);
+        g.rotation.set(-0.2, 0, -s * 0.18);
+        part(g, geo('cap', 0.07, 0.5, 4, 8), '#fbf6f0', 0, 0, 0).scale.z = 0.6;
+        part(g, geo('cap', 0.035, 0.38, 4, 8), inner, 0, 0, 0.05, false);
+        break;
+      case 'akuma':
+        // 小さな尖り耳と、うしろに反った赤黒い角
+        g.position.set(s * 0.2, 0.5, -0.02);
+        g.rotation.set(-0.35, 0, -s * 0.3);
+        part(g, geo('cone', 0.075, 0.34, 5), '#4a1020', 0, 0.14, 0);
+        part(head, geo('cone', 0.06, 0.26, 4), look.skin, s * 0.43, 0.02, 0).rotation.z = -s * 1.2;
+        break;
+      case 'kyuuketsuki':
+      case 'elf':
+        g.position.set(s * 0.42, 0.06, 0);
+        g.rotation.z = -s * (Math.PI / 2 - 0.35);
+        part(g, geo('cone', 0.08, 0.4, 4), look.skin, 0, 0, 0);
+        break;
+      case 'ryu':
+        g.position.set(s * 0.22, 0.5, 0.02);
+        g.rotation.set(-0.5, 0, -s * 0.3);
+        part(g, geo('cone', 0.07, 0.3, 5), '#efe6d0', 0, 0.1, 0);
+        break;
+      default:
+        break;
+    }
+  }
+  if (look.race === 'kyuuketsuki') {
+    // 牙
+    for (const s of [-1, 1]) {
+      part(head, geo('cone', 0.025, 0.09, 4), '#ffffff', s * 0.06, -0.2, 0.42, false).rotation.x = Math.PI;
+    }
+  }
+}
+
+// しっぽ。体グループに付けて、戻り値を update で振る(人間とエルフは無し)
+function addTail(body, look) {
+  if (look.race === 'human' || look.race === 'elf' || look.race === 'kyuuketsuki') {
+    return null;
+  }
+  const tail = new THREE.Group();
+  tail.position.set(0, 0.16, -0.2);
+  body.add(tail);
+  const c = look.hair;
+  switch (look.race) {
+    case 'neko':
+      // 細長く、先がくるっと上に向く
+      for (let i = 0; i < 6; i++) {
+        part(tail, geo('sph', 0.08 - i * 0.004, 8, 6), c, 0, 0.0175 * i * i, -0.05 - i * 0.1);
+      }
+      break;
+    case 'akuma':
+      // 細長くて、先がハート型のスペード
+      for (let i = 0; i < 6; i++) {
+        part(tail, geo('sph', 0.05, 8, 6), '#7a1428', 0, 0.012 * i * i, -0.05 - i * 0.1);
+      }
+      part(tail, geo('cone', 0.12, 0.2, 3), '#c0203a', 0, 0.45, -0.6).rotation.x = -1.5;
+      break;
+    case 'inu': {
+      const t = part(tail, geo('cone', 0.1, 0.46, 6), c, 0, 0.14, -0.17);
+      t.rotation.x = -0.9;
+      break;
+    }
+    case 'kitsune': {
+      const t = part(tail, geo('sph', 0.17, 12, 10), c, 0, 0.12, -0.3);
+      t.scale.set(0.9, 0.9, 1.9);
+      t.rotation.x = 0.5;
+      const tip = part(tail, geo('sph', 0.12, 10, 8), '#ffffff', 0, 0.27, -0.56);
+      tip.scale.set(0.9, 0.9, 1.3);
+      tip.rotation.x = 0.5;
+      break;
+    }
+    case 'usagi':
+      part(tail, geo('sph', 0.13, 10, 8), '#ffffff', 0, 0.1, -0.2);
+      break;
+    default: {
+      // 竜人: 太くて長いしっぽ
+      const t = part(tail, geo('cone', 0.13, 0.75, 6), '#79c7a0', 0, 0.08, -0.36);
+      t.rotation.x = -1.35;
+      break;
+    }
+  }
+  return tail;
+}
+
+// コウモリの羽(悪魔・吸血鬼)。update でぱたぱた動かす
+function addWings(body) {
+  return [-1, 1].map((s) => {
+    const pivot = new THREE.Group();
+    pivot.position.set(s * 0.14, 0.62, -0.26);
+    body.add(pivot);
+    const w = part(pivot, geo('cone', 0.24, 0.66, 3), '#3a1030', s * 0.3, 0.12, 0, false);
+    w.scale.z = 0.12;
+    w.rotation.z = -s * 1.0;
+    return { pivot, s };
+  });
+}
+
+// 職業ごとの小物(戦士=肩当て・胸当て / 魔法使い=額の宝石・マント / 僧侶=天使の輪・十字 / 盗賊=スカーフ / 弓使い=矢筒・羽根)
+function addJobGear(body, head, look) {
+  switch (look.job) {
+    case 0:
+      for (const s of [-1, 1]) {
+        part(body, geo('sph', 0.17, 10, 8), '#aab2bf', s * 0.33, 0.8, 0);
+      }
+      part(body, geo('box', 0.36, 0.3, 0.06), '#c9d1db', 0, 0.5, 0.26, false);
+      break;
+    case 1:
+      part(body, geo('box', 0.6, 0.72, 0.05), '#4a2f7a', 0, 0.42, -0.27, false);
+      part(head, geo('torus', 0.45, 0.025, 6, 24), '#e9c46a', 0, 0.14, 0).rotation.x = Math.PI / 2 - 0.25;
+      part(head, geo('sph', 0.06, 8, 6), '#6ad4ff', 0, 0.3, 0.41, false);
+      break;
+    case 2:
+      part(head, geo('torus', 0.3, 0.03, 6, 24), '#f4d35e', 0, 0.8, -0.05, false).rotation.x = Math.PI / 2;
+      part(body, geo('box', 0.07, 0.34, 0.04), '#f4d35e', 0, 0.5, 0.29, false);
+      part(body, geo('box', 0.22, 0.07, 0.04), '#f4d35e', 0, 0.56, 0.29, false);
+      break;
+    case 3:
+      part(body, geo('torus', 0.21, 0.08, 6, 14), '#2f6b4f', 0, 0.82, 0).rotation.x = Math.PI / 2;
+      part(body, geo('box', 0.1, 0.28, 0.05), '#2f6b4f', 0.1, 0.66, 0.2, false);
+      break;
+    case 5:
+      // 酒場の女主人: エプロンとフリルのカチューシャ
+      part(body, geo('box', 0.42, 0.5, 0.05), '#ffffff', 0, 0.38, 0.28, false);
+      part(body, geo('box', 0.5, 0.06, 0.06), '#ffffff', 0, 0.62, 0.27, false);
+      part(head, geo('torus', 0.44, 0.04, 6, 24), '#ffffff', 0, 0.2, 0, false).rotation.x = Math.PI / 2 - 0.35;
+      part(body, geo('sph', 0.07, 8, 6), '#e9c46a', 0, 0.78, 0.26, false);
+      break;
+    case 6:
+      // 先生: 眼鏡とえんじ色のリボン
+      for (const s of [-1, 1]) {
+        part(head, geo('torus', 0.09, 0.015, 6, 16), '#2a2230', s * 0.15, 0.04, 0.44, false);
+      }
+      part(head, geo('box', 0.08, 0.015, 0.015), '#2a2230', 0, 0.05, 0.45, false);
+      part(body, geo('cone', 0.09, 0.16, 4), '#8f2a3d', 0, 0.74, 0.3, false).rotation.x = Math.PI;
+      break;
+    default: {
+      const q = part(body, geo('cyl', 0.08, 0.08, 0.5, 8), '#8a5a35', 0.2, 0.55, -0.3);
+      q.rotation.z = 0.35;
+      for (let i = 0; i < 3; i++) {
+        part(q, geo('box', 0.02, 0.2, 0.02), ['#e56b6f', '#f4d35e', '#ffffff'][i], (i - 1) * 0.04, 0.34, 0, false);
+      }
+      part(head, geo('cone', 0.04, 0.3, 4), '#6a994e', 0.34, 0.4, 0, false).rotation.z = -0.9;
+      break;
+    }
+  }
+}
+
+// overrides: NPC(酒場の女主人・先生)の見た目を決め打ちするための上書き
+export function createAvatar({ id, color, skin = 'default', standing = false, scale = 1, overrides = {} }) {
   const look = lookFor(id, color);
+  if (skin === 'makai') {
+    Object.assign(look, { race: raceFor(id, RACES_MAKAI), eye: '#ff3a3a', skin: MAKAI_TONES[fnv1a(`${id}:ms`) % MAKAI_TONES.length] });
+  }
+  Object.assign(look, overrides);
   const root = new THREE.Group();
   const body = new THREE.Group();
   root.add(body);
@@ -239,6 +443,18 @@ export function createAvatar({ id, color, skin = 'default', standing = false, sc
   );
   head.add(face);
   hair(head, look.style, look.hair);
+  let tail = null;
+  let wings = [];
+  if (skin === 'isekai' || skin === 'makai') {
+    addEars(head, look);
+    tail = addTail(body, look);
+    addJobGear(body, head, look);
+    if (skin === 'makai' && (look.race === 'akuma' || look.race === 'kyuuketsuki')) {
+      wings = addWings(body);
+    }
+  } else if (look.job >= 5) {
+    addJobGear(body, head, look);
+  }
   if (look.headphones && skin === 'default') {
     const band = part(head, geo('torus', 0.47, 0.035, 6, 20, Math.PI), '#2b2f3a', 0, 0.02, 0);
     band.rotation.y = Math.PI / 2;
@@ -256,17 +472,20 @@ export function createAvatar({ id, color, skin = 'default', standing = false, sc
     pivot.rotation.z = s * 0.15;
     return pivot;
   });
-  // 脚(座っているときは前へ曲げる)
+  // 脚(座っているときは前へ曲げる)。動き回るときは update で立ち姿に切り替える
+  const legs = [];
   for (const s of [-1, 1]) {
     const leg = new THREE.Group();
     leg.position.set(s * 0.14, 0.05, 0);
     body.add(leg);
     const thigh = part(leg, geo('cap', 0.1, 0.3, 4, 8), '#3a3f4f', 0, -0.2, 0);
+    let shin = null;
     if (!standing) {
       leg.rotation.x = -Math.PI / 2;
-      const shin = part(thigh, geo('cap', 0.09, 0.3, 4, 8), '#3a3f4f', 0, -0.22, 0.2);
+      shin = part(thigh, geo('cap', 0.09, 0.3, 4, 8), '#3a3f4f', 0, -0.22, 0.2);
       shin.rotation.x = Math.PI / 2;
     }
+    legs.push({ leg, shin });
   }
   root.scale.setScalar(scale);
 
@@ -286,17 +505,68 @@ export function createAvatar({ id, color, skin = 'default', standing = false, sc
   return {
     root,
     head,
+    body,
+    arms,
     look,
     // state: working / thinking / waiting / sleeping
-    update(t, state) {
+    // motion: 動き回るとき { mode: 'seated'|'walk'|'act', phase(歩きの位相), act('feed'|'sake'|'blood'), actT, carry }
+    update(t, state, motion = null) {
+      const moving = !standing && motion && motion.mode !== 'seated';
       const tt = t + phase;
       let e = 'normal';
       body.rotation.set(0, 0, 0);
       head.rotation.set(0, 0, 0);
-      body.position.y = standing ? 0.75 : 0.66;
+      body.position.y = standing ? 0.75 : moving ? 0.55 : 0.66;
+      if (!standing) {
+        legs.forEach(({ leg, shin }, k) => {
+          shin.visible = !moving;
+          leg.rotation.x = !moving ? -Math.PI / 2 : motion.mode === 'walk' ? Math.sin(motion.phase + k * Math.PI) * 0.6 : 0;
+        });
+      }
       arms[0].rotation.set(0, 0, -0.15);
       arms[1].rotation.set(0, 0, 0.15);
-      if (standing) {
+      if (state === 'npc') {
+        // NPC: にこにこ立って、ときどき手をふる
+        e = 'smile';
+        body.position.y += Math.sin(tt * 1.6) * 0.015;
+        head.rotation.z = Math.sin(tt * 0.9) * 0.05;
+        if (tt % 9 < 2) {
+          arms[1].rotation.set(0, 0, 2.5 + Math.sin(tt * 8) * 0.35);
+        }
+      } else if (moving) {
+        if (motion.mode === 'walk') {
+          // 歩く: 腕を振る(物を持っているときは片手を前に)
+          e = 'normal';
+          body.position.y += Math.abs(Math.sin(motion.phase)) * 0.04;
+          arms[0].rotation.x = Math.sin(motion.phase) * 0.5;
+          arms[1].rotation.x = -Math.sin(motion.phase) * 0.5;
+          if (motion.carry) {
+            arms[1].rotation.x = -1.2;
+          }
+        } else {
+          // 用事をする(金魚にエサ・お酒を取る・血を汲む)
+          e = 'smile';
+          const at = motion.actT || 0;
+          if (motion.act === 'feed') {
+            head.rotation.x = 0.2;
+            arms[1].rotation.set(-1.3 + Math.sin(tt * 12) * 0.25, 0, 0.1);
+            arms[0].rotation.x = -0.4;
+          } else if (motion.act === 'sake') {
+            arms[1].rotation.set(-1.5 + Math.sin(at * 2) * 0.15, 0, 0);
+            arms[0].rotation.set(-1.3, 0, 0);
+            head.rotation.x = -0.1;
+          } else {
+            const dip = Math.abs(Math.sin(at * 1.6));
+            body.rotation.x = 0.25 + dip * 0.35;
+            arms[0].rotation.x = -1.0 - dip * 0.6;
+            arms[1].rotation.x = -1.0 - dip * 0.6;
+            head.rotation.x = 0.2;
+          }
+          if (motion.carry) {
+            arms[1].rotation.set(-1.2, 0, 0);
+          }
+        }
+      } else if (standing) {
         // サブエージェントは跳ねる
         body.position.y += Math.abs(Math.sin(tt * 5)) * 0.35;
         arms[0].rotation.z = -0.6 - Math.sin(tt * 10) * 0.2;
@@ -329,6 +599,14 @@ export function createAvatar({ id, color, skin = 'default', standing = false, sc
         arms[0].rotation.x = -1.6;
         arms[1].rotation.x = -1.6;
         head.rotation.x = 0.3;
+      }
+      // しっぽ: 待ちはぶんぶん・作業中はゆらゆら・寝てるときはだらん
+      if (tail) {
+        const amp = state === 'sleeping' ? 0.05 : state === 'working' ? 0.2 : 0.45;
+        tail.rotation.y = Math.sin(tt * (state === 'waiting' ? 8 : 3)) * amp;
+      }
+      for (const w of wings) {
+        w.pivot.rotation.y = w.s * (0.45 + Math.sin(tt * 4) * 0.25 * (state === 'sleeping' ? 0.2 : 1));
       }
       // まばたき
       if (e !== 'sleep' && e !== 'smile') {

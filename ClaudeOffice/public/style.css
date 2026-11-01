@@ -20,6 +20,38 @@ body.night {
   --input-bg: rgba(20, 24, 50, 0.9);
 }
 
+/* ルイーダの酒場: 羊皮紙と木の色 */
+body.skin-isekai {
+  --accent: #c9822b;
+  --panel-bg: rgba(248, 236, 208, 0.86);
+  --panel-fg: #3b2a1c;
+  --panel-sub: #7a6650;
+  --panel-line: rgba(90, 60, 30, 0.18);
+  --chip-bg: rgba(90, 60, 30, 0.09);
+  --input-bg: rgba(255, 248, 230, 0.92);
+}
+
+body.skin-isekai.night {
+  --panel-bg: rgba(44, 28, 22, 0.86);
+  --panel-fg: #f3e6d0;
+  --panel-sub: #c9b497;
+  --panel-line: rgba(255, 230, 190, 0.14);
+  --chip-bg: rgba(255, 230, 190, 0.09);
+  --input-bg: rgba(36, 22, 18, 0.92);
+}
+
+/* 魔界: 血のような赤と深い紫 */
+body.skin-makai,
+body.skin-makai.night {
+  --accent: #d9304f;
+  --panel-bg: rgba(36, 14, 40, 0.88);
+  --panel-fg: #f3dcee;
+  --panel-sub: #c4a0bc;
+  --panel-line: rgba(255, 120, 160, 0.18);
+  --chip-bg: rgba(255, 140, 180, 0.1);
+  --input-bg: rgba(28, 10, 32, 0.92);
+}
+
 * {
   box-sizing: border-box;
 }
@@ -635,9 +667,14 @@ hr.sep {
   gap: 5px;
 }
 
+/* 位置決めは CSS2DRenderer が transform で行うので、ゆらゆらは内側の span に付ける(外側に付けると位置が上書きされて画面を飛び回る) */
 .floaty {
   font-size: calc(15px * var(--fs));
   pointer-events: none;
+}
+
+.floaty span {
+  display: inline-block;
   animation: float 2s ease-in-out infinite;
 }
 

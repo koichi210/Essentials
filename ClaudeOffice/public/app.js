@@ -6,8 +6,13 @@ import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
-import { Kit, createSky, timeLook, arcPositions, buildClassroom, projectColor } from './world.js';
+import { Kit, createSky, timeLook, arcPositions, buildClassroom, buildTavern, projectColor, wallClock } from './world.js';
 import { buildFancy } from './fancy.js';
+import { buildTavernFancy } from './fancy-tavern.js';
+import { buildMakai } from './makai.js';
+import { buildMakaiFancy } from './fancy-makai.js';
+import { buildSpot } from './spots.js';
+import { createWander } from './wander.js';
 import { createAvatar } from './avatar.js';
 import { deriveState, assignSeats, elapsed } from './people.js';
 import { renderHUD, renderSide, renderTimeline, openDetail, refreshWindows, closeTopWindow, toast, openInVscode, esc, dayKeyOf, dateLabel, hhmm } from './ui.js';
@@ -15,9 +20,12 @@ import { openNotifyDialog } from './notify.js';
 
 const FONT_STEPS = [0.9, 1, 1.1, 1.25, 1.4, 1.6];
 const MODES = {
-  standard: { effects: 'on', fps: '60', shadows: 'on', resolution: 'high' },
-  light: { effects: 'off', fps: '30', shadows: 'off', resolution: 'low' },
+  standard: { effects: 'on', fps: '60', shadows: 'on', resolution: 'high', ultra: 'off' },
+  light: { effects: 'off', fps: '30', shadows: 'off', resolution: 'low', ultra: 'off' },
+  // 超軽量: 壁・時計・人(●の玉)だけを描く
+  ultra: { effects: 'off', fps: '30', shadows: 'off', resolution: 'low', ultra: 'on' },
 };
+const SKINS = ['default', 'isekai', 'makai'];
 const SUB_EMOJI = { Explore: '🔍', Plan: '🗺️', 'general-purpose': '🤖' };
 const SUB_COLOR = { Explore: '#2bb3a6', Plan: '#e9b44c', 'general-purpose': '#9c6ade' };
 const GLOW = { working: '#7fd6ff', thinking: '#b7a6ff', waiting: '#ffd27a', sleeping: '#3a3f55' };
@@ -55,12 +63,13 @@ const store = {
   projFilter: '',
   openGroups: new Set(JSON.parse(load('open-groups', '[]') || '[]')),
   options: {
-    // 追加スキンは作り直し中。いまは教室(default)だけ。保存済みの古い値(isekai/makai)は教室に戻す
-    skin: 'default',
+    // 教室(default)と異世界の酒場(isekai)。保存済みの古い値(makai など)は教室に戻す
+    skin: [params.get('skin'), load('skin', 'default')].find((s) => SKINS.includes(s)) || 'default',
     effects: load('effects', 'on'),
     shadows: load('shadows', 'on'),
     fps: load('fps', '60'),
     resolution: load('resolution', 'high'),
+    ultra: load('ultra', 'off'),
     mode: 'standard',
   },
 };
@@ -142,6 +151,7 @@ window.addEventListener('resize', resize);
 // ---------------------------------------------------------------- スキン
 
 let ctx = null;
+let wander = null;
 const avatars = new Map(); // id -> { avatar, bubble, tag, floaty, subs:[], seat }
 let seatMap = new Map();
 
@@ -154,6 +164,7 @@ function clearAvatars() {
 }
 
 function removeAvatar(a) {
+  wander?.release(a);
   for (const o of [a.bubble, a.tag, a.floaty]) {
     o.element.remove();
   }
@@ -165,24 +176,74 @@ function removeAvatar(a) {
   a.avatar.dispose();
 }
 
+// NPC(酒場=女主人、教室=女性教師)。セッションではないので席には座らず、持ち場でにこにこ立っている
+const NPCS = {
+  isekai: { id: 'npc-louida', name: 'ルイーダ', color: '#c0392b', pos: [6.35, 0.12, -4.8], rot: Math.PI / 4, overrides: { race: 'human', job: 5, hair: '#a6463b', style: 1, eye: '#2d4f8a', skin: '#ffe0c7', clothes: 0, headphones: false } },
+  default: { id: 'npc-teacher', name: '先生', color: '#3d4a7a', pos: [-10.3, 0.12, -1.2], rot: Math.PI / 2, overrides: { race: 'human', job: 6, hair: '#3a2a22', style: 3, eye: '#333a44', skin: '#fbe3d3', clothes: 1, headphones: false } },
+};
+
+function addNpc(skin) {
+  const def = NPCS[skin];
+  if (!def) {
+    return;
+  }
+  const avatar = createAvatar({ id: def.id, color: def.color, skin, standing: true, scale: 1.08, overrides: def.overrides });
+  avatar.root.position.set(...def.pos);
+  avatar.root.rotation.y = def.rot;
+  ctx.root.add(avatar.root);
+  const tag = label('nametag', avatar.root, -0.15);
+  tag.element.innerHTML = `<span class="dot" style="background:${def.color}"></span>${def.name}`;
+  ctx.npc = { avatar, tag };
+}
+
+function removeNpc() {
+  if (ctx && ctx.npc) {
+    ctx.npc.tag.element.remove();
+    ctx.npc.avatar.dispose();
+    ctx.npc = null;
+  }
+}
+
 async function buildSkin() {
   const loading = document.getElementById('loading');
   loading.hidden = false;
   clearAvatars();
   if (ctx) {
+    removeNpc();
     scene.remove(ctx.root);
     ctx.kit.dispose();
   }
   const skin = store.options.skin;
-  document.body.classList.remove('skin-default');
+  document.body.classList.remove(...SKINS.map((s) => `skin-${s}`));
   document.body.classList.add(`skin-${skin}`);
   ctx = { kit: new Kit(false), root: new THREE.Group(), lights: [], keys: undefined, sky: { aurora: 0, crack: 0, moon2: false, moonColor: '#f4f1e0' }, bloom: false, fog: null, effects: true };
   scene.add(ctx.root);
-  buildClassroom(ctx);
-  // 「標準」モード用のハデな演出(エフェクト OFF では非表示)。ブルームで光らせる
-  ctx.fancy = buildFancy(ctx);
-  ctx.bloom = true;
-  ctx.bloomThreshold = 1.1;
+  if (skin === 'makai') {
+    buildMakai(ctx);
+    // 「標準」モード用の豪華な禍々しい演出(エフェクト OFF では非表示)
+    ctx.fancy = buildMakaiFancy(ctx);
+    ctx.bloomScale = 0.55;
+    ctx.bloom = true;
+    ctx.bloomThreshold = 1.1;
+  } else if (skin === 'isekai') {
+    buildTavern(ctx);
+    // 「標準」モード用のハデな宴会演出(エフェクト OFF では非表示)
+    ctx.fancy = buildTavernFancy(ctx);
+    ctx.bloomScale = 0.45;
+    ctx.bloom = true;
+    ctx.bloomThreshold = 1.1;
+  } else {
+    buildClassroom(ctx);
+    // 「標準」モード用のハデな演出(エフェクト OFF では非表示)。ブルームで光らせる
+    ctx.fancy = buildFancy(ctx);
+    ctx.bloom = true;
+    ctx.bloomThreshold = 1.1;
+  }
+  addNpc(skin);
+  // 立ち寄り先(水槽・お酒の棚・血の池)と、席を立って歩き回る仕組み
+  buildSpot(ctx, skin);
+  wander = createWander(ctx);
+  ctx.ultra = null;
   // 点光源は4灯まで
   ctx.lights.forEach((l, i) => {
     l.visible = i < 4;
@@ -211,6 +272,7 @@ async function buildSkin() {
 function applyOptions() {
   const o = store.options;
   ctx.effects = o.effects === 'on';
+  applyUltra();
   if (ctx.fancy) {
     ctx.fancy.group.visible = ctx.effects;
   }
@@ -222,7 +284,7 @@ function applyOptions() {
     }
   });
   // ブルームは追加スキンだけ(教室は直接描く)
-  if (ctx.bloom && ctx.effects) {
+  if (ctx.bloom && ctx.effects && o.ultra !== 'on') {
     if (!composer) {
       composer = new EffectComposer(renderer);
       composer.addPass(new RenderPass(scene, camera));
@@ -236,6 +298,46 @@ function applyOptions() {
     bloomPass = null;
   }
   resize();
+}
+
+// ---------------------------------------------------------------- 超軽量表示(壁・時計・人の玉だけ)
+
+function buildUltra() {
+  const { kit } = ctx;
+  const R = { x0: -12, x1: 6, z0: -10, z1: 3 };
+  const g = new THREE.Group();
+  kit.box(g, R.x1 - R.x0, 0.12, R.z1 - R.z0, '#ece6da', (R.x0 + R.x1) / 2, 0.06, (R.z0 + R.z1) / 2);
+  kit.box(g, R.x1 - R.x0, 5, 0.3, '#fffdf8', (R.x0 + R.x1) / 2, 2.5, R.z0 - 0.15);
+  kit.box(g, 0.3, 5, R.z1 - R.z0, '#f2eee4', R.x0 - 0.15, 2.5, (R.z0 + R.z1) / 2);
+  ctx.ultraClock = wallClock(kit, g, 2.0, 3.6, R.z0 + 0.02, 0, '#5a4636');
+  ctx.root.add(g);
+  ctx.ultra = g;
+}
+
+// 超軽量のON/OFFに合わせて、表示するものを切り替える(人の追加・スキン構築のたびに呼ぶ)
+function applyUltra() {
+  if (!ctx) {
+    return;
+  }
+  const on = store.options.ultra === 'on';
+  if (on && !ctx.ultra) {
+    buildUltra();
+  }
+  const people = new Set([...avatars.values()].map((a) => a.avatar.root));
+  for (const c of ctx.root.children) {
+    if (c === ctx.ultra) {
+      c.visible = on;
+    } else if (!people.has(c)) {
+      c.visible = !on;
+    }
+  }
+  for (const a of avatars.values()) {
+    a.avatar.body.visible = !on;
+    a.dot.visible = on;
+    a.subs.forEach((s) => {
+      s.avatar.root.visible = !on;
+    });
+  }
 }
 
 // ---------------------------------------------------------------- 人(キャラ・吹き出し・名札・サブエージェント)
@@ -279,7 +381,12 @@ function syncPeople() {
       avatar.root.rotation.y = seat.rot;
       avatar.root.userData.sessionId = item.id;
       ctx.root.add(avatar.root);
-      a = { avatar, seat: seatIdx, subs: [] };
+      a = { avatar, seat: seatIdx, subs: [], move: wander.init(clock.getElapsedTime()) };
+      // 超軽量用の●の玉(プロジェクトの色)
+      a.dot = new THREE.Mesh(new THREE.SphereGeometry(0.42, 14, 10), new THREE.MeshBasicMaterial({ color }));
+      a.dot.position.y = 1.1;
+      a.dot.visible = false;
+      avatar.root.add(a.dot);
       a.bubble = label('bubble', avatar.root, 2.85);
       a.tag = label('nametag', avatar.root, -0.15);
       a.floaty = label('floaty', avatar.head, 0.9);
@@ -305,9 +412,14 @@ function syncPeople() {
       a.tag.element.__html = tagHtml;
       a.tag.element.innerHTML = tagHtml;
     }
-    a.floaty.element.textContent = st.key === 'sleeping' ? 'Z z' : st.key === 'thinking' ? '？' : '';
+    const floatyText = st.key === 'sleeping' ? 'Z z' : st.key === 'thinking' ? '？' : '';
+    if (a.floaty.element.__text !== floatyText) {
+      a.floaty.element.__text = floatyText;
+      a.floaty.element.innerHTML = floatyText ? `<span>${floatyText}</span>` : '';
+    }
     syncSubagents(a, item);
   }
+  applyUltra();
 }
 
 // サブエージェント(作業中のみ)は机の周りに最大4体の小さな立ち姿で跳ねる
@@ -332,7 +444,7 @@ function syncSubagents(a, item) {
       avatar.root.rotation.y = seat.rot + Math.PI;
       ctx.root.add(avatar.root);
       const l = label('floaty', avatar.root, 2.1);
-      l.element.textContent = SUB_EMOJI[sub.type] || '🤖';
+      l.element.innerHTML = `<span>${SUB_EMOJI[sub.type] || '🤖'}</span>`;
       a.subs[i] = { id: sub.id, avatar, label: l };
     }
   });
@@ -367,6 +479,13 @@ function pick(e) {
   const hits = ray.intersectObjects(ctx.root.children, true);
   for (const h of hits) {
     let o = h.object;
+    let shown = true;
+    for (let p = o; p; p = p.parent) {
+      shown = shown && p.visible;
+    }
+    if (!shown) {
+      continue;
+    }
     while (o) {
       if (o.userData.kind === 'book') {
         return { kind: 'book', session: o.userData.session };
@@ -592,15 +711,17 @@ function updateTime(t) {
   }
   ctx.cloudsObj?.update(t, look.cloud);
   if (bloomPass) {
-    bloomPass.strength = 0.35 + look.stars * 0.75;
+    bloomPass.strength = (0.35 + look.stars * 0.75) * (ctx.bloomScale ?? 1);
   }
   ctx.update?.(t, look);
   ctx.fancy?.update(t, look);
   const d = store.previewHour !== null ? new Date(new Date().setHours(Math.floor(hour), Math.round((hour % 1) * 60), 0)) : now;
   ctx.clock?.update(d);
+  ctx.ultraClock?.update(d);
   ctx.calendar?.update(now);
 }
 
+let prevT = 0;
 function frame() {
   requestAnimationFrame(frame);
   const t = clock.getElapsedTime();
@@ -614,8 +735,14 @@ function frame() {
   }
   updateTime(t);
   ctx.fancy?.clearSeats();
+  ctx.npc?.avatar.update(t, 'npc');
+  const dt = Math.min(0.1, t - prevT);
+  prevT = t;
+  let busy = false;
   for (const a of avatars.values()) {
-    a.avatar.update(t, a.state ? a.state.key : 'waiting');
+    const motion = wander.update(a, t, dt);
+    busy = busy || motion.mode === 'act';
+    a.avatar.update(t, a.state ? a.state.key : 'waiting', motion);
     for (const s of a.subs) {
       s.avatar.update(t, 'working');
     }
@@ -627,6 +754,7 @@ function frame() {
       ctx.fancy?.setSeat(a.seat, GLOW[a.state.key]);
     }
   }
+  ctx.spot?.update(t, busy);
   if (focus) {
     controls.target.lerp(focus.target, 0.08);
     camera.zoom += (focus.zoom - camera.zoom) * 0.08;

@@ -117,10 +117,12 @@ export function createChat(id) {
         html = '';
         el.hidden = true;
       } else if (d.live) {
-        html = '<div class="notice">📨 開いている会話へは「@dashboard からのメッセージ」として届きます。本人の承認の代わりにはなりません。</div>';
+        // 常時表示だと窓が狭くなるので、説明は入力欄のツールチップに回す
+        html = '';
       } else {
         html = '<div class="notice warn">⚠️ 閉じた会話を再開して送ります。ツールは確認なしで実行されます。</div>';
       }
+      ta.title = d.live ? '開いている会話へは「@dashboard からのメッセージ」として届きます。本人の承認の代わりにはなりません。' : '';
       if (warn.__html !== html) {
         warn.__html = html;
         warn.innerHTML = html;

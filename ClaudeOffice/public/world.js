@@ -632,4 +632,633 @@ export function buildClassroom(ctx) {
   ctx.seats = CLASSROOM_SEATS;
   ctx.cloudsObj = clouds(kit, root, '#ffffff');
   ctx.panel = 'default';
+  classroomLife(ctx);
+}
+
+// ---------------------------------------------------------------- 異世界スキン「ルイーダの酒場」
+
+// 空のキーフレーム(教室より紫・ピンク寄り。夜は星が濃い)
+export const ISEKAI_KEYS = [
+  ['#10062e', '#2a1252', '#5a2a78', '#b9a6ff', 0.35, 0.4, 1.0, '#5a4a8a', 1.0],
+  ['#140a38', '#34195f', '#6b3a86', '#b9a6ff', 0.35, 0.4, 1.0, '#5e4e90', 0.9],
+  ['#3a3a8a', '#c06a9c', '#ffb08a', '#ffb98a', 0.6, 0.5, 0.6, '#e0a8c0', 0.3],
+  ['#5aa8e8', '#9ad8f0', '#f8e0c0', '#ffe6c0', 1.0, 0.75, 0.0, '#fff0f8', 0.0],
+  ['#3d8fe8', '#7fd0f0', '#d0f2f0', '#fff6e8', 1.25, 0.9, 0.0, '#ffffff', 0.0],
+  ['#4a98e6', '#86d0ee', '#d6f0ee', '#fff1dc', 1.15, 0.85, 0.0, '#ffffff', 0.0],
+  ['#5a7ed8', '#eaa0a8', '#ffc690', '#ffc58a', 0.95, 0.7, 0.2, '#ffd6c8', 0.0],
+  ['#3a3a90', '#d0607e', '#f98c6b', '#ff9a5e', 0.7, 0.55, 0.7, '#e49aa8', 0.2],
+  ['#1c1458', '#4a2a86', '#8a4a8e', '#c0b0ff', 0.4, 0.45, 1.0, '#5c4a8c', 0.8],
+  ['#10062e', '#2a1252', '#5a2a78', '#b9a6ff', 0.35, 0.4, 1.0, '#5a4a8a', 1.0],
+];
+
+// 部屋の真ん中(テーブルの間の通路)にある大クリスタルの位置
+export const CRYSTAL_POS = { x: -3.1, z: -1.1 };
+
+function glowDot() {
+  const c = document.createElement('canvas');
+  c.width = c.height = 32;
+  const g = c.getContext('2d');
+  const grad = g.createRadialGradient(16, 16, 0, 16, 16, 15);
+  grad.addColorStop(0, 'rgba(255,255,255,1)');
+  grad.addColorStop(1, 'rgba(255,255,255,0)');
+  g.fillStyle = grad;
+  g.fillRect(0, 0, 32, 32);
+  return new THREE.CanvasTexture(c);
+}
+
+// 看板(「ルイーダの酒場」)
+function tavernSign(parent, x, y, z) {
+  const canvas = document.createElement('canvas');
+  canvas.width = 1024;
+  canvas.height = 256;
+  const c = canvas.getContext('2d');
+  const wood = c.createLinearGradient(0, 0, 0, 256);
+  wood.addColorStop(0, '#e3a565');
+  wood.addColorStop(1, '#b9783d');
+  c.fillStyle = wood;
+  c.fillRect(0, 0, 1024, 256);
+  c.strokeStyle = 'rgba(0,0,0,0.18)';
+  c.lineWidth = 3;
+  for (let i = 1; i < 5; i++) {
+    c.beginPath();
+    c.moveTo(0, i * 51);
+    c.lineTo(1024, i * 51);
+    c.stroke();
+  }
+  c.strokeStyle = '#e9c46a';
+  c.lineWidth = 10;
+  c.strokeRect(12, 12, 1000, 232);
+  c.textAlign = 'center';
+  c.fillStyle = '#2a1608';
+  c.font = 'bold 128px "Yu Gothic UI", "Meiryo", sans-serif';
+  c.fillText('ルイーダの酒場', 518, 158);
+  c.fillStyle = '#ffe9a8';
+  c.fillText('ルイーダの酒場', 512, 150);
+  c.fillStyle = '#e9c46a';
+  c.font = 'bold 34px "Segoe UI", sans-serif';
+  c.fillText("Adventurers' Tavern", 512, 216);
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.anisotropy = 4;
+  const m = new THREE.Mesh(new THREE.PlaneGeometry(4.6, 1.15), new THREE.MeshBasicMaterial({ map: tex, color: '#e0e0e0' }));
+  m.position.set(x, y, z);
+  parent.add(m);
+}
+
+// 依頼掲示板(羊皮紙がいっぱい)
+function questBoard(kit, parent, x, y, z) {
+  const canvas = document.createElement('canvas');
+  canvas.width = 320;
+  canvas.height = 200;
+  const c = canvas.getContext('2d');
+  c.fillStyle = '#dcae70';
+  c.fillRect(0, 0, 320, 200);
+  const papers = ['#f3e4bf', '#efe0b0', '#f8ecd0', '#e8d5a5'];
+  for (let i = 0; i < 9; i++) {
+    const px = 14 + (i % 3) * 102 + ((i * 17) % 9);
+    const py = 12 + Math.floor(i / 3) * 62 + ((i * 11) % 7);
+    c.save();
+    c.translate(px + 40, py + 25);
+    c.rotate((((i * 37) % 11) - 5) * 0.012);
+    c.fillStyle = papers[i % 4];
+    c.fillRect(-40, -25, 80, 52);
+    c.fillStyle = 'rgba(80,50,30,0.55)';
+    for (let k = 0; k < 4; k++) {
+      c.fillRect(-32, -14 + k * 10, 50 + ((i * k * 7) % 14), 3);
+    }
+    c.fillStyle = i % 3 === 0 ? '#c0392b' : '#3d85c6';
+    c.beginPath();
+    c.arc(26, 16, 5, 0, Math.PI * 2);
+    c.fill();
+    c.fillStyle = '#444';
+    c.beginPath();
+    c.arc(0, -22, 3, 0, Math.PI * 2);
+    c.fill();
+    c.restore();
+  }
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  kit.box(parent, 2.7, 1.8, 0.1, '#b9783d', x, y, z);
+  const face = new THREE.Mesh(new THREE.PlaneGeometry(2.5, 1.56), new THREE.MeshBasicMaterial({ map: tex, color: '#d8d8d8' }));
+  face.position.set(x, y, z + 0.06);
+  parent.add(face);
+}
+
+// 冒険者のテーブル。水晶玉の色が状態(作業中・考え中…)で変わる
+function tavernTable(kit, parent, seat, i, glows) {
+  const { x, z } = seat.desk;
+  kit.box(parent, 2.0, 0.1, 1.0, '#e0a060', x, 1.0, z);
+  kit.box(parent, 2.1, 0.04, 1.1, '#b9783d', x, 0.94, z);
+  for (const dx of [-0.88, 0.88]) {
+    for (const dz of [-0.38, 0.38]) {
+      kit.box(parent, 0.12, 0.95, 0.12, '#a8693a', x + dx, 0.47, z + dz);
+    }
+  }
+  // 水晶玉(台座つき)
+  kit.cyl(parent, 0.16, 0.22, 0.12, '#e9c46a', x, 1.11, z - 0.05, 12);
+  const orb = new THREE.Mesh(new THREE.SphereGeometry(0.24, 18, 14), new THREE.MeshBasicMaterial({ color: '#3a3f55', toneMapped: false }));
+  orb.position.set(x, 1.4, z - 0.05);
+  parent.add(orb);
+  // ルーンの輪(ロゴ代わり)
+  const ring = new THREE.Mesh(new THREE.TorusGeometry(0.3, 0.015, 6, 28), new THREE.MeshBasicMaterial({ color: '#e9c46a', toneMapped: false }));
+  ring.position.set(x, 1.4, z - 0.05);
+  ring.rotation.x = Math.PI / 2 - 0.4;
+  parent.add(ring);
+  glows[i] = { screen: orb, logo: ring };
+  // ジョッキ・パン皿・ろうそく
+  kit.cyl(parent, 0.12, 0.1, 0.22, '#c9a66b', x + 0.7, 1.16, z + 0.15, 10);
+  kit.cyl(parent, 0.22, 0.2, 0.04, '#d8d2c4', x - 0.65, 1.07, z + 0.2, 14);
+  kit.sph(parent, 0.11, '#d9a35c', x - 0.65, 1.14, z + 0.2);
+  kit.cyl(parent, 0.04, 0.04, 0.2, '#f6efd8', x - 0.7, 1.15, z - 0.2, 8);
+  kit.sph(parent, 0.04, '#ffd27a', x - 0.7, 1.3, z - 0.2, { emissive: '#ffb347', emissiveIntensity: 1 });
+  // 背もたれ無しの丸椅子(しっぽが見えるように)
+  const sx = seat.x;
+  const sz = seat.z;
+  kit.cyl(parent, 0.42, 0.4, 0.1, '#e3a565', sx, 0.61, sz, 16);
+  kit.cyl(parent, 0.07, 0.07, 0.56, '#a8693a', sx, 0.3, sz, 8);
+  kit.cyl(parent, 0.3, 0.32, 0.05, '#a8693a', sx, 0.03, sz, 12);
+}
+
+// ギルドのクエスト板(自立型の大きな掲示板。ランク付きの依頼書がびっしり)
+function guildBoard(kit, parent, x, z, rotY) {
+  const g = new THREE.Group();
+  g.position.set(x, 0, z);
+  g.rotation.y = rotY;
+  const canvas = document.createElement('canvas');
+  canvas.width = 640;
+  canvas.height = 400;
+  const c = canvas.getContext('2d');
+  c.fillStyle = '#dcae70';
+  c.fillRect(0, 0, 640, 400);
+  c.fillStyle = '#7d5a37';
+  for (let i = 0; i < 40; i++) {
+    c.fillRect((i * 97) % 640, (i * 53) % 400, 4, 2);
+  }
+  // 見出しのリボン
+  c.fillStyle = '#8f2a3d';
+  c.fillRect(150, 8, 340, 52);
+  c.fillStyle = '#e9c46a';
+  c.fillRect(150, 8, 340, 5);
+  c.fillRect(150, 55, 340, 5);
+  c.textAlign = 'center';
+  c.font = 'bold 36px "Yu Gothic UI", "Meiryo", sans-serif';
+  c.fillText('冒険者ギルド 依頼板', 320, 46);
+  const ranks = ['S', 'A', 'A', 'B', 'B', 'B', 'C', 'C', 'D', 'E'];
+  const rankColor = { S: '#c0392b', A: '#d9822b', B: '#3d85c6', C: '#2f9e5a', D: '#7a6a9a', E: '#777' };
+  const papers = ['#f3e4bf', '#efe0b0', '#f8ecd0', '#e8d5a5'];
+  for (let i = 0; i < 10; i++) {
+    const px = 18 + (i % 5) * 122 + ((i * 13) % 8);
+    const py = 80 + Math.floor(i / 5) * 160 + ((i * 7) % 9);
+    c.save();
+    c.translate(px + 52, py + 62);
+    c.rotate((((i * 29) % 11) - 5) * 0.014);
+    c.fillStyle = 'rgba(0,0,0,0.18)';
+    c.fillRect(-48, -54, 104, 128);
+    c.fillStyle = papers[i % 4];
+    c.fillRect(-52, -58, 104, 128);
+    c.fillStyle = rankColor[ranks[i]];
+    c.font = 'bold 52px "Segoe UI", sans-serif';
+    c.fillText(ranks[i], 0, -12);
+    c.fillStyle = 'rgba(80,50,30,0.6)';
+    for (let k = 0; k < 4; k++) {
+      c.fillRect(-38, 6 + k * 14, 60 + ((i * k * 11) % 16), 4);
+    }
+    c.fillStyle = '#c0392b';
+    c.beginPath();
+    c.arc(34, 52, 7, 0, Math.PI * 2);
+    c.fill();
+    c.fillStyle = '#444';
+    c.beginPath();
+    c.arc(0, -52, 4, 0, Math.PI * 2);
+    c.fill();
+    c.restore();
+  }
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.anisotropy = 4;
+  for (const dx of [-1.8, 1.8]) {
+    kit.box(g, 0.2, 3.8, 0.2, '#a8693a', dx, 1.9, 0);
+  }
+  kit.box(g, 3.9, 2.5, 0.14, '#b9783d', 0, 2.5, 0);
+  const face = new THREE.Mesh(new THREE.PlaneGeometry(3.6, 2.25), new THREE.MeshBasicMaterial({ map: tex, color: '#d8d8d8' }));
+  face.position.set(0, 2.5, 0.08);
+  g.add(face);
+  // 小さな屋根と、ぶら下がるランタン
+  const roof = kit.box(g, 4.4, 0.15, 1.0, '#e0584a', 0, 3.95, 0.2);
+  roof.rotation.x = 0.25;
+  kit.box(g, 4.3, 0.08, 0.1, '#e9c46a', 0, 3.78, 0.62);
+  kit.box(g, 0.24, 0.3, 0.24, '#ffdc8a', 1.5, 3.45, 0.4, { emissive: '#ffb347', emissiveIntensity: 0.9 });
+  kit.box(g, 3.9, 0.12, 0.5, '#a8693a', 0, 1.15, 0.2);
+  parent.add(g);
+}
+
+export function buildTavern(ctx) {
+  const { kit, root, lights } = ctx;
+  island(kit, root, 32, 26, { top: '#6fd08a', soil: '#6b4a3a', rock: '#5d5d78' });
+  const R = { x0: -12, x1: 6, z0: -10, z1: 3 };
+  const room = new THREE.Group();
+  root.add(room);
+  const wallC = '#f3e5c8';
+  const beam = '#b9783d';
+  const flick = [];
+  // 床(板張り)と赤い絨毯
+  kit.box(room, R.x1 - R.x0, 0.12, R.z1 - R.z0, '#c98f52', (R.x0 + R.x1) / 2, 0.06, (R.z0 + R.z1) / 2);
+  for (let z = R.z0 + 1; z < R.z1; z += 1.3) {
+    kit.box(room, R.x1 - R.x0, 0.005, 0.03, '#a8703a', (R.x0 + R.x1) / 2, 0.125, z);
+  }
+  kit.box(room, 13.4, 0.025, 9.4, '#e9c46a', -3.2, 0.125, -2.6);
+  kit.box(room, 13, 0.03, 9, '#e0475b', -3.2, 0.13, -2.6);
+  // 石壁と梁
+  kit.box(room, R.x1 - R.x0, 5, 0.3, wallC, (R.x0 + R.x1) / 2, 2.5, R.z0 - 0.15);
+  kit.box(room, 0.3, 5, R.z1 - R.z0, wallC, R.x0 - 0.15, 2.5, (R.z0 + R.z1) / 2);
+  kit.box(room, R.x1 - R.x0, 0.3, 0.4, beam, (R.x0 + R.x1) / 2, 5.1, R.z0 - 0.15);
+  kit.box(room, 0.4, 0.3, R.z1 - R.z0, beam, R.x0 - 0.15, 5.1, (R.z0 + R.z1) / 2);
+  kit.box(room, R.x1 - R.x0, 0.2, 0.34, beam, (R.x0 + R.x1) / 2, 0.2, R.z0 - 0.12);
+  for (let x = R.x0; x <= R.x1; x += 3) {
+    kit.box(room, 0.3, 5, 0.4, beam, x, 2.5, R.z0 - 0.12);
+  }
+  for (let z = R.z0; z <= R.z1; z += 3.25) {
+    kit.box(room, 0.4, 5, 0.3, beam, R.x0 - 0.12, 2.5, z);
+  }
+  // 窓(あたたかい光)
+  for (const wx of [-9.0, 4.2]) {
+    kit.box(room, 1.6, 1.7, 0.05, '#ffd9a0', wx, 2.9, R.z0 + 0.03, { emissive: '#ffb347', emissiveIntensity: 0.55 });
+    kit.box(room, 1.8, 0.1, 0.12, beam, wx, 1.98, R.z0 + 0.06);
+    kit.box(room, 1.8, 0.1, 0.12, beam, wx, 3.82, R.z0 + 0.06);
+    kit.box(room, 0.08, 1.8, 0.12, beam, wx, 2.9, R.z0 + 0.06);
+    kit.box(room, 1.6, 0.08, 0.12, beam, wx, 2.9, R.z0 + 0.06);
+  }
+  // 暖炉
+  const fx = -5.5;
+  kit.box(room, 3.0, 3.4, 1.0, '#c4b098', fx, 1.7, R.z0 + 0.5);
+  kit.box(room, 3.4, 0.2, 1.2, beam, fx, 3.5, R.z0 + 0.55);
+  kit.box(room, 1.7, 1.5, 0.3, '#1a1210', fx, 0.9, R.z0 + 1.02);
+  const flames = [];
+  for (const [dx, h, color] of [[-0.35, 0.8, '#ff7a1a'], [0, 1.1, '#ff9a2a'], [0.35, 0.7, '#ff6a10']]) {
+    const f = new THREE.Mesh(kit.geom('cone', 0.28, h, 6), new THREE.MeshBasicMaterial({ color, toneMapped: false }));
+    f.position.set(fx + dx, 0.35 + h / 2, R.z0 + 1.05);
+    room.add(f);
+    flames.push(f);
+  }
+  flick.push(lampLight(room, lights, fx, 1.2, R.z0 + 1.6, '#ff8a3c', 14, 8));
+  // 看板・掲示板・時計・旗
+  tavernSign(room, -1.0, 4.0, R.z0 + 0.06);
+  questBoard(kit, room, -1.0, 2.0, R.z0 + 0.06);
+  ctx.clock = wallClock(kit, room, 2.0, 3.4, R.z0 + 0.02, 0, '#c9a24a');
+  for (const [bx, color] of [[-10.8, '#2a4d8f'], [5.5, '#8f2a3d']]) {
+    kit.box(room, 0.7, 1.9, 0.05, color, bx, 3.4, R.z0 + 0.05);
+    kit.box(room, 0.6, 0.12, 0.08, '#e9c46a', bx, 4.36, R.z0 + 0.06);
+    const e = new THREE.Mesh(kit.geom('oct', 0.2, 0), kit.mat('#e9c46a'));
+    e.position.set(bx, 3.5, R.z0 + 0.12);
+    e.scale.z = 0.4;
+    room.add(e);
+  }
+  // 吊りランタン
+  for (const [lx, lz] of [[-10.6, -8.6], [3.6, -8.6]]) {
+    kit.cyl(room, 0.04, 0.04, 1.0, '#333', lx, 4.4, lz, 6);
+    kit.box(room, 0.4, 0.5, 0.4, '#ffdc8a', lx, 3.65, lz, { emissive: '#ffb347', emissiveIntensity: 0.8 });
+    kit.box(room, 0.5, 0.08, 0.5, '#333', lx, 3.95, lz);
+    flick.push(lampLight(room, lights, lx, 3.5, lz + 0.3, '#ffb868', 11, 5));
+  }
+  ctx.glows = [];
+  CLASSROOM_SEATS.forEach((s, i) => tavernTable(kit, room, s, i, ctx.glows));
+  // カウンター(右手前)と樽
+  kit.box(room, 1.0, 1.2, 5.0, '#b9783d', 5.1, 0.6, -4.8);
+  kit.box(room, 1.3, 0.12, 5.3, '#e3a565', 5.1, 1.26, -4.8);
+  for (const [bz, color] of [[-6.3, '#3d85c6'], [-5.6, '#c0392b'], [-4.9, '#2f9e5a'], [-3.4, '#9c6ade']]) {
+    kit.cyl(room, 0.1, 0.12, 0.42, color, 5.1, 1.52, bz, 8);
+    kit.cyl(room, 0.04, 0.05, 0.16, color, 5.1, 1.82, bz, 6);
+  }
+  for (const stz of [-6.2, -4.8, -3.4]) {
+    kit.cyl(room, 0.28, 0.26, 0.08, '#e3a565', 3.9, 0.8, stz, 12);
+    kit.cyl(room, 0.05, 0.05, 0.7, '#a8693a', 3.9, 0.4, stz, 6);
+  }
+  for (const [bx, bz, s] of [[5.4, -9.0, 1], [4.4, -9.2, 0.9], [5.2, -8.1, 0.8]]) {
+    kit.cyl(room, 0.45 * s, 0.45 * s, 1.0 * s, '#e3a565', bx, 0.62 * s, bz, 12);
+    kit.cyl(room, 0.47 * s, 0.47 * s, 0.08, '#444', bx, 0.35 * s, bz, 12);
+    kit.cyl(room, 0.47 * s, 0.47 * s, 0.08, '#444', bx, 0.9 * s, bz, 12);
+  }
+  kit.box(room, 0.9, 0.9, 0.9, '#dcae70', 5.2, 0.45, 1.7);
+  kit.box(room, 0.7, 0.7, 0.7, '#e3a565', 5.2, 1.25, 1.7);
+  // カウンターの内側(女主人の持ち場): 床を足して、背面に酒棚、卓上にビールサーバー
+  kit.box(room, 1.8, 0.12, 5.4, '#c98f52', 6.7, 0.06, -4.8);
+  // 背面は低い戸棚(高い棚だとカメラ側から女主人が隠れる)
+  kit.box(room, 0.6, 1.0, 5.0, '#b9783d', 7.4, 0.62, -4.8);
+  kit.box(room, 0.7, 0.08, 5.1, '#a8693a', 7.4, 1.16, -4.8);
+  for (let k = 0; k < 9; k++) {
+    const col = ['#3d85c6', '#c0392b', '#2f9e5a', '#9c6ade', '#e9c46a'][k % 5];
+    kit.cyl(room, 0.09, 0.11, 0.4, col, 7.4, 1.4, -6.8 + k * 0.5, 8);
+    kit.cyl(room, 0.035, 0.045, 0.14, col, 7.4, 1.66, -6.8 + k * 0.5, 6);
+  }
+  kit.cyl(room, 0.12, 0.12, 0.5, '#b9783d', 5.3, 1.6, -3.0, 8);
+  kit.box(room, 0.5, 0.08, 0.08, '#d9d9e0', 5.15, 1.88, -3.0);
+  for (const mz of [-5.9, -4.2]) {
+    kit.cyl(room, 0.11, 0.09, 0.2, '#f1d27a', 4.8, 1.42, mz, 10);
+  }
+  ctx.shelf = archiveShelf(kit, room, '#b9783d');
+  ctx.board = whiteboard(kit, room, '#c98a4a', '#f1e3bd');
+  guildBoard(kit, room, 2.6, 2.3, 0.15);
+  // 部屋の真ん中の大クリスタル(台座の上でゆっくり回って浮かぶ)
+  const bigCrystal = new THREE.Group();
+  bigCrystal.position.set(CRYSTAL_POS.x, 0, CRYSTAL_POS.z);
+  room.add(bigCrystal);
+  kit.cyl(bigCrystal, 0.5, 0.62, 0.35, '#7d776b', 0, 0.3, 0, 8);
+  kit.cyl(bigCrystal, 0.4, 0.46, 0.1, '#e9c46a', 0, 0.52, 0, 8);
+  const crystalBody = new THREE.Group();
+  crystalBody.position.y = 2.5;
+  bigCrystal.add(crystalBody);
+  const shell = new THREE.Mesh(kit.geom('oct', 0.62, 0), kit.mat('#9be8ff', { emissive: '#38b6ff', emissiveIntensity: 0.9, transparent: true, opacity: 0.82, flatShading: true }));
+  shell.scale.set(1, 2.1, 1);
+  crystalBody.add(shell);
+  const glowCore = new THREE.Mesh(kit.geom('oct', 0.34, 0), new THREE.MeshBasicMaterial({ color: new THREE.Color('#8ff0ff').multiplyScalar(2.2), toneMapped: false }));
+  glowCore.scale.set(1, 2.1, 1);
+  crystalBody.add(glowCore);
+  const shards = [0, 1, 2, 3].map((i) => {
+    const m = new THREE.Mesh(kit.geom('oct', 0.2, 0), kit.mat('#c9b6ff', { emissive: '#8a5ae8', emissiveIntensity: 0.9, flatShading: true }));
+    m.scale.y = 1.8;
+    m.userData.a = (i / 4) * Math.PI * 2;
+    bigCrystal.add(m);
+    return m;
+  });
+
+  // ---- 外: 異世界の森
+  const leaves = ['#4fc9b0', '#b07ae0', '#ff8fb8', '#5ac86a'];
+  [[-14, -11, 1.4], [9, -10, 1.2], [12, -4, 1.5], [-14, 6, 1.1], [11, 8, 1.3], [13, 2, 1], [-9, 10, 1.1]].forEach(([tx, tz, s], i) => {
+    tree(kit, root, tx, tz, s, leaves[i % 4]);
+  });
+  // 巨大キノコと光るキノコ
+  for (const [mx, mz, s] of [[-12, 9, 1.4], [8, 11, 1.1], [-3, 11.5, 0.9]]) {
+    kit.cyl(root, 0.25 * s, 0.35 * s, 1.6 * s, '#f1e6d2', mx, 0.8 * s, mz, 8);
+    const cap = new THREE.Mesh(kit.geom('sph', 1.1 * s, 16, 10, 0, Math.PI * 2, 0, Math.PI / 2), kit.mat('#d94f5f'));
+    cap.position.set(mx, 1.6 * s, mz);
+    cap.castShadow = true;
+    root.add(cap);
+    for (let k = 0; k < 4; k++) {
+      kit.sph(root, 0.12 * s, '#ffffff', mx + Math.cos(k * 1.6) * 0.6 * s, 1.6 * s + 0.65 * s, mz + Math.sin(k * 1.6) * 0.6 * s);
+    }
+  }
+  for (let i = 0; i < 14; i++) {
+    const a = i * 2.1;
+    const gx = -10 + (i % 7) * 3 + Math.sin(a);
+    const gz = 7 + Math.floor(i / 7) * 4 + Math.cos(a);
+    const col = ['#6ad4ff', '#c19ee0', '#7dffb0'][i % 3];
+    kit.cyl(root, 0.04, 0.05, 0.22, '#e8dcc0', gx, 0.11, gz, 6);
+    kit.sph(root, 0.12, col, gx, 0.26, gz, { emissive: col, emissiveIntensity: 0.9 });
+  }
+  // 石畳・井戸・道しるべ・街灯
+  for (let i = 0; i < 5; i++) {
+    kit.cyl(root, 0.4, 0.45, 0.1, '#a8a294', -2 + i * 1.1, 0.05, 5 + (i % 2) * 0.6, 10);
+  }
+  kit.cyl(root, 0.9, 0.95, 0.9, '#f3e5c8', 7.5, 0.45, 6.5, 14);
+  kit.cyl(root, 0.62, 0.62, 0.05, '#4aa8d8', 7.5, 0.88, 6.5, 14);
+  kit.box(root, 0.1, 1.7, 0.1, beam, 6.7, 1.6, 6.5);
+  kit.box(root, 0.1, 1.7, 0.1, beam, 8.3, 1.6, 6.5);
+  kit.box(root, 1.9, 0.12, 0.9, '#e0584a', 7.5, 2.5, 6.5);
+  kit.box(root, 0.12, 2.2, 0.12, beam, 1.0, 1.1, 8.8);
+  kit.box(root, 1.1, 0.35, 0.08, '#e3a565', 1.3, 1.9, 8.8).rotation.z = 0.08;
+  kit.box(root, 1.1, 0.35, 0.08, '#e3a565', 0.7, 1.4, 8.8).rotation.z = -0.08;
+  for (const [px, pz] of [[-4, 7.5], [3, 6.5]]) {
+    kit.cyl(root, 0.07, 0.09, 3.2, '#3a3f48', px, 1.6, pz, 8);
+    kit.sph(root, 0.3, '#b8f0ff', px, 3.35, pz, { emissive: '#6ad4ff', emissiveIntensity: 0.9 });
+    flick.push(lampLight(root, lights, px, 3.2, pz, '#9fe0ff', 8, 6));
+  }
+  // 浮かぶ水晶(ゆっくり上下・回転)
+  const crystals = [];
+  for (const [cx, cy, cz, s] of [[-15, 4, -2, 1.2], [14, 5, -9, 1.0], [-11, 3.2, 12, 0.8], [15, 3.5, 7, 0.9], [-16, 6, -9, 0.7]]) {
+    const m = new THREE.Mesh(kit.geom('oct', 0.7 * s, 0), kit.mat('#7fe8ff', { emissive: '#3fb8ff', emissiveIntensity: 0.9, flatShading: true }));
+    m.scale.y = 1.8;
+    m.position.set(cx, cy, cz);
+    m.userData.base = cy;
+    root.add(m);
+    crystals.push(m);
+  }
+  // 遠くの浮島
+  for (const [ix, iy, iz, s] of [[-30, 8, -26, 1.0], [22, 12, -30, 1.3], [-32, 3, 14, 0.9]]) {
+    const g = new THREE.Group();
+    g.position.set(ix, iy, iz);
+    g.scale.setScalar(s);
+    island(kit, g, 9, 8, { top: '#5fb96e', soil: '#6b4a3a', rock: '#5d5d78', ellipse: true });
+    tree(kit, g, 0, 0, 1.2, '#ff8fb8');
+    root.add(g);
+  }
+  // ホタル(画面上の大きさ固定の光の粒)
+  const FLIES = 46;
+  const pos = new Float32Array(FLIES * 3);
+  const seeds = Array.from({ length: FLIES }, (_, i) => ({ x: -13 + ((i * 7.3) % 28), y: 0.8 + ((i * 1.7) % 4), z: -9 + ((i * 5.1) % 22), p: i * 1.3 }));
+  const flyGeo = new THREE.BufferGeometry();
+  flyGeo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  const flyMat = new THREE.PointsMaterial({ color: '#d8ff7a', size: 5, sizeAttenuation: false, map: glowDot(), transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, toneMapped: false });
+  const flies = new THREE.Points(flyGeo, flyMat);
+  flies.frustumCulled = false;
+  root.add(flies);
+
+  ctx.seats = CLASSROOM_SEATS;
+  ctx.cloudsObj = clouds(kit, root, '#fff0f8');
+  ctx.keys = ISEKAI_KEYS;
+  ctx.hemi = { sky: '#fff3e0', ground: '#a09080', boost: 1.5 };
+  ctx.sky = { aurora: 0.45, crack: 0, moon2: true, moonColor: '#dfeaff' };
+  ctx.bloom = false;
+  ctx.panel = 'isekai';
+  ctx.update = (t, look) => {
+    // 暖炉・ランタンは昼もほんのり灯り、ゆらめく
+    for (const l of flick) {
+      l.intensity = Math.max(l.intensity, l.userData.power * 0.8) * (1 + Math.sin(t * 9 + l.position.x) * 0.08 + Math.sin(t * 23 + l.position.z) * 0.05);
+    }
+    flames.forEach((f, i) => {
+      f.scale.set(1 + Math.sin(t * 11 + i) * 0.1, 1 + Math.sin(t * 8 + i * 2) * 0.18, 1);
+    });
+    crystals.forEach((m, i) => {
+      m.position.y = m.userData.base + Math.sin(t * 0.8 + i * 1.7) * 0.5;
+      m.rotation.y = t * 0.5 + i;
+    });
+    crystalBody.position.y = 2.5 + Math.sin(t * 1.1) * 0.15;
+    crystalBody.rotation.y = t * 0.6;
+    glowCore.scale.setScalar(1 + Math.sin(t * 3) * 0.06);
+    glowCore.scale.y *= 2.1;
+    shards.forEach((m, i) => {
+      const a = m.userData.a + t * 0.9;
+      m.position.set(Math.cos(a) * 1.0, 2.2 + Math.sin(t * 1.7 + i * 1.6) * 0.45, Math.sin(a) * 1.0);
+      m.rotation.y = t * 1.5;
+    });
+    seeds.forEach((s, i) => {
+      pos[i * 3] = s.x + Math.sin(t * 0.4 + s.p) * 1.5;
+      pos[i * 3 + 1] = s.y + Math.sin(t * 0.7 + s.p * 2) * 0.6;
+      pos[i * 3 + 2] = s.z + Math.cos(t * 0.35 + s.p) * 1.5;
+    });
+    flyGeo.attributes.position.needsUpdate = true;
+    flyMat.opacity = look.night ? 1 : 0.35;
+  };
+}
+
+// ---------------------------------------------------------------- 教室の生き物(鳥と犬)。エフェクトの ON/OFF に関係なく動く
+
+export function makeBird(kit, color) {
+  const g = new THREE.Group();
+  const body = new THREE.Mesh(kit.geom('sph', 0.2, 10, 8), kit.mat(color));
+  body.scale.set(1, 0.85, 1.7);
+  g.add(body);
+  const head = new THREE.Mesh(kit.geom('sph', 0.12, 10, 8), kit.mat(color));
+  head.position.set(0, 0.07, 0.32);
+  g.add(head);
+  const beak = new THREE.Mesh(kit.geom('cone', 0.045, 0.14, 6), kit.mat('#f4a23a'));
+  beak.rotation.x = Math.PI / 2;
+  beak.position.set(0, 0.06, 0.46);
+  g.add(beak);
+  const tail = new THREE.Mesh(kit.geom('box', 0.16, 0.03, 0.26), kit.mat(color));
+  tail.position.set(0, 0, -0.38);
+  g.add(tail);
+  const wings = [-1, 1].map((s) => {
+    const pivot = new THREE.Group();
+    pivot.position.set(s * 0.14, 0.05, 0);
+    const w = new THREE.Mesh(kit.geom('box', 0.55, 0.03, 0.3), kit.mat(color));
+    w.position.x = s * 0.27;
+    pivot.add(w);
+    g.add(pivot);
+    return { pivot, s };
+  });
+  return { g, wings };
+}
+
+function makeDog(kit, coat, patch) {
+  const g = new THREE.Group();
+  const add = (geom, color, x, y, z) => {
+    const m = new THREE.Mesh(geom, kit.mat(color));
+    m.position.set(x, y, z);
+    m.castShadow = true;
+    g.add(m);
+    return m;
+  };
+  add(kit.geom('box', 0.5, 0.45, 1.0), coat, 0, 0.72, 0);
+  add(kit.geom('box', 0.52, 0.3, 0.5), patch, 0, 0.8, -0.1);
+  const head = new THREE.Group();
+  head.position.set(0, 1.1, 0.55);
+  g.add(head);
+  const hm = new THREE.Mesh(kit.geom('box', 0.4, 0.38, 0.4), kit.mat(coat));
+  hm.castShadow = true;
+  head.add(hm);
+  const snout = new THREE.Mesh(kit.geom('box', 0.2, 0.18, 0.24), kit.mat(patch));
+  snout.position.set(0, -0.06, 0.28);
+  head.add(snout);
+  const nose = new THREE.Mesh(kit.geom('box', 0.08, 0.06, 0.05), kit.mat('#222'));
+  nose.position.set(0, 0.0, 0.41);
+  head.add(nose);
+  for (const s of [-1, 1]) {
+    const ear = new THREE.Mesh(kit.geom('box', 0.1, 0.26, 0.16), kit.mat(patch));
+    ear.position.set(s * 0.23, 0.08, -0.02);
+    ear.rotation.z = s * 0.3;
+    head.add(ear);
+    const eye = new THREE.Mesh(kit.geom('sph', 0.035, 6, 6), kit.mat('#222'));
+    eye.position.set(s * 0.1, 0.07, 0.2);
+    head.add(eye);
+  }
+  const tail = new THREE.Group();
+  tail.position.set(0, 0.92, -0.5);
+  const tm = new THREE.Mesh(kit.geom('box', 0.1, 0.4, 0.1), kit.mat(patch));
+  tm.position.y = 0.2;
+  tail.add(tm);
+  tail.rotation.x = -0.5;
+  g.add(tail);
+  const legs = [[-0.17, 0.38], [0.17, 0.38], [-0.17, -0.38], [0.17, -0.38]].map(([x, z]) => {
+    const pivot = new THREE.Group();
+    pivot.position.set(x, 0.5, z);
+    const l = new THREE.Mesh(kit.geom('box', 0.14, 0.5, 0.14), kit.mat(coat));
+    l.position.y = -0.25;
+    l.castShadow = true;
+    pivot.add(l);
+    g.add(pivot);
+    return pivot;
+  });
+  return { g, legs, tail, head };
+}
+
+// 鳥3〜4羽は島の上をランダムっぽく飛び回り、犬2匹は教室の外の芝生を歩く
+function classroomLife(ctx) {
+  const { kit, root } = ctx;
+  // ---- 鳥: 周期の違うサインを重ねて、ふらふらと不規則に飛ぶ
+  const birds = ['#ffffff', '#6fb3e8', '#f2c94c', '#b5835a'].map((color, i) => {
+    const b = makeBird(kit, color);
+    root.add(b.g);
+    const r = (a, c) => a + Math.random() * (c - a);
+    return {
+      ...b,
+      p: { cx: r(-6, 2), cz: r(-6, 2), ax: r(9, 15), az: r(8, 12), y: r(6, 9), f: [r(0.07, 0.12), r(0.05, 0.1), r(0.19, 0.31), r(0.13, 0.23)], ph: [r(0, 6.3), r(0, 6.3), r(0, 6.3), r(0, 6.3)], flap: r(11, 15), i },
+    };
+  });
+  const birdPos = (p, t, out) => {
+    out.set(
+      p.cx + p.ax * Math.sin(t * p.f[0] + p.ph[0]) + 2.2 * Math.sin(t * p.f[2] + p.ph[2]),
+      p.y + 1.6 * Math.sin(t * p.f[3] + p.ph[3]) + 0.5 * Math.sin(t * 1.3 + p.i),
+      p.cz + p.az * Math.sin(t * p.f[1] + p.ph[1]) + 2.2 * Math.cos(t * p.f[2] * 1.3 + p.ph[0]),
+    );
+  };
+  const a = new THREE.Vector3();
+  const b = new THREE.Vector3();
+  // ---- 犬: 教室の外の芝生を、池をよけた周回路で歩く
+  const route = [[-11, 5.5], [-7, 8.5], [-3, 10.5], [1, 6.8], [4.5, 10.5], [9.5, 11], [11, 5.2], [5, 4.3], [-4, 5.3]];
+  const dogs = [[ '#d9a066', '#fff3dc', 0, 1], ['#4a3a30', '#c9a27a', 5, -1]].map(([coat, patch, start, dir]) => {
+    const d = makeDog(kit, coat, patch);
+    d.g.scale.setScalar(0.85);
+    root.add(d.g);
+    const [x, z] = route[start];
+    d.g.position.set(x, 0, z);
+    return { ...d, idx: start, dir, wait: Math.random() * 3, heading: 0, phase: Math.random() * 6 };
+  });
+  let last = 0;
+  ctx.update = (t) => {
+    const dt = Math.min(0.1, Math.max(0, t - last));
+    last = t;
+    for (const bd of birds) {
+      birdPos(bd.p, t, a);
+      birdPos(bd.p, t + 0.1, b);
+      bd.g.position.copy(a);
+      const yaw = Math.atan2(b.x - a.x, b.z - a.z);
+      const prev = bd.g.rotation.y;
+      let diff = yaw - prev;
+      diff = Math.atan2(Math.sin(diff), Math.cos(diff));
+      bd.g.rotation.y = prev + diff * 0.2;
+      bd.g.rotation.z = -diff * 1.2;
+      bd.g.rotation.x = -(b.y - a.y) * 1.5;
+      const flap = Math.sin(t * bd.p.flap + bd.p.i) * 0.8;
+      for (const w of bd.wings) {
+        w.pivot.rotation.z = w.s * flap;
+      }
+    }
+    for (const dg of dogs) {
+      dg.phase += dt;
+      if (dg.wait > 0) {
+        // 立ち止まってしっぽを振る
+        dg.wait -= dt;
+        dg.legs.forEach((l) => {
+          l.rotation.x *= 0.8;
+        });
+        dg.tail.rotation.z = Math.sin(t * 10 + dg.phase) * 0.5;
+        dg.head.rotation.x = 0.35 + Math.sin(t * 2) * 0.05;
+        continue;
+      }
+      dg.head.rotation.x = 0;
+      const [tx, tz] = route[dg.idx];
+      const dx = tx - dg.g.position.x;
+      const dz = tz - dg.g.position.z;
+      const dist = Math.hypot(dx, dz);
+      if (dist < 0.4) {
+        dg.idx = (dg.idx + dg.dir + route.length) % route.length;
+        dg.wait = Math.random() < 0.4 ? 1 + Math.random() * 2.5 : 0;
+        continue;
+      }
+      const want = Math.atan2(dx, dz);
+      let diff = want - dg.heading;
+      diff = Math.atan2(Math.sin(diff), Math.cos(diff));
+      dg.heading += diff * Math.min(1, dt * 4);
+      dg.g.rotation.y = dg.heading;
+      const speed = 1.6;
+      dg.g.position.x += Math.sin(dg.heading) * speed * dt;
+      dg.g.position.z += Math.cos(dg.heading) * speed * dt;
+      const swing = Math.sin(dg.phase * 9);
+      dg.legs.forEach((l, i) => {
+        l.rotation.x = swing * 0.6 * (i === 0 || i === 3 ? 1 : -1);
+      });
+      dg.g.position.y = Math.abs(Math.sin(dg.phase * 9)) * 0.04;
+      dg.tail.rotation.z = Math.sin(t * 6 + dg.phase) * 0.25;
+    }
+  };
 }
