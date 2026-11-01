@@ -123,9 +123,7 @@ export function renderHUD(store, actions) {
   const seg = (key, items) => `<div class="seg">${items.map(([v, label]) => `<button class="btn ${String(o[key]) === v ? 'on' : ''}" data-set="${key}" data-val="${v}">${label}</button>`).join('')}</div>`;
   setIfChanged(el.querySelector('.settings'), `<hr class="sep"><div class="h">⚙️ 設定</div>
     <div class="row"><span class="label">🎨 スキン</span><select data-skin>
-      <option value="default" ${o.skin === 'default' ? 'selected' : ''}>🏫 教室（Default）</option>
-      <option value="isekai" ${o.skin === 'isekai' ? 'selected' : ''}>🍺 冒険者の酒場</option>
-      <option value="makai" ${o.skin === 'makai' ? 'selected' : ''}>😈 魔界</option></select></div>
+      <option value="default" ${o.skin === 'default' ? 'selected' : ''}>🏫 教室（Default）</option></select></div>
     <div class="row"><span class="label">🔔 通知</span><button class="btn" style="flex:1" data-set="notify" data-val="open">設定画面を開く</button></div>
     <div class="row"><span class="label">⚡ 動作</span>${seg('mode', [['standard', '☀️ 標準'], ['light', '🍃 軽量']])}</div>
     <div class="sub" style="margin:2px 0 4px">${o.mode === 'custom' ? '（カスタム）' : ''} ▼細かく設定</div>

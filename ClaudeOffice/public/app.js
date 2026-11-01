@@ -7,8 +7,7 @@ import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { Kit, createSky, timeLook, arcPositions, buildClassroom, projectColor } from './world.js';
-import { buildIsekai } from './isekai.js';
-import { buildMakai } from './makai.js';
+import { buildFancy } from './fancy.js';
 import { createAvatar } from './avatar.js';
 import { deriveState, assignSeats, elapsed } from './people.js';
 import { renderHUD, renderSide, renderTimeline, openDetail, refreshWindows, closeTopWindow, toast, openInVscode, esc, dayKeyOf, dateLabel, hhmm } from './ui.js';
@@ -56,7 +55,8 @@ const store = {
   projFilter: '',
   openGroups: new Set(JSON.parse(load('open-groups', '[]') || '[]')),
   options: {
-    skin: load('skin', 'default'),
+    // 追加スキンは作り直し中。いまは教室(default)だけ。保存済みの古い値(isekai/makai)は教室に戻す
+    skin: 'default',
     effects: load('effects', 'on'),
     shadows: load('shadows', 'on'),
     fps: load('fps', '60'),
@@ -174,20 +174,18 @@ async function buildSkin() {
     ctx.kit.dispose();
   }
   const skin = store.options.skin;
-  document.body.classList.remove('skin-default', 'skin-isekai', 'skin-makai');
+  document.body.classList.remove('skin-default');
   document.body.classList.add(`skin-${skin}`);
-  ctx = { kit: new Kit(skin !== 'default'), root: new THREE.Group(), lights: [], keys: undefined, sky: { aurora: 0, crack: 0, moon2: false, moonColor: '#f4f1e0' }, bloom: false, fog: null, effects: true };
+  ctx = { kit: new Kit(false), root: new THREE.Group(), lights: [], keys: undefined, sky: { aurora: 0, crack: 0, moon2: false, moonColor: '#f4f1e0' }, bloom: false, fog: null, effects: true };
   scene.add(ctx.root);
-  if (skin === 'isekai') {
-    buildIsekai(ctx);
-  } else if (skin === 'makai') {
-    buildMakai(ctx);
-  } else {
-    buildClassroom(ctx);
-  }
-  // 点光源は2灯まで(追加スキンは軽く)。教室は4灯
+  buildClassroom(ctx);
+  // 「標準」モード用のハデな演出(エフェクト OFF では非表示)。ブルームで光らせる
+  ctx.fancy = buildFancy(ctx);
+  ctx.bloom = true;
+  ctx.bloomThreshold = 1.1;
+  // 点光源は4灯まで
   ctx.lights.forEach((l, i) => {
-    l.visible = skin === 'default' ? i < 4 : i < 2;
+    l.visible = i < 4;
   });
   scene.fog = ctx.fog;
   hemi.color.set(ctx.hemi ? ctx.hemi.sky : '#dfe8ff');
@@ -213,6 +211,9 @@ async function buildSkin() {
 function applyOptions() {
   const o = store.options;
   ctx.effects = o.effects === 'on';
+  if (ctx.fancy) {
+    ctx.fancy.group.visible = ctx.effects;
+  }
   renderer.shadowMap.enabled = o.shadows === 'on';
   sunLight.castShadow = o.shadows === 'on';
   scene.traverse((m) => {
@@ -225,7 +226,7 @@ function applyOptions() {
     if (!composer) {
       composer = new EffectComposer(renderer);
       composer.addPass(new RenderPass(scene, camera));
-      bloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth / 2, window.innerHeight / 2), 0.8, 0.5, 0.75);
+      bloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth / 2, window.innerHeight / 2), 0.8, 0.5, ctx.bloomThreshold ?? 0.75);
       composer.addPass(bloomPass);
       composer.addPass(new OutputPass());
     }
@@ -594,6 +595,7 @@ function updateTime(t) {
     bloomPass.strength = 0.35 + look.stars * 0.75;
   }
   ctx.update?.(t, look);
+  ctx.fancy?.update(t, look);
   const d = store.previewHour !== null ? new Date(new Date().setHours(Math.floor(hour), Math.round((hour % 1) * 60), 0)) : now;
   ctx.clock?.update(d);
   ctx.calendar?.update(now);
@@ -611,6 +613,7 @@ function frame() {
     return;
   }
   updateTime(t);
+  ctx.fancy?.clearSeats();
   for (const a of avatars.values()) {
     a.avatar.update(t, a.state ? a.state.key : 'waiting');
     for (const s of a.subs) {
@@ -619,6 +622,9 @@ function frame() {
     const g = ctx.glows[a.seat];
     if (g && a.state) {
       g.screen.material.color.set(GLOW[a.state.key] || GLOW.sleeping);
+    }
+    if (a.state && a.state.key !== 'sleeping') {
+      ctx.fancy?.setSeat(a.seat, GLOW[a.state.key]);
     }
   }
   if (focus) {

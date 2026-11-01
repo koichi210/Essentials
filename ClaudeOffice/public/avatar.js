@@ -182,68 +182,6 @@ function hair(head, style, color) {
   }
 }
 
-// ---------------------------------------------------------------- 追加スキンの飾り
-
-function animalParts(head, body, kind, color) {
-  const ear = (x, shape) => {
-    const e = part(head, shape, color, x, 0.42, -0.02);
-    e.rotation.z = -x * 0.8;
-    return e;
-  };
-  if (kind === 'cat' || kind === 'fox' || kind === 'wolf') {
-    ear(-0.24, geo('cone', 0.12, 0.26, 4));
-    ear(0.24, geo('cone', 0.12, 0.26, 4));
-  } else if (kind === 'rabbit') {
-    for (const x of [-0.13, 0.13]) {
-      const e = part(head, geo('cap', 0.07, 0.4, 4, 8), color, x, 0.62, -0.05);
-      e.rotation.z = -x;
-    }
-  } else if (kind === 'elf') {
-    for (const s of [-1, 1]) {
-      const e = part(head, geo('cone', 0.06, 0.3, 6), lighten('#f6d0b1', 0), s * 0.46, 0.0, 0);
-      e.rotation.z = -s * 1.2;
-    }
-    return;
-  }
-  const tail = part(body, kind === 'rabbit' ? geo('sph', 0.12, 10, 8) : geo('cap', 0.07, 0.42, 4, 8), color, 0, 0.1, -0.3);
-  tail.rotation.x = kind === 'rabbit' ? 0 : -0.9;
-}
-
-function demonParts(head, body, role) {
-  for (const s of [-1, 1]) {
-    const h = part(head, geo('cone', 0.07, 0.3, 8), '#2b2430', s * 0.22, 0.45, 0);
-    h.rotation.z = -s * 0.35;
-    const w = part(body, geo('cone', 0.32, 0.5, 3), '#3b2a4a', s * 0.32, 0.55, -0.3);
-    w.rotation.set(0.3, 0, s * 1.6);
-    w.scale.z = 0.2;
-  }
-  const tail = part(body, geo('cyl', 0.03, 0.03, 0.5, 6), '#2b2430', 0, 0.05, -0.35);
-  tail.rotation.x = -1.0;
-  const tip = part(tail, geo('cone', 0.09, 0.14, 4), '#c0233a', 0, 0.3, 0);
-  tip.rotation.y = Math.PI / 4;
-  if (role === 0) {
-    const crown = part(head, geo('cyl', 0.2, 0.22, 0.14, 6), '#e9b44c', 0, 0.48, 0);
-    crown.rotation.y = 0.3;
-  }
-}
-
-function jobHat(head, job) {
-  if (job === 0) {
-    const h = part(head, geo('cone', 0.34, 0.6, 12), '#5c3d8f', 0, 0.62, -0.03);
-    h.rotation.x = -0.2;
-    part(head, geo('cyl', 0.5, 0.5, 0.04, 16), '#5c3d8f', 0, 0.38, 0);
-  } else if (job === 1) {
-    part(head, new THREE.SphereGeometry(0.47, 16, 12, 0, Math.PI * 2, 0, Math.PI * 0.5), '#9aa3b0', 0, 0.02, 0);
-  } else if (job === 2) {
-    const h = part(head, geo('cone', 0.3, 0.3, 8), '#3f7a3a', 0.05, 0.48, 0);
-    h.rotation.z = -0.4;
-  } else if (job === 3) {
-    part(head, geo('cyl', 0.2, 0.26, 0.35, 12), '#f3efe2', 0, 0.55, 0);
-  } else {
-    part(head, geo('torus', 0.3, 0.05, 6, 16), '#b5653a', 0, 0.36, 0).rotation.x = Math.PI / 2;
-  }
-}
-
 // ---------------------------------------------------------------- キャラ本体
 
 export function lookFor(id, colorHex) {
@@ -257,9 +195,6 @@ export function lookFor(id, colorHex) {
     clothes: (h >>> 3) % 4,
     clothesName: CLOTHES[(h >>> 3) % 4],
     headphones: ((h >>> 7) % 4) === 0,
-    animal: ['cat', 'fox', 'rabbit', 'elf', 'wolf'][(h >>> 9) % 5],
-    job: (h >>> 12) % 5,
-    role: (h >>> 15) % 5,
     color: colorHex,
   };
 }
@@ -310,12 +245,6 @@ export function createAvatar({ id, color, skin = 'default', standing = false, sc
     for (const s of [-1, 1]) {
       part(head, geo('cyl', 0.12, 0.12, 0.08, 12), '#2b2f3a', s * 0.46, 0, 0).rotation.z = Math.PI / 2;
     }
-  }
-  if (skin === 'isekai') {
-    animalParts(head, body, look.animal, look.hair);
-    jobHat(head, look.job);
-  } else if (skin === 'makai') {
-    demonParts(head, body, look.role);
   }
   // 腕(肩を支点に動かす)
   const arms = [-1, 1].map((s) => {

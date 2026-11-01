@@ -20,36 +20,6 @@ body.night {
   --input-bg: rgba(20, 24, 50, 0.9);
 }
 
-/* 冒険者の酒場: 羊皮紙風 */
-body.skin-isekai {
-  --panel-bg: rgba(243, 228, 196, 0.88);
-  --panel-fg: #3b2a1a;
-  --panel-sub: #7a5c3c;
-  --panel-line: rgba(90, 60, 30, 0.2);
-  --chip-bg: rgba(120, 80, 40, 0.1);
-  --input-bg: rgba(255, 248, 230, 0.9);
-}
-
-body.skin-isekai.night {
-  --panel-bg: rgba(52, 36, 70, 0.86);
-  --panel-fg: #f3e6cc;
-  --panel-sub: #c9b28c;
-  --panel-line: rgba(243, 228, 196, 0.18);
-  --chip-bg: rgba(243, 228, 196, 0.1);
-  --input-bg: rgba(40, 28, 56, 0.9);
-}
-
-/* 魔界: 黒曜石風(昼夜とも暗い) */
-body.skin-makai {
-  --panel-bg: rgba(20, 12, 24, 0.86);
-  --panel-fg: #f1dfe6;
-  --panel-sub: #b98fa0;
-  --panel-line: rgba(255, 80, 140, 0.25);
-  --chip-bg: rgba(255, 80, 140, 0.1);
-  --input-bg: rgba(30, 16, 34, 0.92);
-  --shadow: 0 0 22px rgba(255, 40, 120, 0.25);
-}
-
 * {
   box-sizing: border-box;
 }
