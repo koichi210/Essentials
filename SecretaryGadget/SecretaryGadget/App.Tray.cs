@@ -116,6 +116,20 @@ namespace SecretaryGadget
             menu.Items.Add(Item("秘書さんを呼ぶ", Call));
             menu.Items.Add(Item("本日の予定", ShowSchedule));
             menu.Items.Add(Item("箱庭", OpenHakoniwa));
+
+            var timerMenu = new Forms.ToolStripMenuItem(_timers.Items.Count > 0 ? $"タイマー（{_timers.Items.Count} 件）" : "タイマー");
+            timerMenu.DropDownItems.Add(Item("タイマーをセット…", AskTimer));
+            if (_timers.Items.Count > 0)
+            {
+                timerMenu.DropDownItems.Add(new Forms.ToolStripSeparator());
+                foreach (TimerEntry t in _timers.Items)
+                {
+                    TimerEntry captured = t;
+                    string day = t.Due.Date == DateTime.Today ? string.Empty : "明日 ";
+                    timerMenu.DropDownItems.Add(Item($"{day}{t.Due:HH:mm}（{t.Label}）を取り消す", () => CancelTimer(captured)));
+                }
+            }
+            menu.Items.Add(timerMenu);
             menu.Items.Add(new Forms.ToolStripSeparator());
 
             var breakMenu = new Forms.ToolStripMenuItem(_onBreak && _breakUntil != null ? $"休憩（{_breakUntil.Value:HH:mm} 再開予定）" : "休憩");

@@ -84,6 +84,7 @@ namespace SecretaryGadget
             SessionEnding += (_, __) => ExitApp();
 
             _settings = Settings.Load();
+            LoadTimers();
             LoadSkins();
             _window = new SecretaryWindow { DisplaySeconds = _settings.DisplaySeconds };
             _window.Retracted += () => Dispatcher.BeginInvoke(new Action(() => ShowNext(false)));
@@ -285,6 +286,7 @@ namespace SecretaryGadget
             {
                 SetNoHide(false);
             }
+            CheckTimers(now);
             if (_mentionCounter?.Count == 0 && _teamsSenders.Count > 0)
             {
                 _teamsSenders.Clear();
@@ -331,7 +333,8 @@ namespace SecretaryGadget
             while (node != null)
             {
                 LinkedListNode<Notice>? next = node.Next;
-                if (node.Value.IsCalled)
+                // タイマーは取りこぼさないよう、古いものも残す
+                if (node.Value.IsCalled && node.Value.Kind != NoticeKind.Timer)
                 {
                     _queue.Remove(node);
                 }
@@ -363,6 +366,11 @@ namespace SecretaryGadget
             {
                 return;
             }
+            // 出しっぱなしのタイマーは、新着で差し替えず、クリックで閉じられたあとに順番に出す
+            if (_window.IsShowing && _window.CurrentNotice?.IsSticky == true)
+            {
+                return;
+            }
             if (_queue.Count == 0 || IsSuppressed())
             {
                 return;
@@ -390,6 +398,17 @@ namespace SecretaryGadget
             if (_queue.Count == 0)
             {
                 return;
+            }
+            // タイマーは他の新着より先に出す
+            LinkedListNode<Notice>? timerNode = _queue.First;
+            while (timerNode != null && timerNode.Value.Kind != NoticeKind.Timer)
+            {
+                timerNode = timerNode.Next;
+            }
+            if (timerNode != null && timerNode != _queue.First)
+            {
+                _queue.Remove(timerNode);
+                _queue.AddFirst(timerNode);
             }
             // 本人が呼んだもの(先頭の Greeting/Schedule)は集約に飲み込ませず先に出す
             if (_queue.Count >= _pileThreshold && !_queue.First!.Value.IsCalled)

@@ -272,7 +272,7 @@ namespace SecretaryGadget
         private void RestartAutoHide()
         {
             _autoHideTimer.Stop();
-            if (!IsShowing || IsPeeking || _retracting || !AutoHide || _mouseOverBubble)
+            if (!IsShowing || IsPeeking || _retracting || !AutoHide || _mouseOverBubble || CurrentNotice?.IsSticky == true)
             {
                 return;
             }

@@ -15,6 +15,7 @@ namespace SecretaryGadget
         Teams,
         Meeting,
         Schedule,
+        Timer,
     }
 
     /// <summary>吹き出し1回分のお知らせ。</summary>
@@ -49,7 +50,10 @@ namespace SecretaryGadget
         public Func<DateTime, Notice?>? Refresh { get; init; }
 
         /// <summary>おやすみ・休憩中でも出すもの</summary>
-        public bool IsCalled => Kind == NoticeKind.Greeting || Kind == NoticeKind.Schedule;
+        public bool IsCalled => Kind == NoticeKind.Greeting || Kind == NoticeKind.Schedule || Kind == NoticeKind.Timer;
+
+        /// <summary>自動で隠れず、クリックされるまで出し続ける(タイマー)</summary>
+        public bool IsSticky => Kind == NoticeKind.Timer;
 
         /// <summary>本文の高さ制限なし(本日の予定)</summary>
         public bool IsUnlimited => Kind == NoticeKind.Schedule;
@@ -301,6 +305,26 @@ namespace SecretaryGadget
         public static Notice BreakEnded(int missed)
         {
             return new Notice(NoticeKind.Greeting, "おかえりなさいませ", missed > 0 ? $"休憩中に {missed} 件のお知らせがありました。" : null);
+        }
+
+        public static Notice TimerSet(DateTime now, TimerEntry t)
+        {
+            TimeSpan left = t.Due - now;
+            string when = t.Due.Date == now.Date ? $"{t.Due:HH:mm}" : $"明日 {t.Due:HH:mm}";
+            string remain = left.TotalMinutes < 1 ? "まもなく" : $"あと {TimerInput.FormatSpan((int)left.TotalHours, left.Minutes)}";
+            return new Notice(NoticeKind.Greeting, "タイマーをセットしました", $"{when} にお知らせします。", $"（{remain}）");
+        }
+
+        /// <summary>時間になったときの吹き出し。クリックされるまで消えない。</summary>
+        public static Notice TimerDue(DateTime now, TimerEntry t)
+        {
+            string line2 = now - t.Due >= TimeSpan.FromMinutes(1) ? $"{t.Due:HH:mm} の予定でした。" : "クリックすると閉じます。";
+            return new Notice(NoticeKind.Timer, "タイマーの時間です", $"{t.Label}にセットしたタイマーです。", line2);
+        }
+
+        public static Notice TimerCanceled(TimerEntry t)
+        {
+            return new Notice(NoticeKind.Greeting, "タイマーを取り消しました", $"{t.Due:HH:mm} のタイマーです。");
         }
 
         public static Notice Test()
