@@ -6,11 +6,9 @@ import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
-import { Kit, createSky, timeLook, arcPositions, buildClassroom, buildTavern, projectColor, wallClock } from './world.js';
-import { buildFancy } from './fancy.js';
-import { buildTavernFancy } from './fancy-tavern.js';
+import { Kit, createSky, timeLook, arcPositions, buildClassroom, projectColor, wallClock } from './world.js';
+import { buildTavern } from './tavern.js';
 import { buildMakai } from './makai.js';
-import { buildMakaiFancy } from './fancy-makai.js';
 import { buildSpot } from './spots.js';
 import { createWander } from './wander.js';
 import { createAvatar } from './avatar.js';
@@ -85,7 +83,7 @@ computeMode();
 
 const stage = document.getElementById('stage');
 const renderer = new THREE.WebGLRenderer({ antialias: true });
-renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMapping = THREE.NeutralToneMapping;
 renderer.toneMappingExposure = 1.0;
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
@@ -178,7 +176,7 @@ function removeAvatar(a) {
 
 // NPC(酒場=女主人、教室=女性教師)。セッションではないので席には座らず、持ち場でにこにこ立っている
 const NPCS = {
-  isekai: { id: 'npc-louida', name: 'ルイーダ', color: '#c0392b', pos: [6.35, 0.12, -4.8], rot: Math.PI / 4, overrides: { race: 'human', job: 5, hair: '#a6463b', style: 1, eye: '#2d4f8a', skin: '#ffe0c7', clothes: 0, headphones: false } },
+  isekai: { id: 'npc-louida', name: 'ルイーダ', color: '#c0392b', pos: [4.0, 0.14, -7.7], rot: 0, overrides: { race: 'human', job: 5, hair: '#a6463b', style: 1, eye: '#2d4f8a', skin: '#ffe0c7', clothes: 0, headphones: false } },
   default: { id: 'npc-teacher', name: '先生', color: '#3d4a7a', pos: [-10.3, 0.12, -1.2], rot: Math.PI / 2, overrides: { race: 'human', job: 6, hair: '#3a2a22', style: 3, eye: '#333a44', skin: '#fbe3d3', clothes: 1, headphones: false } },
 };
 
@@ -210,6 +208,7 @@ async function buildSkin() {
   clearAvatars();
   if (ctx) {
     removeNpc();
+    ctx.labels?.forEach((l) => l.element.remove());
     scene.remove(ctx.root);
     ctx.kit.dispose();
   }
@@ -218,26 +217,19 @@ async function buildSkin() {
   document.body.classList.add(`skin-${skin}`);
   ctx = { kit: new Kit(false), root: new THREE.Group(), lights: [], keys: undefined, sky: { aurora: 0, crack: 0, moon2: false, moonColor: '#f4f1e0' }, bloom: false, fog: null, effects: true };
   scene.add(ctx.root);
+  // 酒場と魔界は光る物(炎・酒瓶・溶岩)をブルームでにじませる。ctx.fancy は「標準」モードだけの演出(きらきら・火の粉)
   if (skin === 'makai') {
     buildMakai(ctx);
-    // 「標準」モード用の豪華な禍々しい演出(エフェクト OFF では非表示)
-    ctx.fancy = buildMakaiFancy(ctx);
-    ctx.bloomScale = 0.55;
+    ctx.bloomScale = 0.7;
     ctx.bloom = true;
-    ctx.bloomThreshold = 1.1;
+    ctx.bloomThreshold = 1.0;
   } else if (skin === 'isekai') {
     buildTavern(ctx);
-    // 「標準」モード用のハデな宴会演出(エフェクト OFF では非表示)
-    ctx.fancy = buildTavernFancy(ctx);
-    ctx.bloomScale = 0.45;
+    ctx.bloomScale = 0.55;
     ctx.bloom = true;
-    ctx.bloomThreshold = 1.1;
+    ctx.bloomThreshold = 1.0;
   } else {
     buildClassroom(ctx);
-    // 「標準」モード用のハデな演出(エフェクト OFF では非表示)。ブルームで光らせる
-    ctx.fancy = buildFancy(ctx);
-    ctx.bloom = true;
-    ctx.bloomThreshold = 1.1;
   }
   addNpc(skin);
   // 立ち寄り先(水槽・お酒の棚・血の池)と、席を立って歩き回る仕組み
@@ -254,6 +246,9 @@ async function buildSkin() {
   sky.uniforms.uAurora.value = ctx.sky.aurora;
   sky.uniforms.uCrack.value = ctx.sky.crack;
   sky.uniforms.uMoonColor.value.set(ctx.sky.moonColor);
+  if (ctx.sky.big) {
+    sky.uniforms.uBigColor.value.set(ctx.sky.big.color);
+  }
   applyOptions();
   if (store.state && store.state.archive) {
     ctx.shelf.setBooks(store.state.archive);
@@ -693,11 +688,15 @@ function updateTime(t) {
   u.uTime.value = t;
   u.uAspect.value = window.innerWidth / window.innerHeight;
   const arc = arcPositions(hour);
-  u.uSun.value.set(arc.sun.x, arc.sun.y, arc.sun.on);
-  u.uMoon.value.set(arc.moon.x, arc.moon.y, arc.moon.on);
+  // 大きな月を出すスキンは、ふつうの太陽と月の円は描かない(光の向きは同じように動く)
+  const discs = ctx.sky.big ? 0 : 1;
+  u.uSun.value.set(arc.sun.x, arc.sun.y, arc.sun.on * discs);
+  u.uMoon.value.set(arc.moon.x, arc.moon.y, arc.moon.on * discs);
   u.uMoon2.value.set(arc.moon.x + 0.07, arc.moon.y + 0.06, ctx.sky.moon2 ? arc.moon.on : 0);
   u.uSunColor.value.copy(look.sunColor);
-  hemi.intensity = look.hemi * (ctx.hemi ? ctx.hemi.boost : 1);
+  const big = ctx.sky.big;
+  u.uBig.value.set(big ? big.x : 0, big ? big.y : 0, big ? big.r : 0, big ? (big.always ? 1 : 0.45 + look.stars * 0.55) : 0);
+  hemi.intensity = look.hemi * (ctx.hemi ? ctx.hemi.boost : 1) * (ctx.lightBoost?.hemi ?? 1);
   // 平行光は昼は太陽・夜は月から
   const day = arc.sun.on > 0;
   const tt = day ? arc.sunT : arc.moonT;
@@ -705,7 +704,7 @@ function updateTime(t) {
   sunLight.position.set(Math.cos(ang) * -40 + 10, 12 + Math.sin(ang) * 30, 26);
   sunLight.target.position.set(-2, 0, -3);
   sunLight.color.copy(look.sunColor);
-  sunLight.intensity = look.sunPower * (day ? 1 : 0.6);
+  sunLight.intensity = look.sunPower * (day ? 1 : 0.6) * (ctx.lightBoost?.sun ?? 1);
   for (const l of ctx.lights) {
     l.intensity = look.lamp * l.userData.power;
   }
@@ -714,7 +713,9 @@ function updateTime(t) {
     bloomPass.strength = (0.35 + look.stars * 0.75) * (ctx.bloomScale ?? 1);
   }
   ctx.update?.(t, look);
-  ctx.fancy?.update(t, look);
+  if (ctx.effects) {
+    ctx.fancy?.update(t, look);
+  }
   const d = store.previewHour !== null ? new Date(new Date().setHours(Math.floor(hour), Math.round((hour % 1) * 60), 0)) : now;
   ctx.clock?.update(d);
   ctx.ultraClock?.update(d);
@@ -734,7 +735,6 @@ function frame() {
     return;
   }
   updateTime(t);
-  ctx.fancy?.clearSeats();
   ctx.npc?.avatar.update(t, 'npc');
   const dt = Math.min(0.1, t - prevT);
   prevT = t;
@@ -749,9 +749,6 @@ function frame() {
     const g = ctx.glows[a.seat];
     if (g && a.state) {
       g.screen.material.color.set(GLOW[a.state.key] || GLOW.sleeping);
-    }
-    if (a.state && a.state.key !== 'sleeping') {
-      ctx.fancy?.setSeat(a.seat, GLOW[a.state.key]);
     }
   }
   ctx.spot?.update(t, busy);

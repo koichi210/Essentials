@@ -1,7 +1,9 @@
-// 席のメンバーが立ち寄る場所。教室=金魚の水槽(エサやり)、酒場=お酒の棚(取りに行く)、魔界=血の池(汲みに行く)。
-// ctx.spot = { kind, x, z, rot, makeProp?, update(t, busy) }。x,z は立つ位置(右端の通路の横)で、rot はそのとき向く角度
+// 席のメンバーが立ち寄る場所。教室=金魚の水槽(エサやり)、酒場=カウンター(お酒をもらう)、魔界=魔女の大釜(薬を汲む)。
+// ctx.spot = { kind, x, z, rot, makeProp?, update(t, busy) }。x,z は立つ位置で、rot はそのとき向く角度。
+// 置いた家具は ctx.nav に足して、歩く経路がよけるようにする
 import * as THREE from 'three';
-import { skull } from './makai.js';
+import { lampLight, propLabel } from './world.js';
+import { magicCircle } from './tavern.js';
 
 const FACE_PLUS_X = Math.PI / 2;
 
@@ -61,6 +63,8 @@ function tank(ctx) {
     g.add(m);
     food.push({ m, ph: i * 0.37 });
   }
+  ctx.nav.rects.push([4.6, 5.8, -5.9, -3.2]);
+  propLabel(ctx, g, '🐠 金魚の水槽', 0, 2.5, 0);
   let w = 0;
   return {
     kind: 'feed',
@@ -96,33 +100,9 @@ function tank(ctx) {
   };
 }
 
-function sakeRack(ctx) {
-  const { kit, root } = ctx;
-  const g = new THREE.Group();
-  g.position.set(0, 0.12, 0);
-  root.add(g);
-  kit.box(g, 0.12, 2.3, 2.4, '#8a5a30', 5.85, 1.15, -0.9);
-  for (const z of [-2.1, 0.3]) {
-    kit.box(g, 0.7, 2.3, 0.1, '#a8693a', 5.55, 1.15, z);
-  }
-  const colors = ['#e24a4a', '#3d85c6', '#f0c020', '#2f9e5a', '#9c6ade', '#ff8a3a'];
-  [0.5, 1.2, 1.9].forEach((y, r) => {
-    kit.box(g, 0.6, 0.07, 2.4, '#c98a4a', 5.55, y, -0.9);
-    for (let k = 0; k < 6; k++) {
-      const c = colors[(k + r * 2) % colors.length];
-      const z = -1.85 + k * 0.4;
-      kit.cyl(g, 0.09, 0.1, 0.34, c, 5.55, y + 0.21, z, 8, { emissive: c, emissiveIntensity: 0.25 });
-      kit.cyl(g, 0.035, 0.05, 0.14, c, 5.55, y + 0.46, z, 6);
-    }
-  });
-  // 酒樽
-  for (const [bx, bz] of [[4.7, -1.75], [4.75, -0.3]]) {
-    kit.cyl(g, 0.42, 0.4, 0.9, '#a86a30', bx, 0.45, bz, 14);
-    for (const y of [0.18, 0.72]) {
-      kit.cyl(g, 0.44, 0.44, 0.06, '#4a3a2a', bx, y, bz, 14);
-    }
-    kit.cyl(g, 0.1, 0.1, 0.12, '#d8b060', bx - 0.38, 0.35, bz, 8).rotation.z = Math.PI / 2;
-  }
+// 酒場: カウンターの前でジョッキを受け取る(カウンターと酒瓶の棚は tavern.js が置く)
+function barCounter(ctx) {
+  const { kit } = ctx;
   const mug = () => {
     const m = new THREE.Group();
     kit.cyl(m, 0.1, 0.09, 0.2, '#e8c070', 0, 0, 0, 10);
@@ -134,63 +114,64 @@ function sakeRack(ctx) {
     m.rotation.x = 1.2;
     return m;
   };
-  return { kind: 'sake', x: 3.7, z: -1.05, rot: FACE_PLUS_X, makeProp: mug, update() {} };
+  return { kind: 'sake', x: 4.0, z: -5.2, rot: Math.PI, makeProp: mug, update() {} };
 }
 
-function bloodPond(ctx) {
-  const { kit, root } = ctx;
+// 魔界: 緑に光る魔法陣の上の大釜。ぐつぐつ泡立ち、汲みに来ると湯気が増える
+function cauldron(ctx) {
+  const { kit, root, lights } = ctx;
   const g = new THREE.Group();
-  g.position.set(5.4, 0.12, -4.55);
+  g.position.set(3.4, 0.14, -0.6);
   root.add(g);
-  const R = 1.2;
-  kit.cyl(g, R + 0.25, R + 0.3, 0.3, '#3a2a40', 0, 0.15, 0, 20);
-  const pool = new THREE.Mesh(new THREE.CircleGeometry(R, 32), new THREE.MeshBasicMaterial({ color: new THREE.Color('#c00a1c').multiplyScalar(1.15), toneMapped: false }));
-  pool.rotation.x = -Math.PI / 2;
-  pool.position.y = 0.32;
-  g.add(pool);
-  const ripples = [0, 1].map(() => {
-    const m = new THREE.Mesh(new THREE.RingGeometry(0.9, 1, 32), new THREE.MeshBasicMaterial({ color: '#ff6a6a', transparent: true, toneMapped: false, side: THREE.DoubleSide }));
-    m.rotation.x = -Math.PI / 2;
-    m.position.y = 0.33;
-    g.add(m);
-    return m;
-  });
-  for (let i = 0; i < 6; i++) {
-    const a = (i / 6) * Math.PI * 2 + 0.3;
-    skull(kit, g, Math.cos(a) * (R + 0.28), 0.5, Math.sin(a) * (R + 0.28), 0.45, -a + Math.PI / 2);
+  const seal = magicCircle(1.7, '#6aff8a', 0.85);
+  seal.position.y = 0.02;
+  g.add(seal);
+  const pot = new THREE.Mesh(kit.geom('sph', 0.8, 22, 16), kit.mat('#1e1a22'));
+  pot.scale.y = 0.8;
+  pot.position.y = 0.7;
+  pot.castShadow = true;
+  g.add(pot);
+  kit.cyl(g, 0.68, 0.68, 0.12, '#2e2836', 0, 1.33, 0, 22);
+  for (let i = 0; i < 3; i++) {
+    const a = (i / 3) * Math.PI * 2;
+    kit.box(g, 0.12, 0.4, 0.12, '#2e2836', Math.cos(a) * 0.55, 0.2, Math.sin(a) * 0.55);
   }
+  const brewMat = new THREE.MeshBasicMaterial({ color: new THREE.Color('#5aff7a').multiplyScalar(1.4), toneMapped: false });
+  const brew = new THREE.Mesh(new THREE.CircleGeometry(0.62, 24), brewMat);
+  brew.rotation.x = -Math.PI / 2;
+  brew.position.y = 1.4;
+  g.add(brew);
   const bubbles = [];
-  for (let i = 0; i < 5; i++) {
-    const b = new THREE.Mesh(new THREE.SphereGeometry(0.1, 8, 6), new THREE.MeshBasicMaterial({ color: '#ff3a3a', toneMapped: false }));
+  for (let i = 0; i < 7; i++) {
+    const b = new THREE.Mesh(kit.geom('sph', 0.09, 8, 6), brewMat);
     g.add(b);
-    bubbles.push({ b, ph: i * 1.3, x: Math.cos(i * 2.4) * 0.6, z: Math.sin(i * 2.4) * 0.6 });
+    bubbles.push({ b, ph: i * 0.37, x: Math.cos(i * 2.4) * 0.35, z: Math.sin(i * 2.4) * 0.35 });
   }
+  lampLight(g, lights, 0, 1.8, 0.4, '#6aff8a', 8, 5);
+  propLabel(ctx, g, '🧪 魔女の大釜', 0, 2.6, 0);
+  ctx.nav.circles.push([3.4, -0.6, 0.9]);
   const cup = () => {
     const m = new THREE.Group();
-    kit.cyl(m, 0.1, 0.06, 0.16, '#d8b040', 0, 0, 0, 10);
-    kit.cyl(m, 0.095, 0.095, 0.02, '#c00a1c', 0, 0.075, 0, 10, { emissive: '#ff1a1a', emissiveIntensity: 1 });
-    kit.cyl(m, 0.03, 0.03, 0.1, '#d8b040', 0, -0.12, 0, 6);
+    kit.cyl(m, 0.1, 0.06, 0.16, '#b8902a', 0, 0, 0, 10);
+    kit.cyl(m, 0.095, 0.095, 0.02, '#5aff7a', 0, 0.075, 0, 10, { emissive: '#3aff6a', emissiveIntensity: 1 });
+    kit.cyl(m, 0.03, 0.03, 0.1, '#b8902a', 0, -0.12, 0, 6);
     m.position.set(0, -0.5, 0.1);
     m.rotation.x = 1.2;
     return m;
   };
   return {
     kind: 'blood',
-    x: 3.6,
-    z: -4.55,
+    x: 2.0,
+    z: -0.6,
     rot: FACE_PLUS_X,
     makeProp: cup,
     update(t, busy) {
-      pool.material.color.set('#c00a1c').multiplyScalar(1.1 + Math.sin(t * 1.5) * 0.15);
-      ripples.forEach((r, i) => {
-        const k = ((t * (busy ? 0.9 : 0.35)) + i * 0.5) % 1;
-        r.scale.setScalar(0.2 + k * 0.9);
-        r.material.opacity = (1 - k) * 0.6;
-      });
+      seal.rotation.z = t * 0.15;
       bubbles.forEach(({ b, ph, x, z }) => {
-        const k = (t * 0.5 + ph) % 1.6;
-        b.position.set(x, 0.33 + Math.max(0, Math.sin(Math.min(k, 0.6) / 0.6 * Math.PI)) * 0.12, z);
-        b.visible = k < 0.6;
+        const k = (t * (busy ? 1.1 : 0.6) + ph) % 1.2;
+        b.visible = k < 1;
+        b.position.set(x, 1.4 + k * 0.35, z);
+        b.scale.setScalar(0.5 + k * 0.8);
       });
     },
   };
@@ -198,9 +179,9 @@ function bloodPond(ctx) {
 
 export function buildSpot(ctx, skin) {
   if (skin === 'makai') {
-    ctx.spot = bloodPond(ctx);
+    ctx.spot = cauldron(ctx);
   } else if (skin === 'isekai') {
-    ctx.spot = sakeRack(ctx);
+    ctx.spot = barCounter(ctx);
   } else {
     ctx.spot = tank(ctx);
   }

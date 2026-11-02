@@ -678,6 +678,33 @@ hr.sep {
   animation: float 2s ease-in-out infinite;
 }
 
+/* 物の名札(アーカイブ・コーヒーなど)。スキンごとに色を変える */
+.prop-label {
+  background: rgba(255, 255, 255, 0.92);
+  color: #3a3f4c;
+  border: 1px solid rgba(40, 50, 80, 0.12);
+  border-radius: 8px;
+  padding: 2px 8px;
+  font-size: calc(11px * var(--fs));
+  font-weight: 600;
+  white-space: nowrap;
+  box-shadow: 0 2px 6px rgba(20, 30, 60, 0.18);
+  pointer-events: none;
+}
+
+body.skin-isekai .prop-label {
+  background: rgba(46, 26, 16, 0.9);
+  color: #f6e2b0;
+  border: 1px solid #c9a24a;
+}
+
+body.skin-makai .prop-label {
+  background: rgba(22, 14, 40, 0.9);
+  color: #e8dcff;
+  border: 1px solid #9a6aff;
+  box-shadow: 0 0 8px rgba(154, 106, 255, 0.45);
+}
+
 .spot {
   background: rgba(255, 255, 255, 0.85);
   color: #333;

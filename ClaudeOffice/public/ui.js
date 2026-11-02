@@ -132,7 +132,6 @@ export function renderHUD(store, actions) {
     <div class="row"><span class="label">✨ エフェクト</span>${seg('effects', [['on', '✨ ON'], ['off', '💤 OFF']])}</div>
     <div class="row"><span class="label">🔗 FPS</span>${seg('fps', [['60', '60 fps'], ['30', '30 fps']])}</div>
     <div class="row"><span class="label">🌓 影</span>${seg('shadows', [['on', '🌓 ON'], ['off', '💤 OFF']])}</div>
-    <div class="row"><span class="label">🪶 超軽量</span>${seg('ultra', [['on', '🪶 ON'], ['off', '💤 OFF']])}</div>
     <div class="row"><span class="label">🖼️ 画質</span>${seg('resolution', [['high', '🔍 くっきり'], ['low', '🍃 粗め']])}</div>`);
 }
 

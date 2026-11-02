@@ -1,15 +1,34 @@
-// 席のメンバーが、仕事中でも席を立って歩き回る。机の間の通路だけを通る経路探索と、行動の状態機械。
-// 通路は全スキン共通(席の並びが同じ)。立ち寄り先(ctx.spot)はスキンごとに spots.js が用意する。
+// 席のメンバーが、仕事中でも席を立って歩き回る。床を細かいマス目に切って家具を避ける経路探索と、行動の状態機械。
+// 家具の位置はスキンごとに ctx.nav が持つ。立ち寄り先(ctx.spot)はスキンごとに spots.js が用意する。
 
 const WALK_SPEED = 2.3;
+const STEP = 0.5;
+const PAD = 0.4;
 
-// 通路のグラフ: 縦通路は机の列の間、横通路は席の行の間。席は右隣の縦通路につながる
-function buildGraph(seats, spot) {
-  const cols = [...new Set(seats.map((s) => s.x))].sort((a, b) => a - b);
-  const rows = [...new Set(seats.map((s) => s.z))].sort((a, b) => a - b);
-  const vx = [cols[0] - 1.5, ...cols.map((x) => x + 1.5)];
-  const corr = rows.map((z) => z + 1.25);
-  const hz = [...rows, ...corr].sort((a, b) => a - b);
+// ctx.nav = { x0, x1, z0, z1, rects: [[x0, x1, z0, z1]...], circles: [[x, z, r]...] }
+function makeFree(nav) {
+  return (x, z) => {
+    if (x < nav.x0 + PAD || x > nav.x1 - PAD || z < nav.z0 + PAD || z > nav.z1 - PAD) {
+      return false;
+    }
+    for (const [a, b, c, d] of nav.rects) {
+      if (x > a - PAD && x < b + PAD && z > c - PAD && z < d + PAD) {
+        return false;
+      }
+    }
+    for (const [cx, cz, r] of nav.circles) {
+      if (Math.hypot(x - cx, z - cz) < r + PAD) {
+        return false;
+      }
+    }
+    return true;
+  };
+}
+
+// 床のマス目(8方向)。席と立ち寄り先は、いちばん近い空きマスにつなぐ
+function buildGraph(ctx) {
+  const nav = ctx.nav;
+  const free = makeFree(nav);
   const nodes = new Map();
   const node = (id, x, z) => {
     nodes.set(id, { id, x, z, n: [] });
@@ -19,40 +38,84 @@ function buildGraph(seats, spot) {
     nodes.get(a).n.push(b);
     nodes.get(b).n.push(a);
   };
-  const nid = (i, j) => `g${i}_${j}`;
-  vx.forEach((x, i) => hz.forEach((z, j) => node(nid(i, j), x, z)));
-  vx.forEach((_, i) => {
-    hz.forEach((_z, j) => {
-      if (j > 0) {
-        link(nid(i, j - 1), nid(i, j));
+  const nx = Math.floor((nav.x1 - nav.x0) / STEP);
+  const nz = Math.floor((nav.z1 - nav.z0) / STEP);
+  const gid = (i, j) => `g${i}_${j}`;
+  const ok = (i, j) => nodes.has(gid(i, j));
+  for (let i = 0; i <= nx; i++) {
+    for (let j = 0; j <= nz; j++) {
+      const x = nav.x0 + i * STEP;
+      const z = nav.z0 + j * STEP;
+      if (free(x, z)) {
+        node(gid(i, j), x, z);
       }
-      if (i > 0 && corr.includes(hz[j])) {
-        link(nid(i - 1, j), nid(i, j));
-      }
-    });
-  });
-  seats.forEach((s, k) => {
-    node(`s${k}`, s.x, s.z);
-    link(`s${k}`, nid(cols.indexOf(s.x) + 1, hz.indexOf(s.z)));
-  });
-  if (spot) {
-    // 立ち寄り先は右端の縦通路の、いちばん近い横通路につなぐ
-    const j = hz.reduce((best, z, k) => (Math.abs(z - spot.z) < Math.abs(hz[best] - spot.z) ? k : best), 0);
-    node('spot', spot.x, spot.z);
-    link('spot', nid(vx.length - 1, j));
+    }
   }
-  return { nodes, ids: [...nodes.keys()].filter((id) => id.startsWith('g')) };
+  for (let i = 0; i <= nx; i++) {
+    for (let j = 0; j <= nz; j++) {
+      if (!ok(i, j)) {
+        continue;
+      }
+      if (ok(i + 1, j)) {
+        link(gid(i, j), gid(i + 1, j));
+      }
+      if (ok(i, j + 1)) {
+        link(gid(i, j), gid(i, j + 1));
+      }
+      // 斜めは角を削らないときだけ
+      if (ok(i + 1, j + 1) && ok(i + 1, j) && ok(i, j + 1)) {
+        link(gid(i, j), gid(i + 1, j + 1));
+      }
+      if (j > 0 && ok(i + 1, j - 1) && ok(i + 1, j) && ok(i, j - 1)) {
+        link(gid(i, j), gid(i + 1, j - 1));
+      }
+    }
+  }
+  const ids = [...nodes.keys()];
+  const nearest = (x, z) => ids.reduce((best, id) => {
+    const a = nodes.get(id);
+    const b = nodes.get(best);
+    return Math.hypot(a.x - x, a.z - z) < Math.hypot(b.x - x, b.z - z) ? id : best;
+  }, ids[0]);
+  ctx.seats.forEach((s, k) => {
+    const near = nearest(s.x, s.z);
+    node(`s${k}`, s.x, s.z);
+    link(`s${k}`, near);
+  });
+  if (ctx.spot) {
+    const near = nearest(ctx.spot.x, ctx.spot.z);
+    node('spot', ctx.spot.x, ctx.spot.z);
+    link('spot', near);
+  }
+  return { nodes, ids, free };
+}
+
+// 2点の間に家具がないか(0.2 刻みで調べる)
+function clear(graph, a, b) {
+  const d = Math.hypot(b.x - a.x, b.z - a.z);
+  const n = Math.ceil(d / 0.2);
+  for (let k = 1; k < n; k++) {
+    if (!graph.free(a.x + ((b.x - a.x) * k) / n, a.z + ((b.z - a.z) * k) / n)) {
+      return false;
+    }
+  }
+  return true;
 }
 
 function route(graph, from, to) {
   const dist = new Map([[from, 0]]);
   const prev = new Map();
   const todo = new Set([from]);
+  const goal = graph.nodes.get(to);
+  const h = (n) => Math.hypot(n.x - goal.x, n.z - goal.z);
   while (todo.size) {
     let cur = null;
+    let curF = Infinity;
     for (const id of todo) {
-      if (cur === null || dist.get(id) < dist.get(cur)) {
+      const f = dist.get(id) + h(graph.nodes.get(id));
+      if (f < curF) {
         cur = id;
+        curF = f;
       }
     }
     todo.delete(cur);
@@ -74,13 +137,26 @@ function route(graph, from, to) {
   for (let id = to; id !== undefined; id = prev.get(id)) {
     path.unshift(graph.nodes.get(id));
   }
-  return path.slice(1);
+  // マス目のカクカクを、見通せる所まで一気に歩くように間引く(席と立ち寄り先の点は残す)
+  const out = [path[0]];
+  let k = 0;
+  while (k < path.length - 1) {
+    let far = k + 1;
+    if (path[k].id.startsWith('g')) {
+      while (far + 1 < path.length && path[far + 1].id.startsWith('g') && clear(graph, path[k], path[far + 1])) {
+        far++;
+      }
+    }
+    out.push(path[far]);
+    k = far;
+  }
+  return out.slice(1);
 }
 
 const rand = (a, b) => a + Math.random() * (b - a);
 
 export function createWander(ctx) {
-  const graph = buildGraph(ctx.seats, ctx.spot);
+  const graph = buildGraph(ctx);
   const spot = ctx.spot;
   const angleTo = (from, to) => {
     let d = to - from;
@@ -92,6 +168,7 @@ export function createWander(ctx) {
     }
     return from + d;
   };
+  const randomStop = () => graph.ids[Math.floor(Math.random() * graph.ids.length)];
 
   const startWalk = (m, fromId, toId) => {
     m.path = route(graph, fromId, toId);
@@ -108,7 +185,6 @@ export function createWander(ctx) {
     update(a, t, dt) {
       const m = a.move;
       const root = a.avatar.root;
-      const seat = ctx.seats[a.seat];
       const key = a.state ? a.state.key : 'waiting';
       const seatId = `s${a.seat}`;
       const canRoam = key !== 'sleeping';
@@ -120,7 +196,7 @@ export function createWander(ctx) {
             spot.user = a.item?.id || true;
           }
           if (m.trip.kind === 'pace') {
-            startWalk(m, seatId, graph.ids[Math.floor(Math.random() * graph.ids.length)]);
+            startWalk(m, seatId, randomStop());
           } else {
             startWalk(m, seatId, 'spot');
           }
@@ -192,9 +268,9 @@ export function createWander(ctx) {
         m.actLen = spot.kind === 'feed' ? 5 : 4;
         root.rotation.y = spot.rot;
       } else if (m.trip.kind === 'pace' && m.trip.stops > 0) {
-        // 通路で立ち止まって、また別の通路へ
+        // 通路で立ち止まって、また別の場所へ
         m.trip.stops--;
-        startWalk(m, m.at, graph.ids[Math.floor(Math.random() * graph.ids.length)]);
+        startWalk(m, m.at, randomStop());
       } else if (m.at !== `s${a.seat}`) {
         m.trip = { kind: 'back', stops: 0 };
         startWalk(m, m.at, `s${a.seat}`);
