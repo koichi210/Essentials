@@ -59,7 +59,7 @@ settings.json の主な項目: `UserName`（あいさつの呼び名）、`Outlo
     skin.json      任意：{ "Name": "メニュー表示名", "BubbleOverlap": 0.34 }
 ```
 
-いまの同梱スキンは `enji`（園児）・`blue`（青髪）・`red`（赤髪）・`brown`（茶髪）・`green`（黄緑髪）の5つ。スキンが1つも無いときの保険として、exe に埋め込んだ既定絵 `Assets\secretary.png` も同じ画像にしてある。スキンを足したらメニューの「スキン一覧を読み直す」で反映される。
+いまの同梱スキンは `enji`（園児）・`blue`（青髪）・`red`（赤髪）・`brown`（茶髪）・`green`（黄緑髪）・`rose`（ローズ髪）・`maid`（メイド）・`butler`（執事）・`megane`（メガネ）・`redboy`（赤髪の秘書くん）の10個。スキンが1つも無いときの保険として、exe に埋め込んだ既定絵 `Assets\secretary.png` も同じ画像にしてある。スキンを足したらメニューの「スキン一覧を読み直す」で反映される。
 
 ## 起動引数（確認用）
 
