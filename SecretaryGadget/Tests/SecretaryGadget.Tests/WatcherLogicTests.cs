@@ -149,6 +149,43 @@ namespace SecretaryGadget.Tests
             Assert.AreEqual(307.0 / 1024 - 20.0 / 280, r.Overlap, 1e-9);
         }
 
+        [TestMethod]
+        public void Layout_RaisesBubbleAboveWideShoulders()
+        {
+            // 顔(上から23%)までは x=0.5、そこから60px下(窓座標)で肩が x=0.05 まで張り出す絵
+            int[] leftmost = new int[1536];
+            for (int y = 0; y < leftmost.Length; y++)
+            {
+                leftmost[y] = y < (0.23 * 420 + 60) * 1536 / 420 ? 512 : 51;
+            }
+            var r = BubbleLayout.Compute(420, 1.0, 100, 1024, 1536, leftmost, null);
+            double faceY = 0.23 * 420;
+            // 既定の高さ(faceY−36)だと影まで肩の行に入るので、肩より上に収まる高さまで上げる
+            Assert.IsTrue(r.BubbleTop < faceY - 36);
+            Assert.IsTrue(r.BubbleTop + 100 + BubbleLayout.ShadowBelow <= faceY + 60);
+            Assert.AreEqual(0.5 - 20.0 / 280, r.Overlap, 1e-9);
+            // しっぽは顔を指したまま
+            Assert.AreEqual(faceY, r.TailTip, 1e-9);
+        }
+
+        [TestMethod]
+        public void Layout_TallBubbleRisesAboveHeadAndGrowsWindowUpward()
+        {
+            // 同じ肩の張った絵に背の高い吹き出し(200)。絵の中に収めると肩の行に入るので、頭より上へはみ出させる
+            int[] leftmost = new int[1536];
+            for (int y = 0; y < leftmost.Length; y++)
+            {
+                leftmost[y] = y < (0.23 * 420 + 60) * 1536 / 420 ? 512 : 51;
+            }
+            var r = BubbleLayout.Compute(420, 1.0, 200, 1024, 1536, leftmost, null);
+            Assert.AreEqual(0.5 - 20.0 / 280, r.Overlap, 1e-9);
+            Assert.IsTrue(r.WindowHeight > 420);
+            Assert.AreEqual(r.WindowHeight - 420, r.ImageTop, 1e-9);
+            Assert.IsTrue(r.BubbleTop >= 4);
+            Assert.IsTrue(r.BubbleTop + 200 + BubbleLayout.ShadowBelow <= r.ImageTop + 0.23 * 420 + 60);
+            Assert.AreEqual(r.ImageTop + 0.23 * 420, r.TailTip, 1e-9);
+        }
+
         [DataTestMethod]
         [DataRow(1.0, 60.0)]
         [DataRow(1.0, 200.0)]

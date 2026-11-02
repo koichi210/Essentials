@@ -437,6 +437,8 @@ namespace SecretaryGadget
     /// h = DisplayHeight×scale、吹き出しを幅300で Measure → bh、wh = max(h, bh+8)、imageTop = wh−h、faceY = imageTop + 0.23h、
     /// bubbleTop = clamp(faceY−36, 4, wh−bh−4)、tailTip = clamp(faceY, bubbleTop+22, bubbleTop+bh−22)、
     /// 重なり率 r = skin.BubbleOverlap ?? min(0.5, L(吹き出しの行＋影) − (しっぽの張り出し14 + すき間6)/絵幅)、
+    /// BubbleOverlap が無いときは、しっぽが faceY を指せる範囲(faceY−bh+22 〜 faceY−22)で bubbleTop をずらし、r が最大になる高さを使う。
+    /// 吹き出しが絵の上端より上にはみ出す高さを選んだら、窓をその分(＋4)上へ伸ばす(窓は下端固定なのでキャラは動かない)。
     /// L(行範囲) = その行範囲で最も左にある不透明画素(α&gt;32)の x / 画像幅、窓の高さ = wh、窓の幅 = 306 − 絵幅×r + 絵幅。
     /// 仕様書の式は吹き出しをキャラに少し潜り込ませるものだったが、吹き出しとイラストは重ねない方針のため、
     /// 吹き出しの高さにあたる行では、キャラの左端がしっぽの先よりさらに右(すき間6)に来るよう r を決める。r は負にもなる。
@@ -466,7 +468,6 @@ namespace SecretaryGadget
             double imageTop = wh - h;
             double faceY = imageTop + FaceRatio * h;
             double bubbleTop = Clamp(faceY - 36, 4, wh - bh - 4);
-            double tailTip = Clamp(faceY, bubbleTop + 22, bubbleTop + bh - 22);
 
             double r;
             if (bubbleOverlap != null)
@@ -475,10 +476,35 @@ namespace SecretaryGadget
             }
             else
             {
-                // 吹き出し(枠・影を含む高さ)の行で最も左にある不透明画素が、しっぽの先＋すき間より右に来る位置
-                double bubbleRows = LeftmostRatio(bubbleTop, bubbleTop + bh + ShadowBelow, imageTop, h, pixelWidth, pixelHeight, leftmostOpaque);
-                r = Math.Min(0.5, bubbleRows - (TailWidth - TailOverlap + NoOverlapGap) / imageWidth);
+                // 吹き出し(枠・影を含む高さ)の行で最も左にある不透明画素が、しっぽの先＋すき間より右に来る位置。
+                // 肩や広がった髪が吹き出しの行に入ると絵が右へ押し出されるので、しっぽが顔を指せる範囲で
+                // 吹き出しを上下にずらし、いちばん顔に近づける高さを選ぶ(同じなら既定の高さに近い方)
+                double gap = (TailWidth - TailOverlap + NoOverlapGap) / imageWidth;
+                double bubbleRows = Math.Min(0.5 + gap, LeftmostRatio(bubbleTop, bubbleTop + bh + ShadowBelow, imageTop, h, pixelWidth, pixelHeight, leftmostOpaque));
+                // 以下は絵の上端を0とした座標。上へのはみ出し(負)も候補にする
+                double faceInImage = FaceRatio * h;
+                double defaultTop = bubbleTop - imageTop;
+                double bestTop = defaultTop;
+                double highest = Math.Min(h - bh - 4, faceInImage - 22);
+                for (double top = Math.Ceiling(faceInImage - bh + 22); top <= highest; top++)
+                {
+                    double rows = Math.Min(0.5 + gap, LeftmostRatio(top, top + bh + ShadowBelow, 0, h, pixelWidth, pixelHeight, leftmostOpaque));
+                    if (rows > bubbleRows || (rows == bubbleRows && Math.Abs(top - defaultTop) < Math.Abs(bestTop - defaultTop)))
+                    {
+                        bubbleRows = rows;
+                        bestTop = top;
+                    }
+                }
+                if (bestTop != defaultTop)
+                {
+                    wh = h + Math.Max(0, 4 - bestTop);
+                    imageTop = wh - h;
+                    faceY = imageTop + faceInImage;
+                    bubbleTop = imageTop + bestTop;
+                }
+                r = bubbleRows - gap;
             }
+            double tailTip = Clamp(faceY, bubbleTop + 22, bubbleTop + bh - 22);
 
             double bubbleRight = BubbleLeft + BubbleWidth;
             double imageLeft = bubbleRight - imageWidth * r;
