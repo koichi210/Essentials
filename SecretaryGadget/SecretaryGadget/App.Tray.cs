@@ -116,6 +116,7 @@ namespace SecretaryGadget
             menu.Items.Add(Item("秘書さんを呼ぶ", Call));
             menu.Items.Add(Item("本日の予定", ShowSchedule));
             menu.Items.Add(Item("箱庭", OpenHakoniwa));
+            menu.Items.Add(Item("株レーダー", OpenStockRadar));
 
             var timerMenu = new Forms.ToolStripMenuItem(_timers.Items.Count > 0 ? $"タイマー（{_timers.Items.Count} 件）" : "タイマー");
             timerMenu.DropDownItems.Add(Item("タイマーをセット…", AskTimer));
@@ -200,13 +201,19 @@ namespace SecretaryGadget
             menu.Items.Add(Item("終了", ExitApp));
         }
 
-        /// <summary>箱庭(Claude Office)をブラウザで開く。開けなかったときだけ吹き出しで知らせる。</summary>
-        private async void OpenHakoniwa()
+        /// <summary>箱庭(Claude Office)をブラウザで開く。</summary>
+        private void OpenHakoniwa() => OpenLocalWeb(LocalWebLauncher.Hakoniwa);
+
+        /// <summary>株レーダー(StockRadar)をブラウザで開く。</summary>
+        private void OpenStockRadar() => OpenLocalWeb(LocalWebLauncher.StockRadar);
+
+        /// <summary>ローカル Web ツールを開く。開けなかったときだけ吹き出しで知らせる。</summary>
+        private async void OpenLocalWeb(LocalWebLauncher tool)
         {
-            string? error = await HakoniwaLauncher.OpenAsync();
+            string? error = await tool.OpenAsync();
             if (error != null)
             {
-                Enqueue(new Notice(NoticeKind.Greeting, "箱庭を開けませんでした", error));
+                Enqueue(new Notice(NoticeKind.Greeting, $"{tool.Title}を開けませんでした", error));
             }
         }
 

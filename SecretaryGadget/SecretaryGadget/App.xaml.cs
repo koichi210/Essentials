@@ -709,6 +709,10 @@ namespace SecretaryGadget
             {
                 OpenHakoniwa();
             }
+            if (_options.HasDiag("stockradar"))
+            {
+                OpenStockRadar();
+            }
             if (_options.HasDiag("summary"))
             {
                 for (int i = 1; i <= 3; i++)

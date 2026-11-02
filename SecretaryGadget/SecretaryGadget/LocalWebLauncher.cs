@@ -7,19 +7,36 @@ using System.Threading.Tasks;
 namespace SecretaryGadget
 {
     /// <summary>
-    /// 箱庭(Claude Office、127.0.0.1:8765 のローカル Web ダッシュボード)を開く。
-    /// 起動済みならブラウザで開くだけ、未起動なら ClaudeOffice\autostart.ps1 で窓なしに起動してから開く。
+    /// 同じ Essentials にある Node のローカル Web ツール(箱庭 = ClaudeOffice、株レーダー = StockRadar)を開く。
+    /// 起動済みならブラウザで開くだけ、未起動ならツールのフォルダの autostart.ps1 で窓なしに起動してから開く。
     /// </summary>
-    internal static class HakoniwaLauncher
+    internal sealed class LocalWebLauncher
     {
-        public const string Url = "http://127.0.0.1:8765/";
-        private const int _port = 8765;
-        private const string _folderName = "ClaudeOffice";
+        // 箱庭は初回に会話記録を全部読むので、待ち受けまで数秒かかる
+        public static readonly LocalWebLauncher Hakoniwa = new("箱庭", "ClaudeOffice", 8765, TimeSpan.FromSeconds(30));
+        public static readonly LocalWebLauncher StockRadar = new("株レーダー", "StockRadar", 8766, TimeSpan.FromSeconds(15));
+
         private const string _startScript = "autostart.ps1";
-        private static readonly TimeSpan _startTimeout = TimeSpan.FromSeconds(30);
+
+        private readonly string _title;
+        private readonly string _folderName;
+        private readonly int _port;
+        private readonly TimeSpan _startTimeout;
+
+        private LocalWebLauncher(string title, string folderName, int port, TimeSpan startTimeout)
+        {
+            _title = title;
+            _folderName = folderName;
+            _port = port;
+            _startTimeout = startTimeout;
+        }
+
+        public string Title => _title;
+
+        public string Url => $"http://127.0.0.1:{_port}/";
 
         /// <summary>開けたら null、開けなければ理由(吹き出しに出す文面)。</summary>
-        public static async Task<string?> OpenAsync()
+        public async Task<string?> OpenAsync()
         {
             if (await IsListeningAsync())
             {
@@ -29,8 +46,8 @@ namespace SecretaryGadget
             string? folder = FindFolder();
             if (folder == null)
             {
-                Log.Write("箱庭のフォルダが見つかりません");
-                return "箱庭(ClaudeOffice フォルダ)が見つかりません。";
+                Log.Write($"{_title}のフォルダが見つかりません");
+                return $"{_title}({_folderName} フォルダ)が見つかりません。";
             }
             try
             {
@@ -48,26 +65,25 @@ namespace SecretaryGadget
             }
             catch (Exception ex)
             {
-                Log.Write("箱庭を起動できませんでした: " + ex.GetType().Name);
-                return "箱庭を起動できませんでした。";
+                Log.Write($"{_title}を起動できませんでした: " + ex.GetType().Name);
+                return $"{_title}を起動できませんでした。";
             }
-            // 初回は会話記録を全部読むので、待ち受けまで数秒かかる
             DateTime limit = DateTime.Now + _startTimeout;
             while (DateTime.Now < limit)
             {
                 await Task.Delay(500);
                 if (await IsListeningAsync())
                 {
-                    Log.Write("箱庭を起動しました");
+                    Log.Write($"{_title}を起動しました");
                     WindowFocus.OpenUri(Url);
                     return null;
                 }
             }
-            Log.Write("箱庭の起動を待ちきれませんでした");
-            return "箱庭が起動しませんでした(Node.js が入っているか確認してください)。";
+            Log.Write($"{_title}の起動を待ちきれませんでした");
+            return $"{_title}が起動しませんでした(Node.js が入っているか確認してください)。";
         }
 
-        private static async Task<bool> IsListeningAsync()
+        private async Task<bool> IsListeningAsync()
         {
             try
             {
@@ -81,8 +97,8 @@ namespace SecretaryGadget
             }
         }
 
-        /// <summary>exe のフォルダから上へたどり、ClaudeOffice\autostart.ps1 がある兄弟フォルダを探す(同じ Essentials の中にある)。</summary>
-        private static string? FindFolder()
+        /// <summary>exe のフォルダから上へたどり、ツールのフォルダ(autostart.ps1 がある兄弟フォルダ)を探す。</summary>
+        private string? FindFolder()
         {
             DirectoryInfo? dir = new DirectoryInfo(AppContext.BaseDirectory);
             while (dir != null)
