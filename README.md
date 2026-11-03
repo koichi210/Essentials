@@ -17,6 +17,7 @@
 | [Launcher](Launcher) | よく使う exe や URL を登録して、ワンクリックで起動する | .NET 10（ランタイムが必要） |
 | [Mailer](Mailer) | 宛先・件名・本文を決めておいて、ブラウザのメール作成画面を開く | .NET Framework |
 | [Othello](Othello) | オセロ（人対人・人対COM・COM対COM） | .NET Framework |
+| [StockRadar](StockRadar) | 日本株の買い候補と売る値段の目安（買う値段の幅・利確・損切り・期限）を、予算と期間（短期／長期）からボタン1つで一覧にするローカル用ツール | Node.js 20 以上 |
 | [SecretaryGadget](SecretaryGadget) | Outlook の新着メール・会議の開始前・Teams のメンションを、画面右下の秘書さんが吹き出しで知らせる常駐ガジェット | .NET 9 以降（ランタイムが必要） |
 | [OthelloMfc](OthelloMfc) | オセロの C++ 版 | C++ / MFC |
 | [LoginHistory](LoginHistory) | PC が動いていた時刻を、一定の間隔でログファイルに書き残す稼働ログ | C++ / MFC |

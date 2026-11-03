@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>株レーダー</title>
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="top">
+  <div class="title-row">
+    <h1><img src="icon.svg" alt="" width="28" height="28">株レーダー</h1>
+    <button type="button" class="open-glossary" data-term="">📖 用語集</button>
+  </div>
+  <p class="sub">日本株の買い候補と、買ったあとに売る値段(利確・損切り)の目安を、ボタンを押した時点のデータで出します。下線のついた言葉を押すと、意味と見かたが出ます</p>
+</header>
+
+<main>
+  <form id="form" class="panel">
+    <fieldset class="mode">
+      <legend>期間</legend>
+      <label><input type="radio" name="mode" value="short" checked><span><b>短期</b><small>1〜2週間で売る</small></span></label>
+      <label><input type="radio" name="mode" value="long"><span><b>長期</b><small>半年〜1年持つ</small></span></label>
+    </fieldset>
+    <div class="budget">
+      <label>予算の上限<span class="field"><input id="max" type="number" min="1" max="10000" step="1" value="70" required><em>万円</em></span></label>
+      <label>予算の下限<span class="field"><input id="min" type="number" min="0" max="10000" step="1" value="30"><em>万円</em></span></label>
+      <p class="hint">100株を買うのに必要な金額で絞ります</p>
+    </div>
+    <button id="run" type="submit">買い候補を探す</button>
+    <fieldset class="filters">
+      <legend>絞り込み（選んだ条件をすべて満たす銘柄だけ出します）<button type="button" id="clear" class="clear">条件をクリア</button></legend>
+      <label><span><button type="button" class="term" data-term="per">PER</button></span>
+        <select id="per">
+          <option value="">指定なし</option>
+          <option value="10">10倍以下</option>
+          <option value="15">15倍以下</option>
+          <option value="20">20倍以下</option>
+          <option value="30">30倍以下</option>
+        </select>
+      </label>
+      <label><span><button type="button" class="term" data-term="pbr">PBR</button></span>
+        <select id="pbr">
+          <option value="">指定なし</option>
+          <option value="0.8">0.8倍未満</option>
+          <option value="1">1倍未満</option>
+          <option value="1.5">1.5倍未満</option>
+          <option value="2">2倍未満</option>
+        </select>
+      </label>
+      <label><span><button type="button" class="term" data-term="cross">クロスを見る線</button></span>
+        <select id="cross">
+          <option value="ma5_25">5日線と25日線</option>
+          <option value="ma25_75">25日線と75日線</option>
+          <option value="macd">MACD</option>
+        </select>
+      </label>
+      <div class="cross-cond">
+        <label><span>ゴールデンクロス</span>
+          <select id="gc">
+            <option value="">指定なし</option>
+            <option value="soon">もうすぐ起きそう</option>
+            <option value="3">3日以内に起きた</option>
+            <option value="5">5日以内に起きた</option>
+            <option value="10">10日以内に起きた</option>
+            <option value="20">20日以内に起きた</option>
+          </select>
+        </label>
+        <label class="check"><input id="gcSoon" type="checkbox" checked>もうすぐ起きそうも含む</label>
+      </div>
+      <div class="cross-cond">
+        <label><span>デッドクロス</span>
+          <select id="dc">
+            <option value="">指定なし</option>
+            <option value="soon">もうすぐ起きそう</option>
+            <option value="3">3日以内に起きた</option>
+            <option value="5">5日以内に起きた</option>
+            <option value="10">10日以内に起きた</option>
+            <option value="20">20日以内に起きた</option>
+          </select>
+        </label>
+        <label class="check"><input id="dcSoon" type="checkbox" checked>もうすぐ起きそうも含む</label>
+      </div>
+    </fieldset>
+  </form>
+
+  <section id="status" class="status" hidden></section>
+  <section id="market" class="market" hidden></section>
+  <div id="sortbar" class="sortbar" hidden>
+    <label for="sort">並び順</label>
+    <select id="sort">
+      <option value="score">買いスコアが高い順</option>
+      <option value="costAsc">最低購入金額が安い順</option>
+      <option value="costDesc">最低購入金額が高い順</option>
+      <option value="pbrAsc">PBR が低い順</option>
+      <option value="pbrDesc">PBR が高い順</option>
+      <option value="perAsc">PER が低い順</option>
+      <option value="perDesc">PER が高い順</option>
+    </select>
+    <span class="hint">表示している銘柄を並べ替えます。値の無い銘柄は最後に回します</span>
+  </div>
+  <ol id="list" class="list"></ol>
+</main>
+
+<footer class="foot">
+  <p>データは Yahoo! Finance の公開データ(約20分遅れ。取引時間外は前日の終値)を使い、決まったルールで機械的に判定しています。株主優待は Yahoo!ファイナンス(日本)の優待ページから取っています。決算の中身やニュースは読んでいません。値上がりを保証するものではないので、注文の前に証券会社の画面で今の値段を確認してください。</p>
+  <p>短期の売買は、損失を他の利益と相殺できる特定口座の方が向いています(NISA の損失は損益通算できません)。</p>
+</footer>
+
+<dialog id="glossary" class="glossary" aria-labelledby="g-title">
+  <div class="g-head">
+    <h2 id="g-title">📖 用語集</h2>
+    <button type="button" id="g-close" class="g-close" aria-label="閉じる">×</button>
+  </div>
+  <div id="g-body" class="g-body"></div>
+</dialog>
+
+<script src="glossary.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
