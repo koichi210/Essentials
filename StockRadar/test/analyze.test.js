@@ -93,6 +93,7 @@ test('短期: 上昇中の押し目を拾い、損切りは7%以内・利確は�
   assert.ok(r.target > r.buy.high);
   assert.strictEqual(r.deadline, a.addBusinessDays(bars[bars.length - 1].date, 10));
   assert.ok(r.score >= 80);
+  assert.strictEqual(r.prevClose, bars[bars.length - 2].close);
 });
 
 test('短期: 決算の直前・売買代金が少ない・日足が足りないものは除外', () => {
@@ -122,6 +123,8 @@ test('長期: 割安・高配当は点が高く、損切りは10%下・利確は
   assert.strictEqual(r.dividendYen, 4500);
   const capped = a.analyzeLong({ ...q, fiftyTwoWeekHigh: 1100 });
   assert.strictEqual(capped.target, a.floorTick(1100 * 0.99));
+  assert.strictEqual(r.prevClose, null);
+  assert.strictEqual(a.analyzeLong({ ...q, regularMarketPreviousClose: 985 }).prevClose, 985);
 });
 
 test('長期: 赤字(PER なし)は除外、200日線を大きく割ると注意が付く', () => {

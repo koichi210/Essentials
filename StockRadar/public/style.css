@@ -997,12 +997,14 @@ main,
 }
 
 .chart-info .rise,
-.snapview .rise {
+.snapview .rise,
+.price .rise {
   color: var(--rise);
 }
 
 .chart-info .fall,
-.snapview .fall {
+.snapview .fall,
+.price .fall {
   color: var(--fall);
 }
 

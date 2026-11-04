@@ -155,6 +155,16 @@ function renderStatus(r) {
   }
 }
 
+// 前日終値と、そこからの値動き(上がったら赤・下がったら青。チャートのローソク足と同じ)
+function prevCloseText(it) {
+  if (!(it.prevClose > 0)) {
+    return [];
+  }
+  const diff = Math.round((it.price - it.prevClose) * 10) / 10;
+  const pct = Math.round((it.price / it.prevClose - 1) * 1000) / 10;
+  return [` ／ 前日終値 ${price(it.prevClose)}円`, el('span', { class: `move ${tone(diff)}` }, `（${signed(diff, '円')}・${signed(pct, '%')}）`)];
+}
+
 function card(item, index, mode) {
   const head = el('div', { class: 'head' },
     el('span', { class: 'rank' }, `${index + 1}`),
@@ -177,6 +187,7 @@ function card(item, index, mode) {
   const priceLine = el('p', { class: 'price' },
     '現在値 ', el('b', {}, `${price(item.price)}円`),
     item.priceDate ? `（${formatDate(item.priceDate)}）` : '',
+    ...prevCloseText(item),
     ` ／ 100株で ${yen(item.cost)}`,
     ...(stats.length ? [' ／ ', ...stats.flatMap((s, i) => (i > 0 ? ['・', s] : [s]))] : []));
 
