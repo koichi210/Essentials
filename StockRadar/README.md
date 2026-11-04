@@ -23,9 +23,23 @@ Node.js 20 以上。npm パッケージは使いません。
 start.bat        起動済みならブラウザで開くだけ、未起動なら起動
 stop.bat         8766 で LISTEN 中のプロセスを止める
 autostart.ps1    窓なしで裏起動（SecretaryGadget の「株レーダー」メニューから呼ばれる）
+remote-setup.ps1 スマホから開けるようにする（下の「スマホから開く」）
 ```
 
-待ち受けは `http://127.0.0.1:8766/` だけです（他の PC からはつながりません）。テストは `node --test test/analyze.test.js`。
+待ち受けは `http://127.0.0.1:8766/` だけです（他の PC からは直接つながりません）。テストは `node --test test/analyze.test.js`。
+
+## スマホから開く（Tailscale）
+
+自分の Tailscale（VPN）につないだ端末だけが開けるようにします。インターネットには公開しません（Funnel は使いません）。
+
+1. PC とスマホに [Tailscale](https://tailscale.com/download) を入れて、同じアカウントでログインする
+2. Tailscale の管理画面（DNS）で MagicDNS と HTTPS Certificates を有効にする
+3. PC で `powershell -ExecutionPolicy Bypass -File remote-setup.ps1` を実行する
+4. スマホで Tailscale をオンにして、表示された `https://<PC の名前>.<tailnet>.ts.net/` を開く
+
+`remote-setup.ps1` は、PC の Tailscale の名前を `%LOCALAPPDATA%\StockRadar\config.json` の `allowedHosts` に書き、ログオン時にサーバーを起動するタスク「StockRadar」を登録し、`tailscale serve` で `127.0.0.1:8766` へ中継します。サーバーの待ち受けは `127.0.0.1` のままです。やめるときは `-Remove` を付けて実行します。PC がスリープ中や電源オフのときは開けません。
+
+受け付ける名前は `config.json` の `allowedHosts` か、環境変数 `STOCK_RADAR_HOSTS`（カンマ区切り）で足せます。名前はリポジトリに書かず、PC の中だけに置きます。
 
 ## 判定のルール
 
@@ -98,4 +112,4 @@ PER（予想があれば予想）・PBR・ROE・配当利回り・配当性向�
 
 サーバが書くのはスナップショットだけで、`%LOCALAPPDATA%\StockRadar\snapshots\<保存した時刻>.json` に1つずつ保存します。`autostart.ps1` で起動したときは、ログを `%LOCALAPPDATA%\StockRadar\server.log` に書きます（どちらも環境変数 `STOCK_RADAR_DATA` で場所を変えられます）。入力した予算・前回の結果・並び順は、ブラウザの localStorage に保存します。
 
-スナップショットの保存と削除は、この画面から送られたもの（Origin が `127.0.0.1:8766` か `localhost:8766`）だけ受け付けます。
+スナップショットの保存と削除は、この画面から送られたもの（Origin が `127.0.0.1:8766`・`localhost:8766`・`allowedHosts` の名前のどれか）だけ受け付けます。

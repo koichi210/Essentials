@@ -11,7 +11,6 @@ const a = require('./analyze.js');
 const PORT = Number(process.env.PORT) || 8766;
 const HOST = '127.0.0.1';
 const PUBLIC_DIR = path.join(__dirname, 'public');
-const ALLOWED_HOSTS = new Set([`127.0.0.1:${PORT}`, `localhost:${PORT}`]);
 const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36';
 const MIN_MARKET_CAP = 5e10;
 const MAX_UNIVERSE = 1000;
@@ -26,10 +25,37 @@ const DATA_DIR = process.env.STOCK_RADAR_DATA || path.join(process.env.LOCALAPPD
 const SNAP_DIR = path.join(DATA_DIR, 'snapshots');
 const SNAP_ID = /^\d{13}$/;
 const MAX_BODY = 4 * 1024 * 1024;
+// 待ち受けは 127.0.0.1 だけ。スマホから Tailscale serve 経由で開くときの名前(xxx.ts.net)は
+// DATA_DIR/config.json の allowedHosts か環境変数 STOCK_RADAR_HOSTS(カンマ区切り)で足す。公開リポジトリに書かないため
+const ALLOWED_HOSTS = new Set([`127.0.0.1:${PORT}`, `localhost:${PORT}`, ...extraHosts()]);
 const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.svg': 'image/svg+xml', '.ico': 'image/x-icon' };
 
 function log(message) {
   console.log(`${new Date().toISOString()} ${message}`);
+}
+
+function extraHosts() {
+  const hosts = String(process.env.STOCK_RADAR_HOSTS || '').split(',');
+  try {
+    const config = JSON.parse(fs.readFileSync(path.join(DATA_DIR, 'config.json'), 'utf8'));
+    if (Array.isArray(config.allowedHosts)) {
+      hosts.push(...config.allowedHosts);
+    }
+  } catch (e) {
+    if (e.code !== 'ENOENT') {
+      console.log(`config.json を読めませんでした: ${e.message}`);
+    }
+  }
+  return hosts.map((h) => String(h).trim().toLowerCase().replace(/\.$/, '')).filter(Boolean);
+}
+
+// Origin(https://xxx.ts.net など)から host[:port] を取り出す。読めなければ ''
+function originHost(origin) {
+  try {
+    return new URL(origin).host;
+  } catch {
+    return '';
+  }
 }
 
 // ---------------------------------------------------------------- Yahoo Finance
@@ -511,15 +537,14 @@ function serveStatic(res, pathname) {
 
 async function handle(req, res) {
   // DNS リバインディング対策: 自分宛ての Host 以外は断る
-  if (!ALLOWED_HOSTS.has(req.headers.host)) {
+  if (!ALLOWED_HOSTS.has(String(req.headers.host || '').toLowerCase())) {
     res.writeHead(403).end();
     return;
   }
   const url = new URL(req.url, `http://${req.headers.host}`);
   if (url.pathname.startsWith('/api/snapshots')) {
     // 書き換える操作は、この画面から来たものだけ受け付ける(よそのページからの送信を断る)
-    const origin = String(req.headers.origin || '').replace(/^http:\/\//, '');
-    if (req.method !== 'GET' && !ALLOWED_HOSTS.has(origin)) {
+    if (req.method !== 'GET' && !ALLOWED_HOSTS.has(originHost(req.headers.origin))) {
       res.writeHead(403).end();
       return;
     }
@@ -578,5 +603,5 @@ if (require.main === module) {
         res.writeHead(500).end();
       }
     });
-  }).listen(PORT, HOST, () => log(`株レーダー http://${HOST}:${PORT}/`));
+  }).listen(PORT, HOST, () => log(`株レーダー http://${HOST}:${PORT}/ (受け付ける名前: ${[...ALLOWED_HOSTS].join(', ')})`));
 }
