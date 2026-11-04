@@ -11,7 +11,10 @@
 <header class="top">
   <div class="title-row">
     <h1><img src="icon.svg" alt="" width="28" height="28">株レーダー</h1>
-    <button type="button" class="open-glossary" data-term="">📖 用語集</button>
+    <span class="top-buttons">
+      <button type="button" id="open-snaps" class="open-glossary">📸 スナップショット</button>
+      <button type="button" class="open-glossary" data-term="">📖 用語集</button>
+    </span>
   </div>
   <p class="sub">日本株の買い候補と、買ったあとに売る値段(利確・損切り)の目安を、ボタンを押した時点のデータで出します。下線のついた言葉を押すと、意味と見かたが出ます</p>
 </header>
@@ -78,15 +81,19 @@
             <option value="5">5日以内に起きた</option>
             <option value="10">10日以内に起きた</option>
             <option value="20">20日以内に起きた</option>
+            <option value="not5">5日以内に起きた銘柄を除く</option>
+            <option value="not10">10日以内に起きた銘柄を除く</option>
+            <option value="not20">20日以内に起きた銘柄を除く</option>
           </select>
         </label>
-        <label class="check"><input id="dcSoon" type="checkbox" checked>もうすぐ起きそうも含む</label>
+        <label class="check"><input id="dcSoon" type="checkbox" checked><span id="dcSoonText">もうすぐ起きそうも含む</span></label>
       </div>
     </fieldset>
   </form>
 
   <section id="status" class="status" hidden></section>
   <section id="market" class="market" hidden></section>
+  <section id="snapview" class="snapview" hidden></section>
   <div id="sortbar" class="sortbar" hidden>
     <label for="sort">並び順</label>
     <select id="sort">
@@ -99,6 +106,8 @@
       <option value="perDesc">PER が高い順</option>
     </select>
     <span class="hint">表示している銘柄を並べ替えます。値の無い銘柄は最後に回します</span>
+    <button type="button" id="snap-save" class="snap-save">📸 この結果を保存</button>
+    <span id="snap-msg" class="hint" role="status"></span>
   </div>
   <ol id="list" class="list"></ol>
 </main>
@@ -114,6 +123,17 @@
     <button type="button" id="g-close" class="g-close" aria-label="閉じる">×</button>
   </div>
   <div id="g-body" class="g-body"></div>
+</dialog>
+
+<dialog id="snaps" class="glossary" aria-labelledby="s-title">
+  <div class="g-head">
+    <h2 id="s-title">📸 スナップショット</h2>
+    <button type="button" id="s-close" class="g-close" aria-label="閉じる">×</button>
+  </div>
+  <div class="g-body">
+    <p class="hint">調べた結果を保存しておくと、あとで開いて「その後どう動いたか」を今の値段と比べられます。</p>
+    <ul id="s-list" class="s-list"></ul>
+  </div>
 </dialog>
 
 <script src="glossary.js"></script>

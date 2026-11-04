@@ -212,7 +212,8 @@ function matchCross(cross, kind, cond) {
   }
   const recent = cond.days != null && cross.last && cross.last.kind === kind && cross.last.daysAgo < cond.days;
   const soon = cond.soon && cross.soon && cross.soon.kind === kind;
-  return Boolean(recent || soon);
+  // cond.not なら、条件に当たる銘柄を除く
+  return Boolean(recent || soon) !== Boolean(cond.not);
 }
 
 // showDays 日以内の交差と「もうすぐ」を、押しポイント・気をつけるところの形にする
@@ -280,9 +281,38 @@ function chartSeries(bars, periods, show) {
     }
   }
   return {
-    bars: bars.slice(from).map((b) => ({ date: b.date, o: b.open, h: b.high, l: b.low, c: b.close, v: b.volume })),
+    // pc は前の足の終値(ローソク足の色を前日比で決めるため)
+    bars: bars.slice(from).map((b, i) => ({ date: b.date, o: b.open, h: b.high, l: b.low, c: b.close, v: b.volume, pc: from + i > 0 ? bars[from + i - 1].close : null })),
     ma,
     crosses,
+  };
+}
+
+// スナップショットの銘柄が、その後どう動いたか。since(そのときの株価の日付)より後の足で、
+// 利確・損切りのどちらに先に届いたかを見る(同じ足で両方なら both。1日の中の順番は分からない)
+function compareSince(item, bars, since) {
+  if (bars.length === 0) {
+    return null;
+  }
+  const after = bars.filter((b) => b.date > since);
+  const last = bars[bars.length - 1];
+  let hit = null;
+  for (const b of after) {
+    const target = b.high >= item.target;
+    const stop = b.low <= item.stop;
+    if (target || stop) {
+      hit = { kind: target && stop ? 'both' : target ? 'target' : 'stop', date: b.date };
+      break;
+    }
+  }
+  return {
+    price: last.close,
+    date: last.date,
+    change: round1((last.close / item.price - 1) * 100),
+    high: after.length > 0 ? Math.max(...after.map((b) => b.high)) : null,
+    low: after.length > 0 ? Math.min(...after.map((b) => b.low)) : null,
+    days: after.length,
+    hit,
   };
 }
 
@@ -825,7 +855,7 @@ module.exports = {
   LOT, MIN_TURNOVER,
   jstDate, addBusinessDays, tickOf, floorTick, ceilTick,
   sma, rsi, atr, macd, fundamentals, parseChart, earningsInfo, reactionIndex,
-  CROSS_TYPES, crossInfo, crossFromDiffs, matchCross, crossPoint, matchValuation, chartSeries,
+  CROSS_TYPES, crossInfo, crossFromDiffs, matchCross, crossPoint, matchValuation, chartSeries, compareSince,
   analyzeShort, analyzeLong, analyzeMarket,
   parseDividends, parseIncentive, rightsDuring,
 };

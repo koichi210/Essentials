@@ -204,6 +204,10 @@ test('クロスの条件: N日以内(今日を1日目)・もうすぐも含む�
   assert.strictEqual(a.matchCross(soonDc, 'dc', { days: 5, soon: true }), true);
   assert.strictEqual(a.matchCross(soonDc, 'dc', { days: 5, soon: false }), false);
   assert.strictEqual(a.matchCross(soonDc, 'dc', { days: null, soon: true }), true);
+  // 除く: 条件に当たる銘柄は false、当たらない銘柄は true
+  assert.strictEqual(a.matchCross(soonDc, 'dc', { days: 5, soon: true, not: true }), false);
+  assert.strictEqual(a.matchCross(soonDc, 'dc', { days: 5, soon: false, not: true }), true);
+  assert.strictEqual(a.matchCross(gc2, 'dc', { days: 20, soon: true, not: true }), true);
   const pts = a.crossPoint({ type: 'ma5_25', last: { kind: 'gc', daysAgo: 0 }, soon: null });
   assert.strictEqual(pts[0].good, true);
   assert.ok(pts[0].label.includes('5日線と25日線') && pts[0].text.startsWith('今日'));
@@ -228,6 +232,9 @@ test('グラフ用: 表示する本数だけ切り出し、線と交差の位置
   assert.ok(s5.crosses.some((x) => x.kind === 'gc' && x.index > 20));
   // 線を引くのに足りない前半は null
   assert.strictEqual(a.chartSeries(bars, [5, 25], 50).ma[25][0], null);
+  // pc は前の足の終値(いちばん古い足は null)
+  assert.strictEqual(s5.bars[0].pc, bars[19].close);
+  assert.strictEqual(a.chartSeries(bars, [5, 25], 50).bars[0].pc, null);
 });
 
 test('地合い: 25日線・75日線との位置で3段階', () => {
@@ -251,6 +258,9 @@ test('調査の条件の検証', () => {
   assert.ok(p('max=700000&per=abc').error);
   assert.ok(p('max=700000&cross=constructor').error);
   assert.ok(p('max=700000&gc=99').error);
+  assert.deepStrictEqual(p('max=700000&dc=not10&dcSoon=1').dc, { days: 10, soon: true, not: true });
+  assert.ok(p('max=700000&dc=not99').error);
+  assert.ok(p('max=700000&dc=notx').error);
 });
 
 test('配当: 履歴から権利確定月・直近1年の合計・次の確定月', () => {
@@ -296,4 +306,34 @@ test('短期の保有中に来る権利確定(優待は権利付き最終日、�
   assert.deepStrictEqual(a.rightsDuring('2026-11-20', '2026-12-04', [11, 5], []), [{ kind: '配当', date: '2026-11-30' }]);
   assert.deepStrictEqual(a.rightsDuring('2026-11-02', '2026-11-16', [11, 5], []), []);
   assert.deepStrictEqual(a.rightsDuring('2027-02-15', '2027-03-01', [3], ['2027-02-24', '2027-08-26']), [{ kind: '優待', date: '2027-02-24' }]);
+});
+
+test('スナップショット: その後の値段と、利確・損切りのどちらに先に届いたか', () => {
+  const bars = makeBars([1000, 1010, 1020, 1060, 1100, 1080]);
+  const since = bars[1].date;
+  const item = { price: 1010, target: 1090, stop: 950 };
+  const c = a.compareSince(item, bars, since);
+  assert.strictEqual(c.price, 1080);
+  assert.strictEqual(c.date, bars[5].date);
+  assert.strictEqual(c.change, 6.9);
+  assert.strictEqual(c.days, 4);
+  // makeBars の高値は前日と当日の終値の高い方+5。1060 の日は高値 1065 で届かず、1100 の日(高値 1105)に届く
+  assert.deepStrictEqual(c.hit, { kind: 'target', date: bars[4].date });
+  assert.strictEqual(c.high, 1105);
+  assert.strictEqual(c.low, 1005);
+  assert.deepStrictEqual(a.compareSince({ ...item, target: 1024, stop: 1006 }, bars, since).hit, { kind: 'both', date: bars[2].date });
+  assert.deepStrictEqual(a.compareSince({ ...item, target: 2000, stop: 1012 }, bars, since).hit, { kind: 'stop', date: bars[2].date });
+  assert.strictEqual(a.compareSince({ ...item, target: 2000 }, bars, since).hit, null);
+  // 保存した日より後の足が無ければ、高値・安値は null
+  assert.strictEqual(a.compareSince(item, bars, bars[5].date).high, null);
+  assert.strictEqual(a.compareSince(item, [], since), null);
+});
+
+test('スナップショット: 保存できるのは調べた結果の形をしたものだけ', () => {
+  const ok = { mode: 'short', at: '2026-11-04T01:00:00.000Z', items: [{ code: '7203', price: 3000, target: 3200, stop: 2900 }] };
+  assert.strictEqual(s.isScanResult(ok), true);
+  assert.strictEqual(s.isScanResult({ ...ok, mode: 'x' }), false);
+  assert.strictEqual(s.isScanResult({ ...ok, items: [{ code: '../x', price: 1, target: 1, stop: 1 }] }), false);
+  assert.strictEqual(s.isScanResult({ ...ok, items: [{ code: '7203', price: 'a', target: 1, stop: 1 }] }), false);
+  assert.strictEqual(s.isScanResult(null), false);
 });

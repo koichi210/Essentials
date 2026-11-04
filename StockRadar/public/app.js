@@ -1,4 +1,5 @@
-// 株レーダーの画面。入力は localStorage に覚えておき、結果は /api/scan から受け取って並べる
+// 株レーダーの画面。入力は localStorage に覚えておき、結果は /api/scan から受け取って並べる。
+// スナップショット(/api/snapshots)は結果をサーバのファイルに保存し、あとで開いて今の値段と比べる
 'use strict';
 
 const STORE_KEY = 'stockRadar.form';
@@ -11,6 +12,9 @@ const $ = (id) => document.getElementById(id);
 const yen = (v) => `${Math.round(v).toLocaleString('ja-JP')}円`;
 const price = (v) => v.toLocaleString('ja-JP', { maximumFractionDigits: 1 });
 const escapeAttr = (s) => String(s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
+const signed = (v, unit = '') => `${v > 0 ? '+' : v < 0 ? '−' : '±'}${Math.abs(v).toLocaleString('ja-JP', { maximumFractionDigits: 1 })}${unit}`;
+// 上がった(赤)・下がった(青)の色の class
+const tone = (v) => (v > 0 ? 'rise' : v < 0 ? 'fall' : '');
 
 function load(key) {
   try {
@@ -101,22 +105,39 @@ function openGlossary(id) {
 
 // ---------------------------------------------------------------- 描画
 
-function renderStatus(r) {
-  const s = $('status');
-  s.className = 'status';
-  const excluded = Object.entries(r.excluded).map(([k, v]) => `${k} ${v}`).join('・');
-  const f = r.filter || {};
-  const crossText = (label, c) => (c ? `${label}: ${c.days == null ? 'もうすぐ起きそう' : `${c.days}日以内${c.soon ? '(もうすぐも含む)' : ''}`}` : null);
+// 絞り込みの条件を1行にする(無ければ null)
+function filterText(f = {}) {
+  const crossText = (label, c) => {
+    if (!c) {
+      return null;
+    }
+    if (c.days == null) {
+      return `${label}: もうすぐ起きそう`;
+    }
+    if (c.not) {
+      return `${label}: ${c.days}日以内に起きた銘柄を除く${c.soon ? '(もうすぐも除く)' : ''}`;
+    }
+    return `${label}: ${c.days}日以内${c.soon ? '(もうすぐも含む)' : ''}`;
+  };
   const conds = [
     f.per != null ? `PER ${f.per}倍以下` : null,
     f.pbr != null ? `PBR ${f.pbr}倍未満` : null,
     crossText('ゴールデンクロス', f.gc),
     crossText('デッドクロス', f.dc),
   ].filter(Boolean);
+  return conds.length > 0 ? `${conds.join('・')}${f.gc || f.dc ? `（${f.crossName}）` : ''}` : null;
+}
+
+function renderStatus(r) {
+  const s = $('status');
+  s.className = 'status';
+  const excluded = Object.entries(r.excluded).map(([k, v]) => `${k} ${v}`).join('・');
+  const f = r.filter || {};
+  const conds = filterText(f);
   s.textContent = [
     `${formatTime(r.at)} に調べました（${MODE_LABEL[r.mode]}・100株で${yen(r.budget.min)}〜${yen(r.budget.max)}）`,
     r.dataTime ? `株価は ${formatTime(r.dataTime)} 時点` : null,
-    conds.length > 0 ? `絞り込み: ${conds.join('・')}${f.gc || f.dc ? `（${f.crossName}）` : ''}` : null,
+    conds ? `絞り込み: ${conds}` : null,
     r.filtered != null && r.filtered !== r.universe ? `対象 ${r.universe} 銘柄 → PER・PBR で ${r.filtered} 銘柄` : `対象 ${r.universe} 銘柄`,
     f.longLimit ? `点の高い ${f.longLimit} 銘柄でクロスを確認` : `${r.analyzed} 銘柄を判定`,
     excluded ? `除外: ${excluded}` : null,
@@ -276,11 +297,14 @@ function drawChart(body, data, item) {
   const frame = el('div', { class: 'chart-frame' });
   const periods = Object.keys(data.ma).map(Number);
   const maName = MA_LABEL[data.interval];
+  const prev = data.interval === '1wk' ? '前の週' : '前の日';
   const legend = el('ul', { class: 'chart-legend' },
-    el('li', {}, el('i', { class: 'sw up' }), '上がった足'),
-    el('li', {}, el('i', { class: 'sw down' }), '下がった足'),
+    el('li', {}, el('i', { class: 'sw rise' }), `${prev}より上がった`),
+    el('li', {}, el('i', { class: 'sw fall' }), `${prev}より下がった`),
+    el('li', {}, el('i', { class: 'sw up' }), '中抜き＝始値より上で終わった'),
+    el('li', {}, el('i', { class: 'sw down' }), '塗りつぶし＝始値より下で終わった'),
     periods.map((n, i) => el('li', {}, el('i', { class: `sw line ma${i}` }), maName(n))),
-    el('li', {}, el('b', { class: 'mk gc' }, '▲'), el('b', { class: 'mk dc' }, '▼'), `${maName(periods[0])}と${maName(periods[1])}のクロス`),
+    el('li', {}, el('b', { class: 'mk' }, '▲'), 'ゴールデンクロス', el('b', { class: 'mk' }, '▼'), `デッドクロス(${maName(periods[0])}と${maName(periods[1])})`),
     el('li', {}, el('i', { class: 'sw band' }), '買いの範囲'),
     el('li', {}, el('i', { class: 'sw dash gain' }), '利確'),
     el('li', {}, el('i', { class: 'sw dash loss' }), '損切り'));
@@ -339,14 +363,15 @@ function drawChart(body, data, item) {
       parts.push(`<rect class="vol" x="${x(i) - bodyW / 2}" y="${vy(bars[i].v)}" width="${bodyW}" height="${volTop + volH - vy(bars[i].v)}"/>`);
     }
     parts.push(`<line class="base" x1="${L}" x2="${L + plotW}" y1="${volTop + volH}" y2="${volTop + volH}"/>`);
-    // ローソク足
+    // ローソク足。色は前の足の終値より上がったか(赤)・下がったか(青)、中抜き・塗りつぶしは始値と終値のどちらが高いか
     for (let i = 0; i < bars.length; i++) {
       const b = bars[i];
       const up = b.c >= b.o;
+      const move = b.pc == null || b.c === b.pc ? 'flat' : b.c > b.pc ? 'rise' : 'fall';
       const top = y(Math.max(b.o, b.c));
       const h = Math.max(1, y(Math.min(b.o, b.c)) - top);
-      parts.push(`<line class="wick" x1="${x(i)}" x2="${x(i)}" y1="${y(b.h)}" y2="${y(b.l)}"/>`);
-      parts.push(`<rect class="${up ? 'up' : 'down'}" x="${x(i) - bodyW / 2}" y="${top}" width="${bodyW}" height="${h}"/>`);
+      parts.push(`<line class="wick ${move}" x1="${x(i)}" x2="${x(i)}" y1="${y(b.h)}" y2="${y(b.l)}"/>`);
+      parts.push(`<rect class="${up ? 'up' : 'down'} ${move}" x="${x(i) - bodyW / 2}" y="${top}" width="${bodyW}" height="${h}"/>`);
     }
     // 移動平均線(値の無い前半は描かない)
     periods.forEach((n, k) => {
@@ -400,9 +425,11 @@ function drawChart(body, data, item) {
     const showInfo = (i) => {
       const b = bars[i];
       const mas = periods.map((n) => (data.ma[n][i] != null ? `${maName(n)} ${price(data.ma[n][i])}` : null)).filter(Boolean);
+      const diff = b.pc == null ? null : b.c - b.pc;
       info.replaceChildren(
         el('b', {}, `${formatDate(b.date)}${data.interval === '1wk' ? 'の週' : ''}`),
         ` 始 ${price(b.o)}・高 ${price(b.h)}・安 ${price(b.l)}・終 `, el('b', {}, price(b.c)),
+        ...(diff == null ? [] : [` ／ ${data.interval === '1wk' ? '前週比' : '前日比'} `, el('b', { class: tone(diff) }, `${signed(diff)}（${signed((diff / b.pc) * 100, '%')}）`)]),
         ` ／ 出来高 ${Math.round(b.v).toLocaleString('ja-JP')}株`,
         mas.length ? ` ／ ${mas.join('・')}` : '');
     };
@@ -504,10 +531,14 @@ const SORTS = {
 };
 
 let current = null;
+// 開いているスナップショット(最新の結果を出しているときは null)
+let viewing = null;
 
-function render(r) {
+function render(r, snap = null) {
   current = r;
+  viewing = snap;
   renderStatus(r);
+  renderSnapView();
   renderList();
 }
 
@@ -521,6 +552,182 @@ function renderList() {
   // サーバは買いスコアの順で返すので、それを元に並べ替える
   const items = [...current.items].sort(SORTS[$('sort').value] || SORTS.score);
   list.replaceChildren(...items.map((item, i) => card(item, i, current.mode)));
+}
+
+// ---------------------------------------------------------------- スナップショット
+
+async function saveSnapshot() {
+  const button = $('snap-save');
+  const msg = $('snap-msg');
+  button.disabled = true;
+  try {
+    const res = await fetch('/api/snapshots', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ result: current }) });
+    const body = await res.json();
+    if (!res.ok) {
+      throw new Error(body.error || `エラー(${res.status})`);
+    }
+    msg.textContent = `保存しました（${formatTime(body.savedAt)}）。右上の「📸 スナップショット」から開けます`;
+  } catch (e) {
+    msg.textContent = `保存できませんでした: ${e.message}`;
+    button.disabled = false;
+  }
+}
+
+async function openSnapshots() {
+  const list = $('s-list');
+  list.replaceChildren(el('li', { class: 'hint' }, '読み込んでいます…'));
+  if (!$('snaps').open) {
+    $('snaps').showModal();
+  }
+  try {
+    const res = await fetch('/api/snapshots');
+    const snaps = await res.json();
+    if (!res.ok) {
+      throw new Error(snaps.error || `エラー(${res.status})`);
+    }
+    list.replaceChildren(...(snaps.length > 0
+      ? snaps.map(snapRow)
+      : [el('li', { class: 'hint' }, 'まだ保存していません。調べた結果の上にある「📸 この結果を保存」で保存できます。')]));
+  } catch (e) {
+    list.replaceChildren(el('li', { class: 'hint' }, `読み込めませんでした: ${e.message}`));
+  }
+}
+
+function snapRow(s) {
+  const open = el('button', { type: 'button', class: 'snap-button' }, '開いて今と比べる');
+  const del = el('button', { type: 'button', class: 'snap-button quiet' }, '削除');
+  const conds = filterText(s.filter);
+  const row = el('li', {},
+    el('div', { class: 's-main' },
+      el('b', {}, `${formatTime(s.savedAt)} に保存`),
+      ` ${MODE_LABEL[s.mode]}・100株で${yen(s.budget.min)}〜${yen(s.budget.max)}・${s.count}銘柄`,
+      conds ? el('small', {}, `絞り込み: ${conds}`) : null,
+      el('small', {}, `${s.names.join('・')}${s.count > s.names.length ? ' など' : ''}`)),
+    el('div', { class: 's-actions' }, open, del));
+  open.addEventListener('click', () => openSnapshot(s.id));
+  del.addEventListener('click', async () => {
+    if (!confirm(`${formatTime(s.savedAt)} に保存したスナップショットを削除しますか？`)) {
+      return;
+    }
+    const res = await fetch(`/api/snapshots/${s.id}`, { method: 'DELETE' });
+    if (res.ok) {
+      row.remove();
+      if (viewing && viewing.id === s.id) {
+        backToLatest();
+      }
+    }
+  });
+  return row;
+}
+
+async function openSnapshot(id) {
+  $('snaps').close();
+  try {
+    const res = await fetch(`/api/snapshots/${id}`);
+    const snap = await res.json();
+    if (!res.ok) {
+      throw new Error(snap.error || `エラー(${res.status})`);
+    }
+    render(snap.result, snap);
+    $('snapview').scrollIntoView({ block: 'start' });
+    const cres = await fetch(`/api/snapshots/${id}/compare`);
+    const cmp = await cres.json();
+    // 比べている間に別の結果に切り替えていたら出さない
+    if (viewing !== snap) {
+      return;
+    }
+    if (!cres.ok) {
+      $('snap-compare').textContent = `その後の値動きを取れませんでした: ${cmp.error || cres.status}`;
+      return;
+    }
+    renderCompare(snap, cmp);
+  } catch (e) {
+    showError(`スナップショットを開けませんでした: ${e.message}`);
+  }
+}
+
+function backToLatest() {
+  const last = load(LAST_KEY);
+  if (last && Array.isArray(last.items)) {
+    render(last);
+    return;
+  }
+  current = null;
+  viewing = null;
+  for (const id of ['status', 'market', 'snapview', 'sortbar']) {
+    $(id).hidden = true;
+  }
+  $('list').replaceChildren();
+}
+
+function renderSnapView() {
+  const v = $('snapview');
+  $('snap-save').hidden = Boolean(viewing);
+  $('snap-save').disabled = false;
+  $('snap-msg').textContent = '';
+  if (!viewing) {
+    v.hidden = true;
+    v.replaceChildren();
+    return;
+  }
+  const back = el('button', { type: 'button', class: 'snap-button' }, '最新の結果に戻る');
+  back.addEventListener('click', backToLatest);
+  v.replaceChildren(
+    el('div', { class: 'snap-head' },
+      el('p', {}, el('b', {}, `📸 ${formatTime(viewing.savedAt)} に保存したスナップショット`), 'を表示しています。銘柄カードは保存したときの内容で、チャートだけ今のデータです。'),
+      back),
+    el('div', { id: 'snap-compare', class: 'hint' }, 'その後の値動きを調べています…'));
+  v.hidden = false;
+}
+
+function hitText(hit, item) {
+  if (!hit) {
+    return `まだ（利確 ${price(item.target)}・損切り ${price(item.stop)}）`;
+  }
+  const when = `（${formatDate(hit.date)}）`;
+  return { target: `🎯 利確に届いた${when}`, stop: `🛑 損切りに届いた${when}`, both: `⚡ 同じ日に両方${when}` }[hit.kind];
+}
+
+// 保存したときと今を比べる表。最新の検索結果(同じ期間で、保存より後に調べたもの)があれば、今の順位と新顔も出す
+function renderCompare(snap, cmp) {
+  const items = snap.result.items;
+  const live = load(LAST_KEY);
+  const useLive = Boolean(live && Array.isArray(live.items) && live.mode === snap.result.mode && live.at > snap.result.at);
+  const liveRank = new Map(useLive ? live.items.map((i, k) => [i.code, k + 1]) : []);
+  const rows = items.map((item, k) => ({ item, rank: k + 1, c: cmp.rows[k] && !cmp.rows[k].error ? cmp.rows[k] : null }));
+  const ok = rows.filter((r) => r.c);
+  const count = (kind) => ok.filter((r) => (r.c.hit ? r.c.hit.kind : null) === kind).length;
+  const avg = ok.length > 0 ? Math.round((ok.reduce((sum, r) => sum + r.c.change, 0) / ok.length) * 10) / 10 : null;
+  const summary = el('p', { class: 'snap-summary' },
+    `${ok.length}銘柄のその後: `,
+    el('b', {}, `🎯 利確に届いた ${count('target')}`), '・', el('b', {}, `🛑 損切りに届いた ${count('stop')}`),
+    count('both') > 0 ? `・同じ日に両方 ${count('both')}` : '',
+    `・まだどちらも ${count(null)}`,
+    avg == null ? '' : [' ／ 値段の変化の平均 ', el('b', { class: tone(avg) }, signed(avg, '%'))]);
+  const head = ['順位', '銘柄', '保存したとき', '今', '変化', 'その後の高値 / 安値', '利確・損切り', useLive ? '最新の検索' : null].filter(Boolean);
+  const table = el('div', { class: 'snap-table-wrap' }, el('table', { class: 'snap-table' },
+    el('thead', {}, el('tr', {}, head.map((h) => el('th', {}, h)))),
+    el('tbody', {}, rows.map(({ item, rank, c }) => el('tr', {},
+      el('td', { class: 'num' }, `${rank}`),
+      el('td', {}, el('b', {}, item.name), el('small', {}, ` ${item.code}`)),
+      el('td', { class: 'num' }, `${price(item.price)}円`, item.priceDate ? el('small', {}, `（${formatDate(item.priceDate)}）`) : null),
+      c
+        ? [
+          el('td', { class: 'num' }, `${price(c.price)}円`, el('small', {}, `（${formatDate(c.date)}）`)),
+          el('td', { class: `num ${tone(c.change)}` }, signed(c.change, '%')),
+          el('td', { class: 'num' }, c.high == null ? '—' : `${price(c.high)} / ${price(c.low)}`),
+          el('td', {}, hitText(c.hit, item)),
+        ]
+        : el('td', { colspan: '4', class: 'hint' }, '値動きを取れませんでした'),
+      useLive ? el('td', {}, liveRank.has(item.code) ? `${liveRank.get(item.code)}位` : '圏外') : null)))));
+  const fresh = useLive ? live.items.filter((i) => !items.some((s) => s.code === i.code)) : [];
+  const notes = [
+    el('p', { class: 'hint' }, '「その後」は保存したときの株価の日より後の日足で見ています。1日の中で利確と損切りのどちらが先に来たかは分からないので、同じ日に両方届いたときは「同じ日に両方」と出します。'),
+    useLive ? el('p', { class: 'hint' }, `「最新の検索」は ${formatTime(live.at)} に調べた結果（そのときの条件）での順位です。`) : null,
+    fresh.length > 0 ? el('p', {}, el('b', {}, '🆕 最新の検索で新しく入った銘柄: '), fresh.map((i) => `${i.name}(${i.code})`).join('・')) : null,
+  ];
+  $('snap-compare').className = 'snap-compare';
+  $('snap-compare').replaceChildren(summary, table, ...notes.filter(Boolean));
 }
 
 function showError(message) {
@@ -550,11 +757,15 @@ function readForm() {
   return f;
 }
 
-// 「N日以内」を選んだときだけ「もうすぐ起きそうも含む」を選べる
+// 「N日以内」を選んだときだけ「もうすぐ起きそうも含む」を選べる。「除く」のときは「もうすぐ起きそうも除く」
 function syncCrossChecks() {
   for (const kind of ['gc', 'dc']) {
     const v = $(kind).value;
     $(`${kind}Soon`).disabled = v === '' || v === 'soon';
+    const text = $(`${kind}SoonText`);
+    if (text) {
+      text.textContent = v.startsWith('not') ? 'もうすぐ起きそうも除く' : 'もうすぐ起きそうも含む';
+    }
   }
 }
 
@@ -666,12 +877,17 @@ function init() {
     }
   });
   $('g-close').addEventListener('click', () => $('glossary').close());
+  $('s-close').addEventListener('click', () => $('snaps').close());
   // 枠の外(背景)を押しても閉じる
-  $('glossary').addEventListener('click', (e) => {
-    if (e.target === e.currentTarget) {
-      e.currentTarget.close();
-    }
-  });
+  for (const id of ['glossary', 'snaps']) {
+    $(id).addEventListener('click', (e) => {
+      if (e.target === e.currentTarget) {
+        e.currentTarget.close();
+      }
+    });
+  }
+  $('snap-save').addEventListener('click', saveSnapshot);
+  $('open-snaps').addEventListener('click', openSnapshots);
 }
 
 init();

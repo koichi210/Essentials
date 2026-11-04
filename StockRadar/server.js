@@ -1,9 +1,10 @@
 // 株レーダーのサーバ。Yahoo Finance の公開データ(スクリーナー・日足)を取ってきて analyze.js で判定し、
-// 画面(public/)へ JSON で渡す。npm パッケージは使わない。ファイルには何も書かない。
+// 画面(public/)へ JSON で渡す。npm パッケージは使わない。書くのはスナップショットのファイルだけ。
 'use strict';
 
 const http = require('http');
 const fs = require('fs');
+const os = require('os');
 const path = require('path');
 const a = require('./analyze.js');
 
@@ -21,6 +22,10 @@ const SESSION_MS = 60 * 60 * 1000;
 const EXTRAS_MS = 12 * 60 * 60 * 1000;
 const HISTORY_MS = 10 * 60 * 1000;
 const LONG_CHARTS = 150;
+const DATA_DIR = process.env.STOCK_RADAR_DATA || path.join(process.env.LOCALAPPDATA || os.homedir(), 'StockRadar');
+const SNAP_DIR = path.join(DATA_DIR, 'snapshots');
+const SNAP_ID = /^\d{13}$/;
+const MAX_BODY = 4 * 1024 * 1024;
 const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.svg': 'image/svg+xml', '.ico': 'image/x-icon' };
 
 function log(message) {
@@ -192,7 +197,8 @@ function optionalNumber(params, name, lo, hi) {
   return Number.isFinite(v) && v >= lo && v <= hi ? v : NaN;
 }
 
-// クロスの条件。gc=5 なら5日以内、gc=soon なら「もうすぐ」だけ、gcSoon=1 で「もうすぐ」も含める
+// クロスの条件。gc=5 なら5日以内、gc=soon なら「もうすぐ」だけ、gcSoon=1 で「もうすぐ」も含める。
+// dc=not10 のように not を付けると、その条件に当たる銘柄を除く
 function parseCross(params, name) {
   const raw = params.get(name);
   if (raw == null || raw === '') {
@@ -201,11 +207,13 @@ function parseCross(params, name) {
   if (raw === 'soon') {
     return { days: null, soon: true };
   }
-  const days = Number(raw);
+  const not = raw.startsWith('not');
+  const days = Number(not ? raw.slice(3) : raw);
   if (!Number.isInteger(days) || days < 1 || days > 20) {
     return NaN;
   }
-  return { days, soon: params.get(`${name}Soon`) === '1' };
+  const cond = { days, soon: params.get(`${name}Soon`) === '1' };
+  return not ? { ...cond, not } : cond;
 }
 
 function parseScan(params) {
@@ -292,7 +300,7 @@ async function scan(req) {
     results = quotes.map((q) => a.analyzeLong(q));
     analyzed = quotes.length;
   } else {
-    const picks = shortCandidates(quotes, nowSec, Boolean(req.dc));
+    const picks = shortCandidates(quotes, nowSec, Boolean(req.dc && !req.dc.not));
     results = await mapLimit(picks, 6, async (q) => {
       const bars = await chart(q.symbol);
       const r = a.analyzeShort(q, bars, nowSec);
@@ -316,7 +324,8 @@ async function scan(req) {
     await attachCross(items, req.cross);
   }
   // 絞り込みで10日より長く選んだときは、その日数までの交差を説明に出す
-  const showDays = Math.max(10, (req.gc && req.gc.days) || 0, (req.dc && req.dc.days) || 0);
+  const daysOf = (c) => (c && !c.not && c.days) || 0;
+  const showDays = Math.max(10, daysOf(req.gc), daysOf(req.dc));
   items.forEach((item) => addCrossPoints(item, showDays));
   await attachExtras(items, mode, nowSec);
   const dataTimes = quotes.map((q) => q.regularMarketTime).filter(Number.isFinite);
@@ -356,6 +365,126 @@ async function cachedScan(req) {
   return value;
 }
 
+// ---------------------------------------------------------------- スナップショット
+
+// 調べた結果を JSON のまま保存しておき、あとで「その後どう動いたか」と比べる。ファイル名は保存した時刻(ミリ秒)
+const snapFile = (id) => path.join(SNAP_DIR, `${id}.json`);
+
+function snapSummary(snap) {
+  const r = snap.result;
+  return { id: snap.id, savedAt: snap.savedAt, mode: r.mode, at: r.at, budget: r.budget, filter: r.filter, count: r.items.length, names: r.items.slice(0, 3).map((i) => i.name) };
+}
+
+// 画面から送られてきたものが、調べた結果の形をしているか
+function isScanResult(r) {
+  return Boolean(r) && (r.mode === 'short' || r.mode === 'long') && typeof r.at === 'string'
+    && Array.isArray(r.items) && r.items.length <= 100
+    && r.items.every((i) => i && /^[0-9A-Z]{4}$/.test(i.code) && [i.price, i.target, i.stop].every(Number.isFinite));
+}
+
+async function listSnapshots() {
+  let names;
+  try {
+    names = await fs.promises.readdir(SNAP_DIR);
+  } catch {
+    return [];
+  }
+  const out = [];
+  for (const name of names.filter((n) => SNAP_ID.test(path.basename(n, '.json')) && n.endsWith('.json'))) {
+    try {
+      out.push(snapSummary(JSON.parse(await fs.promises.readFile(path.join(SNAP_DIR, name), 'utf8'))));
+    } catch {
+      // 壊れたファイルは飛ばす
+    }
+  }
+  return out.sort((x, y) => y.id.localeCompare(x.id));
+}
+
+async function readSnapshot(id) {
+  return JSON.parse(await fs.promises.readFile(snapFile(id), 'utf8'));
+}
+
+async function saveSnapshot(result) {
+  await fs.promises.mkdir(SNAP_DIR, { recursive: true });
+  const snap = { id: String(Date.now()), savedAt: new Date().toISOString(), result };
+  await fs.promises.writeFile(snapFile(snap.id), JSON.stringify(snap), { flag: 'wx' });
+  return snapSummary(snap);
+}
+
+// 保存した銘柄ごとに、そのときの株価の日付より後の日足で今の値段と利確・損切りの到達を見る。
+// rows は保存した items と同じ順(取れなかった銘柄は { error })
+async function compareSnapshot(snap) {
+  const fallback = snap.result.at.slice(0, 10);
+  const rows = await mapLimit(snap.result.items, 6, async (item) => {
+    const since = item.priceDate || fallback;
+    const ageDays = (Date.now() - Date.parse(since)) / 86400000;
+    const bars = await history(`${item.code}.T`, ageDays > 300 ? '5y' : '1y', '1d');
+    return a.compareSince(item, bars, since);
+  });
+  return { id: snap.id, at: new Date().toISOString(), rows };
+}
+
+function readBody(req) {
+  return new Promise((resolve, reject) => {
+    const chunks = [];
+    let size = 0;
+    req.on('data', (c) => {
+      size += c.length;
+      if (size > MAX_BODY) {
+        reject(new Error('大きすぎます'));
+        req.destroy();
+      } else {
+        chunks.push(c);
+      }
+    });
+    req.on('end', () => resolve(Buffer.concat(chunks).toString('utf8')));
+    req.on('error', reject);
+  });
+}
+
+async function handleSnapshots(req, res, pathname) {
+  const m = pathname.match(/^\/api\/snapshots(?:\/(\d{13}))?(\/compare)?$/);
+  if (!m || (m[2] && !m[1])) {
+    res.writeHead(404).end();
+    return;
+  }
+  const [, id, compare] = m;
+  try {
+    if (!id && req.method === 'GET') {
+      sendJson(res, 200, await listSnapshots());
+    } else if (!id && req.method === 'POST') {
+      if (!String(req.headers['content-type'] || '').startsWith('application/json')) {
+        sendJson(res, 415, { error: 'JSON で送ってください。' });
+        return;
+      }
+      const body = JSON.parse(await readBody(req));
+      if (!isScanResult(body.result)) {
+        sendJson(res, 400, { error: '保存できる結果ではありません。' });
+        return;
+      }
+      const summary = await saveSnapshot(body.result);
+      log(`snapshot 保存 ${summary.id}`);
+      sendJson(res, 200, summary);
+    } else if (id && req.method === 'GET') {
+      const snap = await readSnapshot(id);
+      sendJson(res, 200, compare ? await compareSnapshot(snap) : snap);
+    } else if (id && !compare && req.method === 'DELETE') {
+      await fs.promises.unlink(snapFile(id));
+      log(`snapshot 削除 ${id}`);
+      sendJson(res, 200, { id });
+    } else {
+      res.writeHead(405).end();
+    }
+  } catch (e) {
+    if (e.code === 'ENOENT') {
+      sendJson(res, 404, { error: 'スナップショットが見つかりません。' });
+    } else {
+      log(`snapshot 失敗: ${e.message}`);
+      sendJson(res, 500, { error: `スナップショットを扱えませんでした: ${e.message}` });
+    }
+  }
+}
+
 // ---------------------------------------------------------------- HTTP
 
 function sendJson(res, status, body) {
@@ -387,6 +516,16 @@ async function handle(req, res) {
     return;
   }
   const url = new URL(req.url, `http://${req.headers.host}`);
+  if (url.pathname.startsWith('/api/snapshots')) {
+    // 書き換える操作は、この画面から来たものだけ受け付ける(よそのページからの送信を断る)
+    const origin = String(req.headers.origin || '').replace(/^http:\/\//, '');
+    if (req.method !== 'GET' && !ALLOWED_HOSTS.has(origin)) {
+      res.writeHead(403).end();
+      return;
+    }
+    await handleSnapshots(req, res, url.pathname);
+    return;
+  }
   if (req.method !== 'GET') {
     res.writeHead(405).end();
     return;
@@ -429,7 +568,7 @@ async function handle(req, res) {
   serveStatic(res, url.pathname);
 }
 
-module.exports = { parseScan, shortCandidates, countExcluded, scan };
+module.exports = { parseScan, shortCandidates, countExcluded, scan, isScanResult };
 
 if (require.main === module) {
   http.createServer((req, res) => {
