@@ -232,7 +232,7 @@ async function buildSkin() {
     buildClassroom(ctx);
   }
   addNpc(skin);
-  // 立ち寄り先(水槽・お酒の棚・血の池)と、席を立って歩き回る仕組み
+  // 立ち寄り先(水槽・カウンター・大釜)と、席を立って歩き回る仕組み
   buildSpot(ctx, skin);
   wander = createWander(ctx);
   ctx.ultra = null;
