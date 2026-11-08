@@ -176,7 +176,7 @@ function removeAvatar(a) {
 
 // NPC(酒場=女主人、教室=女性教師)。セッションではないので席には座らず、持ち場でにこにこ立っている
 const NPCS = {
-  isekai: { id: 'npc-louida', name: 'ルイーダ', color: '#c0392b', pos: [4.0, 0.14, -7.7], rot: 0, overrides: { race: 'human', job: 5, hair: '#a6463b', style: 1, eye: '#2d4f8a', skin: '#ffe0c7', clothes: 0, headphones: false } },
+  isekai: { id: 'npc-louida', name: '酒場の主人', color: '#c0392b', pos: [4.0, 0.14, -7.7], rot: 0, overrides: { race: 'human', job: 5, hair: '#a6463b', style: 1, eye: '#2d4f8a', skin: '#ffe0c7', clothes: 0, headphones: false } },
   default: { id: 'npc-teacher', name: '先生', color: '#3d4a7a', pos: [-10.3, 0.12, -1.2], rot: Math.PI / 2, overrides: { race: 'human', job: 6, hair: '#3a2a22', style: 3, eye: '#333a44', skin: '#fbe3d3', clothes: 1, headphones: false } },
 };
 

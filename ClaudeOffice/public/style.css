@@ -20,7 +20,7 @@ body.night {
   --input-bg: rgba(20, 24, 50, 0.9);
 }
 
-/* ルイーダの酒場: 羊皮紙と木の色 */
+/* 冒険者の酒場: 羊皮紙と木の色 */
 body.skin-isekai {
   --accent: #c9822b;
   --panel-bg: rgba(248, 236, 208, 0.86);

@@ -1,4 +1,4 @@
-// 異世界スキン「ルイーダの酒場」: 夕暮れのラベンダー色の空と淡い大きな月。木組みの壁にステンドグラス、
+// 異世界スキン「冒険者の酒場」: 夕暮れのラベンダー色の空と淡い大きな月。木組みの壁にステンドグラス、
 // 赤い丸ラグの上の丸テーブル、光る酒瓶の棚。外はストーンサークルと水晶玉、錬金釜、パステルの木々
 import * as THREE from 'three';
 import { ROOM, island, clouds, tree, pine, lampLight, wallClock, calendar, archiveShelf, whiteboard, propLabel, sparkles, SHELF_POS, BOARD_POS } from './world.js';
