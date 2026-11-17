@@ -47,8 +47,7 @@ export class Cockatiel extends BasePetType {
         return '🦜';
     }
     get hello(): string {
-        // TODO: #191 Add a custom message for cockatiel
-        return ` Hello, I'm a good bird 👋!`;
+        return ` Cheep cheep! Shall I whistle you a tune while you code? 🎶`;
     }
 }
 

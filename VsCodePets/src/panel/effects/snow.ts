@@ -78,6 +78,8 @@ export class SnowEffect implements Effect {
     pSwing: number[] = [0.1, 1]; // min and max oscillation speed for x movement
     pSpeed: number[] = [10, 50]; // min and max y speed
     pAmplitude: number[] = [5, 20]; // min and max distance for x movement
+    minAlpha: number = 0.4; // 一番小さい粒の不透明度
+    maxAlpha: number = 1; // 一番大きい粒の不透明度
 
     floor: number = 0;
 
@@ -202,11 +204,19 @@ export class SnowEffect implements Effect {
             console.log('Canvas context not initialized');
             return;
         }
-        // TODO: Vary the alpha based on the size of the particle
-        this.ctx.fillStyle = 'rgb(255,255,255)';
+        // 粒が大きい(手前の)雪ほど濃く、小さい(奥の)雪ほど薄く描いて奥行きを出す
+        const [minSize, maxSize] = this.pSize;
+        const sizeRange = maxSize - minSize;
 
         for (var i = 0; i < this.particles.length; i++) {
             var particle = this.particles[i];
+            const ratio =
+                sizeRange > 0 ? (particle.size - minSize) / sizeRange : 1;
+            const alpha =
+                this.minAlpha +
+                (this.maxAlpha - this.minAlpha) *
+                    Math.min(Math.max(ratio, 0), 1);
+            this.ctx.fillStyle = `rgba(255, 255, 255, ${alpha.toFixed(2)})`;
             this.ctx.fillRect(
                 particle.position.x,
                 particle.position.y,

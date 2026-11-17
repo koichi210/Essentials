@@ -225,9 +225,15 @@ export abstract class BasePetType implements IPetType {
     }
 
     recoverState(state: PetInstanceState) {
-        // TODO : Resolve a bug where if it was swiping before, it would fail
-        // because holdState is no longer valid.
         this.currentStateEnum = state.currentStateEnum ?? States.sitIdle;
+        // スワイプ中に保存されていたら、スワイプ前のステート(holdState)は保存されていないので戻り先が無い。
+        // そのまま再開するとスワイプ終了時に chooseNextState(swipe) となり、sequence に swipe を
+        // 持たないペットは InvalidStateError で止まってしまう。スワイプは捨てて最初のステートから始める
+        if (this.currentStateEnum === States.swipe) {
+            this.holdState = undefined;
+            this.holdStateEnum = undefined;
+            this.currentStateEnum = this.sequence.startingState;
+        }
         // 掴まれたまま保存されていたら、その場から降りる
         if (this.currentStateEnum === States.dragged) {
             this.currentStateEnum = States.flyDown;

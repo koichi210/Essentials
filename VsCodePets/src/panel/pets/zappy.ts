@@ -47,8 +47,7 @@ export class Zappy extends BasePetType {
         return '⚡';
     }
     get hello(): string {
-        // TODO: #193 Add a custom message for zappy
-        return ` Hello this is Zappy! Do I look familiar?? I am the mascot for Azure Functions😉`;
+        return ` Bzzt! I'm Zappy, fully charged and ready to code ⚡`;
     }
 }
 
