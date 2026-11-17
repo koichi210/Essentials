@@ -1,0 +1,2 @@
+# 上流(vscode-pets)はLF。このPCはcore.autocrlf=trueでCRLFに変わり、prettier --checkが落ちるのでLFに固定する
+* text=auto eol=lf
