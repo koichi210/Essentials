@@ -397,6 +397,58 @@ namespace EventRecorder.Tests
         }
 
         [TestMethod]
+        public void プレイリストの並べ替えは実行チェックとループ数も一緒に動き_その順で保存される()
+        {
+            StaRunner.Run(() =>
+            {
+                MainWindow window = new MainWindow(_temp.Path);
+                window.PlaylistRows.Clear();
+                window.PlaylistRows.Add(PlaylistRow.FromData(true, "a.json", "1"));
+                window.PlaylistRows.Add(PlaylistRow.FromData(false, "b.json", "2"));
+                window.PlaylistRows.Add(PlaylistRow.FromData(true, "c.json", "3"));
+                window.PlaylistRows[1].MissingFileText = "見つからない";
+
+                // 上へ動かすとドロップ先の行の上に入る
+                window.MovePlaylistRow(2, 0);
+                CollectionAssert.AreEqual(new[] { "c.json", "a.json", "b.json" }, window.PlaylistRows.Select(r => r.FileName).ToArray());
+
+                // 下へ動かすとドロップ先の行の下に入る。ファイル不在の表示も行と一緒に動く
+                window.MovePlaylistRow(1, 2);
+                CollectionAssert.AreEqual(new[] { "c.json", "b.json", "a.json" }, window.PlaylistRows.Select(r => r.FileName).ToArray());
+                CollectionAssert.AreEqual(new[] { true, false, true }, window.PlaylistRows.Select(r => r.Enabled).ToArray());
+                CollectionAssert.AreEqual(new[] { "3", "2", "1" }, window.PlaylistRows.Select(r => r.LoopCount).ToArray());
+                Assert.IsTrue(window.PlaylistRows[1].IsFileMissing);
+                CollectionAssert.AreEqual(new[] { 0, 1, 2 }, window.PlaylistRows.Select(r => r.RowNumber).ToArray(), "行番号は振り直される");
+
+                // 動かせない指定(行の無い所で離した等)では何もしない
+                window.MovePlaylistRow(0, -1);
+                window.MovePlaylistRow(0, 3);
+                window.MovePlaylistRow(1, 1);
+                CollectionAssert.AreEqual(new[] { "c.json", "b.json", "a.json" }, window.PlaylistRows.Select(r => r.FileName).ToArray());
+
+                // 並べ替えた順番のまま保存され、読み込み直しても同じ順に戻る
+                String path = System.IO.Path.Combine(_temp.Path, "sorted.json");
+                String error;
+                Assert.IsTrue(window.SaveProfile(path, out error), error);
+
+                MainWindow reloaded = new MainWindow(_temp.Path);
+                Assert.IsTrue(reloaded.LoadProfileFromJson(path, true));
+                CollectionAssert.AreEqual(new[] { "c.json", "b.json", "a.json" }, reloaded.PlaylistRows.Select(r => r.FileName).ToArray());
+                CollectionAssert.AreEqual(new[] { true, false, true }, reloaded.PlaylistRows.Select(r => r.Enabled).ToArray());
+                CollectionAssert.AreEqual(new[] { "3", "2", "1" }, reloaded.PlaylistRows.Select(r => r.LoopCount).ToArray());
+            });
+        }
+
+        [TestMethod]
+        public void プレイリストのドロップ先は行の上ならその行_最後の行より下の空白なら見えている最後の行()
+        {
+            Assert.AreEqual(1, MainWindow.ResolvePlaylistDropIndex(1, false, 4));
+            Assert.AreEqual(4, MainWindow.ResolvePlaylistDropIndex(-1, true, 4), "最後の行より下の空白");
+            Assert.AreEqual(-1, MainWindow.ResolvePlaylistDropIndex(-1, false, 4), "列ヘッダー・スクロールバーの上");
+            Assert.AreEqual(-1, MainWindow.ResolvePlaylistDropIndex(-1, true, -1), "行が1つも見えていない");
+        }
+
+        [TestMethod]
         public void ループ数が数値として読めない時は例外にせず1回扱い()
         {
             StaRunner.Run(() =>

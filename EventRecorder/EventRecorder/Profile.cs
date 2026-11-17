@@ -33,7 +33,7 @@ namespace EventRecorder
         // ユーザーが自由に書けるコメント欄。記録・再生には一切使わない
         public String Remarks { get; set; }
 
-        // ホイール行の回転量(WHEEL_DELTA=120が1ノッチ。向きはTypeのWHEEL_UP/WHEEL_DOWNで表すので正の数)。
+        // ホイール行の回転量(WHEEL_DELTA=120が1ノッチ。向きはTypeのWHEEL_UP/WHEEL_DOWN(横はWHEEL_LEFT/WHEEL_RIGHT)で表すので正の数)。
         // 以前は記録していなかったので、この項目が無いファイル(空の行)は従来どおり1行=1ノッチで再生する
         public String Delta { get; set; }
 

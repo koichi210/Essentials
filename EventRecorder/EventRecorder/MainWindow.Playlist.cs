@@ -321,6 +321,15 @@ namespace EventRecorder
         private int _dragStartPlaylistRowIndex = -1;
         private Point _dragStartPlaylistPoint;
 
+        // ドラッグ中に「離すとここへ入る」位置へ線を引く飾り(ドラッグしていない時はnull)
+        private PlaylistDropLineAdorner _playlistDropLineAdorner;
+
+        // ドラッグ中にグリッドの上端・下端へ近づけた時の自動スクロールの間隔(ms)と、端とみなす幅。
+        // DragOverはマウスを止めていても繰り返し来るので、間隔を空けないと一気に端まで流れてしまう
+        private const int _playlistDragScrollIntervalMs = 80;
+        private const double _playlistDragScrollMargin = 16;
+        private int _lastPlaylistDragScrollTick;
+
         private void dataGrid_Playlist_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
             if (_isRecording || _isPlaying)
@@ -356,29 +365,229 @@ namespace EventRecorder
 
             int sourceIndex = _dragStartPlaylistRowIndex;
             _dragStartPlaylistRowIndex = -1;
-            DragDrop.DoDragDrop(dataGrid_Playlist, new DataObject(_playlistRowDragFormat, sourceIndex), DragDropEffects.Move);
+            try
+            {
+                DragDrop.DoDragDrop(dataGrid_Playlist, new DataObject(_playlistRowDragFormat, sourceIndex), DragDropEffects.Move);
+            }
+            finally
+            {
+                // Escでのキャンセル・グリッドの外でのドロップでも、位置を示す線は必ず消す
+                HidePlaylistDropLine();
+            }
         }
 
         private void dataGrid_Playlist_DragOver(object sender, DragEventArgs e)
         {
-            e.Effects = e.Data.GetDataPresent(_playlistRowDragFormat) ? DragDropEffects.Move : DragDropEffects.None;
             e.Handled = true;
+
+            if (!e.Data.GetDataPresent(_playlistRowDragFormat))
+            {
+                e.Effects = DragDropEffects.None;
+                HidePlaylistDropLine();
+                return;
+            }
+
+            e.Effects = DragDropEffects.Move;
+            ScrollPlaylistWhileDragging(e.GetPosition(dataGrid_Playlist).Y);
+
+            int sourceIndex = (int)e.Data.GetData(_playlistRowDragFormat);
+            int targetIndex = GetPlaylistDropTargetIndex(e);
+            if (targetIndex < 0 || targetIndex == sourceIndex)
+            {
+                HidePlaylistDropLine();
+                return;
+            }
+
+            // 下へ動かす時はドロップ先の行の下に、上へ動かす時は上に入る(ObservableCollection.Moveの動き)ので、線もそちらに引く
+            ShowPlaylistDropLine(targetIndex, targetIndex > sourceIndex);
+        }
+
+        // DragLeaveはグリッドの中でセルからセルへ移っただけでも(子要素から)来るので、グリッドの外へ出た時だけ線を消す
+        private void dataGrid_Playlist_DragLeave(object sender, DragEventArgs e)
+        {
+            Point p = e.GetPosition(dataGrid_Playlist);
+            if (p.X >= 0 && p.Y >= 0 && p.X < dataGrid_Playlist.ActualWidth && p.Y < dataGrid_Playlist.ActualHeight)
+            {
+                return;
+            }
+
+            HidePlaylistDropLine();
         }
 
         private void dataGrid_Playlist_Drop(object sender, DragEventArgs e)
         {
+            HidePlaylistDropLine();
+
             if (!e.Data.GetDataPresent(_playlistRowDragFormat))
             {
                 return;
             }
 
             int sourceIndex = (int)e.Data.GetData(_playlistRowDragFormat);
-            int targetIndex = WpfGridHelper.GetRowIndexFromSource(dataGrid_Playlist, e.OriginalSource);
-            MovePlaylistRow(sourceIndex, targetIndex);
+            MovePlaylistRow(sourceIndex, GetPlaylistDropTargetIndex(e));
             e.Handled = true;
         }
 
-        // sourceIndex行をtargetIndexの位置へ移動する(ドロップ先の行の位置に割り込む形)
+        // ドラッグ中の位置から、移動先の行を決める(移動できない位置なら-1)
+        private int GetPlaylistDropTargetIndex(DragEventArgs e)
+        {
+            int hitRowIndex = WpfGridHelper.GetRowIndexFromSource(dataGrid_Playlist, e.OriginalSource);
+
+            // 最後の行より下の空白で離したら末尾へ入れる(以前は何も起きなかった)。
+            // 「チェックONのみ表示」中は、見えている最後の行の後ろに入れる
+            int lastVisibleRowIndex = GetLastVisiblePlaylistRowIndex();
+            Boolean isBelowLastRow = false;
+            if (hitRowIndex < 0 && lastVisibleRowIndex >= 0)
+            {
+                DataGridRow lastRow = dataGrid_Playlist.ItemContainerGenerator.ContainerFromIndex(lastVisibleRowIndex) as DataGridRow;
+                if (lastRow != null && lastRow.IsVisible)
+                {
+                    double lastRowBottom = lastRow.TranslatePoint(new Point(0, lastRow.ActualHeight), dataGrid_Playlist).Y;
+                    isBelowLastRow = e.GetPosition(dataGrid_Playlist).Y >= lastRowBottom;
+                }
+            }
+
+            return ResolvePlaylistDropIndex(hitRowIndex, isBelowLastRow, lastVisibleRowIndex);
+        }
+
+        private int GetLastVisiblePlaylistRowIndex()
+        {
+            for (int i = PlaylistRows.Count - 1; i >= 0; i--)
+            {
+                if (PlaylistRows[i].IsVisible)
+                {
+                    return i;
+                }
+            }
+            return -1;
+        }
+
+        // ドロップ先の行を決める。行の上ならその行、最後の行より下の空白なら見えている最後の行、
+        // それ以外(列ヘッダー・スクロールバーの上など)は-1(移動しない)。WinForms版と同じ
+        internal static int ResolvePlaylistDropIndex(int hitRowIndex, Boolean isBelowLastRow, int lastVisibleRowIndex)
+        {
+            if (hitRowIndex >= 0)
+            {
+                return hitRowIndex;
+            }
+
+            return isBelowLastRow ? lastVisibleRowIndex : -1;
+        }
+
+        // ドラッグ中、グリッドの上端(列ヘッダーのすぐ下)・下端に近づけたら1行ずつスクロールする(見えていない位置へも運べるように)
+        private void ScrollPlaylistWhileDragging(double y)
+        {
+            ScrollViewer viewer = WpfGridHelper.FindDescendant<ScrollViewer>(dataGrid_Playlist);
+            if (viewer == null)
+            {
+                return;
+            }
+
+            int tick = Environment.TickCount;
+            if (unchecked(tick - _lastPlaylistDragScrollTick) < _playlistDragScrollIntervalMs)
+            {
+                return;
+            }
+
+            System.Windows.Controls.Primitives.DataGridColumnHeadersPresenter header
+                = WpfGridHelper.FindDescendant<System.Windows.Controls.Primitives.DataGridColumnHeadersPresenter>(dataGrid_Playlist);
+            double top = (header != null) ? header.TranslatePoint(new Point(0, header.ActualHeight), dataGrid_Playlist).Y : 0;
+
+            if (y < top + _playlistDragScrollMargin && viewer.VerticalOffset > 0)
+            {
+                viewer.LineUp();
+            }
+            else if (y > dataGrid_Playlist.ActualHeight - _playlistDragScrollMargin && viewer.VerticalOffset < viewer.ScrollableHeight)
+            {
+                viewer.LineDown();
+            }
+            else
+            {
+                return;
+            }
+
+            _lastPlaylistDragScrollTick = tick;
+        }
+
+        // rowIndex行の上(isBelow=falseの時)または下へ、位置を示す線を引く。行が画面に出ていなければ線は消す
+        private void ShowPlaylistDropLine(int rowIndex, Boolean isBelow)
+        {
+            DataGridRow row = dataGrid_Playlist.ItemContainerGenerator.ContainerFromIndex(rowIndex) as DataGridRow;
+            if (row == null || !row.IsVisible)
+            {
+                HidePlaylistDropLine();
+                return;
+            }
+
+            if (_playlistDropLineAdorner == null)
+            {
+                System.Windows.Documents.AdornerLayer layer = System.Windows.Documents.AdornerLayer.GetAdornerLayer(dataGrid_Playlist);
+                if (layer == null)
+                {
+                    return;
+                }
+
+                _playlistDropLineAdorner = new PlaylistDropLineAdorner(dataGrid_Playlist);
+                layer.Add(_playlistDropLineAdorner);
+            }
+
+            double y = row.TranslatePoint(new Point(0, isBelow ? row.ActualHeight : 0), dataGrid_Playlist).Y;
+            _playlistDropLineAdorner.SetLineY(y);
+        }
+
+        private void HidePlaylistDropLine()
+        {
+            if (_playlistDropLineAdorner == null)
+            {
+                return;
+            }
+
+            System.Windows.Documents.AdornerLayer layer = System.Windows.Documents.AdornerLayer.GetAdornerLayer(dataGrid_Playlist);
+            if (layer != null)
+            {
+                layer.Remove(_playlistDropLineAdorner);
+            }
+            _playlistDropLineAdorner = null;
+        }
+
+        // グリッドの上に重ねて、指定した高さに横線を1本引くだけの飾り(マウス操作は素通しする)。
+        // WinForms版はグリッドのPaintで直接描いているが、WPFのDataGridには描き足す口が無いのでAdornerで重ねる
+        private sealed class PlaylistDropLineAdorner : System.Windows.Documents.Adorner
+        {
+            private double _lineY = -1;
+
+            public PlaylistDropLineAdorner(UIElement adornedElement)
+                : base(adornedElement)
+            {
+                IsHitTestVisible = false;
+            }
+
+            public void SetLineY(double y)
+            {
+                if (_lineY == y)
+                {
+                    return;
+                }
+
+                _lineY = y;
+                InvalidateVisual();
+            }
+
+            protected override void OnRender(System.Windows.Media.DrawingContext drawingContext)
+            {
+                if (_lineY < 0)
+                {
+                    return;
+                }
+
+                System.Windows.Media.Pen pen = new System.Windows.Media.Pen(SystemColors.HighlightBrush, 2);
+                drawingContext.DrawLine(pen, new Point(0, _lineY), new Point(AdornedElement.RenderSize.Width, _lineY));
+            }
+        }
+
+        // sourceIndex行をtargetIndexの位置へ移動する(ドロップ先の行の位置に割り込む形)。
+        // 行オブジェクトごと動かすので、実行チェック・ループ数・ファイル不在のピンク表示も行と一緒に動く。
+        // 並べ替えた順番は、プロファイルを保存した時にそのまま保存される(BuildProfileFromGridsはPlaylistRowsの順に読む)
         internal void MovePlaylistRow(int sourceIndex, int targetIndex)
         {
             if (sourceIndex < 0 || sourceIndex >= PlaylistRows.Count

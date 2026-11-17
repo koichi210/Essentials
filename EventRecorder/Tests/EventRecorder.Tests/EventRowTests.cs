@@ -191,6 +191,7 @@ namespace EventRecorder.Tests
         private const int MouseeventfXDown = 0x0080;
         private const int MouseeventfXUp = 0x0100;
         private const int MouseeventfWheel = 0x0800;
+        private const int MouseeventfHWheel = 0x1000;
         private const int MouseeventfAbsoluteVirtualDesk = 0x8000 | 0x4000;
         private const int KeyeventfKeyUp = 0x0002;
 
@@ -227,6 +228,47 @@ namespace EventRecorder.Tests
 
             // ホイール以外の行のmouseData(Xボタンの番号)は回転量で変えない
             Assert.AreEqual(2, EventRules.BuildPlaybackInputs("X2_DOWN", "100", "200", "", "30").Single().Mouse.Data);
+        }
+
+        [TestMethod]
+        public void 横ホイールの行はクリックと同じ座標でHWHEELを右が正_左が負で送る()
+        {
+            InputSimulation.InputSimulator.Input click = EventRules.BuildPlaybackInputs("LEFT_DOWN", "100", "200", "").Single();
+            InputSimulation.InputSimulator.Input wheelRight = EventRules.BuildPlaybackInputs("WHEEL_RIGHT", "100", "200", "").Single();
+            InputSimulation.InputSimulator.Input wheelLeft = EventRules.BuildPlaybackInputs("WHEEL_LEFT", "100", "200", "").Single();
+
+            foreach (InputSimulation.InputSimulator.Input input in new[] { wheelRight, wheelLeft })
+            {
+                Assert.AreEqual(0, input.Type, "マウス入力は Type=0");
+                Assert.AreEqual(MouseeventfMove | MouseeventfHWheel | MouseeventfAbsoluteVirtualDesk, input.Mouse.Flags);
+                Assert.AreEqual(click.Mouse.X, input.Mouse.X);
+                Assert.AreEqual(click.Mouse.Y, input.Mouse.Y);
+            }
+
+            // 回転量の無い行は1ノッチ。記録した回転量があればその量(向きはEvent列で決まる)
+            Assert.AreEqual(120, wheelRight.Mouse.Data);
+            Assert.AreEqual(-120, wheelLeft.Mouse.Data);
+            Assert.AreEqual(30, EventRules.BuildPlaybackInputs("WHEEL_RIGHT", "100", "200", "", "30").Single().Mouse.Data);
+            Assert.AreEqual(-240, EventRules.BuildPlaybackInputs("WHEEL_LEFT", "100", "200", "", "240").Single().Mouse.Data);
+        }
+
+        [TestMethod]
+        public void 横ホイールの行も回転量を記録し再生前チェックの対象になる()
+        {
+            foreach (GlobalHook.MouseHook.Stroke stroke in new[] { GlobalHook.MouseHook.Stroke.WHEEL_UP, GlobalHook.MouseHook.Stroke.WHEEL_DOWN,
+                GlobalHook.MouseHook.Stroke.WHEEL_LEFT, GlobalHook.MouseHook.Stroke.WHEEL_RIGHT })
+            {
+                Assert.IsTrue(EventRules.IsWheelHookStroke(stroke), stroke.ToString());
+            }
+            Assert.IsFalse(EventRules.IsWheelHookStroke(GlobalHook.MouseHook.Stroke.LEFT_DOWN));
+            Assert.IsFalse(EventRules.IsWheelHookStroke(GlobalHook.MouseHook.Stroke.X1_DOWN));
+
+            String message;
+            Assert.IsTrue(EventRow.FromData("WHEEL_LEFT", "10", "20", "", "0", "", "abc").IsInvalidForPlayback(out message));
+            StringAssert.Contains(message, "回転量(abc)");
+            Assert.IsTrue(EventRow.FromData("WHEEL_RIGHT", "abc", "20", "", "0", "").IsInvalidForPlayback(out message));
+            Assert.IsFalse(EventRow.FromData("WHEEL_RIGHT", "10", "20", "", "0", "", "240").IsInvalidForPlayback(out message));
+            Assert.AreEqual("X:10 Y:20 Delta:240", EventRow.FromData("WHEEL_LEFT", "10", "20", "", "0", "", "240").Detail);
         }
 
         [TestMethod]

@@ -181,7 +181,7 @@
                                   PreviewMouseLeftButtonDown="dataGrid_Playlist_PreviewMouseLeftButtonDown"
                                   PreviewMouseMove="dataGrid_Playlist_PreviewMouseMove"
                                   PreviewMouseWheel="DataGrid_PreviewMouseWheel"
-                                  DragOver="dataGrid_Playlist_DragOver" Drop="dataGrid_Playlist_Drop"
+                                  DragOver="dataGrid_Playlist_DragOver" DragLeave="dataGrid_Playlist_DragLeave" Drop="dataGrid_Playlist_Drop"
                                   ContextMenuOpening="dataGrid_Playlist_ContextMenuOpening">
                             <DataGrid.Columns>
                                 <DataGridTemplateColumn x:Name="col_PlaylistEnabled" Header="実行" Width="40" SortMemberPath="Enabled">
