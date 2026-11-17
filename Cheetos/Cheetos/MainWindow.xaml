@@ -77,10 +77,12 @@
                     <DataGrid Grid.Row="3" Grid.RowSpan="4" Grid.Column="1" x:Name="cw_dataGridView" Margin="0,4,0,2"
                               AutoGenerateColumns="False" CanUserAddRows="False" CanUserDeleteRows="False"
                               CanUserSortColumns="False" CanUserReorderColumns="False"
-                              HeadersVisibility="Column" SelectionMode="Single" SelectionUnit="Cell">
+                              HeadersVisibility="Column" SelectionMode="Single" SelectionUnit="Cell"
+                              PreviewKeyDown="cw_dataGridView_PreviewKeyDown">
                         <DataGrid.CellStyle>
                             <Style TargetType="{x:Type DataGridCell}">
                                 <EventSetter Event="PreviewMouseLeftButtonDown" Handler="cw_dataGridView_CellClick" />
+                                <EventSetter Event="MouseDoubleClick" Handler="cw_dataGridView_CellDoubleClick" />
                             </Style>
                         </DataGrid.CellStyle>
                         <DataGrid.Columns>
@@ -114,12 +116,12 @@
                                     </Style>
                                 </DataGridComboBoxColumn.HeaderStyle>
                             </DataGridComboBoxColumn>
-                            <DataGridComboBoxColumn Width="*"
+                            <DataGridComboBoxColumn Width="*" IsReadOnly="True"
                                                     SelectedItemBinding="{Binding Capture, UpdateSourceTrigger=PropertyChanged}"
                                                     EditingElementStyle="{StaticResource DropDownEditing}">
                                 <DataGridComboBoxColumn.HeaderStyle>
                                     <Style TargetType="{x:Type DataGridColumnHeader}">
-                                        <Setter Property="ToolTip" Value="〇の行だけSleepの後にキャプチャする(×・未設定は撮らない)" />
+                                        <Setter Property="ToolTip" Value="〇の行だけSleepの後にキャプチャする(×・未設定は撮らない)。セルのダブルクリックかSpaceキーで〇/×を切り替える" />
                                     </Style>
                                 </DataGridComboBoxColumn.HeaderStyle>
                             </DataGridComboBoxColumn>

@@ -22,22 +22,22 @@ namespace Picture
             _canvas = new Bitmap(destWidth, destHeight);
         }
 
-        // IDisposable。ReleaseImg が解放後に null を入れるので、二重に呼んでも
-        // (SaveCanvas の後に呼んでも) 何も起きず安全。
+        // IDisposable。キャンバス・加工元の画像(と、それが掴んでいるファイル)を解放する。
+        // 呼び出し側は using で囲んで、使い終わったら必ず解放されるようにする
+        // (ファイナライザ任せだと解放されるタイミングが決まらず、ファイルのロックが残るため)。
+        // ReleaseImg が解放後に null を入れるので、二重に呼んでも何も起きず安全。
         public void Dispose()
         {
-            // リソース解放
             ReleaseImg(ref _canvas);
             ReleaseImg(ref _sourceImg);
         }
 
+        // キャンバスをファイルへ保存する。保存してもキャンバスは解放しない(続けて編集・保存できる)。
+        // 解放は Dispose(using を抜けた時)で行う
         public void SaveCanvas(String savePictFile)
         {
+            ThrowIfDisposed();
             _canvas.Save(savePictFile);
-
-            // TODO：デストラクタでは想定したタイミングで呼ばれないため暫定。
-            // リソース解放
-            Dispose();
         }
 
         public void TrimExec(String basePictFile, Rectangle cutParam)
@@ -60,6 +60,8 @@ namespace Picture
         // 用意した。渡されたBitmapの所有権は呼び出し側のままなので、ここではDisposeしない。
         public void TrimExec(Bitmap sourceImg, Rectangle cutParam, Point putParam)
         {
+            ThrowIfDisposed();
+
             //描画する部分の範囲を設定。位置(X, Y)、大きさ(Width, Height)
             Rectangle pasteRect = new Rectangle(putParam.X, putParam.Y, cutParam.Width, cutParam.Height);
 
@@ -74,6 +76,7 @@ namespace Picture
         // SaveCanvasと違いキャンバスの破棄はしない(呼び出し側で明示的にDisposeする)。
         public long GetCanvasPngByteLength()
         {
+            ThrowIfDisposed();
             using (MemoryStream ms = new MemoryStream())
             {
                 _canvas.Save(ms, System.Drawing.Imaging.ImageFormat.Png);
@@ -83,6 +86,8 @@ namespace Picture
 
         public void CreateSourceImg(String sourceImgFile)
         {
+            ThrowIfDisposed();
+
             //加工元ファイルのImageオブジェクトを作成。
             // MergeExecは以前、呼ばれるたびに読み込んだ画像の複製(new Bitmap(Image))を作って描画していた。
             // 複製の中身は毎回同じなので、ここで1回だけ複製して使い回す(描画結果は同じ)。
@@ -112,7 +117,17 @@ namespace Picture
 
         public Size GetCanvasSize()
         {
+            ThrowIfDisposed();
             return new Size(_canvas.Width, _canvas.Height);
+        }
+
+        // Dispose の後に使われたら、null 参照で落ちる代わりに「解放済み」と分かる例外にする
+        private void ThrowIfDisposed()
+        {
+            if (_canvas == null)
+            {
+                throw new ObjectDisposedException(nameof(PicEdit));
+            }
         }
 
         private void ReleaseImg(ref Bitmap img)

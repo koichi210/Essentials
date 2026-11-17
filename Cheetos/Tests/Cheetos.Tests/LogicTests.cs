@@ -249,5 +249,20 @@ namespace Cheetos.Tests
                 Assert.AreEqual("-5", textBox.Text);
             });
         }
+
+        [TestMethod]
+        public void ToggleChoice_今の値でない方へ切り替える()
+        {
+            Assert.AreEqual("×", Logic.ToggleChoice("〇", "〇", "×"));
+            Assert.AreEqual("〇", Logic.ToggleChoice("×", "〇", "×"));
+        }
+
+        [TestMethod]
+        public void ToggleChoice_未設定や想定外の値はfirstにする()
+        {
+            Assert.AreEqual("〇", Logic.ToggleChoice("", "〇", "×"));
+            Assert.AreEqual("〇", Logic.ToggleChoice(null, "〇", "×"));
+            Assert.AreEqual("〇", Logic.ToggleChoice("abc", "〇", "×"));
+        }
     }
 }

@@ -149,5 +149,14 @@ namespace Cheetos
             int addValue = (key == Key.Up) ? 1 : (key == Key.Down) ? -1 : 0;
             return (val + addValue).ToString();
         }
+
+        /// <summary>
+        /// 二択の値(〇/×など)を切り替える。今がfirstならsecond、それ以外(second・未設定・想定外の値)ならfirstを返す
+        /// (CaptureWindowタブの表で、Capture列をダブルクリック/Spaceキーで切り替えるときに使う)。
+        /// </summary>
+        public static String ToggleChoice(String current, String first, String second)
+        {
+            return (current == first) ? second : first;
+        }
     }
 }

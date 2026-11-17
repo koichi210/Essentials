@@ -45,7 +45,7 @@ namespace Cheetos
             new DataGridColumnInfo() { HeaderName = _gridHeaderMouseXStr, Type = DataGridType.EditBox },
             new DataGridColumnInfo() { HeaderName = _gridHeaderMouseYStr, Type = DataGridType.EditBox },
             new DataGridColumnInfo() { HeaderName = _gridHeaderMouseActionStr, Type = DataGridType.DropDown },
-            new DataGridColumnInfo() { HeaderName = _gridHeaderCaptureStr, Type = DataGridType.DropDown }
+            new DataGridColumnInfo() { HeaderName = _gridHeaderCaptureStr, Type = DataGridType.CheckBox }
         };
 
         private readonly String[] _mouseEventItems = new String[] {
@@ -502,12 +502,64 @@ namespace Cheetos
                     break;
 
                 case DataGridType.CheckBox:
-                    // TODO：ダブルクリックで値を設定したい
+                    // シングルクリックでは何もしない(ダブルクリックで切り替える。cw_dataGridView_CellDoubleClick)。
+                    // XAMLで読み取り専用にしてあるので、実際は上のIsReadOnlyで戻る
                     break;
 
                 default:
                     break;
             }
+        }
+
+        // CheckBox型(Capture列)のセルをダブルクリックしたら〇/×を切り替える(WinForms版と同じ)
+        private void cw_dataGridView_CellDoubleClick(object sender, MouseButtonEventArgs e)
+        {
+            DataGridCell cell = sender as DataGridCell;
+            if (cell == null || e.ChangedButton != MouseButton.Left)
+            {
+                return;
+            }
+
+            if (ToggleCheckBoxCell(cell.DataContext as CaptureGridRow, cell.Column))
+            {
+                e.Handled = true;
+            }
+        }
+
+        // CheckBox型(Capture列)のセルを選んでいる時は、Spaceキーでも〇/×を切り替える
+        // (プルダウンを出さなくしたので、キーボードだけでも変えられるようにしておく。WinForms版と同じ)
+        private void cw_dataGridView_PreviewKeyDown(object sender, KeyEventArgs e)
+        {
+            if (e.Key != Key.Space || Keyboard.Modifiers != ModifierKeys.None)
+            {
+                return;
+            }
+
+            DataGridCellInfo current = cw_dataGridView.CurrentCell;
+            if (ToggleCheckBoxCell(current.Item as CaptureGridRow, current.Column))
+            {
+                e.Handled = true;
+            }
+        }
+
+        // CheckBox型の列のセルなら、〇(キャプチャする)と×(しない)を切り替えてtrueを返す。
+        // 未設定のセルは〇にする。CheckBox型以外の列・行が無い所なら何もせずfalseを返す
+        private Boolean ToggleCheckBoxCell(CaptureGridRow row, DataGridColumn column)
+        {
+            if (row == null || column == null)
+            {
+                return false;
+            }
+
+            int columnIdx = cw_dataGridView.Columns.IndexOf(column);
+            if (columnIdx < 0 || columnIdx >= _dataGridColumns.Length
+                || _dataGridColumns[columnIdx].Type != DataGridType.CheckBox)
+            {
+                return false;
+            }
+
+            row[columnIdx] = Logic.ToggleChoice(row[columnIdx], _executeStr, _notExecuteStr);
+            return true;
         }
 
         // 現在行(WinForms版のCurrentRow)の位置。どこも選ばれていなければ先頭行(0)
