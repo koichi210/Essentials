@@ -1,0 +1,3 @@
+# 登録データ（個人のパス・URL が入る）。既定の置き場所はこのフォルダなので、必ず git に入れない
+launcher.json
+launcher.json.bak
