@@ -35,7 +35,9 @@
         <TabControl Grid.Row="0" x:Name="TabPage">
             <!-- ************************ CaptureWindow ************************ -->
             <TabItem Header="CaptureWindow" x:Name="CaptureWindow">
-                <Grid Margin="5,6,8,5" Background="Transparent" MouseMove="tabPageCaptureWindow_MouseMove">
+                <Grid x:Name="cw_Grid" Margin="5,6,8,5" Background="Transparent" MouseMove="tabPageCaptureWindow_MouseMove"
+                      MouseLeftButtonDown="tabPageCaptureWindow_MouseLeftButtonDown" MouseLeftButtonUp="tabPageCaptureWindow_MouseLeftButtonUp"
+                      LostMouseCapture="tabPageCaptureWindow_LostMouseCapture">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="150" />
                         <ColumnDefinition Width="*" />
@@ -125,6 +127,13 @@
                                     </Style>
                                 </DataGridComboBoxColumn.HeaderStyle>
                             </DataGridComboBoxColumn>
+                            <DataGridTextColumn Width="1.5*" Binding="{Binding Comment, UpdateSourceTrigger=PropertyChanged}">
+                                <DataGridTextColumn.HeaderStyle>
+                                    <Style TargetType="{x:Type DataGridColumnHeader}">
+                                        <Setter Property="ToolTip" Value="何の操作かのメモ(自由に書ける。動作には使わない)" />
+                                    </Style>
+                                </DataGridTextColumn.HeaderStyle>
+                            </DataGridTextColumn>
                         </DataGrid.Columns>
                     </DataGrid>
 
@@ -138,8 +147,9 @@
                                    ToolTip="グリッドの全行を繰り返す回数。空欄なら1回。↑↓キーで1ずつ増減できる" />
 
                     <stc:TextBoxEx Grid.Row="7" Grid.Column="0" x:Name="cw_TextBox_Status" IsReadOnly="True" TextAlignment="Right"
-                                   Margin="35,0,6,0" VerticalAlignment="Center"
-                                   ToolTip="このタブ上でマウスを動かすと、現在のマウス座標(画面座標)を表示する" />
+                                   Margin="35,0,6,0" VerticalAlignment="Center" Cursor="Cross"
+                                   PreviewMouseLeftButtonDown="cw_TextBox_Status_PreviewMouseLeftButtonDown"
+                                   ToolTip="このタブ上でマウスを動かすと、現在のマウス座標(画面座標)を表示する。この欄(かタブの余白)からマウスをドラッグして離すと、その位置の座標を表の選択中の行のMouseX/MouseYに入れる" />
                     <DockPanel Grid.Row="7" Grid.Column="1" LastChildFill="False">
                         <Button DockPanel.Dock="Left" x:Name="cw_Button_AddLine" Content="一行追加" Width="65" Height="23" Margin="0,0,2,0"
                                 Click="cw_Button_AddLine_Click"

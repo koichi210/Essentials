@@ -22,6 +22,91 @@ namespace Cheetos
             cw_TextBox_Status.Text = "X=" + pos.X.ToString() + ", Y=" + pos.Y.ToString();
         }
 
+        // ドラッグして離した位置の座標を、表の選択中の行のMouseX/MouseYに入れる。
+        // タブの余白か座標の表示欄でマウスを押して始め、押している間はマウスを捕まえておくので、
+        // このウィンドウの外(座標を取りたい別のアプリの上)で離しても拾える
+        private Boolean _isCoordinateDragging = false;
+        private System.Drawing.Point _coordinateDragStart;
+
+        private void tabPageCaptureWindow_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+        {
+            // 子のコントロール(表やボタン)の上で押したときは始めない
+            if (e.OriginalSource == sender)
+            {
+                StartCoordinateDrag(e);
+            }
+        }
+
+        private void cw_TextBox_Status_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+        {
+            StartCoordinateDrag(e);
+        }
+
+        private void StartCoordinateDrag(MouseButtonEventArgs e)
+        {
+            if (_isCaptureRunning)
+            {
+                return;
+            }
+            _coordinateDragStart = Forms.Cursor.Position;
+            _isCoordinateDragging = cw_Grid.CaptureMouse();
+            if (_isCoordinateDragging)
+            {
+                Mouse.OverrideCursor = Cursors.Cross;
+                e.Handled = true;
+            }
+        }
+
+        private void tabPageCaptureWindow_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+        {
+            if (!_isCoordinateDragging)
+            {
+                return;
+            }
+            System.Drawing.Point pos = Forms.Cursor.Position;
+            EndCoordinateDrag();
+
+            // 押しただけ(ほとんど動かしていない)のときは何もしない
+            if (Math.Abs(pos.X - _coordinateDragStart.X) < SystemParameters.MinimumHorizontalDragDistance
+                && Math.Abs(pos.Y - _coordinateDragStart.Y) < SystemParameters.MinimumVerticalDragDistance)
+            {
+                return;
+            }
+            SetCurrentRowMousePoint(pos);
+        }
+
+        private void tabPageCaptureWindow_LostMouseCapture(object sender, MouseEventArgs e)
+        {
+            EndCoordinateDrag();
+        }
+
+        private void EndCoordinateDrag()
+        {
+            if (!_isCoordinateDragging)
+            {
+                return;
+            }
+            _isCoordinateDragging = false;
+            Mouse.OverrideCursor = null;
+            if (cw_Grid.IsMouseCaptured)
+            {
+                cw_Grid.ReleaseMouseCapture();
+            }
+        }
+
+        private void SetCurrentRowMousePoint(System.Drawing.Point pos)
+        {
+            CommitGridEdit();
+            int rowIdx = GetCurrentGridRowIndex();
+            if (rowIdx >= _cwRows.Count)
+            {
+                return;
+            }
+            _cwRows[rowIdx].MouseX = pos.X.ToString();
+            _cwRows[rowIdx].MouseY = pos.Y.ToString();
+            cw_TextBox_Status.Text = "X=" + pos.X + ", Y=" + pos.Y + " →" + (rowIdx + 1) + "行目";
+        }
+
         // Captureボタンを押した瞬間のマウス座標。一連のCapture処理が終わったらここへ戻す
         private System.Drawing.Point _captureStartCursorPosition;
 

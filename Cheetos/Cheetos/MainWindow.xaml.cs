@@ -32,6 +32,7 @@ namespace Cheetos
         private const String _gridHeaderMouseYStr = "MouseY";
         private const String _gridHeaderMouseActionStr = "MouseAction";
         private const String _gridHeaderCaptureStr = "Capture";
+        private const String _gridHeaderCommentStr = "Comment";
 
         private const String _mouseEventMoveStr = "Move";
         private const String _mouseEventLeftDownStr = "LeftDown";
@@ -45,7 +46,8 @@ namespace Cheetos
             new DataGridColumnInfo() { HeaderName = _gridHeaderMouseXStr, Type = DataGridType.EditBox },
             new DataGridColumnInfo() { HeaderName = _gridHeaderMouseYStr, Type = DataGridType.EditBox },
             new DataGridColumnInfo() { HeaderName = _gridHeaderMouseActionStr, Type = DataGridType.DropDown },
-            new DataGridColumnInfo() { HeaderName = _gridHeaderCaptureStr, Type = DataGridType.CheckBox }
+            new DataGridColumnInfo() { HeaderName = _gridHeaderCaptureStr, Type = DataGridType.CheckBox },
+            new DataGridColumnInfo() { HeaderName = _gridHeaderCommentStr, Type = DataGridType.EditBox },
         };
 
         private readonly String[] _mouseEventItems = new String[] {
@@ -570,6 +572,15 @@ namespace Cheetos
         // (プルダウンを出さなくしたので、キーボードだけでも変えられるようにしておく。WinForms版と同じ)
         private void cw_dataGridView_PreviewKeyDown(object sender, KeyEventArgs e)
         {
+            // Ctrl+V: Excelなどからコピーした表を、選択中のセルを左上にして貼り付ける
+            // (セルの編集中はTextBoxへの普通の貼り付けにする)
+            if (e.Key == Key.V && Keyboard.Modifiers == ModifierKeys.Control && e.OriginalSource is DataGridCell)
+            {
+                PasteToGrid();
+                e.Handled = true;
+                return;
+            }
+
             if (e.Key != Key.Space || Keyboard.Modifiers != ModifierKeys.None)
             {
                 return;
@@ -600,6 +611,68 @@ namespace Cheetos
 
             row[columnIdx] = Logic.ToggleChoice(row[columnIdx], _executeStr, _notExecuteStr);
             return true;
+        }
+
+        // クリップボードの表(列はタブ、行は改行区切り)を、選択中のセルを左上にして書き込む。
+        // 行が足りなければ足す。表の右端より右の列は捨てる。
+        // ドロップダウン/〇×の列は、選べる値(Move/LeftDown、〇/×)か空欄のときだけ書き込む
+        private void PasteToGrid()
+        {
+            String text;
+            try
+            {
+                text = Clipboard.GetText();
+            }
+            catch (Exception)
+            {
+                // 他のアプリがクリップボードを使っている
+                return;
+            }
+            List<String[]> table = Logic.ParseTableText(text);
+            if (table.Count == 0)
+            {
+                return;
+            }
+
+            CommitGridEdit();
+            int startRow = GetCurrentGridRowIndex();
+            DataGridColumn currentColumn = cw_dataGridView.CurrentCell.Column;
+            int startColumn = (currentColumn == null) ? 0 : Math.Max(cw_dataGridView.Columns.IndexOf(currentColumn), 0);
+
+            for (int r = 0; r < table.Count; r++)
+            {
+                int rowIdx = startRow + r;
+                while (rowIdx >= _cwRows.Count)
+                {
+                    _cwRows.Add(new CaptureGridRow());
+                }
+                for (int c = 0; c < table[r].Length && startColumn + c < _dataGridColumns.Length; c++)
+                {
+                    int columnIdx = startColumn + c;
+                    String value = table[r][c].Trim();
+                    if (IsPastableValue(columnIdx, value))
+                    {
+                        _cwRows[rowIdx][columnIdx] = value;
+                    }
+                }
+            }
+        }
+
+        private Boolean IsPastableValue(int columnIdx, String value)
+        {
+            if (value == String.Empty)
+            {
+                return true;
+            }
+            switch (_dataGridColumns[columnIdx].Type)
+            {
+                case DataGridType.DropDown:
+                    return Array.IndexOf(_mouseEventItems, value) >= 0;
+                case DataGridType.CheckBox:
+                    return Array.IndexOf(_captureEventItems, value) >= 0;
+                default:
+                    return true;
+            }
         }
 
         // 現在行(WinForms版のCurrentRow)の位置。どこも選ばれていなければ先頭行(0)

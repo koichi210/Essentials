@@ -1,7 +1,8 @@
 // CaptureWindowタブのDataGrid(cw_dataGridView)の1行分。
 // WinForms版はDataGridViewのセルに直接文字列を入れていたが、WPFのDataGridはItemsSourceの
 // オブジェクトを表示する方式なので、5列ぶんの文字列を持つだけの行クラスを用意した。
-// 列の並びはMainWindowのdataGridColumns(Sleep/MouseX/MouseY/MouseAction/Capture)と同じ。
+// 列の並びはMainWindowのdataGridColumns(Sleep/MouseX/MouseY/MouseAction/Capture/Comment)と同じ。
+// Comment(何の操作かのメモ)は後から足した列なので最後に置く(前の5列だけの保存データもそのまま読める)。
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -10,9 +11,9 @@ namespace Cheetos
 {
     internal class CaptureGridRow : INotifyPropertyChanged
     {
-        public const int ColumnCount = 5;
+        public const int ColumnCount = 6;
 
-        private readonly String[] _cells = { "", "", "", "", "" };
+        private readonly String[] _cells = { "", "", "", "", "", "" };
 
         public event PropertyChangedEventHandler PropertyChanged;
 
@@ -21,8 +22,9 @@ namespace Cheetos
         public String MouseY { get { return this[2]; } set { this[2] = value; } }
         public String MouseAction { get { return this[3]; } set { this[3] = value; } }
         public String Capture { get { return this[4]; } set { this[4] = value; } }
+        public String Comment { get { return this[5]; } set { this[5] = value; } }
 
-        private static readonly String[] _propertyNames = { "Sleep", "MouseX", "MouseY", "MouseAction", "Capture" };
+        private static readonly String[] _propertyNames = { "Sleep", "MouseX", "MouseY", "MouseAction", "Capture", "Comment" };
 
         // 列番号でアクセスする(WinForms版の util.GetDataGridCell / SetDataGridCell の代わり)
         public String this[int columnIdx]

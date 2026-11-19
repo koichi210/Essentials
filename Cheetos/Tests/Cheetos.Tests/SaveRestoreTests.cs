@@ -263,6 +263,7 @@ namespace Cheetos.Tests
                 writer._cwRows[1][0] = "500";
                 writer._cwRows[1].MouseAction = "LeftDown";
                 writer._cwRows[1].Capture = "〇";
+                writer._cwRows[1].Comment = "ログインボタン";
 
                 string path = Path.Combine(tempDirectory, "datagrid.json");
                 Assert.IsTrue(writer._sr.Save(path));
@@ -274,6 +275,7 @@ namespace Cheetos.Tests
                 Assert.AreEqual("500", reader._cwRows[1].Sleep);
                 Assert.AreEqual("LeftDown", reader._cwRows[1].MouseAction);
                 Assert.AreEqual("〇", reader._cwRows[1].Capture);
+                Assert.AreEqual("ログインボタン", reader._cwRows[1].Comment, "コメント列も保存される");
             });
         }
 
@@ -404,6 +406,7 @@ namespace Cheetos.Tests
                 Assert.AreEqual("×", window._cwRows[0].Capture);
                 Assert.AreEqual("LeftDown", window._cwRows[1].MouseAction);
                 Assert.AreEqual("〇", window._cwRows[1].Capture);
+                Assert.AreEqual("", window._cwRows[1].Comment, "コメント列が無い前の保存データも読める");
             });
         }
 
