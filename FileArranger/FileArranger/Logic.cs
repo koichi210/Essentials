@@ -53,6 +53,20 @@ namespace FileArranger
             return srcName.Substring(0, srcName.Length - removeDigits) + ToPaddedNumberString(srcNumber, addCount);
         }
 
+        /// <summary>
+        /// フォルダ振り分け(PartitionFile)の[移動後名称]を決める。
+        /// 「フォルダ名を変更しない」(keepFolderName)がオンで[移動前名称](既存の振り分け先フォルダ名)があれば、その名前のまま使う。
+        /// オフの場合や、[移動前名称]が無い(新しく作るフォルダの)場合は、番号を付け替えた名前(numberedName)を使う。
+        /// </summary>
+        public static String GetPartitionDestName(String srcFolderName, String numberedName, Boolean keepFolderName)
+        {
+            if (keepFolderName && !String.IsNullOrEmpty(srcFolderName))
+            {
+                return srcFolderName;
+            }
+            return numberedName;
+        }
+
         /// <summary>全角の数字・英字・スペースを半角に変換する。</summary>
         public static String ChangeWide2Narrow(String srcString)
         {

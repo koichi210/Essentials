@@ -169,6 +169,7 @@ namespace FileArranger
             SaveRestore.RegisterCtrl("PartitionFile", "pf_textBox_SearchTitleLine", pf_textBox_SearchTitleLine);
             SaveRestore.RegisterCtrl("PartitionFile", "pf_textBox_SearchTitleLength", pf_textBox_SearchTitleLength);
             SaveRestore.RegisterCtrl("PartitionFile", "pf_checkBox_CreateNewDir", pf_checkBox_CreateNewDir);
+            SaveRestore.RegisterCtrl("PartitionFile", "pf_checkBox_KeepFolderName", pf_checkBox_KeepFolderName);
 
             // WinForms版SaveJsonFile/LoadJsonFileが"ReferenceCandidate|Value_"というキーでprofileに相乗りさせていた配列
             SaveRestore.RegisterList(_referenceCandidateAttrName, _referenceCandidateAttrValue,

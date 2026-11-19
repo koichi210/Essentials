@@ -82,6 +82,29 @@ namespace FileArranger.Tests
             Assert.AreEqual("Folder100", Logic.ReplaceRearNumber("Folder99", 99, 1));
         }
 
+        // ------------------------------------------------------------------
+        // GetPartitionDestName
+        // ------------------------------------------------------------------
+
+        [TestMethod]
+        public void GetPartitionDestName_フォルダ名を変更しないがオンなら移動前名称のまま()
+        {
+            Assert.AreEqual("Folder05", Logic.GetPartitionDestName("Folder05", "Folder06", true));
+        }
+
+        [TestMethod]
+        public void GetPartitionDestName_オフなら番号を付け替えた名前()
+        {
+            Assert.AreEqual("Folder06", Logic.GetPartitionDestName("Folder05", "Folder06", false));
+        }
+
+        [TestMethod]
+        public void GetPartitionDestName_移動前名称が無ければオンでも番号を付け替えた名前()
+        {
+            Assert.AreEqual("New01", Logic.GetPartitionDestName("", "New01", true));
+            Assert.AreEqual("New01", Logic.GetPartitionDestName(null, "New01", true));
+        }
+
         [TestMethod]
         public void ReplaceRearNumber_末尾に数字が無ければ名前を削らずに付け足す()
         {

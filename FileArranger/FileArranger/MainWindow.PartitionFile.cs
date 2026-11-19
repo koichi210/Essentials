@@ -113,8 +113,11 @@ namespace FileArranger
             }
 
             // 期待するフォルダ名が見つかった。移動後は番号をインクリした名前にする
+            // (「フォルダ名を変更しない」がオンなら、見つかったフォルダ名のまま)
             srcFolderName = foundFolderName;
-            targetFolderName = GetPartitionTargetNameWithNumber(selectedNames, foundFolderName, srcFileName);
+            targetFolderName = Logic.GetPartitionDestName(foundFolderName,
+                GetPartitionTargetNameWithNumber(selectedNames, foundFolderName, srcFileName),
+                pf_checkBox_KeepFolderName.IsChecked == true);
             return targetFolderName != String.Empty;
         }
 
@@ -339,6 +342,12 @@ namespace FileArranger
         private void pf_checkBox_CreateNewDir_CheckedChanged(object sender, RoutedEventArgs e)
         {
             ListupPartitionTargetFiles(false);
+        }
+
+        // 「フォルダ名を変更しない」を切り替えたら、選択中の行の[移動後名称]を作り直す(一覧の選択はそのまま)
+        private void pf_checkBox_KeepFolderName_CheckedChanged(object sender, RoutedEventArgs e)
+        {
+            pf_listView_Target_SelectedIndexChanged(sender, null);
         }
     }
 }

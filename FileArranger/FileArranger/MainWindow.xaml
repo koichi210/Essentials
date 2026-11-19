@@ -411,10 +411,16 @@
                                        ToolTip="振り分け先のフォルダ名から番号を探し始める位置を、名前の末尾から数えた文字数で指定する。空欄なら先頭から。Ctrl+Enterでファイル移動" />
                     </StackPanel>
 
-                    <CheckBox Grid.Row="4" Grid.Column="1" x:Name="pf_checkBox_CreateNewDir" Content="フォルダを新規作成"
-                              VerticalAlignment="Center"
-                              Checked="pf_checkBox_CreateNewDir_CheckedChanged" Unchecked="pf_checkBox_CreateNewDir_CheckedChanged"
-                              ToolTip="オンの時、候補に一致するフォルダが無いファイルには、ファイル名(区切り文字より前)+新規追加Suffixを元にした新しいフォルダ名を移動後名称に入れる。切り替えると一覧を読み直す" />
+                    <StackPanel Grid.Row="4" Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                        <CheckBox x:Name="pf_checkBox_CreateNewDir" Content="フォルダを新規作成"
+                                  VerticalAlignment="Center"
+                                  Checked="pf_checkBox_CreateNewDir_CheckedChanged" Unchecked="pf_checkBox_CreateNewDir_CheckedChanged"
+                                  ToolTip="オンの時、候補に一致するフォルダが無いファイルには、ファイル名(区切り文字より前)+新規追加Suffixを元にした新しいフォルダ名を移動後名称に入れる。切り替えると一覧を読み直す" />
+                        <CheckBox x:Name="pf_checkBox_KeepFolderName" Content="フォルダ名を変更しない" Margin="16,0,0,0"
+                                  VerticalAlignment="Center"
+                                  Checked="pf_checkBox_KeepFolderName_CheckedChanged" Unchecked="pf_checkBox_KeepFolderName_CheckedChanged"
+                                  ToolTip="オンの時、移動前名称(候補に一致した既存フォルダ)がある行は、番号を付け替えずにそのフォルダ名のまま移動後名称にする(フォルダをリネームしない)。移動前名称が無い行(新規作成)は今までどおり番号付きの名前にする" />
+                    </StackPanel>
                     <StackPanel Grid.Row="4" Grid.Column="2" Grid.ColumnSpan="3" Orientation="Horizontal" HorizontalAlignment="Right">
                         <Label Content="番号の検索長：" />
                         <stc:TextBoxEx x:Name="pf_textBox_SearchTitleLength" stc:Placeholder.Text="例: 2" Width="46"
