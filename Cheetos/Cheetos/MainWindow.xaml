@@ -267,7 +267,7 @@
                                        ToolTip="回転角度(度、整数)。正の値で時計回り" />
                         <Button Grid.Row="3" Grid.ColumnSpan="2" x:Name="pr_Button_RotationPreview" Content="プレビュー" Width="84" Height="23"
                                 HorizontalAlignment="Right" Margin="0,4,0,0" Click="pr_Button_RotationPreview_Click"
-                                ToolTip="画像を読み込んで原点・角度を試せるプレビューを開く。OKで閉じるとその値をこの画面に反映する" />
+                                ToolTip="一覧の先頭の画像を読み込んで原点・角度を試せるプレビューを開く。OKで閉じるとその値をこの画面に反映する" />
                     </Grid>
 
                     <ListBox Grid.Row="1" Grid.Column="1" x:Name="pr_ListBox_ListUp" Style="{StaticResource ListUp}"

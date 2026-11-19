@@ -33,20 +33,69 @@ namespace Cheetos
             _isConstructed = true;
         }
 
-        public RotationPreview(String originX, String originY, String angle) : this()
+        // 回転後のキャンバスの横幅の初期値は、元画像の幅のこの倍率
+        private const double _defaultCanvasWidthRate = 1.5;
+        private const int _maxCanvasWidth = 20000;
+
+        public RotationPreview(String originX, String originY, String angle) : this(originX, originY, angle, "")
+        {
+        }
+
+        // filePath: 最初に読み込む画像(Rotationタブの一覧の先頭のファイル)。あれば開いた時点で読み込んで表示する
+        public RotationPreview(String originX, String originY, String angle, String filePath) : this()
         {
             _isConstructed = false;
             textBox_OriginX.Text = originX;
             textBox_OriginY.Text = originY;
             textBox_angle.Text = angle;
+            textBox_LoadFilePath.Text = filePath ?? "";
             _isConstructed = true;
+
+            if (File.Exists(textBox_LoadFilePath.Text))
+            {
+                Loaded += (s, e) => LoadSourceImage(false);
+            }
         }
 
         private void button_ClickDraw(object sender, RoutedEventArgs e)
         {
+            LoadSourceImage(true);
+        }
+
+        // 画像ファイルを読み直して元画像を表示し、横幅を元画像の1.5倍にしてから回転後を描く。
+        // 以前はファイルが無いと例外になっていたので、先に有るか確かめる
+        private void LoadSourceImage(Boolean showMessage)
+        {
+            String filePath = textBox_LoadFilePath.Text;
+            if (!File.Exists(filePath))
+            {
+                if (showMessage)
+                {
+                    MessageBox.Show("ファイルが見つかりません。\n" + filePath, "RotationPreview");
+                }
+                return;
+            }
+
             ReleaseSourceBitmap();
             pictureBox_Source.Source = null;
-            pictureBox_Source.Source = WpfUtils.ToBitmapSource(GetSourceBitmap(textBox_LoadFilePath.Text));
+            Drawing.Bitmap img;
+            try
+            {
+                img = GetSourceBitmap(filePath);
+            }
+            catch (Exception ex)
+            {
+                if (showMessage)
+                {
+                    MessageBox.Show("画像を読み込めませんでした。\n" + filePath + "\n" + ex.Message, "RotationPreview");
+                }
+                return;
+            }
+            pictureBox_Source.Source = WpfUtils.ToBitmapSource(img);
+
+            _isConstructed = false;
+            textBox_CanvasWidth.Text = ((int)Math.Round(img.Width * _defaultCanvasWidthRate)).ToString();
+            _isConstructed = true;
             Draw();
         }
 
@@ -164,10 +213,28 @@ namespace Cheetos
                 return;
             }
 
-            Drawing.Bitmap img = GetSourceBitmap(textBox_LoadFilePath.Text);
-            int max = Math.Max(img.Width, img.Height);
+            Drawing.Bitmap img;
+            try
+            {
+                img = GetSourceBitmap(textBox_LoadFilePath.Text);
+            }
+            catch (Exception)
+            {
+                // 画像として読めないファイル(loadボタンの方で知らせる)
+                return;
+            }
 
-            using (Drawing.Bitmap canvas = new Drawing.Bitmap(max * 2, max * 2))
+            // 横幅は入力値(空欄・数値以外は元画像の幅の1.5倍)、高さは回転実行と同じく元画像の対角線の長さ
+            int canvasWidth;
+            if (!Int32.TryParse(textBox_CanvasWidth.Text, out canvasWidth) || canvasWidth <= 0)
+            {
+                canvasWidth = (int)Math.Round(img.Width * _defaultCanvasWidthRate);
+            }
+            int canvasHeight = (int)Math.Sqrt((double)img.Width * img.Width + (double)img.Height * img.Height);
+
+            // 桁の打ち間違いで巨大なキャンバスを作ろうとして落ちないよう、上限を決めておく
+            canvasWidth = Math.Min(canvasWidth, _maxCanvasWidth);
+            using (Drawing.Bitmap canvas = new Drawing.Bitmap(Math.Max(canvasWidth, 1), Math.Max(canvasHeight, 1)))
             {
                 // (WinForms版はfloat.Parseで、空欄だと例外になっていた。空欄は0として扱う)
                 int angle;

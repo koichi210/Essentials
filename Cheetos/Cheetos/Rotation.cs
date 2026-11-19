@@ -97,7 +97,11 @@ namespace Cheetos
     {
         private void pr_Button_RotationPreview_Click(object sender, RoutedEventArgs e)
         {
-            RotationPreview rp = new RotationPreview(pr_BaseX.Text, pr_BaseY.Text, pr_Angle.Text);
+            // プレビューする画像は一覧の先頭のファイルにしておく(一覧が空なら空欄)
+            String firstFilePath = (pr_ListBox_ListUp.Items.Count > 0)
+                ? Path.Combine(pr_SourceFolderPath.Text, pr_ListBox_ListUp.Items[0].ToString())
+                : "";
+            RotationPreview rp = new RotationPreview(pr_BaseX.Text, pr_BaseY.Text, pr_Angle.Text, firstFilePath);
             rp.Owner = this;
 
             if (rp.ShowDialog() == true)

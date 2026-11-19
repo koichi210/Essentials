@@ -35,6 +35,8 @@
                 <ColumnDefinition Width="46" />
                 <ColumnDefinition Width="Auto" />
                 <ColumnDefinition Width="46" />
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="56" />
                 <ColumnDefinition Width="*" />
                 <ColumnDefinition Width="Auto" />
             </Grid.ColumnDefinitions>
@@ -47,20 +49,24 @@
             <Label Grid.Column="5" Content="角度" Padding="2,0" Margin="6,0,4,0" VerticalAlignment="Center" />
             <stc:TextBoxEx Grid.Column="6" x:Name="textBox_angle" stc:Placeholder.Text="例: 90" Text="0" VerticalAlignment="Center"
                            PreviewKeyDown="textBox_Angle_KeyDown" TextChanged="textBox_Param_TextChanged" />
-            <Button Grid.Column="8" x:Name="buttonCancel" Content="Cancel" Width="75" Height="23" Click="buttonCancel_Click" />
+            <Label Grid.Column="7" Content="横幅" Padding="2,0" Margin="6,0,4,0" VerticalAlignment="Center" />
+            <stc:TextBoxEx Grid.Column="8" x:Name="textBox_CanvasWidth" stc:Placeholder.Text="例: 2880" VerticalAlignment="Center"
+                           TextChanged="textBox_Param_TextChanged"
+                           ToolTip="回転後の画像を描くキャンバスの横幅(px)。loadすると元画像の幅の1.5倍が入る。空欄なら元画像の幅の1.5倍" />
+            <Button Grid.Column="10" x:Name="buttonCancel" Content="Cancel" Width="75" Height="23" Click="buttonCancel_Click" />
         </Grid>
 
-        <!-- WinForms版のPictureBox(SizeMode=AutoSize)と同じく、画像は等倍で左上から表示し、はみ出した分は切れる -->
+        <!-- 画像は枠に収まるように縮小して表示する(枠より小さい画像は等倍のまま) -->
         <Grid Grid.Row="2" Margin="3,10,0,0">
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="302" />
+                <ColumnDefinition Width="*" />
                 <ColumnDefinition Width="*" />
             </Grid.ColumnDefinitions>
-            <Border Grid.Column="0" ClipToBounds="True">
-                <Image x:Name="pictureBox_Source" Stretch="None" HorizontalAlignment="Left" VerticalAlignment="Top" />
+            <Border Grid.Column="0" ClipToBounds="True" Margin="0,0,6,0">
+                <Image x:Name="pictureBox_Source" Stretch="Uniform" StretchDirection="DownOnly" HorizontalAlignment="Left" VerticalAlignment="Top" />
             </Border>
             <Border Grid.Column="1" ClipToBounds="True">
-                <Image x:Name="pictureBox_Dest" Stretch="None" HorizontalAlignment="Left" VerticalAlignment="Top" />
+                <Image x:Name="pictureBox_Dest" Stretch="Uniform" StretchDirection="DownOnly" HorizontalAlignment="Left" VerticalAlignment="Top" />
             </Border>
         </Grid>
     </Grid>
