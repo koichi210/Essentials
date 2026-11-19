@@ -203,9 +203,10 @@ namespace Cheetos.Tests
         }
 
         [TestMethod]
-        public void MergeExecuteは前回のマージ元バックアップがあっても上書きして移動する()
+        public void MergeExecuteは前回のマージ元バックアップがあっても上書きせず別名で移動する()
         {
-            // 以前はFile.Moveの移動先が既にあると例外になり、結合元だけ上書きされた状態で止まっていた
+            // 以前はFile.Moveの移動先が既にあると例外になり、結合元だけ上書きされた状態で止まっていた。
+            // バックアップは上書きしない方針になったので、同名があれば「 (2)」を付けて移動する
             CreateImage("left.jpg", 8, 8, Color.Red);
             CreateImage("right.jpg", 8, 8, Color.Blue);
             string oldBackUp = Path.Combine(tempDirectory, "backup", "right.jpg");
@@ -227,7 +228,8 @@ namespace Cheetos.Tests
             Assert.IsTrue(pm.MergeExecute());
 
             Assert.IsFalse(File.Exists(Path.Combine(tempDirectory, "right.jpg")));
-            Assert.AreNotEqual("old", File.ReadAllText(oldBackUp), "バックアップは今回のマージ元に置き換わる");
+            Assert.AreEqual("old", File.ReadAllText(oldBackUp), "前のバックアップは上書きしない");
+            Assert.IsTrue(File.Exists(Path.Combine(tempDirectory, "backup", "right (2).jpg")), "今回のマージ元は別名でバックアップへ移動する");
         }
 
         [TestMethod]

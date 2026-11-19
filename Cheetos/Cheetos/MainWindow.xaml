@@ -216,7 +216,7 @@
                     <DockPanel Grid.Row="2" Grid.Column="1" Margin="0,4,0,0">
                         <Button DockPanel.Dock="Right" x:Name="pt_Button_Trim" Content="切り取り" Width="60" Height="23" Margin="6,0,0,0"
                                 Click="Button_Trim_Click"
-                                ToolTip="選択したファイルを切り取って上書き保存する。元ファイルはフォルダ内のBk_Trimへコピーしておく。処理中に押すと中断" />
+                                ToolTip="選択したファイルを切り取って上書き保存する。元ファイルはフォルダ内のCheetos\BK\yyyyMMdd_Trim(毎回新しいフォルダ)へコピーしておく。処理中に押すと中断" />
                         <stc:TextBoxEx x:Name="pt_TextBox_Status" IsReadOnly="True" TextAlignment="Right" VerticalAlignment="Center" />
                     </DockPanel>
                 </Grid>
@@ -276,7 +276,7 @@
                     <DockPanel Grid.Row="2" Grid.Column="1" Margin="0,4,0,0">
                         <Button DockPanel.Dock="Right" x:Name="pr_Button_Rotation" Content="回転実行" Width="61" Height="23" Margin="6,0,0,0"
                                 Click="pr_Button_Rotation_Click"
-                                ToolTip="選択したファイルを回転して上書き保存する(画像サイズは元画像の対角線長の正方形になる)。元ファイルはBk_Rotateへコピーしておく。処理中に押すと中断" />
+                                ToolTip="選択したファイルを回転して上書き保存する(画像サイズは元画像の対角線長の正方形になる)。元ファイルはフォルダ内のCheetos\BK\yyyyMMdd_Rotate(毎回新しいフォルダ)へコピーしておく。処理中に押すと中断" />
                         <stc:TextBoxEx x:Name="pr_TextBox_Status" IsReadOnly="True" TextAlignment="Right" VerticalAlignment="Center" />
                     </DockPanel>
                 </Grid>
@@ -441,7 +441,7 @@
                                    ToolTip="移動するファイルの検索パターン(*や?が使える)。移動元フォルダの直下だけが対象" />
                     <Button Grid.Row="3" Grid.Column="1" x:Name="fc_MoveFile" Content="移動" Width="141" Height="23"
                             HorizontalAlignment="Right" Margin="0,4" Click="fc_Button_Collect_Click"
-                            ToolTip="移動元直下の対象ファイルを移動先へ移動する(コピーではない)。移動先が無ければ作成するか確認する" />
+                            ToolTip="移動元直下の対象ファイルを移動先へ移動する(コピーではない)。移動先が無ければ作成する" />
                 </Grid>
             </TabItem>
         </TabControl>

@@ -16,7 +16,7 @@ namespace Cheetos
     /// ・StepValueByArrowKey の引数を WinForms の KeyEventArgs から WPF の Key にした
     ///   (WPFのKeyEventArgsはPresentationSource無しでは作れず、テストしづらいため)
     /// </summary>
-    internal static class Logic
+    internal static partial class Logic
     {
         /// <summary>
         /// 画像の左右の白フチの太さを比較し、縦長（Portrait）向けの画像かどうかを判定する。

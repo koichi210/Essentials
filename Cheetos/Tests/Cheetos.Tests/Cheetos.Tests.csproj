@@ -58,6 +58,7 @@
     <Compile Include="SaveRestoreTests.cs" />
     <Compile Include="PicEditTests.cs" />
     <Compile Include="LogicTests.cs" />
+    <Compile Include="LogicExTests.cs" />
     <Compile Include="RotationTests.cs" />
     <Compile Include="PictMergeTests.cs" />
     <Compile Include="..\..\..\_Common\Wpf\Tests\StaRunner.cs">

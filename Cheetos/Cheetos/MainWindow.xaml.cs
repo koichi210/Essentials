@@ -271,7 +271,7 @@ namespace Cheetos
                 return;
             }
 
-            if (!_fio.EnsureDirectory(fc_DestFolderPath.Text))
+            if (!EnsureDirectoryWithMessage(fc_DestFolderPath.Text))
             {
                 return;
             }
@@ -353,8 +353,10 @@ namespace Cheetos
             }
         }
 
+        // 実行ボタンを押した時に呼ぶ。前回の「N/N 完了」の表示もここで消す
         private void InitProgressBar(int maximum)
         {
+            TextBox_Status.Text = "";
             ProgressBar_Status.Maximum = maximum;
             ProgressBar_Status.Minimum = 0;
             ProgressBar_Status.Value = 0;
@@ -367,15 +369,43 @@ namespace Cheetos
             ProgressBar_Status.Value = progress;
         }
 
-        // フォルダが無ければ作る。作れなければメッセージを出してfalseを返す
+        // フォルダが無ければ作る(「作成しますか？」とは聞かずに作る)。作れなければメッセージを出してfalseを返す
         private Boolean EnsureDirectoryWithMessage(String dirPath)
         {
-            if (_fio.EnsureDirectory(dirPath))
+            try
             {
-                return true;
+                if (dirPath.Trim() != String.Empty && _fio.EnsureDirectory(dirPath, true))
+                {
+                    return true;
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("フォルダを作れませんでした。\n" + dirPath + "\n" + ex.Message);
+                return false;
             }
             MessageBox.Show("無効なフォルダパスです。\n" + dirPath);
             return false;
+        }
+
+        // 元フォルダの中に、今回のバックアップ用の新しいフォルダ(Cheetos\BK\yyyyMMdd_種類[_連番])を作る。
+        // 作れなければメッセージを出してnullを返す
+        private String CreateBackupDirectoryWithMessage(String sourceFolderPath, String kind)
+        {
+            if (!Directory.Exists(sourceFolderPath))
+            {
+                MessageBox.Show("フォルダパスが不正です");
+                return null;
+            }
+            try
+            {
+                return Logic.CreateBackupDirectory(sourceFolderPath, kind);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("バックアップ先のフォルダを作れませんでした。\n" + ex.Message);
+                return null;
+            }
         }
 
         private void InitializeBackgroundWorkers()
