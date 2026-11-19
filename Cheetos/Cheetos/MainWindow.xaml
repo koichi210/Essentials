@@ -3,7 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:stc="clr-namespace:StandardTemplate.Wpf"
         Title="Cheetos" Icon="Cheetos.ico"
-        Width="483" Height="470" MinWidth="400" MinHeight="445"
+        Width="483" Height="500" MinWidth="400" MinHeight="475"
         PreviewKeyDown="Window_PreviewKeyDown">
     <Window.Resources>
         <Style x:Key="NumberBox" TargetType="{x:Type stc:TextBoxEx}">
@@ -49,6 +49,7 @@
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
                         <RowDefinition Height="*" />
                         <RowDefinition Height="Auto" />
                     </Grid.RowDefinitions>
@@ -76,7 +77,7 @@
                         </StackPanel>
                     </GroupBox>
 
-                    <DataGrid Grid.Row="3" Grid.RowSpan="4" Grid.Column="1" x:Name="cw_dataGridView" Margin="0,4,0,2"
+                    <DataGrid Grid.Row="3" Grid.RowSpan="5" Grid.Column="1" x:Name="cw_dataGridView" Margin="0,4,0,2"
                               AutoGenerateColumns="False" CanUserAddRows="False" CanUserDeleteRows="False"
                               CanUserSortColumns="False" CanUserReorderColumns="False"
                               HeadersVisibility="Column" SelectionMode="Single" SelectionUnit="Cell"
@@ -145,12 +146,16 @@
                     <stc:TextBoxEx Grid.Row="5" Grid.Column="0" x:Name="cw_TextBox_Loop" stc:Placeholder.Text="例: 2" Style="{StaticResource NumberBox}"
                                    Width="50" HorizontalAlignment="Right" Margin="0,2,6,2" EnableUpDownIncrement="True"
                                    ToolTip="グリッドの全行を繰り返す回数。空欄なら1回。↑↓キーで1ずつ増減できる" />
+                    <Label Grid.Row="6" Grid.Column="0" Content="自動復旧(秒)：" HorizontalAlignment="Left" Margin="4,0,0,0" Padding="2,0" VerticalAlignment="Center" />
+                    <stc:TextBoxEx Grid.Row="6" Grid.Column="0" x:Name="cw_TextBox_Watchdog" stc:Placeholder.Text="例: 60" Style="{StaticResource NumberBox}"
+                                   Width="50" HorizontalAlignment="Right" Margin="0,2,6,2"
+                                   ToolTip="次の行の予定時刻(下の「次の予定」)をこの秒数過ぎても動いていなければ、止まった行を飛ばして次の行から続ける(1回のCaptureで最大5回)。空欄か0なら自動復旧しない" />
 
-                    <stc:TextBoxEx Grid.Row="7" Grid.Column="0" x:Name="cw_TextBox_Status" IsReadOnly="True" TextAlignment="Right"
+                    <stc:TextBoxEx Grid.Row="8" Grid.Column="0" x:Name="cw_TextBox_Status" IsReadOnly="True" TextAlignment="Right"
                                    Margin="35,0,6,0" VerticalAlignment="Center" Cursor="Cross"
                                    PreviewMouseLeftButtonDown="cw_TextBox_Status_PreviewMouseLeftButtonDown"
                                    ToolTip="このタブ上でマウスを動かすと、現在のマウス座標(画面座標)を表示する。この欄(かタブの余白)からマウスをドラッグして離すと、その位置の座標を表の選択中の行のMouseX/MouseYに入れる" />
-                    <DockPanel Grid.Row="7" Grid.Column="1" LastChildFill="False">
+                    <DockPanel Grid.Row="8" Grid.Column="1" LastChildFill="False">
                         <Button DockPanel.Dock="Left" x:Name="cw_Button_AddLine" Content="一行追加" Width="65" Height="23" Margin="0,0,2,0"
                                 Click="cw_Button_AddLine_Click"
                                 ToolTip="選択中の行の下に1行挿入する(MouseAction=Move、Capture=×)" />
@@ -158,7 +163,7 @@
                                 Click="cw_Button_DelLine_Click" />
                         <Button DockPanel.Dock="Right" x:Name="cw_Button_Capture" Content="Capture" Width="60" Height="23"
                                 Click="Button_Capture_Click"
-                                ToolTip="グリッドの各行を上から順に実行(マウス操作→Sleep→キャプチャ)し、それを繰り返し数だけ行う。終了後はマウスカーソルを押した時の位置へ戻す。処理中に押すと中断" />
+                                ToolTip="グリッドの各行を上から順に実行(マウス操作→Sleep→キャプチャ)し、それを繰り返し数だけ行う。保存先に同じ名前の画像があれば上書きしてよいか先に確認する。終了後はマウスカーソルを押した時の位置へ戻す。処理中に押すと中断" />
                     </DockPanel>
                 </Grid>
             </TabItem>
@@ -497,6 +502,7 @@
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
                 </Grid.RowDefinitions>
                 <Label Grid.Row="0" Grid.Column="0" Content="開始：" Style="{StaticResource RowLabel}" />
                 <stc:TextBoxEx Grid.Row="0" Grid.Column="1" x:Name="textBox_StartTime" IsReadOnly="True" TextAlignment="Right"
@@ -507,6 +513,12 @@
                                VerticalAlignment="Center" Margin="0,2" />
                 <stc:TextBoxEx Grid.Row="1" Grid.Column="3" x:Name="TextBox_Status" IsReadOnly="True" TextAlignment="Right"
                                Width="95" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,2" />
+                <Label Grid.Row="2" Grid.Column="0" Content="次の予定：" Style="{StaticResource RowLabel}" />
+                <stc:TextBoxEx Grid.Row="2" Grid.Column="1" x:Name="textBox_NextEventTime" IsReadOnly="True" TextAlignment="Right"
+                               VerticalAlignment="Center" Margin="0,2"
+                               ToolTip="CaptureWindowの実行中、次の行を始める予定の時刻(今の行のSleepが終わる時刻)" />
+                <TextBlock Grid.Row="2" Grid.Column="3" x:Name="textBlock_CaptureWarning" Foreground="Red" FontWeight="Bold"
+                           VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
             </Grid>
         </GroupBox>
 

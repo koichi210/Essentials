@@ -59,6 +59,7 @@
     <Compile Include="PicEditTests.cs" />
     <Compile Include="LogicTests.cs" />
     <Compile Include="LogicExTests.cs" />
+    <Compile Include="CaptureRunnerTests.cs" />
     <Compile Include="TrimHeightPatternTests.cs" />
     <Compile Include="RotationTests.cs" />
     <Compile Include="PictMergeTests.cs" />

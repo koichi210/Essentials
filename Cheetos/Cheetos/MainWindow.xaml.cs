@@ -105,7 +105,7 @@ namespace Cheetos
             LoadUserDataFolderContents();
 
             // CurrentScreenキャプチャで「このウィンドウが今あるモニタ」を判定できるようにする
-            SourceInitialized += (s, e) => _cw.TargetWindow = WpfUtils.CreateScreenAnchor(this);
+            SourceInitialized += (s, e) => _captureTargetWindow = WpfUtils.CreateScreenAnchor(this);
 
             WpfDataFolderMenu.Attach(this, () => DataFolderMenu.ChangeDataFolder(_appName, _userDataFolder,
                 (oldFolder, newFolder) => DataFolderMenu.MoveProfiles(oldFolder, newFolder, _appName),
@@ -140,6 +140,7 @@ namespace Cheetos
             _sr.RegisterCtrl("CaptureWindow", "cw_Radio_CurrentWindow", cw_Radio_CurrentWindow);
             _sr.RegisterCtrl("CaptureWindow", "cw_TextBox_Sleep", cw_TextBox_Sleep, "2000");
             _sr.RegisterCtrl("CaptureWindow", "cw_TextBox_Loop", cw_TextBox_Loop, "2");
+            _sr.RegisterCtrl("CaptureWindow", "cw_TextBox_Watchdog", cw_TextBox_Watchdog);
             _sr.RegisterGrid("DataGrid", "Cell", GetGridRows, SetGridRows);
 
             _sr.RegisterCtrl("PictTrim", "pt_SourceFolderPath", pt_SourceFolderPath);
