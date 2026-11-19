@@ -386,19 +386,48 @@
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto" />
                             <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
                             <RowDefinition Height="*" />
                         </Grid.RowDefinitions>
                         <Label Grid.Row="0" Content="マージ先の識別子：" Style="{StaticResource RowLabel}" />
                         <stc:TextBoxEx Grid.Row="0" Grid.Column="1" x:Name="pm_SourceFile1Prefix" stc:Placeholder.Text="例: _1" Style="{StaticResource NumberBox}" Margin="0,2"
-                                       ToolTip="結合先のファイルを見分ける、拡張子の直前の文字列(例: 001_1.jpgなら_1)。このファイルに上書き保存し、元はBk_Mergeへコピーしておく" />
+                                       ToolTip="結合先のファイルを見分ける、拡張子の直前の文字列(例: 001_1.jpgなら_1)。結合した画像はこの文字列を除いた名前(001.jpg)で保存し、元のファイルはCheetos\BK\yyyyMMdd_Mergeへ移す" />
                         <Label Grid.Row="1" Content="マージ元の識別子：" Style="{StaticResource RowLabel}" />
                         <stc:TextBoxEx Grid.Row="1" Grid.Column="1" x:Name="pm_SourceFile2Prefix" stc:Placeholder.Text="例: _2" Style="{StaticResource NumberBox}" Margin="0,2"
-                                       ToolTip="切り出し元のファイルを見分ける、拡張子の直前の文字列。結合先の名前のこの部分を置き換えたファイルを使い、結合後はBk_Mergeへ移動する" />
-                        <Label Grid.Row="2" Content="切取る高さの範囲：" Style="{StaticResource RowLabel}" VerticalAlignment="Top" Margin="0,4,0,0" />
-                        <stc:TextBoxEx Grid.Row="2" Grid.Column="1" x:Name="pm_TrimmingHeight" TextAlignment="Right" Margin="0,2,0,0"
+                                       ToolTip="切り出し元のファイルを見分ける、拡張子の直前の文字列。結合先の名前のこの部分を置き換えたファイルを使い、結合後はCheetos\BK\yyyyMMdd_Mergeへ移動する" />
+                        <StackPanel Grid.Row="2" Grid.ColumnSpan="3" Orientation="Horizontal" Margin="0,2">
+                            <Label Content="指定方法：" Padding="2,0" VerticalAlignment="Center" />
+                            <RadioButton x:Name="pm_Radio_TrimRange" Content="範囲" IsChecked="True" Margin="2,0,6,0" VerticalAlignment="Center"
+                                         Checked="pm_Radio_TrimMode_Checked"
+                                         ToolTip="下の欄に、写す縦の範囲(px)を1行に1つ「開始,終了」で書く(今までの書き方)" />
+                            <RadioButton x:Name="pm_Radio_TrimStarts" Content="開始位置" Margin="0,0,6,0" VerticalAlignment="Center"
+                                         Checked="pm_Radio_TrimMode_Checked"
+                                         ToolTip="下の欄に開始位置だけを並べ(改行かカンマ区切り)、高さは「高さ」欄の共通の1つにする" />
+                            <RadioButton x:Name="pm_Radio_TrimPitch" Content="等間隔" VerticalAlignment="Center"
+                                         Checked="pm_Radio_TrimMode_Checked"
+                                         ToolTip="開始位置から「間隔」ずつずらしながら、「高さ」の帯を「回数」個写す(例: 開始530・間隔290・高さ45)" />
+                        </StackPanel>
+                        <Label Grid.Row="3" Content="開始・間隔：" Style="{StaticResource RowLabel}" />
+                        <StackPanel Grid.Row="3" Grid.Column="1" Orientation="Horizontal" Margin="0,2">
+                            <stc:TextBoxEx x:Name="pm_PitchStart" stc:Placeholder.Text="例: 530" Style="{StaticResource NumberBox}" Width="48"
+                                           ToolTip="等間隔: 最初の帯の開始位置(px)" />
+                            <stc:TextBoxEx x:Name="pm_PitchInterval" stc:Placeholder.Text="例: 290" Style="{StaticResource NumberBox}" Width="48" Margin="4,0,0,0"
+                                           ToolTip="等間隔: 次の帯までずらす幅(px)" />
+                        </StackPanel>
+                        <Label Grid.Row="4" Content="高さ・回数：" Style="{StaticResource RowLabel}" />
+                        <StackPanel Grid.Row="4" Grid.Column="1" Orientation="Horizontal" Margin="0,2">
+                            <stc:TextBoxEx x:Name="pm_PitchHeight" stc:Placeholder.Text="例: 45" Style="{StaticResource NumberBox}" Width="48"
+                                           ToolTip="開始位置・等間隔: 1つの帯の高さ(px)" />
+                            <stc:TextBoxEx x:Name="pm_PitchCount" stc:Placeholder.Text="空=下端" Style="{StaticResource NumberBox}" Width="48" Margin="4,0,0,0"
+                                           ToolTip="等間隔: 帯の数。空欄なら、選んだ画像のうちいちばん低い画像の下端に収まるところまで並べる" />
+                        </StackPanel>
+                        <Label Grid.Row="5" x:Name="pm_Label_TrimmingHeight" Content="切取る高さの範囲：" Style="{StaticResource RowLabel}" VerticalAlignment="Top" Margin="0,4,0,0" />
+                        <stc:TextBoxEx Grid.Row="5" Grid.Column="1" x:Name="pm_TrimmingHeight" TextAlignment="Right" Margin="0,2,0,0"
                                        AcceptsReturn="True" TextWrapping="NoWrap"
                                        VerticalScrollBarVisibility="Visible" HorizontalScrollBarVisibility="Visible"
-                                       ToolTip="マージ元から結合先の同じ位置へ写す縦の範囲(px)を、1行に1つ「開始,終了」で書く。「-」は開始なら0、終了なら画像の下端の意味" />
+                                       ToolTip="範囲: マージ元から結合先の同じ位置へ写す縦の範囲(px)を、1行に1つ「開始,終了」で書く。「-」は開始なら0、終了なら画像の下端の意味。開始位置: 開始位置だけを改行かカンマ区切りで並べる" />
                     </Grid>
 
                     <ListBox Grid.Row="1" Grid.Column="1" x:Name="pm_ListBox_ListUp" Style="{StaticResource ListUp}"

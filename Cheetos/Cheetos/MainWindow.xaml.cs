@@ -115,6 +115,7 @@ namespace Cheetos
         {
             _sr.LoadOrDefault(Path.Combine(_userDataFolder, _settingFileName));
             SyncPictTrimEndMode();
+            UpdatePictMergeModeControls();
             WpfProfile.UpdateProfileList(Profile, _profileExtensions, "", _userDataFolder);
         }
 
@@ -162,9 +163,17 @@ namespace Cheetos
             _sr.RegisterCtrl("DistOrient", "do_SampleFilePath", do_SampleFilePath);
 
             _sr.RegisterCtrl("PictMerge", "pm_SourceFolderPath", pm_SourceFolderPath);
-            _sr.RegisterCtrl("PictMerge", "pm_SourceFile1Prefix", pm_SourceFile1Prefix);
-            _sr.RegisterCtrl("PictMerge", "pm_SourceFile2Prefix", pm_SourceFile2Prefix);
-            _sr.RegisterCtrl("PictMerge", "pm_TrimmingHeight", pm_TrimmingHeight);
+            // 識別子と高さの欄は、設定ファイルが無いとき(初回起動)に例を入れておく
+            _sr.RegisterCtrl("PictMerge", "pm_SourceFile1Prefix", pm_SourceFile1Prefix, "_1");
+            _sr.RegisterCtrl("PictMerge", "pm_SourceFile2Prefix", pm_SourceFile2Prefix, "_2");
+            _sr.RegisterCtrl("PictMerge", "pm_TrimmingHeight", pm_TrimmingHeight, "0,200");
+            _sr.RegisterCtrl("PictMerge", "pm_Radio_TrimRange", pm_Radio_TrimRange, "True");
+            _sr.RegisterCtrl("PictMerge", "pm_Radio_TrimStarts", pm_Radio_TrimStarts);
+            _sr.RegisterCtrl("PictMerge", "pm_Radio_TrimPitch", pm_Radio_TrimPitch);
+            _sr.RegisterCtrl("PictMerge", "pm_PitchStart", pm_PitchStart);
+            _sr.RegisterCtrl("PictMerge", "pm_PitchInterval", pm_PitchInterval);
+            _sr.RegisterCtrl("PictMerge", "pm_PitchHeight", pm_PitchHeight);
+            _sr.RegisterCtrl("PictMerge", "pm_PitchCount", pm_PitchCount);
 
             _sr.RegisterCtrl("FileCollect", "fc_SourceFolderPath", fc_SourceFolderPath);
             _sr.RegisterCtrl("FileCollect", "fc_DestFolderPath", fc_DestFolderPath);
@@ -184,6 +193,7 @@ namespace Cheetos
 
             Boolean isLoaded = _sr.Load(loadFileName);
             SyncPictTrimEndMode();
+            UpdatePictMergeModeControls();
             return isLoaded;
         }
 

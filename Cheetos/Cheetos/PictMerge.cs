@@ -253,6 +253,11 @@ namespace Cheetos
 
         public bool MergeExecute()
         {
+            String outputFileName = GetMergedFileName(_targetFileName, SourceFile1Prefix);
+            String outputFullName = (outputFileName == _targetFileName)
+                ? _sourceFileFullName
+                : Logic.GetNonConflictFilePath(SourceFolderPath + @"\" + outputFileName);
+
             // キャンバス作成
             using (PicEdit mrg = new PicEdit(_sourceBackUpFullName))
             {
@@ -285,16 +290,39 @@ namespace Cheetos
 
                 mrg.ReleaseSourceImg();
 
-                // キャンバス保存
-                mrg.SaveCanvas(_sourceFileFullName);
+                // キャンバス保存。識別子1を除いた名前で保存する(同じ名前のファイルが既にあれば「 (2)」などを付けて上書きしない)
+                mrg.SaveCanvas(outputFullName);
             }
             // ここ(usingの外)では画像はすべて解放済みで、ファイルのロックも外れている
+
+            // 別の名前で保存したときは、結合先の元ファイルを消す(バックアップへコピー済み)
+            if (outputFullName != _sourceFileFullName)
+            {
+                File.Delete(_sourceFileFullName);
+            }
 
             // マージ元ファイルをバックアップへ移動。
             // 前のバックアップは上書きしない(バックアップ先は毎回新しいフォルダ。念のため同名があれば別名にする。
             // File.Moveは移動先があると例外になり、結合元だけ結合済みの状態で処理が止まっていた)
             File.Move(_mergeFileFullName, Logic.GetNonConflictFilePath(_mergeBackUpFullName));
             return true;
+        }
+
+        // 結合した画像の保存名。結合先の名前から識別子1を除いたもの(001_1.jpg → 001.jpg)。
+        // 識別子1が空、または除くと名前が無くなる(識別子1+拡張子だけの名前)ときは、今まで通り結合先の名前のまま
+        public static String GetMergedFileName(String targetFileName, String sourceFile1Prefix)
+        {
+            if (String.IsNullOrEmpty(sourceFile1Prefix))
+            {
+                return targetFileName;
+            }
+            String suffix = sourceFile1Prefix + Path.GetExtension(targetFileName);
+            int idx = targetFileName.LastIndexOf(suffix, StringComparison.Ordinal);
+            if (idx <= 0)
+            {
+                return targetFileName;
+            }
+            return targetFileName.Substring(0, idx) + targetFileName.Substring(idx + sourceFile1Prefix.Length);
         }
 
         public String GetErrorMessage()
@@ -322,8 +350,12 @@ namespace Cheetos
 
             // 切断基準となる高さ。書式の確認はバックグラウンドでは聞けないため、開始前にここで1回だけ行う
             // (終了が画像の高さより大きい行も不正とするため、選択された画像ごとの高さで確認する)
-            String[] trimHeightRanges = pm_TrimmingHeight.Text.Split(new[] { Environment.NewLine }, StringSplitOptions.None);
             List<KeyValuePair<String, int>> imageHeights = global::Cheetos.PictMerge.GetImageHeights(pm_SourceFolderPath.Text, pm_SourceFile1Prefix.Text, targetFileNames);
+            String[] trimHeightRanges = BuildTrimHeightRanges(imageHeights);
+            if (trimHeightRanges == null)
+            {
+                return;
+            }
             String invalidTrimHeightsMessage = global::Cheetos.PictMerge.BuildInvalidTrimHeightsMessage(trimHeightRanges, imageHeights);
             if (invalidTrimHeightsMessage != String.Empty)
             {
@@ -365,6 +397,97 @@ namespace Cheetos
             SetStartTime();
             pm_Button_Merge.Content = "中断";
             _bkgWorkerMerge.RunWorkerAsync(param);   // ⇒DoWork()
+        }
+
+        // 「指定方法」に合わせて、切り取る範囲を今までと同じ「開始,終了」の行にする。
+        // 入力が足りない・数値でないときはメッセージを出してnullを返す
+        private String[] BuildTrimHeightRanges(List<KeyValuePair<String, int>> imageHeights)
+        {
+            if (pm_Radio_TrimStarts.IsChecked == true)
+            {
+                int height;
+                if (!TryGetIntWithMessage(pm_PitchHeight, "高さ", 1, out height))
+                {
+                    return null;
+                }
+                String[] lines;
+                try
+                {
+                    lines = TrimHeightPattern.BuildFromStarts(pm_TrimmingHeight.Text, height);
+                }
+                catch (FormatException ex)
+                {
+                    MessageBox.Show(ex.Message);
+                    return null;
+                }
+                if (lines.Length == 0)
+                {
+                    MessageBox.Show("開始位置が1つもありません");
+                    return null;
+                }
+                return lines;
+            }
+
+            if (pm_Radio_TrimPitch.IsChecked == true)
+            {
+                int start;
+                int pitch;
+                int height;
+                int count = 0;
+                if (!TryGetIntWithMessage(pm_PitchStart, "開始", 0, out start)
+                    || !TryGetIntWithMessage(pm_PitchInterval, "間隔", 1, out pitch)
+                    || !TryGetIntWithMessage(pm_PitchHeight, "高さ", 1, out height)
+                    || (pm_PitchCount.Text != String.Empty && !TryGetIntWithMessage(pm_PitchCount, "回数", 1, out count)))
+                {
+                    return null;
+                }
+
+                // 回数が空欄なら、いちばん低い画像の下端に収まるところまで並べる
+                int imageHeight = 0;
+                if (count == 0)
+                {
+                    if (imageHeights.Count == 0)
+                    {
+                        MessageBox.Show("回数が空欄のときは画像の高さまで並べますが、高さの分かる画像(マージ先)が選ばれていません");
+                        return null;
+                    }
+                    imageHeight = imageHeights.Min(item => item.Value);
+                }
+
+                String[] lines = TrimHeightPattern.BuildFromPitch(start, pitch, height, count, imageHeight);
+                if (lines.Length == 0)
+                {
+                    MessageBox.Show("切り取る範囲が1つもできません(開始＋高さが画像の高さを超えています)");
+                    return null;
+                }
+                return lines;
+            }
+
+            return pm_TrimmingHeight.Text.Split(new[] { Environment.NewLine }, StringSplitOptions.None);
+        }
+
+        // 指定方法に合わせて、使う欄だけ入力できるようにする
+        private void pm_Radio_TrimMode_Checked(object sender, RoutedEventArgs e)
+        {
+            UpdatePictMergeModeControls();
+        }
+
+        private void UpdatePictMergeModeControls()
+        {
+            // InitializeComponentの途中(XAMLのIsChecked="True")でも呼ばれるので、まだ作られていないコントロールは触らない
+            if (pm_TrimmingHeight == null || pm_PitchCount == null || pm_Label_TrimmingHeight == null)
+            {
+                return;
+            }
+            Boolean isStarts = (pm_Radio_TrimStarts.IsChecked == true);
+            Boolean isPitch = (pm_Radio_TrimPitch.IsChecked == true);
+
+            pm_PitchStart.IsEnabled = isPitch;
+            pm_PitchInterval.IsEnabled = isPitch;
+            pm_PitchHeight.IsEnabled = isStarts || isPitch;
+            pm_PitchCount.IsEnabled = isPitch;
+            pm_TrimmingHeight.IsEnabled = !isPitch;
+            pm_Label_TrimmingHeight.Content = isStarts ? "開始位置の一覧：" : "切取る高さの範囲：";
         }
 
         private void ListUpPictMerge()
