@@ -82,9 +82,13 @@ namespace FFEdit
         internal void RegisterSettingItems()
         {
             // キーはWinForms版(SaveRestore.RegisterItem)と同じにすること
+            // コンボボックスは履歴(項目一覧)と、最後に入力していた文字列(Text)の両方を保存する
             SaveRestore.RegisterCtrlList("comboBox_TargetDir", "Value_", comboBox_TargetDir);
+            SaveRestore.RegisterCtrl("comboBox_TargetDir", "Value", comboBox_TargetDir);
             SaveRestore.RegisterCtrlList("comboBox_String1", "Value_", comboBox_String1);
+            SaveRestore.RegisterCtrl("comboBox_String1", "Value", comboBox_String1);
             SaveRestore.RegisterCtrlList("comboBox_String2", "Value_", comboBox_String2);
+            SaveRestore.RegisterCtrl("comboBox_String2", "Value", comboBox_String2);
             SaveRestore.RegisterCtrl("textBox_Target_Extension", "Value", textBox_Target_Extension, "*");
         }
 
@@ -192,11 +196,33 @@ namespace FFEdit
         // *******************************************************************************
         // 対象フォルダ・一覧
 
+        // Enterで一覧を更新(リストアップ)、Ctrl+Enterでフォルダをエクスプローラーで開く。
+        // 履歴のプルダウンが開いている間のEnterは、項目の確定に使うので横取りしない
         private void comboBox_TargetDir_PreviewKeyDown(object sender, KeyEventArgs e)
         {
-            if (e.Key == Key.Enter)
+            if (e.Key != Key.Enter || comboBox_TargetDir.IsDropDownOpen)
+            {
+                return;
+            }
+
+            e.Handled = true;
+            if (Keyboard.Modifiers == ModifierKeys.Control)
             {
                 _util.ExecutePath(comboBox_TargetDir.Text);
+            }
+            else
+            {
+                UpdateListBox();
+            }
+        }
+
+        // 名称変換の入力欄(comboBox_String1/2)でCtrl+Enterを押したら「実行」ボタンと同じ動作にする
+        private void comboBox_String_PreviewKeyDown(object sender, KeyEventArgs e)
+        {
+            if (e.Key == Key.Enter && Keyboard.Modifiers == ModifierKeys.Control)
+            {
+                e.Handled = true;
+                button_Execute_Click(sender, new RoutedEventArgs());
             }
         }
 
@@ -361,7 +387,7 @@ namespace FFEdit
             switch (tabControl.SelectedIndex)
             {
                 case _tabIdxChangeName:
-                    if (!IsFirstNumberValid() || !IsExtensionValid())
+                    if (!IsFirstNumberValid() || !IsExtensionValid() || !IsPadNumberValid())
                     {
                         return;
                     }
@@ -369,7 +395,7 @@ namespace FFEdit
                     break;
 
                 case _tabIdxTimeStamp:
-                    ChangeTimeStamp();
+                    errorList = ChangeTimeStamp();
                     break;
 
                 case _tabIdxFunction:
@@ -433,6 +459,31 @@ namespace FFEdit
             return false;
         }
 
+        // 数字の0埋めモードで「何番目」(空欄可)と「桁数」(1以上)が整数か確かめる(数字の0埋めモード以外は見ない)
+        private Boolean IsPadNumberValid()
+        {
+            if (radioButton_ChangePadNumber.IsChecked != true)
+            {
+                return true;
+            }
+
+            int position;
+            String positionText = comboBox_String1.Text.Trim();
+            if (positionText != String.Empty && !Int32.TryParse(positionText, out position))
+            {
+                MessageBox.Show("何番目には整数を入力してください(空欄なら先頭の数字)。");
+                return false;
+            }
+
+            int digits;
+            if (!Int32.TryParse(comboBox_String2.Text.Trim(), out digits) || digits < 1)
+            {
+                MessageBox.Show("桁数には1以上の整数を入力してください。");
+                return false;
+            }
+            return true;
+        }
+
         private String ChangeName()
         {
             _rename.BaseDir = comboBox_TargetDir.Text.TrimEnd('\\');
@@ -453,7 +504,7 @@ namespace FFEdit
             return _rename.Execute();
         }
 
-        private void ChangeTimeStamp()
+        private String ChangeTimeStamp()
         {
             var ts = new TimeStamp();
 
@@ -471,8 +522,9 @@ namespace FFEdit
             ts.UpdateCreationTime = checkBox_CreationTime.IsChecked == true;
             ts.UpdateLastWriteTime = checkBox_LastWriteTime.IsChecked == true;
             ts.UpdateLastAccessTime = checkBox_LastAccessTime.IsChecked == true;
+            ts.UpdateDateTaken = checkBox_DateTaken.IsChecked == true;
 
-            ts.Execute();
+            return ts.Execute();
         }
 
         // 連番の0埋め桁数
@@ -535,6 +587,14 @@ namespace FFEdit
             {
                 return Rename.ChangeType.OnlyExt;
             }
+            else if (radioButton_ChangeKanjiNum.IsChecked == true)
+            {
+                return Rename.ChangeType.KanjiToNumber;
+            }
+            else if (radioButton_ChangePadNumber.IsChecked == true)
+            {
+                return Rename.ChangeType.PadNumber;
+            }
 
             // radioButton_ChangeAddDirName
             return Rename.ChangeType.AddDirName;
@@ -571,6 +631,11 @@ namespace FFEdit
             else if (radioButton_ChangeExt.IsChecked == true)
             {
                 labelText1 = "拡張子";
+            }
+            else if (radioButton_ChangePadNumber.IsChecked == true)
+            {
+                labelText1 = "何番目";
+                labelText2 = "桁数";
             }
             else if (radioButton_ChangeAddDirName.IsChecked == true)
             {

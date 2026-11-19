@@ -368,6 +368,80 @@ namespace FFEdit.Tests
         }
 
         [TestMethod]
+        public void KanjiToNumber_漢数字を算用数字に置き換えてリネームできる()
+        {
+            CreateFile("第十二話.mp4");
+            CreateFile("二〇二四年.txt");
+
+            var rename = new Rename
+            {
+                BaseDir = tempDirectory,
+                FileList = new List<string> { "第十二話.mp4", "二〇二四年.txt" },
+                Type = Rename.ChangeType.KanjiToNumber,
+            };
+
+            Assert.AreEqual(string.Empty, rename.Execute());
+            Assert.IsTrue(Exists("第12話.mp4"));
+            Assert.IsTrue(Exists("2024年.txt"));
+        }
+
+        [TestMethod]
+        public void PadNumber_ファイルは拡張子の数字を対象にせず0埋めできる()
+        {
+            CreateFile("AAA1BBB.mp4");
+            CreateFile("AAA1BBB2.mp3");
+
+            var rename = new Rename
+            {
+                BaseDir = tempDirectory,
+                FileList = new List<string> { "AAA1BBB.mp4", "AAA1BBB2.mp3" },
+                Type = Rename.ChangeType.PadNumber,
+                Param1 = "-1",
+                Param2 = "2",
+            };
+
+            Assert.AreEqual(string.Empty, rename.Execute());
+            Assert.IsTrue(Exists("AAA01BBB.mp4"), "最後の数字=1(拡張子の4ではない)");
+            Assert.IsTrue(Exists("AAA1BBB02.mp3"), "最後の数字=2(拡張子の3ではない)");
+        }
+
+        [TestMethod]
+        public void PadNumber_何番目が空欄なら先頭の数字でフォルダは名前全体が対象()
+        {
+            Directory.CreateDirectory(Path.Combine(tempDirectory, "Vol.1"));
+
+            var rename = new Rename
+            {
+                BaseDir = tempDirectory,
+                FileList = new List<string> { "Vol.1" },
+                Type = Rename.ChangeType.PadNumber,
+                Param1 = "",
+                Param2 = "3",
+            };
+
+            Assert.AreEqual(string.Empty, rename.Execute());
+            Assert.IsTrue(Directory.Exists(Path.Combine(tempDirectory, "Vol.001")));
+        }
+
+        [TestMethod]
+        public void PadNumber_桁数が数値でなければその件だけエラーにする()
+        {
+            CreateFile("A1.txt");
+
+            var rename = new Rename
+            {
+                BaseDir = tempDirectory,
+                FileList = new List<string> { "A1.txt" },
+                Type = Rename.ChangeType.PadNumber,
+                Param1 = "1",
+                Param2 = "abc",
+            };
+
+            StringAssert.Contains(rename.Execute(), "A1.txt");
+            Assert.IsTrue(Exists("A1.txt"));
+        }
+
+        [TestMethod]
         public void GetAutoPaddingDigits_件数と最後の番号の大きい方の桁数になる()
         {
             Assert.AreEqual(1, Rename.GetAutoPaddingDigits(1, 9), "1～9");

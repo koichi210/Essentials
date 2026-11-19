@@ -260,6 +260,31 @@ namespace FFEdit.Tests
                 StringAssert.Contains(json, "\"comboBox_TargetDir|Value_\"");
                 StringAssert.Contains(json, "\"comboBox_String1|Value_\"");
                 StringAssert.Contains(json, "\"comboBox_String2|Value_\"");
+                StringAssert.Contains(json, "\"comboBox_TargetDir|Value\"");
+                StringAssert.Contains(json, "\"comboBox_String1|Value\"");
+                StringAssert.Contains(json, "\"comboBox_String2|Value\"");
+            });
+        }
+
+        [TestMethod]
+        public void コンボボックスの入力中の文字列も保存して読み直すと戻る()
+        {
+            StaRunner.Run(() =>
+            {
+                var writer = new MainWindow();
+                writer.comboBox_TargetDir.Text = @"C:\last";
+                writer.comboBox_String1.Text = "foo";
+                writer.comboBox_String2.Text = "bar";
+
+                string path = PathFor("text");
+                Assert.IsTrue(writer.SaveSetting(path));
+
+                var reader = new MainWindow();
+                Assert.IsTrue(reader.LoadProc(path));
+                Assert.AreEqual(@"C:\last", reader.comboBox_TargetDir.Text);
+                Assert.AreEqual("foo", reader.comboBox_String1.Text);
+                Assert.AreEqual("bar", reader.comboBox_String2.Text);
+                CollectionAssert.Contains(reader.comboBox_TargetDir.Items, @"C:\last", "履歴も一緒に戻る");
             });
         }
     }

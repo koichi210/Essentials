@@ -87,6 +87,8 @@
     <Compile Include="FileMng.cs" />
     <Compile Include="Function.cs" />
     <Compile Include="Rename.cs" />
+    <Compile Include="NameConverter.cs" />
+    <Compile Include="ExifDate.cs" />
     <Compile Include="TimeStamp.cs" />
     <Compile Include="TimeText.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

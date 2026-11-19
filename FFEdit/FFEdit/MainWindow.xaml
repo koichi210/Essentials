@@ -25,7 +25,7 @@
             </Grid.ColumnDefinitions>
             <Label Grid.Column="0" Content="対象フォルダ" Padding="0" VerticalAlignment="Center" Margin="0,0,6,0" />
             <stc:ComboBoxEx Grid.Column="1" x:Name="comboBox_TargetDir" VerticalAlignment="Center"
-                            ToolTip="処理対象のフォルダ。Enterキーでこのフォルダを開く"
+                            ToolTip="処理対象のフォルダ。Enterキーで一覧を更新(リストアップ)、Ctrl+Enterでこのフォルダをエクスプローラーで開く"
                             PreviewKeyDown="comboBox_TargetDir_PreviewKeyDown" />
             <Button Grid.Column="2" x:Name="button_Listup" Content="リストアップ" Width="75" Height="23" Margin="8,0,0,0"
                     Click="button_Listup_Click" />
@@ -87,12 +87,28 @@
                         <RadioButton x:Name="radioButton_ChangeDelete" GroupName="ChangeName" Content="指定文字の削除"
                                      ToolTip="指定した文字列を名前から全て取り除く。拡張子部分も対象になる"
                                      Margin="0,4,0,0" Checked="UpdateNameChangeControl" />
-                        <RadioButton x:Name="radioButton_ChangeAdd" GroupName="ChangeName" Content="文字の追加"
-                                     ToolTip="先頭欄の文字を名前の頭に、後方欄の文字を拡張子の手前に追加する"
-                                     Margin="0,4,0,0" Checked="UpdateNameChangeControl" />
-                        <RadioButton x:Name="radioButton_ChangeReplace" GroupName="ChangeName" Content="文字の置換"
-                                     ToolTip="置換前の文字列を全て置換後の文字列に置き換える。拡張子部分も対象になる"
-                                     Margin="0,4,0,0" Checked="UpdateNameChangeControl" />
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="111" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                            </Grid.RowDefinitions>
+                            <RadioButton Grid.Row="0" Grid.Column="0" x:Name="radioButton_ChangeAdd" GroupName="ChangeName" Content="文字の追加"
+                                         ToolTip="先頭欄の文字を名前の頭に、後方欄の文字を拡張子の手前に追加する"
+                                         Margin="0,4,0,0" Checked="UpdateNameChangeControl" />
+                            <RadioButton Grid.Row="0" Grid.Column="1" x:Name="radioButton_ChangeKanjiNum" GroupName="ChangeName" Content="漢数字→数字"
+                                         ToolTip="名前の中の漢数字を算用数字にする(例: 第十二話 → 第12話、二〇二四 → 2024、百二十三 → 123)。「一緒」「統一」のような熟語の中の漢数字も変わるので注意。単独の百・千・万・億・兆(千葉・百合など)はそのまま"
+                                         Margin="0,4,0,0" Checked="UpdateNameChangeControl" />
+                            <RadioButton Grid.Row="1" Grid.Column="0" x:Name="radioButton_ChangeReplace" GroupName="ChangeName" Content="文字の置換"
+                                         ToolTip="置換前の文字列を全て置換後の文字列に置き換える。拡張子部分も対象になる"
+                                         Margin="0,4,0,0" Checked="UpdateNameChangeControl" />
+                            <RadioButton Grid.Row="1" Grid.Column="1" x:Name="radioButton_ChangePadNumber" GroupName="ChangeName" Content="数字の0埋め"
+                                         ToolTip="名前の中の数字を指定した桁数に0埋めする(例: AAA1BBB → AAA01BBB)。何番目の数字を対象にするかは「何番目」欄で指定。ファイルの拡張子は対象外"
+                                         Margin="0,4,0,0" Checked="UpdateNameChangeControl" />
+                        </Grid>
                         <Grid Margin="0,9,0,0">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="64" />
@@ -105,10 +121,14 @@
                             <!-- WinForms版と同じく、起動直後は「先頭から/後方から」の表示で入力欄は無効 -->
                             <Label Grid.Row="0" Grid.Column="0" x:Name="label_String1" Content="先頭から" Padding="0"
                                    HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,3,0" />
-                            <stc:ComboBoxEx Grid.Row="0" Grid.Column="1" x:Name="comboBox_String1" IsEnabled="False" />
+                            <stc:ComboBoxEx Grid.Row="0" Grid.Column="1" x:Name="comboBox_String1" IsEnabled="False"
+                                            ToolTip="Ctrl+Enterで実行。数字の0埋めでは対象にする数字の番号(空欄・1=先頭、2=2番目、-1=最後、0=すべての数字)"
+                                            PreviewKeyDown="comboBox_String_PreviewKeyDown" />
                             <Label Grid.Row="1" Grid.Column="0" x:Name="label_String2" Content="後方から" Padding="0"
                                    HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,3,0" />
-                            <stc:ComboBoxEx Grid.Row="1" Grid.Column="1" x:Name="comboBox_String2" IsEnabled="False" Margin="0,3,0,0" />
+                            <stc:ComboBoxEx Grid.Row="1" Grid.Column="1" x:Name="comboBox_String2" IsEnabled="False" Margin="0,3,0,0"
+                                            ToolTip="Ctrl+Enterで実行。数字の0埋めでは0埋め後の桁数"
+                                            PreviewKeyDown="comboBox_String_PreviewKeyDown" />
                         </Grid>
                     </StackPanel>
                 </TabItem>
@@ -134,14 +154,16 @@
                                               Focusable="False" Click="button_TimeDown_Click" />
                             </StackPanel>
                         </Grid>
-                        <Label Content="加算間隔" Padding="0" Margin="0,16,0,0" />
+                        <Label Content="加算間隔" Padding="0" Margin="0,10,0,0" />
                         <ComboBox x:Name="comboBox_TimeSpan" Margin="3,3,0,0"
                                   ToolTip="2件目以降は1件ごとにこの単位で1ずつ日時を進める。無しなら全件同じ日時" />
-                        <GroupBox Header="更新対象" Margin="2,18,0,0" Padding="4,2,4,4">
+                        <GroupBox Header="更新対象" Margin="2,10,0,0" Padding="4,2,4,4">
                             <StackPanel Margin="14,2,0,0">
                                 <CheckBox x:Name="checkBox_CreationTime" Content="作成日時" IsChecked="True" Margin="0,2,0,3" />
                                 <CheckBox x:Name="checkBox_LastWriteTime" Content="更新日時" IsChecked="True" Margin="0,3,0,3" />
-                                <CheckBox x:Name="checkBox_LastAccessTime" Content="アクセス日時" IsChecked="True" Margin="0,3,0,2" />
+                                <CheckBox x:Name="checkBox_LastAccessTime" Content="アクセス日時" IsChecked="True" Margin="0,3,0,3" />
+                                <CheckBox x:Name="checkBox_DateTaken" Content="撮影日時(JPEGのEXIF)" Margin="0,3,0,2"
+                                          ToolTip="JPEGのEXIFにある撮影日時(撮影日時・デジタル化日時・変更日時の欄)も書き換える。画像データはそのまま。EXIFに日時の欄が無いファイル(JPEG以外を含む)は書き換えずにエラー一覧に出す" />
                             </StackPanel>
                         </GroupBox>
                     </StackPanel>

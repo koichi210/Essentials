@@ -16,6 +16,8 @@ namespace FFEdit
             Replace,
             OnlyExt,
             AddDirName,
+            KanjiToNumber,
+            PadNumber,
         }
 
         public String BaseDir { get; set; } = "";
@@ -109,6 +111,12 @@ namespace FFEdit
                 case ChangeType.AddDirName:
                     targetName = srcName.Replace('\\', '_');
                     break;
+                case ChangeType.KanjiToNumber:
+                    targetName = NameConverter.ConvertKanjiNumerals(targetName);
+                    break;
+                case ChangeType.PadNumber:
+                    targetName = GetNumberPaddedName(srcName, targetName);
+                    break;
                 default:
                     break;
             }
@@ -168,6 +176,21 @@ namespace FFEdit
             }
 
             return destName;
+        }
+
+        // Param1番目の数字(空欄なら先頭の数字)をParam2桁に0埋めした名前([[NameConverter.cs]]のPadNumber)。
+        // ファイルは拡張子(.mp4の4など)を対象外にする。フォルダは名前全体が対象
+        private String GetNumberPaddedName(String relativePath, String srcName)
+        {
+            int position = (Param1.Trim() == String.Empty) ? 1 : int.Parse(Param1.Trim());
+            int digits = int.Parse(Param2.Trim());
+
+            if (Directory.Exists(BaseDir + '\\' + relativePath))
+            {
+                return NameConverter.PadNumber(srcName, position, digits);
+            }
+            return NameConverter.PadNumber(Path.GetFileNameWithoutExtension(srcName), position, digits)
+                + Path.GetExtension(srcName);
         }
 
         private String GetAddedName(String srcName)
