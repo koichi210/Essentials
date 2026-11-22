@@ -564,7 +564,7 @@ namespace SecretaryGadget
                     "schedule" => ShowSchedule,
                     "hakoniwa" => OpenHakoniwa,
                     "stockradar" => OpenStockRadar,
-                    "timer" => AskTimer,
+                    "timer" => ShowTimerMenu,
                     _ => null,
                 };
                 if (builtin != null)

@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 
 namespace SecretaryGadget
@@ -17,7 +18,28 @@ namespace SecretaryGadget
             }
         }
 
-        /// <summary>メニュー「タイマーをセット」。入力ダイアログで時刻か何分後かを聞く。</summary>
+        /// <summary>
+        /// 吹き出しの選択肢「タイマー」。セット中のタイマーが無ければそのまま入力ダイアログ、
+        /// あれば吹き出しで「セット」か「どれを取り消すか」を選んでもらう。
+        /// </summary>
+        private void ShowTimerMenu()
+        {
+            if (_timers.Items.Count == 0)
+            {
+                AskTimer();
+                return;
+            }
+            var menu = new List<BubbleMenuItem> { new BubbleMenuItem("タイマーをセット…", AskTimer) };
+            foreach (TimerEntry t in _timers.Items)
+            {
+                TimerEntry captured = t;
+                string day = t.Due.Date == DateTime.Today ? string.Empty : "明日 ";
+                menu.Add(new BubbleMenuItem($"{day}{t.Due:HH:mm}（{t.Label}）を取り消す", () => CancelTimer(captured)));
+            }
+            Enqueue(new Notice(NoticeKind.Greeting, $"タイマーは {_timers.Items.Count} 件セット中です", "どうしますか？") { Menu = menu });
+        }
+
+        /// <summary>タイマーをセットする。入力ダイアログで時刻か何分後かを聞く。</summary>
         private void AskTimer()
         {
             TimerEntry? entry = TimerDialog.Ask();

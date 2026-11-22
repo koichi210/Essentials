@@ -36,7 +36,7 @@ namespace SecretaryGadget
                 new CallMenuEntry { Label = "本日の予定", Path = "@schedule" },
                 new CallMenuEntry { Label = "箱庭", Path = "@hakoniwa" },
                 new CallMenuEntry { Label = "株レーダー", Path = "@stockradar" },
-                new CallMenuEntry { Label = "タイマーをセット…", Path = "@timer" },
+                new CallMenuEntry { Label = "タイマー", Path = "@timer" },
             };
         }
 
