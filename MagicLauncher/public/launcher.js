@@ -26,6 +26,7 @@
   const HUB_CLEAR = HUB_R * 1.6; // 枝の曲がり角をこれより中心に近づけない(中心の魔法陣の記号の輪の外)
   const AVOID_R = 1.5; // 回り道を選ぶとき、ほかの円の中心からこれより近くを通る道は使わない(円の半径 1.15 + すき間)
   const OCTI_DIRS = [[1, 0], [0, 1], [1, 1], [1, -1]]; // 八方向の直線の向き(逆向きは同じ直線)
+  const FLOAT_SCALE = 0.3; // 漂うときの大きさの揺れ幅(×0.7〜×1.3)
   const FRAME_SPIN = 0.05; // 外枠の記号の輪が時計回りに回る速さ(rad/秒。約 2 分で 1 周)
   const CIRCLE_GAP = 1.6; // 魔法陣どうしの間隔
   const LITE_ITEMS = 48; // これを超えたら目盛りを省き、光の粒を 1 本 1 粒にする
@@ -527,7 +528,7 @@
     else if (!s.exists) status = 'まだファイルがありません（最初に保存したときに作られます）';
     else status = v.total + ' 件を読み込みました';
     const cols = [[0, '横一列（折り返さない）'], [1, '1 つ'], [2, '2 つ'], [3, '3 つ'], [4, '4 つ']];
-    const idles = [['orbit', '反時計回りに回る'], ['float', 'ふわふわ漂う'], ['off', '動かさない']];
+    const idles = [['orbit', '反時計回りに回る'], ['float', 'ふわふわ漂う（大きさも変わる）'], ['off', '動かさない']];
     let html = '<h2>⚙ 設定</h2>';
     html += '<section><h3>設定ファイルの場所 <small>登録したパスの一覧を保存する JSON。OneDrive などに置くと複数の PC で共有できます（%USERPROFILE% なども使えます）</small></h3>' +
       '<input type="text" id="s-path" spellcheck="false" value="' + esc(s.configPathRaw) + '" placeholder="' + esc(s.defaultPath) + '">' +
@@ -540,7 +541,7 @@
       '</div><p>この数を超えた魔法陣は、下の段へ折り返します（2 つなら 2 列、3 つなら 3 列）。</p></section>';
     html += '<section><h3>待機中の動き</h3><div class="btns">' +
       idles.map((c) => '<button type="button" class="ml-btn' + (s.idle === c[0] ? ' on' : '') + '" data-idle="' + c[0] + '">' + c[1] + '</button>').join('') +
-      '</div><p>マウスがブラウザの外に出て 1 秒たつと、魔法陣がゆっくり動き出します。マウスを戻すと、元の表示に戻ります（マウスが上にある間・キー操作中・絞り込み中・ダイアログ中は動きません）。</p></section>';
+      '</div><p>マウスがブラウザの外に出て 1 秒たつと、魔法陣がゆっくり動き出します。マウスを戻すと、魔法陣が全部窓に入る全体表示に戻ります（マウスが上にある間・キー操作中・絞り込み中・ダイアログ中は動きません）。</p></section>';
     html += '<section><h3>魔法陣の色</h3>' + v.circles.map((c) =>
       '<div class="ml-swatch-row"><input type="color" data-circle="' + esc(c.name) + '" value="' + esc(c.color) + '"><span class="nm">' + esc(c.name) + '</span>' +
       (s.circleColors[c.name] ? '<button type="button" class="ml-btn" data-circle-auto="' + esc(c.name) + '">自動の色に戻す</button>' : '') + '</div>').join('') + '</section>';
@@ -937,11 +938,18 @@
       return C;
     }
 
-    // 魔法陣を横に columns 個ずつ並べ、超えたら下の段へ（0 = 横一列）
+    // 窓が縦長か(上部のバーを除いた、魔法陣を描ける範囲で比べる)
+    function isPortrait() { return st.h - S.topH > st.w; }
+    let layoutPortrait = false; // いまの並びを決めたときの向き
+
+    // 魔法陣を横に columns 個ずつ並べ、超えたら下の段へ（0 = 横一列）。
+    // 縦長の窓では行と列を入れ替える（横一列なら縦一列）
     function layoutGrid() {
       const n = circles.length;
       const colsSetting = S.state.columns || 0;
-      const cols = colsSetting === 0 ? n : Math.min(colsSetting, n);
+      let cols = colsSetting === 0 ? n : Math.min(colsSetting, n);
+      layoutPortrait = isPortrait();
+      if (layoutPortrait) cols = Math.max(1, Math.ceil(n / Math.max(1, cols)));
       const colW = [], rowH = [];
       circles.forEach((C, i) => {
         const r = Math.floor(i / cols), k = i % cols;
@@ -1318,7 +1326,9 @@
     }
     function stopIdle() {
       idle.on = false;
-      if (idle.saved) { flyTo({ pos: idle.saved.pos, target: idle.saved.target }, 1.0); atHome = idle.saved.atHome; } // 動き出す前のカメラ位置・寄せ方へ戻る
+      // マウスが戻ったら、魔法陣が全部窓に入る全体表示へ戻る
+      atHome = true;
+      flyTo(fitBox(layoutBox, 1.04), 1.0);
     }
     function updateIdle(dt, now) {
       const want = idleWanted(now);
@@ -1353,7 +1363,7 @@
             C.isc = Math.max(1, sc);
           });
         } else {
-          // 画面いっぱいを不規則に漂う（大きさはそのまま）
+          // 画面いっぱいを不規則に漂い、大きさも魔法陣ごとに不規則に大きく・小さくなる（窓からははみ出さない）
           idle.theta = 0;
           const r = idle.rect;
           circles.forEach((C) => {
@@ -1361,13 +1371,15 @@
             f.a += (Math.sin(idle.t * 0.37 + f.seed) * 0.6 + Math.sin(idle.t * 0.13 + f.seed * 3) * 0.4) * dt * 0.9;
             f.x += Math.cos(f.a) * idle.speed * dt;
             f.y += Math.sin(f.a) * idle.speed * dt;
-            const lx = Math.max(0, r.hw - C.ext), ly = Math.max(0, r.hh - C.ext);
+            const wave = Math.sin(idle.t * 0.29 + f.seed * 1.3) * 0.6 + Math.sin(idle.t * 0.47 + f.seed * 2.9) * 0.4; // -1〜1
+            C.isc = Math.min(1 + FLOAT_SCALE * wave, Math.min(r.hw, r.hh) / C.ext);
+            const e = C.ext * C.isc;
+            const lx = Math.max(0, r.hw - e), ly = Math.max(0, r.hh - e);
             if (f.x < r.cx - lx) { f.x = r.cx - lx; f.a = Math.PI - f.a; }
             if (f.x > r.cx + lx) { f.x = r.cx + lx; f.a = Math.PI - f.a; }
             if (f.y < r.cy - ly) { f.y = r.cy - ly; f.a = -f.a; }
             if (f.y > r.cy + ly) { f.y = r.cy + ly; f.a = -f.a; }
             C.ip.set(f.x, f.y);
-            C.isc = 1;
           });
         }
       }
@@ -1468,7 +1480,13 @@
       const dt = Math.min(raw, 0.05);
       time += raw;
       const now = performance.now();
-      if (st.size()) { sizeBackground(); measureTop(); if (atHome && !fly && idle.blend <= 0) home(true); measureAll = true; }
+      if (st.size()) {
+        sizeBackground();
+        measureTop();
+        if (built && isPortrait() !== layoutPortrait && S.view) build(S.view); // 縦長⇔横長が変わったら並べ直す
+        if (!fly && idle.blend <= 0) home(true); // 窓の大きさが変わったら、魔法陣が全部入る大きさに合わせ直す
+        measureAll = true;
+      }
 
       smoke1.userData.uniforms.uTime.value = time;
       smoke2.userData.uniforms.uTime.value = time * 0.8;
