@@ -23,6 +23,9 @@
   const HUB_R = 2.3;
   const GAP = 1.1;
   const RING_STEP = 2.9;
+  const HUB_CLEAR = HUB_R * 1.5; // 枝がこれより中心に近づくと中心の魔法陣(記号の輪まで)に隠れるので回り込ませる
+  const ARC_STEP = Math.PI / 36; // 回り込む弧を折れ線にするときの刻み(5°)
+  const FRAME_SPIN = 0.05; // 外枠の記号の輪が時計回りに回る速さ(rad/秒。約 2 分で 1 周)
   const CIRCLE_GAP = 1.6; // 魔法陣どうしの間隔
   const LITE_ITEMS = 48; // これを超えたら目盛りを省き、光の粒を 1 本 1 粒にする
 
@@ -723,6 +726,39 @@
       hover = null; hoverTag = null;
     }
 
+    // 原点(魔法陣の中心)から折れ線までのいちばん近い距離
+    function distFromCenter(pts) {
+      let best = Infinity;
+      for (let k = 0; k < pts.length - 1; k++) {
+        const [x0, y0] = pts[k], [x1, y1] = pts[k + 1];
+        const dx = x1 - x0, dy = y1 - y0, len2 = dx * dx + dy * dy;
+        const t = len2 ? Math.min(1, Math.max(0, -(x0 * dx + y0 * dy) / len2)) : 0;
+        best = Math.min(best, Math.hypot(x0 + t * dx, y0 + t * dy));
+      }
+      return best;
+    }
+
+    // 分岐点 J → 円 P の枝の道筋。ふだんは八方向の折れ線。
+    // 分岐点の反対側の円だと折れ線が中心の魔法陣の裏を通り、中心から生えて見えるので、
+    // そのときは分岐点と同じ半径の弧で中心をよけて回り込み、円の向きでまっすぐ外へ出る。
+    function branchRoute(J, P, straightFirst) {
+      const pts = M.octi(J, P, straightFirst);
+      if (distFromCenter(pts) >= HUB_CLEAR) return pts;
+      const r = Math.hypot(J[0], J[1]);
+      const a0 = Math.atan2(J[1], J[0]);
+      let d = Math.atan2(P[1], P[0]) - a0;
+      if (d > Math.PI) d -= Math.PI * 2;
+      if (d <= -Math.PI) d += Math.PI * 2; // 短い向き = 同じタグの扇形の中を回る
+      const n = Math.max(1, Math.ceil(Math.abs(d) / ARC_STEP));
+      const out = [J];
+      for (let k = 1; k <= n; k++) {
+        const a = a0 + (d * k) / n;
+        out.push([Math.cos(a) * r, Math.sin(a) * r]);
+      }
+      out.push(P);
+      return out;
+    }
+
     function buildCircle(cv, many) {
       const g = new T.Group();
       board.add(g);
@@ -818,7 +854,7 @@
           const halo = M.glow(tcol, R * 4.2, 0);
           halo.position.set(P[0], P[1], -0.05);
           g.add(halo);
-          const route = M.octi(J, P, i % 2 === 1).map((p) => v3(p[0], p[1])); // 枝: 八方向の折れ線（交互に曲がる順を変える）
+          const route = branchRoute(J, P, i % 2 === 1).map((p) => v3(p[0], p[1])); // 枝: 八方向の折れ線（交互に曲がる順を変える）
           const branch = addTrace(C, route, tcol, 0.5, 0.06, { tag: tv.name, item: it.id });
           const path = new M.Path([trunkPts[0]].concat(route));
           const stream = C.flow.add(path, tcol, { count: many ? 1 : 2, speed: 2.4 + M.rng(it.id + '-sp')(), size: 0.42 });
@@ -1386,7 +1422,7 @@
       const crossHidden = idle.blend > 0;
 
       circles.forEach((C) => {
-        C.frameGlyph.rotation.z -= dt * 0.012;
+        C.frameGlyph.rotation.z -= dt * FRAME_SPIN; // マイナス = 時計回り
         C.frameRing2.rotation.z += dt * 0.02;
         C.hubGlyph.rotation.z += dt * 0.05;
         M.tickSpin(C.hub, dt);
