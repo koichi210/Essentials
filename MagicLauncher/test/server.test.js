@@ -219,6 +219,54 @@ test('並べ替え: items/swap は同じ先頭タグどうしのみ、tags/swap 
   assert.deepStrictEqual((await state()).circleColors, {});
 });
 
+test('名前の変更: タグは並び・色・項目のタグごと、魔法陣は並び・色・置いたタグごと変わる', async () => {
+  let cfg = readConfig();
+  const keys = Object.keys(cfg.tags);
+  const color = cfg.tags['ツール'].color;
+  const tagged = cfg.items.filter((x) => (x.tags || []).includes('ツール')).map((x) => x.id);
+  assert.ok(tagged.length >= 1);
+  assert.strictEqual((await postJson('/api/tag/rename', { from: 'ツール', to: '道具' })).status, 200);
+  cfg = readConfig();
+  assert.strictEqual(cfg.tags['ツール'], undefined);
+  assert.strictEqual(Object.keys(cfg.tags).indexOf('道具'), keys.indexOf('ツール')); // 並びはそのまま
+  assert.strictEqual(cfg.tags['道具'].color, color);
+  for (const id of tagged) {
+    const it = cfg.items.find((x) => x.id === id);
+    assert.ok(it.tags.includes('道具') && !it.tags.includes('ツール'));
+  }
+  assert.strictEqual((await postJson('/api/tag/rename', { from: '道具', to: 'リポジトリ' })).status, 409); // 既にある名前
+  assert.strictEqual((await postJson('/api/tag/rename', { from: '無いタグ', to: 'x' })).status, 404);
+  assert.strictEqual((await postJson('/api/tag/rename', { from: '道具', to: ' ' })).status, 400);
+  assert.strictEqual((await postJson('/api/tag/rename', { from: '道具', to: 'ツール' })).status, 200);
+
+  // 魔法陣: いまは circles = ['製品', 'Launcher']、リポジトリ → 製品、ツール → Launcher
+  assert.strictEqual((await postJson('/api/circle', { name: '製品', color: '#19b6d2' })).status, 200);
+  assert.strictEqual((await postJson('/api/circle/rename', { from: '製品', to: '作品' })).status, 200);
+  cfg = readConfig();
+  assert.deepStrictEqual(cfg.circles, ['作品', 'Launcher']);
+  assert.strictEqual(cfg.tags['リポジトリ'].circle, '作品');
+  assert.deepStrictEqual(cfg.circleColors, { 作品: '#19b6d2' });
+  assert.strictEqual((await postJson('/api/circle/rename', { from: '作品', to: 'Launcher' })).status, 409);
+  assert.strictEqual((await postJson('/api/circle/rename', { from: '無い魔法陣', to: 'x' })).status, 404);
+  assert.strictEqual((await postJson('/api/circle/rename', { from: '作品', to: '製品' })).status, 200);
+  assert.strictEqual((await postJson('/api/circle', { name: '製品', color: '' })).status, 200);
+});
+
+test('名前の変更: circles が空でも、title の名前の最初の魔法陣を変えられる', async () => {
+  const saved = fs.readFileSync(config, 'utf8');
+  fs.writeFileSync(config, JSON.stringify({ version: 1, title: 'Launcher', items: [{ id: 'i1', path: 'C:\\x', tags: ['T'] }], tags: { T: {} } }));
+  try {
+    assert.strictEqual((await postJson('/api/circle/rename', { from: 'Launcher', to: 'Essentials 陣' })).status, 200);
+    const cfg = readConfig();
+    assert.deepStrictEqual(cfg.circles, ['Essentials 陣']);
+    assert.strictEqual(cfg.title, 'Launcher'); // 画面左上の題名は変えない
+    const st = await state();
+    assert.deepStrictEqual(st.circles, ['Essentials 陣']);
+  } finally {
+    fs.writeFileSync(config, saved);
+  }
+});
+
 test('layout: columns 0〜12・idle の既定 orbit はファイルに書かない', async () => {
   assert.strictEqual((await postJson('/api/layout', { columns: 3, idle: 'float' })).status, 200);
   let cfg = readConfig();

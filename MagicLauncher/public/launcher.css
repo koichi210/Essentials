@@ -267,6 +267,7 @@ body.lite .ml-hint, body.no-webgl .ml-hint { display: none; }
 .ml-dlg-buttons { display: flex; gap: 8px; margin-top: 14px; align-items: center; }
 
 .ml-settings { width: min(720px, 94vw); }
+.ml-rename { width: min(480px, 94vw); }
 .ml-settings section { padding: 12px 0; border-bottom: 1px solid var(--line); }
 .ml-settings section:last-of-type { border-bottom: 0; }
 .ml-settings h3 { margin: 0 0 6px; font-size: 14px; color: #bfe0ff; }

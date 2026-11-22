@@ -581,13 +581,47 @@
   function showModal(which) {
     S.modal = which;
     $('ml-item-dlg').hidden = which !== 'item';
+    $('ml-rename-dlg').hidden = which !== 'rename';
     $('ml-settings-dlg').hidden = which !== 'settings';
     closeDrop();
   }
   function hideModal() {
     S.modal = null;
     $('ml-item-dlg').hidden = true;
+    $('ml-rename-dlg').hidden = true;
     $('ml-settings-dlg').hidden = true;
+  }
+
+  // ================================================================ 名前の変更（タグ・魔法陣を右クリック）
+  const RN = { kind: null, from: '' }; // 名前の変更ダイアログの対象
+  function openRename(kind, from) {
+    RN.kind = kind;
+    RN.from = from;
+    const isTag = kind === 'tag';
+    $('ml-rename-title').textContent = isTag ? 'タグの名前を変更' : '魔法陣の名前を変更';
+    $('ml-rename-label').textContent = isTag ? '新しいタグの名前（このタグが付いた項目もまとめて変わります）' : '新しい魔法陣の名前';
+    $('r-add').hidden = !isTag;
+    $('r-name').value = from;
+    showModal('rename');
+    setTimeout(() => { $('r-name').focus(); $('r-name').select(); }, 30);
+  }
+  function saveRename() {
+    const to = $('r-name').value.trim();
+    if (!to) { toast('名前を入れてください', true); $('r-name').focus(); return; }
+    if (to === RN.from) { hideModal(); return; }
+    const isTag = RN.kind === 'tag';
+    $('r-save').disabled = true;
+    mutate(isTag ? '/api/tag/rename' : '/api/circle/rename', { from: RN.from, to }, '名前を「' + to + '」に変えました')
+      .then(() => {
+        if (isTag) S.tags = S.tags.map((t) => (t === RN.from ? to : t)); // 絞り込み中のタグも付け替える
+        hideModal();
+      })
+      .catch(() => {}).then(() => { $('r-save').disabled = false; });
+  }
+  function bindRenameDialog() {
+    $('ml-rename-form').addEventListener('submit', (e) => { e.preventDefault(); saveRename(); });
+    $('r-cancel').addEventListener('click', hideModal);
+    $('r-add').addEventListener('click', () => { const t = RN.from; hideModal(); newItem([t]); }); // 以前の「タグを右クリックで追加」の代わり
   }
 
   // ================================================================ 3D（魔法陣）
@@ -1149,7 +1183,8 @@
         else home(); // 外は全体へ戻る
       } else if (button === 2) {
         if (t.type === 'item') editItem(t.it);
-        else if (t.type === 'tag') newItem(t.tag.pseudo ? S.tags : [t.tag.name]);
+        else if (t.type === 'tag') { if (t.tag.pseudo) newItem(S.tags); else openRename('tag', t.tag.name); }
+        else if (t.type === 'hub') openRename('circle', t.circle.name);
         else newItem(S.tags);
       }
     }
@@ -1574,6 +1609,7 @@
     liteBtn.addEventListener('click', () => { writeLite(!S.lite); location.reload(); }); // 切り替えで再読込（設定ファイルには書かない）
 
     bindItemDialog();
+    bindRenameDialog();
     bindSettings();
 
     document.addEventListener('keydown', (e) => {

@@ -612,6 +612,38 @@ const api = {
     });
   },
 
+  // タグの名前を変える。並び・色・置く魔法陣はそのままで、付いている項目のタグも書き換える
+  'POST /api/tag/rename': (body) => {
+    const from = str(body.from).trim();
+    const to = str(body.to).trim();
+    if (!from || !to) {
+      throw new HttpError(400, '変更前と変更後のタグの名前を指定してください');
+    }
+    return mutate((data) => {
+      const used = data.items.some((it) => validItem(it) && cleanTags(it.tags).includes(from));
+      if (!isPlainObject(data.tags[from]) && !used) {
+        throw new HttpError(404, 'タグが見つかりません(ほかの PC で変更されたかも)');
+      }
+      if (from === to) {
+        return { ok: true };
+      }
+      if (isPlainObject(data.tags[to])) {
+        throw new HttpError(409, `「${to}」というタグはもうあります`);
+      }
+      const next = {};
+      for (const [k, v] of Object.entries(data.tags)) {
+        next[k === from ? to : k] = v;
+      }
+      data.tags = next;
+      for (const it of data.items) {
+        if (isPlainObject(it) && Array.isArray(it.tags)) {
+          it.tags = cleanTags(it.tags.map((t) => (str(t).trim() === from ? to : t)));
+        }
+      }
+      return { ok: true };
+    });
+  },
+
   'POST /api/items/swap': (body) => {
     const a = str(body.a).trim();
     const b = str(body.b).trim();
@@ -676,6 +708,46 @@ const api = {
         data.circleColors[name] = color.toLowerCase();
       } else {
         delete data.circleColors[name]; // 空なら自動の色に戻す
+      }
+      return { ok: true };
+    });
+  },
+
+  // 魔法陣の名前を変える。並び・色・そこに置いたタグはそのまま付いていく
+  'POST /api/circle/rename': (body) => {
+    const from = str(body.from).trim();
+    const to = str(body.to).trim();
+    if (!from || !to) {
+      throw new HttpError(400, '変更前と変更後の魔法陣の名前を指定してください');
+    }
+    return mutate((data) => {
+      const first = firstCircleName(data);
+      let circles = Array.isArray(data.circles) ? cleanTags(data.circles) : [];
+      const tagCircles = Object.values(data.tags).map((t) => str(t.circle).trim());
+      if (from !== first && !circles.includes(from) && !tagCircles.includes(from)) {
+        throw new HttpError(404, '魔法陣が見つかりません(ほかの PC で変更されたかも)');
+      }
+      if (from === to) {
+        return { ok: true };
+      }
+      if (to === first || circles.includes(to) || tagCircles.includes(to)) {
+        throw new HttpError(409, `「${to}」という魔法陣はもうあります`);
+      }
+      if (!circles.length) {
+        circles = [first]; // 並びが空なら、いまの最初の魔法陣(title の名前)を先頭に固定してから変える
+      }
+      data.circles = circles.map((c) => (c === from ? to : c));
+      for (const t of Object.values(data.tags)) {
+        if (str(t.circle).trim() === from) {
+          t.circle = to;
+        }
+      }
+      if (isPlainObject(data.circleColors) && data.circleColors[from] !== undefined) {
+        const next = {};
+        for (const [k, v] of Object.entries(data.circleColors)) {
+          next[k === from ? to : k] = v;
+        }
+        data.circleColors = next;
       }
       return { ok: true };
     });

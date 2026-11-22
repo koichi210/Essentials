@@ -36,7 +36,7 @@
 <main id="ml-stage"></main>
 <section id="ml-listview" class="ml-listview" hidden></section>
 <aside id="ml-listpanel" class="ml-listpanel" aria-label="一覧"></aside>
-<div class="ml-hint" id="ml-hint">クリック：開く（大きい円の中の空きは拡大・外は全体表示）／ 右クリック：円は編集・何もない所は追加 ／ 円・タグ・魔法陣の中心をドラッグ：入れ替え ／ ドラッグ：傾ける・右ドラッグ：移動・ホイール：ズーム</div>
+<div class="ml-hint" id="ml-hint">クリック：開く（大きい円の中の空きは拡大・外は全体表示）／ 右クリック：円は編集・タグと魔法陣の中心は名前の変更・何もない所は追加 ／ 円・タグ・魔法陣の中心をドラッグ：入れ替え ／ ドラッグ：傾ける・右ドラッグ：移動・ホイール：ズーム</div>
 <div id="ml-toasts" class="ml-toasts" aria-live="polite"></div>
 
 <div class="ml-modal" id="ml-item-dlg" hidden>
@@ -68,6 +68,21 @@
       <span class="ml-grow"></span>
       <button type="button" class="ml-btn" id="f-cancel">キャンセル</button>
       <button type="submit" class="ml-btn primary" id="f-save">保存</button>
+    </div>
+  </form>
+</div>
+
+<div class="ml-modal" id="ml-rename-dlg" hidden>
+  <form class="ml-dialog ml-rename" id="ml-rename-form" autocomplete="off">
+    <h2 id="ml-rename-title">名前の変更</h2>
+    <label class="ml-field"><span id="ml-rename-label">名前</span>
+      <input id="r-name" type="text" spellcheck="false">
+    </label>
+    <div class="ml-dlg-buttons">
+      <button type="button" class="ml-btn" id="r-add" hidden>＋ このタグで追加</button>
+      <span class="ml-grow"></span>
+      <button type="button" class="ml-btn" id="r-cancel">キャンセル</button>
+      <button type="submit" class="ml-btn primary" id="r-save">変更</button>
     </div>
   </form>
 </div>
