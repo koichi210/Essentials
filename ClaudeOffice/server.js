@@ -1647,8 +1647,6 @@ module.exports = { mask, looksRandom, humanPrompt, toolLabel, endsWithQuestion, 
 
 if (require.main === module) {
   loadArchive();
-  scan(true);
-  saveArchive(true);
   setInterval(() => saveArchive(false), 60 * 1000);
   const server = http.createServer((req, res) => {
     handle(req, res).catch(() => {
@@ -1657,7 +1655,17 @@ if (require.main === module) {
       }
     });
   });
-  server.listen(PORT, HOST, () => log(`Claude Office: http://${HOST}:${PORT}/ (${sessions.size} 件)`));
+  // 会話記録が多いと初回の読み込みに 30 秒以上かかる。先に待ち受けを始めて、
+  // 起動を待つ側(秘書さん等)がポートの開通で「起動した」と分かるようにしてから読む。
+  // 読み込み中に来た要求は読み終わるまで待たされるだけ。
+  server.listen(PORT, HOST, () => {
+    log(`Claude Office: http://${HOST}:${PORT}/ (待ち受け開始、会話記録を読み込み中)`);
+    setImmediate(() => {
+      scan(true);
+      saveArchive(true);
+      log(`会話記録の読み込み完了 (${sessions.size} 件)`);
+    });
+  });
   const shutdown = () => {
     saveArchive(true);
     process.exit(0);
