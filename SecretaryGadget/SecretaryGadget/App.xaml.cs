@@ -553,8 +553,11 @@ namespace SecretaryGadget
             };
         }
 
-        /// <summary>CallMenu の1行を実行する。「@」で始まる Path は組み込みの機能、それ以外はファイルを起動する。</summary>
-        private void RunCallMenuEntry(CallMenuEntry entry)
+        /// <summary>
+        /// CallMenu の1行を実行する。「@」で始まる Path は秘書さん自身の機能(本日の予定・タイマー)、
+        /// それ以外は書かれたファイルを起動する(外のツールの場所は秘書さんに持たせない)。
+        /// </summary>
+        private async void RunCallMenuEntry(CallMenuEntry entry)
         {
             string? error;
             if (entry.IsBuiltin)
@@ -562,8 +565,6 @@ namespace SecretaryGadget
                 Action? builtin = entry.BuiltinName switch
                 {
                     "schedule" => ShowSchedule,
-                    "hakoniwa" => OpenHakoniwa,
-                    "stockradar" => OpenStockRadar,
                     "timer" => ShowTimerMenu,
                     _ => null,
                 };
@@ -576,7 +577,15 @@ namespace SecretaryGadget
             }
             else
             {
-                error = entry.Launch();
+                try
+                {
+                    error = await entry.LaunchAsync();
+                }
+                catch (Exception ex)
+                {
+                    Log.Write($"メニュー「{entry.Label}」を起動できませんでした: " + ex.GetType().Name);
+                    error = $"「{entry.Label}」を起動できませんでした。";
+                }
             }
             if (error != null)
             {
@@ -770,14 +779,6 @@ namespace SecretaryGadget
             if (_options.HasDiag("snooze-1min"))
             {
                 StartBreak(TimeSpan.FromMinutes(1));
-            }
-            if (_options.HasDiag("hakoniwa"))
-            {
-                OpenHakoniwa();
-            }
-            if (_options.HasDiag("stockradar"))
-            {
-                OpenStockRadar();
             }
             if (_options.HasDiag("summary"))
             {

@@ -57,8 +57,8 @@ settings.json の主な項目: `UserName`（あいさつの呼び名）、`Outlo
 ```jsonc
 "CallMenu": [
   { "Label": "本日の予定", "Path": "@schedule" },
-  { "Label": "箱庭", "Path": "@hakoniwa" },
-  { "Label": "株レーダー", "Path": "@stockradar" },
+  { "Label": "箱庭", "Path": "D:\\GitHub\\stable\\Essentials\\ClaudeOffice\\open.ps1" },
+  { "Label": "株レーダー", "Path": "D:\\GitHub\\stable\\Essentials\\StockRadar\\open.ps1" },
   { "Label": "タイマー", "Path": "@timer" },
   { "Label": "日報を書く", "Path": "C:\\Tools\\nippo.bat" },
   { "Label": "メモ帳", "Path": "%WINDIR%\\notepad.exe", "Arguments": "memo.txt" }
@@ -68,10 +68,14 @@ settings.json の主な項目: `UserName`（あいさつの呼び名）、`Outlo
 | 項目 | 内容 |
 |---|---|
 | `Label` | 吹き出しに出す表示名 |
-| `Path` | 起動するファイル（exe・bat・ショートカットなど。環境変数可。JSON なので `\` は `\\` と書く）。`@` で始まるときは組み込みの機能: `@schedule`（本日の予定）・`@hakoniwa`（箱庭）・`@stockradar`（株レーダー）・`@timer`（タイマー。セット中のタイマーがあれば、吹き出しでセットか取り消しを選ぶ） |
+| `Path` | 起動するファイル（exe・bat・ps1・ショートカットなど。環境変数可。JSON なので `\` は `\\` と書く）。外のツールの場所は秘書さんに持たせないので、必ずここに書く。例外は、外のファイルを持たない秘書さん自身の機能だけ。これは `@` で始まる名前で呼ぶ: `@schedule`（本日の予定）・`@timer`（タイマー。セット中のタイマーがあれば、吹き出しでセットか取り消しを選ぶ） |
 | `Arguments` | 起動するファイルに渡す引数（省略可） |
 
-ファイルは関連付けで開く（bat はそのファイルのフォルダを作業フォルダにして実行）。`CallMenu` の項目自体が無ければ上の4つ（組み込み）、`[]` にすると選択肢を出さない。起動できなかったときは吹き出しで知らせる。
+ファイルは関連付けで開く（bat はそのファイルのフォルダを作業フォルダにして実行）。ps1 だけは関連付けだとメモ帳で開いてしまうので、PowerShell で窓なしに実行して終わるまで待つ。終了コードが 0 以外なら、スクリプトが最後に出力した1行を吹き出しで知らせる（文字化けしないよう、スクリプト側で `[Console]::OutputEncoding = [Text.Encoding]::UTF8` にしておく）。
+
+箱庭（ClaudeOffice）・株レーダー（StockRadar）には、この用の `open.ps1` がある（未起動なら窓なしで起動し、待ち受けを待ってからブラウザで開く）。
+
+`CallMenu` の項目自体が無ければ `@schedule`・`@timer` の2つ、`[]` にすると選択肢を出さない。
 
 ## スキン
 

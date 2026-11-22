@@ -182,22 +182,6 @@ namespace SecretaryGadget
             menu.Items.Add(Item("終了", ExitApp));
         }
 
-        /// <summary>箱庭(Claude Office)をブラウザで開く。</summary>
-        private void OpenHakoniwa() => OpenLocalWeb(LocalWebLauncher.Hakoniwa);
-
-        /// <summary>株レーダー(StockRadar)をブラウザで開く。</summary>
-        private void OpenStockRadar() => OpenLocalWeb(LocalWebLauncher.StockRadar);
-
-        /// <summary>ローカル Web ツールを開く。開けなかったときだけ吹き出しで知らせる。</summary>
-        private async void OpenLocalWeb(LocalWebLauncher tool)
-        {
-            string? error = await tool.OpenAsync();
-            if (error != null)
-            {
-                Enqueue(new Notice(NoticeKind.Greeting, $"{tool.Title}を開けませんでした", error));
-            }
-        }
-
         /// <summary>メニュー項目。クリックしたら動作のあと設定の全項目を書き戻す。</summary>
         private Forms.ToolStripMenuItem Item(string text, Action action, bool check = false, bool enabled = true)
         {

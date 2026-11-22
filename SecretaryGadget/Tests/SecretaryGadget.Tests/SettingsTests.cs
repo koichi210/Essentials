@@ -2,6 +2,8 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 namespace SecretaryGadget.Tests
@@ -32,10 +34,11 @@ namespace SecretaryGadget.Tests
         public void CallMenu_DefaultsToBuiltins()
         {
             Settings s = Settings.Load();
+            // 外のツールは場所を知らないので既定には入れない
             CollectionAssert.AreEqual(
-                new[] { "@schedule", "@hakoniwa", "@stockradar", "@timer" },
+                new[] { "@schedule", "@timer" },
                 s.CallMenu.Select(e => e.Path).ToArray());
-            Assert.AreEqual("timer", s.CallMenu[3].BuiltinName);
+            Assert.AreEqual("timer", s.CallMenu[1].BuiltinName);
         }
 
         [TestMethod]
@@ -68,7 +71,7 @@ namespace SecretaryGadget.Tests
         {
             string path = Path.Combine(_root, "settings.json");
             File.WriteAllText(path, "{ \"UserName\": \"テストさん\" }");
-            Assert.AreEqual(4, Settings.ReadCallMenu(path)!.Count);
+            Assert.AreEqual(2, Settings.ReadCallMenu(path)!.Count);
 
             File.WriteAllText(path, "{ \"CallMenu\": [] }");
             Assert.AreEqual(0, Settings.ReadCallMenu(path)!.Count);
@@ -79,10 +82,27 @@ namespace SecretaryGadget.Tests
         }
 
         [TestMethod]
-        public void CallMenuEntry_Launch_MissingFile_ReturnsNotFoundMessage()
+        public async Task CallMenuEntry_Launch_MissingFile_ReturnsNotFoundMessage()
         {
-            var entry = new CallMenuEntry { Label = "無いツール", Path = Path.Combine(_root, "無い.bat") };
-            StringAssert.Contains(entry.Launch(), "起動先が見つかりません");
+            foreach (string name in new[] { "無い.bat", "無い.ps1" })
+            {
+                var entry = new CallMenuEntry { Label = "無いツール", Path = Path.Combine(_root, name) };
+                StringAssert.Contains(await entry.LaunchAsync(), "起動先が見つかりません");
+            }
+        }
+
+        [TestMethod]
+        public async Task CallMenuEntry_Ps1_FailureReturnsLastOutputLine_SuccessReturnsNull()
+        {
+            // ps1 は PowerShell 5.1 で動くので BOM 付きで書く
+            string failing = Path.Combine(_root, "失敗する.ps1");
+            File.WriteAllText(failing, "[Console]::OutputEncoding = [Text.Encoding]::UTF8\r\nWrite-Output '途中経過'\r\nWrite-Output \"開けませんでした($($args[0]))\"\r\nexit 1\r\n", new UTF8Encoding(true));
+            var bad = new CallMenuEntry { Label = "失敗", Path = failing, Arguments = "引数" };
+            Assert.AreEqual("開けませんでした(引数)", await bad.LaunchAsync());
+
+            string ok = Path.Combine(_root, "成功する.ps1");
+            File.WriteAllText(ok, "exit 0\r\n", new UTF8Encoding(true));
+            Assert.IsNull(await new CallMenuEntry { Label = "成功", Path = ok }.LaunchAsync());
         }
 
         [TestMethod]
