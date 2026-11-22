@@ -15,6 +15,7 @@ Windows 10/11、Node.js 18 以上。npm パッケージは使いません（thre
 start.bat        起動していなければ裏で起動して、既定のブラウザで http://127.0.0.1:8790/ を開く
 stop.bat         8790 で待ち受けているプロセスだけを止める（ほかの node は止めない）
 autostart.ps1    窓なしで裏起動（Node が無ければ確認してから winget で入れる）
+open.ps1         窓なしで、起動していなければ起動してからブラウザで開く（秘書さんの吹き出しの選択肢などから呼ぶ用。開けなければ理由を1行出して終了コード 1）
 ```
 
 PC の起動時に立ち上げるには、次のショートカットを `shell:startup` に置きます。
@@ -23,7 +24,7 @@ PC の起動時に立ち上げるには、次のショートカットを `shell:
 powershell.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File "<このフォルダ>\autostart.ps1"
 ```
 
-ポート番号は `server.js`・`start.bat`・`stop.bat`・`autostart.ps1` の 4 か所に出てきます（変えるときは全部）。
+ポート番号は `server.js`・`start.bat`・`stop.bat`・`autostart.ps1`・`open.ps1` の 5 か所に出てきます（変えるときは全部）。
 
 ## ファイル
 

@@ -2,7 +2,7 @@
 # スタートアップ(shell:startup)に置くショートカットのリンク先:
 #   powershell.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File "<このフォルダ>\autostart.ps1"
 # 窓なしで呼ばれるので Read-Host は使わない(確認はダイアログで出す)。
-# ポート番号は server.js / start.bat / stop.bat / autostart.ps1 の 4 か所(変えるときは全部)。
+# ポート番号は server.js / start.bat / stop.bat / autostart.ps1 / open.ps1 の 5 か所(変えるときは全部)。
 # このファイルは UTF-8 BOM 付きで保存する(無いと PowerShell 5.1 で日本語が化けて構文エラーになる)。
 $ErrorActionPreference = 'Stop'
 $port = 8790
