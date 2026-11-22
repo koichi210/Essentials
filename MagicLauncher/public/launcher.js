@@ -23,8 +23,9 @@
   const HUB_R = 2.3;
   const GAP = 1.1;
   const RING_STEP = 2.9;
-  const HUB_CLEAR = HUB_R * 1.5; // 枝がこれより中心に近づくと中心の魔法陣(記号の輪まで)に隠れるので回り込ませる
-  const ARC_STEP = Math.PI / 36; // 回り込む弧を折れ線にするときの刻み(5°)
+  const HUB_CLEAR = HUB_R * 1.6; // 枝の曲がり角をこれより中心に近づけない(中心の魔法陣の記号の輪の外)
+  const AVOID_R = 1.5; // 回り道を選ぶとき、ほかの円の中心からこれより近くを通る道は使わない(円の半径 1.15 + すき間)
+  const OCTI_DIRS = [[1, 0], [0, 1], [1, 1], [1, -1]]; // 八方向の直線の向き(逆向きは同じ直線)
   const FRAME_SPIN = 0.05; // 外枠の記号の輪が時計回りに回る速さ(rad/秒。約 2 分で 1 周)
   const CIRCLE_GAP = 1.6; // 魔法陣どうしの間隔
   const LITE_ITEMS = 48; // これを超えたら目盛りを省き、光の粒を 1 本 1 粒にする
@@ -726,37 +727,47 @@
       hover = null; hoverTag = null;
     }
 
-    // 原点(魔法陣の中心)から折れ線までのいちばん近い距離
-    function distFromCenter(pts) {
-      let best = Infinity;
-      for (let k = 0; k < pts.length - 1; k++) {
-        const [x0, y0] = pts[k], [x1, y1] = pts[k + 1];
-        const dx = x1 - x0, dy = y1 - y0, len2 = dx * dx + dy * dy;
-        const t = len2 ? Math.min(1, Math.max(0, -(x0 * dx + y0 * dy) / len2)) : 0;
-        best = Math.min(best, Math.hypot(x0 + t * dx, y0 + t * dy));
-      }
-      return best;
+    // 点 q から線分 a-b までの距離
+    function segDist(q, a, b) {
+      const dx = b[0] - a[0], dy = b[1] - a[1], len2 = dx * dx + dy * dy;
+      const t = len2 ? Math.min(1, Math.max(0, ((q[0] - a[0]) * dx + (q[1] - a[1]) * dy) / len2)) : 0;
+      return Math.hypot(a[0] + t * dx - q[0], a[1] + t * dy - q[1]);
     }
 
-    // 分岐点 J → 円 P の枝の道筋。ふだんは八方向の折れ線。
-    // 分岐点の反対側の円だと折れ線が中心の魔法陣の裏を通り、中心から生えて見えるので、
-    // そのときは分岐点と同じ半径の弧で中心をよけて回り込み、円の向きでまっすぐ外へ出る。
-    function branchRoute(J, P, straightFirst) {
+    // 分岐点 J → 円 P の枝の道筋。八方向の直線 2 本(曲がり角は 1 つ)。
+    // ふだんは M.octi の折れ線。その曲がり角が中心の魔法陣の上に来ると角が隠れて中心から生えて見えるので、
+    // そのときだけ八方向の直線 2 本の組み合わせから選び直す。分岐点から出る向きはそのままで中心を通り過ぎ、
+    // その先で曲がる道を優先し、無ければほかの向きも試す。
+    function branchRoute(J, P, straightFirst, avoid) {
       const pts = M.octi(J, P, straightFirst);
-      if (distFromCenter(pts) >= HUB_CLEAR) return pts;
-      const r = Math.hypot(J[0], J[1]);
-      const a0 = Math.atan2(J[1], J[0]);
-      let d = Math.atan2(P[1], P[0]) - a0;
-      if (d > Math.PI) d -= Math.PI * 2;
-      if (d <= -Math.PI) d += Math.PI * 2; // 短い向き = 同じタグの扇形の中を回る
-      const n = Math.max(1, Math.ceil(Math.abs(d) / ARC_STEP));
-      const out = [J];
-      for (let k = 1; k <= n; k++) {
-        const a = a0 + (d * k) / n;
-        out.push([Math.cos(a) * r, Math.sin(a) * r]);
+      if (Math.hypot(pts[1][0], pts[1][1]) >= HUB_CLEAR) return pts;
+      const lead = pts[1][0] !== J[0] || pts[1][1] !== J[1] ? pts[1] : P; // 元の道が分岐点から出る向き
+      const u0 = [Math.sign(lead[0] - J[0]), Math.sign(lead[1] - J[1])];
+      return bentRoute(J, P, [u0], avoid) || bentRoute(J, P, OCTI_DIRS, avoid) || pts;
+    }
+
+    // J から dirs のどれかの向きに出て 1 回だけ曲がり P へ着く道のうち、条件に合う最短のもの(無ければ null)。
+    // 条件: 曲がり角が中心の外・曲がった後の直線は中心を通らない・鋭く折り返さない・ほかの円(avoid)の上を通らない
+    function bentRoute(J, P, dirs, avoid) {
+      const rx = P[0] - J[0], ry = P[1] - J[1];
+      let best = null, bestLen = Infinity;
+      for (const u of dirs) {
+        for (const v of OCTI_DIRS) {
+          const det = v[0] * u[1] - u[0] * v[1]; // J + s*u = P + t*v を s について解く
+          if (Math.abs(det) < 1e-9) continue;
+          const s = (v[0] * ry - rx * v[1]) / det;
+          const B = [J[0] + s * u[0], J[1] + s * u[1]];
+          if (Math.hypot(B[0], B[1]) < HUB_CLEAR || segDist([0, 0], B, P) < HUB_CLEAR) continue;
+          if ((J[0] - B[0]) * (P[0] - B[0]) + (J[1] - B[1]) * (P[1] - B[1]) > 1e-9) continue;
+          if ((avoid || []).some((q) => segDist(q, J, B) < AVOID_R || segDist(q, B, P) < AVOID_R)) continue;
+          const len = Math.hypot(B[0] - J[0], B[1] - J[1]) + Math.hypot(P[0] - B[0], P[1] - B[1]);
+          if (len < bestLen) {
+            bestLen = len;
+            best = [J, B, P];
+          }
+        }
       }
-      out.push(P);
-      return out;
+      return best;
     }
 
     function buildCircle(cv, many) {
@@ -809,12 +820,23 @@
 
       let used = 0;
       const w0 = tags.length ? tags[0]._w : 0;
+      // 同じタグの円は扇形の中に並べ、輪を内→外へジグザグに使う(枝の回り道がほかの円を避けられるよう先に全部の位置を決める)
+      const itemPos = new Map();
+      tags.forEach((tv) => {
+        const start = Math.PI / 2 - (used - w0 / 2) * unit;
+        used += tv._w + GAP;
+        tv.items.forEach((it, i) => {
+          const a = start - (i + 0.5) * unit;
+          const dist = ring0 + (i % rings) * RING_STEP;
+          itemPos.set(it, { dist, P: [Math.cos(a) * dist, Math.sin(a) * dist] });
+        });
+      });
+      used = 0;
       tags.forEach((tv, ti) => {
         // 最初のタグの真ん中を真上に置き、時計回りに並べる
         const mid = Math.PI / 2 - (used + tv._w / 2 - w0 / 2) * unit;
         const crowded = (tv._w + GAP) * unit * juncR < 1.7; // 混んでいるときは 1 つおきに内側へ
         used += tv._w + GAP;
-        const start = mid + (tv._w / 2) * unit;
         const jr = juncR - (crowded && ti % 2 === 1 ? 1.0 : 0);
         const J = [Math.cos(mid) * jr, Math.sin(mid) * jr];
         const tcol = new T.Color(tv.color);
@@ -840,11 +862,8 @@
         tagByName[tv.name] = tn;
 
         tv.items.forEach((it, i) => {
-          // 同じタグの円は扇形の中に並べ、輪を内→外へジグザグに使う
-          const a = start - (i + 0.5) * unit;
-          const dist = ring0 + (i % rings) * RING_STEP;
+          const { dist, P } = itemPos.get(it);
           const R = 0.85 + M.rng(it.id + '-size')() * 0.3;
-          const P = [Math.cos(a) * dist, Math.sin(a) * dist];
           const s = M.sigil(it.id, { radius: R, color: tcol, lite: many });
           s.position.set(P[0], P[1], 0.02);
           order(s, 3);
@@ -854,7 +873,9 @@
           const halo = M.glow(tcol, R * 4.2, 0);
           halo.position.set(P[0], P[1], -0.05);
           g.add(halo);
-          const route = branchRoute(J, P, i % 2 === 1).map((p) => v3(p[0], p[1])); // 枝: 八方向の折れ線（交互に曲がる順を変える）
+          const avoid = [];
+          itemPos.forEach((o, other) => { if (other !== it) avoid.push(o.P); });
+          const route = branchRoute(J, P, i % 2 === 1, avoid).map((p) => v3(p[0], p[1])); // 枝: 八方向の折れ線（交互に曲がる順を変える）
           const branch = addTrace(C, route, tcol, 0.5, 0.06, { tag: tv.name, item: it.id });
           const path = new M.Path([trunkPts[0]].concat(route));
           const stream = C.flow.add(path, tcol, { count: many ? 1 : 2, speed: 2.4 + M.rng(it.id + '-sp')(), size: 0.42 });
@@ -917,7 +938,8 @@
           if (!tn) return;
           let mesh, cross;
           if (tn.circle === n.circle) {
-            mesh = dashRibbon(M.octi(tn.pos, n.pos, true).map((p) => v3(p[0], p[1])), 0.05, new T.Color(tn.tag.color));
+            const avoid = n.circle.nodes.filter((o) => o !== n).map((o) => o.pos);
+            mesh = dashRibbon(branchRoute(tn.pos, n.pos, true, avoid).map((p) => v3(p[0], p[1])), 0.05, new T.Color(tn.tag.color));
             n.circle.group.add(mesh);
             cross = false;
           } else {
@@ -1534,6 +1556,9 @@
     bindListEvents($('ml-listview'));
     bindListEvents($('ml-listpanel'));
     $('ml-listview').addEventListener('contextmenu', (e) => { if (!e.defaultPrevented) { e.preventDefault(); newItem(S.tags); } });
+    // ブラウザ既定の右クリックメニューはどこでも出さない(入力欄の上も。貼り付けは Ctrl+V)。
+    // document で受けるので、上の各所の右クリック処理が先に動く
+    document.addEventListener('contextmenu', (e) => e.preventDefault());
 
     $('ml-add').addEventListener('click', () => newItem(S.tags));
     $('ml-home').addEventListener('click', () => { if (scene3d) scene3d.home(); else window.scrollTo({ top: 0, behavior: 'smooth' }); });
