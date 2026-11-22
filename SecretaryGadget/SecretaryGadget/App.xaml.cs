@@ -89,6 +89,8 @@ namespace SecretaryGadget
             _window = new SecretaryWindow { DisplaySeconds = _settings.DisplaySeconds };
             _window.Retracted += () => Dispatcher.BeginInvoke(new Action(() => ShowNext(false)));
             _window.BubbleOpened += OpenNotice;
+            // ダイアログを開く選択肢(タイマー)もあるので、引っ込みアニメーションの完了処理の外で実行する
+            _window.MenuChosen += item => Dispatcher.BeginInvoke(new Action(() => RunBubbleMenu(item)));
             if (_options.HasDiag("capture-on"))
             {
                 _window.SetCaptureExcluded(false);
@@ -505,6 +507,7 @@ namespace SecretaryGadget
                 return;
             }
             _window.Peek();
+            _settings.CallMenu = Settings.ReadCallMenu(_settings.FilePath) ?? _settings.CallMenu;
             bool showMail = _settings.NotifyOutlookMail;
             bool showTeams = _settings.NotifyTeams;
             bool showMeetings = _settings.NotifyMeetings;
@@ -521,7 +524,7 @@ namespace SecretaryGadget
             }
             await Task.WhenAny(Task.WhenAll(mentionTask, outlookResult.Task), Task.Delay(_callTimeout));
             OutlookCallResult result = outlookResult.Task.IsCompleted ? outlookResult.Task.Result : new OutlookCallResult(false, null, Array.Empty<string>(), null);
-            Notice notice = NoticeTexts.Call(
+            Notice notice = WithCallMenu(NoticeTexts.Call(
                 DateTime.Now,
                 _settings.UserName,
                 result.Unread,
@@ -532,12 +535,65 @@ namespace SecretaryGadget
                 result.Connected ? result.Upcoming : null,
                 showMail,
                 showTeams,
-                showMeetings);
+                showMeetings));
             Log.Write($"秘書さんを呼ぶ: Outlook {(result.Connected ? "接続" : showMail || showMeetings ? "不在" : "使わない")}");
             Enqueue(notice);
             if (result.Connected && _outlook != null && !string.IsNullOrWhiteSpace(_settings.MarkReadSearchFolder))
             {
                 _outlook.RequestMarkSearchFolderRead(_settings.MarkReadSearchFolder);
+            }
+        }
+
+        /// <summary>「秘書さんを呼ぶ」の吹き出しに、settings.json の CallMenu の選択肢を付ける。</summary>
+        private Notice WithCallMenu(Notice notice)
+        {
+            return new Notice(notice.Kind, notice.Headline, notice.Line1, notice.Line2, notice.Line3)
+            {
+                Menu = _settings.CallMenu.Select(e => new BubbleMenuItem(e.Label, () => RunCallMenuEntry(e))).ToList(),
+            };
+        }
+
+        /// <summary>CallMenu の1行を実行する。「@」で始まる Path は組み込みの機能、それ以外はファイルを起動する。</summary>
+        private void RunCallMenuEntry(CallMenuEntry entry)
+        {
+            string? error;
+            if (entry.IsBuiltin)
+            {
+                Action? builtin = entry.BuiltinName switch
+                {
+                    "schedule" => ShowSchedule,
+                    "hakoniwa" => OpenHakoniwa,
+                    "stockradar" => OpenStockRadar,
+                    "timer" => AskTimer,
+                    _ => null,
+                };
+                if (builtin != null)
+                {
+                    builtin();
+                    return;
+                }
+                error = $"「{entry.Path}」という機能はありません。settings.json の CallMenu を確認してください。";
+            }
+            else
+            {
+                error = entry.Launch();
+            }
+            if (error != null)
+            {
+                Enqueue(new Notice(NoticeKind.Greeting, $"{entry.Label}を開けませんでした", error));
+            }
+        }
+
+        private void RunBubbleMenu(BubbleMenuItem item)
+        {
+            Log.Write($"吹き出しのメニュー: {item.Label}");
+            try
+            {
+                item.Run();
+            }
+            catch (Exception ex)
+            {
+                Log.Write($"吹き出しのメニュー操作に失敗しました({item.Label}): " + ex.GetType().Name);
             }
         }
 
@@ -666,7 +722,7 @@ namespace SecretaryGadget
             Notice notice;
             if (_options.PreviewCall)
             {
-                notice = NoticeTexts.Call(
+                notice = WithCallMenu(NoticeTexts.Call(
                     now,
                     _settings.UserName,
                     12,
@@ -678,7 +734,10 @@ namespace SecretaryGadget
                     {
                         new MeetingInfo("週次定例", now.AddMinutes(-10), now.AddMinutes(20), "会議室A"),
                         new MeetingInfo("設計レビュー", now.AddHours(2), now.AddHours(3), "Microsoft Teams 会議"),
-                    });
+                    },
+                    _settings.NotifyOutlookMail,
+                    _settings.NotifyTeams,
+                    _settings.NotifyMeetings));
             }
             else if (_options.PreviewSchedule)
             {

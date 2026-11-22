@@ -236,7 +236,7 @@ namespace SecretaryGadget
             return item;
         }
 
-        /// <summary>ON/OFF の設定項目。OFF でも見張り自体は続け、呼んだときの件数には使う。</summary>
+        /// <summary>ON/OFF の設定項目。OFF でも見張り自体は続ける(「秘書さんを呼ぶ」の吹き出しには OFF の項目を出さない)。</summary>
         private Forms.ToolStripMenuItem Toggle(string text, Func<bool> get, Action<bool> set)
         {
             return Item(text, () =>

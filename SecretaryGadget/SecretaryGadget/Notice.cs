@@ -18,6 +18,9 @@ namespace SecretaryGadget
         Timer,
     }
 
+    /// <summary>吹き出しの下に並べる選択肢1行分。選ぶと秘書さんが引っ込んでから Run を呼ぶ。</summary>
+    internal sealed record BubbleMenuItem(string Label, Action Run);
+
     /// <summary>吹き出し1回分のお知らせ。</summary>
     internal sealed class Notice
     {
@@ -45,6 +48,9 @@ namespace SecretaryGadget
 
         /// <summary>吹き出しクリックで実行する動作。無い「まとめ」系は何もしない。</summary>
         public Action? Open { get; init; }
+
+        /// <summary>本文の下に並べる選択肢(「秘書さんを呼ぶ」)。null・空なら出さない。</summary>
+        public IReadOnlyList<BubbleMenuItem>? Menu { get; init; }
 
         /// <summary>出す直前に現在時刻で作り直す(会議)。nullを返したら捨てる。</summary>
         public Func<DateTime, Notice?>? Refresh { get; init; }

@@ -72,6 +72,9 @@ namespace SecretaryGadget
 
         public bool Paused { get; set; } = false;
 
+        /// <summary>「秘書さんを呼ぶ」の吹き出しに並べる選択肢。行を足せば吹き出しの選択肢も増える。</summary>
+        public List<CallMenuEntry> CallMenu { get; set; } = CallMenuEntry.Defaults();
+
         /// <summary>PCごとのデータ置き場(ログ・追加スキン・設定の場所メモ)</summary>
         public static string LocalDir => LocalDirOverride ?? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "SecGad");
 
@@ -128,6 +131,28 @@ namespace SecretaryGadget
             settings.FilePath = path;
             settings.Normalize();
             return settings;
+        }
+
+        /// <summary>
+        /// settings.json から CallMenu だけを読み直す(起動中に手で書き足した選択肢を、再起動なしで吹き出しに出すため)。
+        /// ファイルが無い・読めないときは null(呼び出し側は今の値を使い続ける)。CallMenu の項目自体が無ければ既定の並び。
+        /// </summary>
+        public static List<CallMenuEntry>? ReadCallMenu(string path)
+        {
+            try
+            {
+                if (!File.Exists(path))
+                {
+                    return null;
+                }
+                Settings? read = JsonSerializer.Deserialize<Settings>(File.ReadAllText(path), _jsonOptions);
+                return read == null ? null : CallMenuEntry.Normalize(read.CallMenu);
+            }
+            catch (Exception ex)
+            {
+                Log.Write("settings.json の CallMenu が読めないため前の値を使います: " + ex.GetType().Name);
+                return null;
+            }
         }
 
         /// <summary>いま使っている settings.json のフォルダ</summary>
@@ -206,6 +231,7 @@ namespace SecretaryGadget
             OutlookWatchFolders ??= new List<string> { "受信トレイ" };
             TeamsMentionKeywords ??= new List<string>();
             MarkReadSearchFolder ??= string.Empty;
+            CallMenu = CallMenuEntry.Normalize(CallMenu);
             if (SkinScale <= 0)
             {
                 SkinScale = 1.0;

@@ -25,6 +25,8 @@ namespace SecretaryGadget
         private const int _bubbleFadeOutMs = 150;
         private const double _lineHeight = 19;
         private static readonly TimeSpan _peekTimeout = TimeSpan.FromSeconds(8);
+        private static readonly Brush _menuForeground = Frozen(Color.FromRgb(0x2E, 0x3A, 0x59));
+        private static readonly Brush _menuHover = Frozen(Color.FromRgb(0xE6, 0xEC, 0xF7));
 
         private readonly DispatcherTimer _autoHideTimer;
         private readonly DispatcherTimer _peekTimer;
@@ -61,6 +63,9 @@ namespace SecretaryGadget
 
         /// <summary>吹き出しクリックで引っ込み終わったあと(Notice.Open の実行は呼び出し側)</summary>
         internal event Action<Notice>? BubbleOpened;
+
+        /// <summary>吹き出しの選択肢を選んで引っ込み終わったあと(選択肢の実行は呼び出し側)</summary>
+        internal event Action<BubbleMenuItem>? MenuChosen;
 
         /// <summary>引っ込み終わった(次のお知らせへ)</summary>
         internal event Action? Retracted;
@@ -286,8 +291,69 @@ namespace SecretaryGadget
             SetLine(Line1Text, notice?.Line1, notice != null && !notice.IsUnlimited ? 2 : 0);
             SetLine(Line2Text, notice?.Line2, notice != null && !notice.IsUnlimited ? 3 : 0);
             SetLine(Line3Text, notice?.Line3, 0);
+            SetMenu(notice?.Menu);
             SetLine(FooterText, footer, 0);
             CloseMark.Visibility = notice == null ? Visibility.Hidden : Visibility.Visible;
+        }
+
+        private void SetMenu(IReadOnlyList<BubbleMenuItem>? menu)
+        {
+            MenuPanel.Children.Clear();
+            if (menu == null || menu.Count == 0)
+            {
+                MenuPanel.Visibility = Visibility.Collapsed;
+                return;
+            }
+            foreach (BubbleMenuItem item in menu)
+            {
+                MenuPanel.Children.Add(CreateMenuRow(item));
+            }
+            MenuPanel.Visibility = Visibility.Visible;
+        }
+
+        /// <summary>選択肢1行。行全体(左右の余白まで)を当たり判定にし、マウスが乗ったら色を付ける。</summary>
+        private static Border CreateMenuRow(BubbleMenuItem item)
+        {
+            var row = new Border
+            {
+                Tag = item,
+                Background = Brushes.Transparent,
+                CornerRadius = new CornerRadius(6),
+                Padding = new Thickness(8, 3, 8, 3),
+                Margin = new Thickness(-8, 0, -8, 0),
+                Child = new TextBlock
+                {
+                    Text = "▸ " + item.Label,
+                    FontSize = 13,
+                    Foreground = _menuForeground,
+                    TextTrimming = TextTrimming.CharacterEllipsis,
+                },
+            };
+            row.MouseEnter += (_, __) => row.Background = _menuHover;
+            row.MouseLeave += (_, __) => row.Background = Brushes.Transparent;
+            return row;
+        }
+
+        /// <summary>クリックされた要素から上へたどり、選択肢の行なら その選択肢を返す。</summary>
+        private BubbleMenuItem? FindMenuItem(object? source)
+        {
+            DependencyObject? d = source as DependencyObject;
+            while (d != null && !ReferenceEquals(d, Bubble))
+            {
+                if (d is FrameworkElement { Tag: BubbleMenuItem item })
+                {
+                    return item;
+                }
+                d = d is Visual ? VisualTreeHelper.GetParent(d) : LogicalTreeHelper.GetParent(d);
+            }
+            return null;
+        }
+
+        private static Brush Frozen(Color color)
+        {
+            var brush = new SolidColorBrush(color);
+            brush.Freeze();
+            return brush;
         }
 
         /// <summary>maxLines=0 なら高さ制限なし。</summary>
@@ -372,7 +438,7 @@ namespace SecretaryGadget
         }
 
         /// <summary>
-        /// 吹き出しクリック: 引っ込めてから Notice.Open。Open が無いお知らせ(あいさつ・まとめ等)は引っ込むだけ
+        /// 吹き出しクリック: 選択肢の行なら引っ込めてからその選択肢、それ以外は引っ込めてから Notice.Open。Open が無いお知らせ(あいさつ・まとめ等)は引っ込むだけ
         /// (仕様書では「何もしない」だったが、クリックで閉じられるよう変更)。
         /// </summary>
         private void OnBubbleClick(object sender, MouseButtonEventArgs e)
@@ -386,6 +452,12 @@ namespace SecretaryGadget
             Notice? notice = CurrentNotice;
             if (notice == null || IsPeeking)
             {
+                return;
+            }
+            BubbleMenuItem? chosen = FindMenuItem(e.OriginalSource);
+            if (chosen != null)
+            {
+                Retract(() => MenuChosen?.Invoke(chosen));
                 return;
             }
             if (notice.Open == null)

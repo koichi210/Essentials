@@ -1,5 +1,7 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 namespace SecretaryGadget.Tests
@@ -24,6 +26,63 @@ namespace SecretaryGadget.Tests
         {
             Settings.LocalDirOverride = null;
             Directory.Delete(_root, true);
+        }
+
+        [TestMethod]
+        public void CallMenu_DefaultsToBuiltins()
+        {
+            Settings s = Settings.Load();
+            CollectionAssert.AreEqual(
+                new[] { "@schedule", "@hakoniwa", "@stockradar", "@timer" },
+                s.CallMenu.Select(e => e.Path).ToArray());
+            Assert.AreEqual("timer", s.CallMenu[3].BuiltinName);
+        }
+
+        [TestMethod]
+        public void ReadCallMenu_PicksUpAddedRowsAndDropsBlankOnes()
+        {
+            string path = Path.Combine(_root, "settings.json");
+            File.WriteAllText(path, """
+                {
+                  // 手で足した行
+                  "CallMenu": [
+                    { "Label": "本日の予定", "Path": "@Schedule" },
+                    { "Label": " メモ帳 ", "Path": "%WINDIR%\notepad.exe", "Arguments": "a.txt" },
+                    { "Label": "", "Path": "x.bat" },
+                    { "Label": "パスなし", "Path": " " },
+                  ],
+                }
+                """);
+
+            List<CallMenuEntry> menu = Settings.ReadCallMenu(path)!;
+
+            Assert.AreEqual(2, menu.Count);
+            Assert.AreEqual("schedule", menu[0].BuiltinName);
+            Assert.AreEqual("メモ帳", menu[1].Label);
+            Assert.IsFalse(menu[1].IsBuiltin);
+            Assert.AreEqual("a.txt", menu[1].Arguments);
+        }
+
+        [TestMethod]
+        public void ReadCallMenu_MissingKeyMeansDefaults_EmptyListMeansNone_BrokenFileMeansNull()
+        {
+            string path = Path.Combine(_root, "settings.json");
+            File.WriteAllText(path, "{ \"UserName\": \"テストさん\" }");
+            Assert.AreEqual(4, Settings.ReadCallMenu(path)!.Count);
+
+            File.WriteAllText(path, "{ \"CallMenu\": [] }");
+            Assert.AreEqual(0, Settings.ReadCallMenu(path)!.Count);
+
+            File.WriteAllText(path, "{ 壊れた");
+            Assert.IsNull(Settings.ReadCallMenu(path));
+            Assert.IsNull(Settings.ReadCallMenu(Path.Combine(_root, "無い.json")));
+        }
+
+        [TestMethod]
+        public void CallMenuEntry_Launch_MissingFile_ReturnsNotFoundMessage()
+        {
+            var entry = new CallMenuEntry { Label = "無いツール", Path = Path.Combine(_root, "無い.bat") };
+            StringAssert.Contains(entry.Launch(), "起動先が見つかりません");
         }
 
         [TestMethod]
