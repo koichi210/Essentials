@@ -505,9 +505,13 @@ namespace SecretaryGadget
                 return;
             }
             _window.Peek();
-            Task mentionTask = _mentionCounter?.CountNowAsync() ?? Task.CompletedTask;
+            bool showMail = _settings.NotifyOutlookMail;
+            bool showTeams = _settings.NotifyTeams;
+            bool showMeetings = _settings.NotifyMeetings;
+            // 知らせない項目のためには読みに行かない(待ち時間を増やさない)
+            Task mentionTask = showTeams ? _mentionCounter?.CountNowAsync() ?? Task.CompletedTask : Task.CompletedTask;
             var outlookResult = new TaskCompletionSource<OutlookCallResult>();
-            if (_outlook != null)
+            if (_outlook != null && (showMail || showMeetings))
             {
                 _outlook.RequestCall(r => outlookResult.TrySetResult(r));
             }
@@ -525,8 +529,11 @@ namespace SecretaryGadget
                 _mentionCounter?.Count,
                 _mentionCounter?.CountedAt,
                 Enumerable.Reverse(_teamsSenders).ToList(),
-                result.Connected ? result.Upcoming : null);
-            Log.Write($"秘書さんを呼ぶ: Outlook {(result.Connected ? "接続" : "不在")}");
+                result.Connected ? result.Upcoming : null,
+                showMail,
+                showTeams,
+                showMeetings);
+            Log.Write($"秘書さんを呼ぶ: Outlook {(result.Connected ? "接続" : showMail || showMeetings ? "不在" : "使わない")}");
             Enqueue(notice);
             if (result.Connected && _outlook != null && !string.IsNullOrWhiteSpace(_settings.MarkReadSearchFolder))
             {

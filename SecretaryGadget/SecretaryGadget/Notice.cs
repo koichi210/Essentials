@@ -90,6 +90,9 @@ namespace SecretaryGadget
             return $"{Greeting(now)}、{userName}";
         }
 
+        /// <summary>「秘書さんを呼ぶ」で知らせる項目が何も無いときの文面</summary>
+        public const string AskRequest = "ご用件はなんでしょうか？";
+
         public static Notice Startup(DateTime now, string userName)
         {
             return new Notice(NoticeKind.Greeting, GreetingHeadline(now, userName), "秘書がお知らせを監視しています。", "本日もよろしくお願いいたします。");
@@ -132,7 +135,10 @@ namespace SecretaryGadget
             return others > 0 ? $"{joined} ほか {others} 件" : joined;
         }
 
-        /// <summary>「秘書さんを呼ぶ」の文面。unreadがnullならOutlook不在(古い件数は使わない)。</summary>
+        /// <summary>
+        /// 「秘書さんを呼ぶ」の文面。unreadがnullならOutlook不在(古い件数は使わない)。
+        /// 設定で知らせないことにした項目(メール・Teams・会議)の行は出さず、全部オフなら用件を尋ねる。
+        /// </summary>
         public static Notice Call(
             DateTime now,
             string userName,
@@ -141,8 +147,17 @@ namespace SecretaryGadget
             int? mentionCount,
             DateTime? mentionCountedAt,
             IReadOnlyList<string> teamsSendersNewestFirst,
-            IReadOnlyList<MeetingInfo>? upcoming)
+            IReadOnlyList<MeetingInfo>? upcoming,
+            bool showMail = true,
+            bool showTeams = true,
+            bool showMeetings = true)
         {
+            string headline = GreetingHeadline(now, userName);
+            if (!showMail && !showTeams && !showMeetings)
+            {
+                return new Notice(NoticeKind.Greeting, headline, AskRequest);
+            }
+
             string mailLine;
             if (unread == null)
             {
@@ -182,7 +197,12 @@ namespace SecretaryGadget
                     : "本日のこのあとの会議：" + Environment.NewLine + string.Join(Environment.NewLine, upcoming.Select(m => FormatMeetingRow(now, m)));
             }
 
-            return new Notice(NoticeKind.Greeting, GreetingHeadline(now, userName), mailLine, teamsLine, meetingLine);
+            return new Notice(
+                NoticeKind.Greeting,
+                headline,
+                showMail ? mailLine : null,
+                showTeams ? teamsLine : null,
+                showMeetings ? meetingLine : null);
         }
 
         /// <summary>「本日の予定」。今日の会議(終了済み含む)を8件まで、残りは「ほか N 件」。todayがnullならOutlook不在。</summary>

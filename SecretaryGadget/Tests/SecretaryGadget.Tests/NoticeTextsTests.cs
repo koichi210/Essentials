@@ -79,6 +79,33 @@ namespace SecretaryGadget.Tests
         }
 
         [TestMethod]
+        public void Call_AllNotificationsOff_AsksRequestOnly()
+        {
+            DateTime now = _day.AddHours(20).AddMinutes(43);
+            Notice n = NoticeTexts.Call(now, "テストさん", null, Array.Empty<string>(), null, null, Array.Empty<string>(), null, showMail: false, showTeams: false, showMeetings: false);
+            Assert.AreEqual(NoticeKind.Greeting, n.Kind);
+            Assert.AreEqual("遅くまでお疲れさまです、テストさん", n.Headline);
+            Assert.AreEqual("ご用件はなんでしょうか？", n.Line1);
+            Assert.IsNull(n.Line2);
+            Assert.IsNull(n.Line3);
+        }
+
+        [TestMethod]
+        public void Call_SomeNotificationsOff_OmitsThoseLines()
+        {
+            DateTime now = _day.AddHours(9);
+            Notice teamsOnly = NoticeTexts.Call(now, "X", null, Array.Empty<string>(), 2, now, new[] { "A", "B" }, null, showMail: false, showTeams: true, showMeetings: false);
+            Assert.IsNull(teamsOnly.Line1);
+            Assert.AreEqual("Teams のメンション未読：2 件（A・B）", teamsOnly.Line2);
+            Assert.IsNull(teamsOnly.Line3);
+
+            Notice noTeams = NoticeTexts.Call(now, "X", 1, new[] { "A" }, null, null, Array.Empty<string>(), new List<MeetingInfo>(), showMail: true, showTeams: false, showMeetings: true);
+            Assert.AreEqual("メールの未読：1 件（A）", noTeams.Line1);
+            Assert.IsNull(noTeams.Line2);
+            Assert.AreEqual("本日のこのあとの会議：ありません", noTeams.Line3);
+        }
+
+        [TestMethod]
         public void Call_MentionNeverCounted()
         {
             Notice n = NoticeTexts.Call(_day.AddHours(9), "X", 0, Array.Empty<string>(), null, null, Array.Empty<string>(), null);
