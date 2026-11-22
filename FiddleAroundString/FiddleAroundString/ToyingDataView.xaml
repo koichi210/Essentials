@@ -1,0 +1,51 @@
+<UserControl x:Class="FiddleAroundString.ToyingDataView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:stc="clr-namespace:StandardTemplate.Wpf">
+    <!-- 「データ加工」タブ。中身は旧ToyingDataのMainWindowと同じ(コントロール名・既定値・ツールチップも同じ) -->
+    <Grid Margin="13,12,13,6">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="222" />
+            <ColumnDefinition Width="24" />
+            <ColumnDefinition Width="241" />
+            <ColumnDefinition Width="35" />
+            <ColumnDefinition Width="*" />
+        </Grid.ColumnDefinitions>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <GroupBox Grid.Row="0" Grid.RowSpan="2" Grid.Column="0" Header="メニュー" Padding="4">
+            <StackPanel>
+                <RadioButton x:Name="radioButton_DeleteDuplicate" GroupName="ToyingDataMenu" Content="重複を削除" Margin="8,6,0,0"
+                             ToolTip="同じ内容の行を、最初の1行だけ残して削除する" ToolTipService.ShowDuration="15000" />
+                <RadioButton x:Name="radioButton_ChangeWide2Narrow" GroupName="ToyingDataMenu" Content="全角を半角に変換" Margin="8,6,0,0"
+                             ToolTip="下のチェックで選んだ種類の全角文字だけを半角にする" ToolTipService.ShowDuration="15000" />
+                <CheckBox x:Name="checkBox_Wide2Narrow_Number" Content="数値[０～９]" Margin="28,6,0,0" />
+                <CheckBox x:Name="checkBox_Wide2Narrow_Alpha_Large" Content="英大字[Ａ～Ｚ]" Margin="28,6,0,0" />
+                <CheckBox x:Name="checkBox_Wide2Narrow_Alpha_Small" Content="英小字[ａ～ｚ]" Margin="28,6,0,0" />
+                <CheckBox x:Name="checkBox_Wide2Narrow_Space" Content="スペース" Margin="28,6,0,0" />
+            </StackPanel>
+        </GroupBox>
+
+        <TextBlock Grid.Row="0" Grid.Column="2" Text="変更前データ" Margin="0,0,0,3" />
+        <TextBox Grid.Row="1" Grid.Column="2" x:Name="textBox_Source"
+                 AcceptsReturn="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Visible"
+                 AllowDrop="True"
+                 PreviewDragEnter="textBox_Source_PreviewDragOver" PreviewDragOver="textBox_Source_PreviewDragOver"
+                 PreviewDrop="textBox_Source_PreviewDrop"
+                 ToolTip="1行を1件として処理する。ファイルをドロップすると、そのファイルのパスが入る(中身ではない)" ToolTipService.ShowDuration="15000" />
+
+        <TextBlock Grid.Row="1" Grid.Column="3" Text="⇒" HorizontalAlignment="Center" VerticalAlignment="Center" />
+
+        <TextBlock Grid.Row="0" Grid.Column="4" Text="変更後データ" Margin="0,0,0,3" />
+        <stc:TextBoxEx Grid.Row="1" Grid.Column="4" x:Name="textBox_Dest"
+                       AcceptsReturn="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Visible" />
+
+        <Button Grid.Row="2" Grid.Column="4" x:Name="button_Execute" Content="実行" Width="83" Height="23"
+                HorizontalAlignment="Right" Margin="0,6,0,0" Click="button_Execute_Click"
+                ToolTip="選んだメニューで変換し、結果をクリップボードにもコピーする。空行は取り除かれる" ToolTipService.ShowDuration="15000" />
+    </Grid>
+</UserControl>

@@ -11,6 +11,7 @@
 | [DuplicateFinder](DuplicateFinder) | 複数のフォルダから中身が同じファイルを探し出して、選んで削除する | .NET Framework 4.8 |
 | [EventRecorder](EventRecorder) | キーボードとマウスの操作を記録して再生する（プレイリスト・ループ再生） | .NET Framework 4.8 / x64 |
 | [FFEdit](FFEdit) | フォルダ内のファイル・フォルダの名前を、通し番号などでまとめて変換する | .NET Framework |
+| [FiddleAroundString](FiddleAroundString) | 文字の削除・全角→半角・重複行の削除、ファイルや Web ページから検索ワードを含む行の抜き出しを、4つのタブで切り替えて行う | .NET Framework |
 | [FileArranger](FileArranger) | フォルダの移動や名前変更、ファイルの移動・振り分けをまとめて行う | .NET Framework |
 | [HeifToPng](HeifToPng) | iPhone などの HEIF 画像（.heic / .heif / .hif）を、フォルダごとまとめて PNG に変換する | .NET Framework 4.8 / x64 |
 | [VsCodePets](VsCodePets) | VS Code のパネルでペットが飛び回る拡張機能（vscode-pets の改造版・画像はすべてオリジナル） | VS Code 1.73 以上 |

@@ -1,0 +1,31 @@
+<Window x:Class="FiddleAroundString.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:local="clr-namespace:FiddleAroundString"
+        Title="FiddleAroundString" Icon="FiddleAroundString.ico"
+        Width="830" Height="540" MinWidth="815" MinHeight="440">
+    <!-- 旧ToyingFile・ToyingData・TrimFileData・TrimHtmlDataの4本を1つにまとめ、タブで切り替える。
+         各タブの中身は旧アプリの画面をそのままUserControlにしたもの -->
+    <TabControl x:Name="tabControl_Menu" Margin="4" SelectedIndex="0">
+        <TabItem x:Name="tabItem_ToyingFile" Header="ファイル加工"
+                 ToolTip="フォルダ内のファイルから、指定した文字(またはその文字を含む行)を削除する(旧ToyingFile)"
+                 ToolTipService.ShowDuration="15000">
+            <local:ToyingFileView x:Name="toyingFileView" />
+        </TabItem>
+        <TabItem x:Name="tabItem_ToyingData" Header="データ加工"
+                 ToolTip="貼り付けた文字列の重複行を削除する/全角英数字・スペースを半角にする(旧ToyingData)"
+                 ToolTipService.ShowDuration="15000">
+            <local:ToyingDataView x:Name="toyingDataView" />
+        </TabItem>
+        <TabItem x:Name="tabItem_TrimFileData" Header="ファイル抽出"
+                 ToolTip="リファレンスファイルから、検索ワードを含む行を抜き出す(旧TrimFileData)"
+                 ToolTipService.ShowDuration="15000">
+            <local:TrimFileDataView x:Name="trimFileDataView" />
+        </TabItem>
+        <TabItem x:Name="tabItem_TrimHtmlData" Header="HTML抽出"
+                 ToolTip="URLのHTMLを取得し、検索文字を含む行を抜き出す(旧TrimHtmlData)"
+                 ToolTipService.ShowDuration="15000">
+            <local:TrimHtmlDataView x:Name="trimHtmlDataView" />
+        </TabItem>
+    </TabControl>
+</Window>

@@ -1,0 +1,30 @@
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 16
+VisualStudioVersion = 16.0.30114.105
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FiddleAroundString", "FiddleAroundString\FiddleAroundString.csproj", "{49F9731E-DEB6-4150-9EC9-FFB21355F8C6}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FiddleAroundString.Tests", "Tests\FiddleAroundString.Tests\FiddleAroundString.Tests.csproj", "{2F811344-9449-4B46-A17A-D7A8F43761CA}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|x64 = Debug|x64
+		Release|x64 = Release|x64
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{49F9731E-DEB6-4150-9EC9-FFB21355F8C6}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{49F9731E-DEB6-4150-9EC9-FFB21355F8C6}.Debug|x64.Build.0 = Debug|Any CPU
+		{49F9731E-DEB6-4150-9EC9-FFB21355F8C6}.Release|x64.ActiveCfg = Release|Any CPU
+		{49F9731E-DEB6-4150-9EC9-FFB21355F8C6}.Release|x64.Build.0 = Release|Any CPU
+		{2F811344-9449-4B46-A17A-D7A8F43761CA}.Debug|x64.ActiveCfg = Debug|x64
+		{2F811344-9449-4B46-A17A-D7A8F43761CA}.Debug|x64.Build.0 = Debug|x64
+		{2F811344-9449-4B46-A17A-D7A8F43761CA}.Release|x64.ActiveCfg = Release|x64
+		{2F811344-9449-4B46-A17A-D7A8F43761CA}.Release|x64.Build.0 = Release|x64
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {5AB60E0B-61A7-459C-9A02-9A31A84D1E08}
+	EndGlobalSection
+EndGlobal

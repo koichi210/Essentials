@@ -1,0 +1,62 @@
+<UserControl x:Class="FiddleAroundString.ToyingFileView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:stc="clr-namespace:StandardTemplate.Wpf">
+    <!-- 「ファイル加工」タブ。中身は旧ToyingFileのMainWindowと同じ(コントロール名・既定値・ツールチップも同じ) -->
+    <Grid Margin="12,12,11,4">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*" />
+            <ColumnDefinition Width="242" />
+        </Grid.ColumnDefinitions>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <!-- タブ順はWinForms版と同じく メニュー → 対象ファイル → 実行ボタン の順(要素の並び順で決まる) -->
+        <GroupBox Grid.Row="0" Grid.Column="0" Header="メニュー" Padding="2">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" MinHeight="22" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+                <RadioButton Grid.Row="0" x:Name="radioButton_DeleteString" GroupName="ToyingFileMenu" Content="指定文字を削除" Margin="10,2,0,2" />
+                <stc:TextBoxEx Grid.Row="1" x:Name="textBox_DeleteString" Margin="22,1,0,2"
+                               AcceptsReturn="True" TextWrapping="NoWrap"
+                               VerticalScrollBarVisibility="Visible" HorizontalScrollBarVisibility="Visible"
+                               ToolTip="削除する文字列。1行に1つずつ書く(空行は無視)" ToolTipService.ShowDuration="15000" />
+                <CheckBox Grid.Row="2" x:Name="checkBox_CaseSensitive" Content="大文字小文字を区別" Margin="22,2,0,1" />
+                <CheckBox Grid.Row="3" x:Name="checkBox_DeleteLine" Content="行を削除" Margin="22,2,0,2"
+                          ToolTip="指定文字を含む行を行ごと空行にする(行は詰めない)。改行コード(CRLF/LF/CR)は元のまま残す" ToolTipService.ShowDuration="15000" />
+            </Grid>
+        </GroupBox>
+
+        <GroupBox Grid.Row="0" Grid.Column="1" Header="対象ファイル" Padding="2" Margin="6,0,0,0">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+                <TextBlock Grid.Row="0" Grid.Column="0" Text="ディレクトリ：" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="8,0,0,0" />
+                <stc:TextBoxEx Grid.Row="0" Grid.Column="1" x:Name="textBox_Directory" stc:Placeholder.Text="例: C:\Work"
+                               VerticalAlignment="Center" Margin="2,2,0,2" />
+                <TextBlock Grid.Row="1" Grid.Column="0" Text="ファイル：" HorizontalAlignment="Right" VerticalAlignment="Center" />
+                <stc:TextBoxEx Grid.Row="1" Grid.Column="1" x:Name="textBox_File" stc:Placeholder.Text="例: *.txt"
+                               VerticalAlignment="Center" Margin="2,2,0,2"
+                               ToolTip="対象にするファイル名のパターン(*や?のワイルドカード可)。空欄なら全ファイル" ToolTipService.ShowDuration="15000" />
+                <CheckBox Grid.Row="2" Grid.Column="1" x:Name="checkBox_SubDirectory" Content="サブディレクトリも対象" IsChecked="True" Margin="2,4,0,0" />
+            </Grid>
+        </GroupBox>
+
+        <Button Grid.Row="1" Grid.Column="1" x:Name="button_Execute" Content="実行" Width="75" Height="23"
+                HorizontalAlignment="Right" Margin="0,6,0,0" Click="button_Execute_Click"
+                ToolTip="対象ファイルをShift_JISとして読み込み、結果で直接上書きする。バックアップは作らない" ToolTipService.ShowDuration="15000" />
+    </Grid>
+</UserControl>
