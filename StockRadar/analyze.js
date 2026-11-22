@@ -826,6 +826,168 @@ function decodeEntities(s) {
     .replace(/&amp;/g, '&');
 }
 
+// ---------------------------------------------------------------- 見張り(指定した値段になったら知らせる)
+
+const WATCH_OPS = { above: '以上', below: '以下' };
+// 東証の取引時間は 9:00〜15:30。Yahoo のデータは約20分遅れなので、15:30 の終値が届く 15:50 までを見張る時間にする(祝日は見ない)
+const WATCH_OPEN_MIN = 9 * 60;
+const WATCH_CLOSE_MIN = 15 * 60 + 50;
+
+function jstMinutes(sec) {
+  const d = new Date((sec + 9 * 3600) * 1000);
+  return d.getUTCHours() * 60 + d.getUTCMinutes();
+}
+
+// 平日の 9:00〜15:50(日本時間)か
+function isMarketHours(nowSec) {
+  const w = new Date((nowSec + 9 * 3600) * 1000).getUTCDay();
+  const m = jstMinutes(nowSec);
+  return w !== 0 && w !== 6 && m >= WATCH_OPEN_MIN && m <= WATCH_CLOSE_MIN;
+}
+
+// 今日の取引でついた値段か(朝の取引の前は前の日の終値が返るので、それでは知らせない)
+function isTodayPrice(priceSec, nowSec) {
+  return Number.isFinite(priceSec) && jstDate(priceSec) === jstDate(nowSec) && jstMinutes(priceSec) >= WATCH_OPEN_MIN;
+}
+
+// 条件を満たしたか。「以上」は price 以上、「以下」は price 以下(ちょうどの値段も含む)
+function watchHit(watch, price) {
+  if (!Number.isFinite(price)) {
+    return false;
+  }
+  return watch.op === 'above' ? price >= watch.price : price <= watch.price;
+}
+
+// chart API の meta から今の値段・その時刻・名前を取り出す(無ければ null)
+function quoteFromChart(json) {
+  const r = json && json.chart && json.chart.result && json.chart.result[0];
+  const m = r && r.meta;
+  if (!m || !(m.regularMarketPrice > 0)) {
+    return null;
+  }
+  return { price: m.regularMarketPrice, time: Number.isFinite(m.regularMarketTime) ? m.regularMarketTime : null, name: m.longName || m.shortName || '' };
+}
+
+function jstClock(sec) {
+  const d = new Date((sec + 9 * 3600) * 1000);
+  return `${d.getUTCMonth() + 1}/${d.getUTCDate()} ${String(d.getUTCHours()).padStart(2, '0')}:${String(d.getUTCMinutes()).padStart(2, '0')}`;
+}
+
+const yenText = (v) => `${v.toLocaleString('ja-JP', { maximumFractionDigits: 1 })}円`;
+
+// LINE に送る文。hits = [{ watch, price, time }]。1回の確認で当たった分を1通にまとめる(送信数を減らすため)
+function watchMessage(hits) {
+  const lines = hits.map(({ watch: w, price, time }) => {
+    const label = w.name ? `${w.name}(${w.code})` : w.code;
+    const when = Number.isFinite(time) ? `・${jstClock(time)}時点` : '';
+    const note = w.note ? `［${w.note}］` : '';
+    return `・${label} ${yenText(price)}${note}\n　${yenText(w.price)}${WATCH_OPS[w.op]}になりました${when}`;
+  });
+  return [
+    '📡 株レーダー: 見張っていた値段になりました',
+    ...lines,
+    '値段は約20分遅れです。注文の前に証券会社の画面で今の値段を確かめてください。',
+    'この見張りは止めました。株レーダーの「🔔 見張り」の「再開」でまた見張れます。',
+  ].join('\n');
+}
+
+// ---------------------------------------------------------------- 過去N年の平均と比べる
+
+// 'YYYY-MM' を n か月ずらす
+function addMonths(month, n) {
+  const [y, m] = month.split('-').map(Number);
+  const d = new Date(Date.UTC(y, m - 1 + n, 1));
+  return d.toISOString().slice(0, 7);
+}
+
+// 平均に使う月の範囲: 今月(途中)を除く直近 years×12 か月
+function avgWindow(years, nowSec) {
+  const to = addMonths(jstDate(nowSec).slice(0, 7), -1);
+  return { from: addMonths(to, -(years * 12 - 1)), to };
+}
+
+// 月足(chart API の interval=1mo)を [年月, 終値] の並びにする。終値は Yahoo の close(株式分割は調整済み・配当は調整なし)。
+// 今月は途中の足が2本付くことがあるので、同じ月は後の方を使う
+function monthlyCloses(json) {
+  const r = json && json.chart && json.chart.result && json.chart.result[0];
+  const close = r && r.indicators && r.indicators.quote && r.indicators.quote[0] && r.indicators.quote[0].close;
+  if (!r || !r.timestamp || !close) {
+    return [];
+  }
+  const byMonth = new Map();
+  r.timestamp.forEach((t, i) => {
+    if (close[i] > 0) {
+      byMonth.set(jstDate(t).slice(0, 7), round1(close[i]));
+    }
+  });
+  return [...byMonth].sort((x, y) => x[0].localeCompare(y[0]));
+}
+
+// 今月を除く直近 years×12 か月の月末終値の単純平均。欠けている月が2つ以上なら(上場して間もないなど)データ不足
+function longAverage(months, years, nowSec) {
+  const { from, to } = avgWindow(years, nowSec);
+  const closes = months.filter(([m, c]) => m >= from && m <= to && c > 0).map(([, c]) => c);
+  const need = years * 12;
+  if (closes.length < need - 1) {
+    return { short: true, count: closes.length, need, first: months.length > 0 ? months[0][0] : null };
+  }
+  return {
+    avg: closes.reduce((sum, c) => sum + c, 0) / closes.length,
+    low: Math.min(...closes),
+    high: Math.max(...closes),
+    count: closes.length,
+    from,
+    to,
+  };
+}
+
+// 東証の普通株か。4けた(英字入りを含む)のコードだけにし(優先株や「@」付きの別の市場の重複を外す)、
+// REIT・インフラファンド(投資法人)を外す。ETF は quoteType が EQUITY ではないのでスクリーナーの段階で入らない
+function isCommonStock(quote) {
+  if (!/^[0-9A-Z]{4}\.T$/.test(String(quote.symbol || ''))) {
+    return false;
+  }
+  return !/投資法人|\bREIT\b|INVESTMENT CORP|INFRASTRUCTURE FUND/i.test(`${quote.longName || ''} ${quote.shortName || ''}`);
+}
+
+// Yahoo に値動きがある最初の月(firstTradeDateMilliseconds。古い銘柄は2000年ごろから)
+function firstMonthOf(quote) {
+  const ms = quote.firstTradeDateMilliseconds;
+  return Number.isFinite(ms) ? jstDate(Math.floor(ms / 1000)).slice(0, 7) : null;
+}
+
+// 平均の範囲の初めより後に上場した(Yahoo のデータが始まる)銘柄か。月足を取る前に「データ不足」に回すために使う
+function listedAfter(quote, fromMonth) {
+  const first = firstMonthOf(quote);
+  return first != null && first > fromMonth;
+}
+
+// 今の株価と過去 years 年の平均を比べる。gap は「平均より何%安いか」(マイナスなら平均より高い)
+function belowAverage(quote, months, years, nowSec) {
+  const base = { code: codeOf(quote.symbol), name: nameOf(quote) };
+  const avg = longAverage(months, years, nowSec);
+  if (avg.short) {
+    return { ...base, excluded: 'データ不足', months: avg.count, first: avg.first };
+  }
+  const price = quote.regularMarketPrice;
+  const per = perOf(quote);
+  return {
+    ...base,
+    price,
+    priceDate: Number.isFinite(quote.regularMarketTime) ? jstDate(quote.regularMarketTime) : null,
+    avg: round1(avg.avg),
+    gap: round1((1 - price / avg.avg) * 100),
+    low: avg.low,
+    high: avg.high,
+    from: avg.from,
+    to: avg.to,
+    months: avg.count,
+    cost: Math.round(price * LOT),
+    marketCap: Number.isFinite(quote.marketCap) ? quote.marketCap : null,
+    stats: { per: per == null ? null : round1(per), pbr: quote.priceToBook > 0 ? round2(quote.priceToBook) : null, dividend: num(quote.dividendYield) },
+  };
+}
+
 // ---------------------------------------------------------------- 小物
 
 function codeOf(symbol) {
@@ -860,4 +1022,7 @@ module.exports = {
   CROSS_TYPES, crossInfo, crossFromDiffs, matchCross, crossPoint, matchValuation, chartSeries, compareSince,
   analyzeShort, analyzeLong, analyzeMarket,
   parseDividends, parseIncentive, rightsDuring,
+  WATCH_OPS, isMarketHours, isTodayPrice, watchHit, quoteFromChart, watchMessage,
+  addMonths, avgWindow, monthlyCloses, longAverage, isCommonStock, firstMonthOf, listedAfter, belowAverage,
+  codeOf,
 };

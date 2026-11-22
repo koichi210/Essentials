@@ -1183,6 +1183,179 @@ main,
   color: var(--accent);
 }
 
+.link-button {
+  margin-right: 12px;
+  padding: 0;
+  color: var(--accent);
+  background: none;
+  border: 0;
+  font: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.budget .check {
+  flex-direction: row;
+  align-items: center;
+  width: 100%;
+  color: var(--ink);
+}
+
+.budget .check input {
+  margin: 0 4px 0 0;
+}
+
+.budget input:disabled {
+  opacity: 0.45;
+}
+
+.avgview {
+  margin: 16px 0;
+}
+
+.avgview > p {
+  margin: 8px 0 0;
+}
+
+.avg-progress {
+  padding: 12px 14px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+}
+
+.avg-progress p {
+  margin: 0 0 6px;
+}
+
+.avg-progress progress {
+  display: block;
+  width: 100%;
+  margin: 4px 0 10px;
+}
+
+.avgview .snap-table-wrap {
+  margin: 10px 0;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+}
+
+.avg-table td a {
+  color: var(--ink);
+  font-weight: bold;
+}
+
+.avg-table td .link-button {
+  margin: 0;
+}
+
+.avg-short {
+  margin: 10px 0 0;
+  font-size: 13px;
+}
+
+.avg-short summary {
+  color: var(--accent);
+  cursor: pointer;
+}
+
+.avg-short p {
+  color: var(--muted);
+}
+
+.w-status {
+  margin: 10px 0 0;
+  padding: 8px 10px;
+  background: var(--bg);
+  border-radius: 8px;
+  font-size: 13px;
+}
+
+.w-status.warn {
+  color: var(--warn);
+  background: var(--warn-bg);
+}
+
+.w-form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 8px 12px;
+  margin: 12px 0 0;
+  font-size: 13px;
+}
+
+.w-form label {
+  display: flex;
+  flex-direction: column;
+  color: var(--muted);
+}
+
+.w-form input[type=text],
+.w-form select {
+  padding: 6px 8px;
+  color: var(--ink);
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  font: inherit;
+  font-size: 15px;
+}
+
+.w-form #w-code {
+  width: 6em;
+}
+
+.w-name {
+  align-self: center;
+  font-weight: bold;
+}
+
+.w-suggest {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+}
+
+.w-suggest .hint {
+  width: auto;
+}
+
+.chip {
+  padding: 2px 10px;
+  color: var(--accent);
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.w-list small {
+  display: block;
+  color: var(--muted);
+}
+
+.w-list .w-done {
+  color: var(--buy);
+}
+
+.w-warn,
+.w-list small.w-warn {
+  color: var(--warn);
+}
+
+.w-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 12px 0 0;
+}
+
 .empty {
   padding: 24px;
   color: var(--muted);

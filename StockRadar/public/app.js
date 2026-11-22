@@ -1,10 +1,15 @@
 // 株レーダーの画面。入力は localStorage に覚えておき、結果は /api/scan から受け取って並べる。
-// スナップショット(/api/snapshots)は結果をサーバのファイルに保存し、あとで開いて今の値段と比べる
+// スナップショット(/api/snapshots)は結果をサーバのファイルに保存し、あとで開いて今の値段と比べる。
+// 平均割れ(/api/avgscan)はサーバで時間をかけて調べるので、進み具合を1秒ごとに聞きに行く。
+// 見張り(/api/watches)は、決めた値段になったらサーバが LINE で知らせる
 'use strict';
 
 const STORE_KEY = 'stockRadar.form';
 const LAST_KEY = 'stockRadar.last';
 const SORT_KEY = 'stockRadar.sort';
+const AVG_KEY = 'stockRadar.avg';
+const AVG_VIEW_KEY = 'stockRadar.avgView';
+const AVG_PAGE = 100;
 const MODE_LABEL = { short: '短期', long: '長期' };
 const MARKET_LABEL = { good: '地合い: 良い', mixed: '地合い: 普通', bad: '地合い: 弱い' };
 
@@ -209,7 +214,18 @@ function card(item, index, mode) {
     term: 'rights',
   }));
 
+  const watch = el('button', { type: 'button', class: 'link-button' }, '🔔 この銘柄を見張る');
+  watch.addEventListener('click', () => openWatches({
+    code: item.code,
+    name: item.name,
+    suggest: [
+      { label: `買いの上限 ${price(item.buy.high)}円以下`, op: 'below', price: item.buy.high, note: '買い' },
+      { label: `利確 ${price(item.target)}円以上`, op: 'above', price: item.target, note: '利確' },
+      { label: `損切り ${price(item.stop)}円以下`, op: 'below', price: item.stop, note: '損切り' },
+    ],
+  }));
   const links = el('p', { class: 'links' },
+    watch,
     el('a', { href: `https://kabutan.jp/stock/?code=${item.code}`, target: '_blank', rel: 'noopener' }, '株探で決算を見る'),
     el('a', { href: `https://finance.yahoo.co.jp/quote/${item.code}.T`, target: '_blank', rel: 'noopener' }, 'Yahoo!ファイナンス'),
     el('a', { href: `https://finance.yahoo.co.jp/quote/${item.code}.T/incentive`, target: '_blank', rel: 'noopener' }, '優待のページ'));
@@ -545,9 +561,21 @@ let current = null;
 // 開いているスナップショット(最新の結果を出しているときは null)
 let viewing = null;
 
+// 銘柄カードの一覧(短期・長期)と、平均割れの表のどちらを出すか
+function showPane(avg) {
+  $('avgview').hidden = !avg;
+  $('list').hidden = avg;
+  if (avg) {
+    for (const id of ['status', 'market', 'snapview', 'sortbar']) {
+      $(id).hidden = true;
+    }
+  }
+}
+
 function render(r, snap = null) {
   current = r;
   viewing = snap;
+  showPane(false);
   renderStatus(r);
   renderSnapView();
   renderList();
@@ -742,16 +770,435 @@ function renderCompare(snap, cmp) {
 }
 
 function showError(message) {
+  showPane(false);
   const s = $('status');
   s.className = 'status error';
   s.textContent = message;
   s.hidden = false;
 }
 
+// ---------------------------------------------------------------- 平均割れ
+
+const ym = (month) => `${month.slice(0, 4)}年${Number(month.slice(5, 7))}月`;
+const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+const oku = (v) => `${Math.round(v / 1e8).toLocaleString('ja-JP')}億円`;
+
+const AVG_SORTS = {
+  gap: byValue((i) => i.gap, -1),
+  perAsc: byValue((i) => positive(i.stats.per), 1),
+  pbrAsc: byValue((i) => positive(i.stats.pbr), 1),
+  costAsc: byValue((i) => i.cost, 1),
+  mcapDesc: byValue((i) => i.marketCap, -1),
+};
+const AVG_SORT_LABEL = { gap: '平均より安い順', perAsc: 'PER が低い順', pbrAsc: 'PBR が低い順', costAsc: '100株の金額が安い順', mcapDesc: '時価総額が大きい順' };
+const AVG_GAPS = [0, 10, 20, 30, 50];
+
+let avgResult = null;
+let avgShown = AVG_PAGE;
+let avgPolling = false;
+
+function setRunBusy(busy) {
+  const button = $('run');
+  button.disabled = busy;
+  button.textContent = busy ? '調べています…' : runLabel();
+}
+
+function avgFilterText(f = {}) {
+  const conds = [
+    f.per != null ? `PER ${f.per}倍以下` : null,
+    f.pbr != null ? `PBR ${f.pbr}倍未満` : null,
+    f.mcap ? `時価総額 ${oku(f.mcap)}以上` : null,
+    f.budget ? `100株で${yen(f.budget.min)}〜${yen(f.budget.max)}` : null,
+  ].filter(Boolean);
+  return conds.length > 0 ? conds.join('・') : null;
+}
+
+function showAvgMessage(message, isError = true) {
+  showPane(true);
+  $('avgview').replaceChildren(el('p', { class: isError ? 'status error' : 'status' }, message));
+}
+
+function renderAvgProgress(job) {
+  showPane(true);
+  const cancel = el('button', { type: 'button', class: 'snap-button quiet' }, 'やめる');
+  cancel.addEventListener('click', async () => {
+    cancel.disabled = true;
+    await fetch('/api/avgscan/cancel', { method: 'POST' }).catch(() => {});
+  });
+  const text = job.phase === 'screen'
+    ? `銘柄の一覧を取っています… ${job.done.toLocaleString('ja-JP')} / ${(job.total || 0).toLocaleString('ja-JP')}`
+    : `月足(毎月の終値)を取っています… ${job.done.toLocaleString('ja-JP')} / ${job.total.toLocaleString('ja-JP')} 銘柄（今日すでに取って保存してあった分 ${job.cached.toLocaleString('ja-JP')}）`;
+  const years = job.req ? `過去${job.req.years}年の平均と比べます。` : '';
+  $('avgview').replaceChildren(el('div', { class: 'avg-progress' },
+    el('p', {}, el('b', {}, '📉 平均割れを調べています'), ` ${years}全部の銘柄だと数分かかります（同じ日の2回目からは保存した月足を使うので早くなります）。`),
+    el('p', {}, text),
+    el('progress', { max: String(job.total || 1), value: String(job.done || 0) }),
+    cancel));
+}
+
+// サーバの調査が終わるまで1秒ごとに進み具合を聞く
+async function pollAvg() {
+  if (avgPolling) {
+    return;
+  }
+  avgPolling = true;
+  setRunBusy(true);
+  try {
+    for (;;) {
+      const res = await fetch('/api/avgscan');
+      const job = await res.json();
+      if (job.state === 'running') {
+        renderAvgProgress(job);
+        await wait(1000);
+        continue;
+      }
+      if (job.state === 'done' && job.result) {
+        save(AVG_KEY, job.result);
+        avgShown = AVG_PAGE;
+        renderAvg(job.result);
+      } else if (job.state === 'error') {
+        showAvgMessage(job.error);
+      } else if (job.state === 'cancelled') {
+        showAvgMessage('途中でやめました。', false);
+      }
+      break;
+    }
+  } catch {
+    showAvgMessage('サーバにつながりませんでした。株レーダーが起動しているか確認してください。');
+  } finally {
+    avgPolling = false;
+    setRunBusy(false);
+  }
+}
+
+async function startAvg(f) {
+  const body = {
+    years: Number(f.years),
+    per: f.per || null,
+    pbr: f.pbr || null,
+    mcap: f.mcap ? Number(f.mcap) : null,
+    budget: f.avgBudget ? { min: f.min * 10000, max: f.max * 10000 } : null,
+  };
+  try {
+    const res = await fetch('/api/avgscan', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    const j = await res.json();
+    // 409 は別の調査の途中。その進み具合を出す
+    if (!res.ok && res.status !== 409) {
+      showAvgMessage(j.error || `エラー(${res.status})`);
+      return;
+    }
+  } catch {
+    showAvgMessage('サーバにつながりませんでした。株レーダーが起動しているか確認してください。');
+    return;
+  }
+  await pollAvg();
+}
+
+function avgStatus(r) {
+  const parts = [
+    `${formatTime(r.at)} に調べました（過去${r.years}年 = ${ym(r.window.from)}〜${ym(r.window.to)} の月末終値の平均と、今の株価を比べています）`,
+    r.dataTime ? `株価は ${formatTime(r.dataTime)} 時点` : null,
+    avgFilterText(r.filter) ? `絞り込み: ${avgFilterText(r.filter)}` : null,
+    `東証の普通株 ${r.stocks.toLocaleString('ja-JP')} 銘柄（REIT・優先株などを除く）→ 絞り込みで ${r.matched.toLocaleString('ja-JP')} → 月足を見た ${r.fetched.toLocaleString('ja-JP')}（保存済みを使った ${r.cached.toLocaleString('ja-JP')}）`,
+    `平均より下 ${r.items.length.toLocaleString('ja-JP')}・平均以上 ${r.above.toLocaleString('ja-JP')}・データ不足 ${r.insufficient.length.toLocaleString('ja-JP')}`,
+    r.failed ? `取得失敗 ${r.failed}` : null,
+  ];
+  return parts.filter(Boolean).join(' ／ ');
+}
+
+function avgRow(item, rank, years) {
+  const watch = el('button', { type: 'button', class: 'link-button' }, '🔔 見張る');
+  const avg = Math.round(item.avg);
+  const low = Math.floor(item.low);
+  watch.addEventListener('click', () => openWatches({
+    code: item.code,
+    name: item.name,
+    suggest: [
+      { label: `過去${years}年の平均 ${price(avg)}円以上`, op: 'above', price: avg, note: `${years}年平均` },
+      { label: `過去${years}年の安値 ${price(low)}円以下`, op: 'below', price: low, note: `${years}年安値` },
+    ],
+  }));
+  const stat = (v, unit) => (v == null ? '—' : `${v}${unit}`);
+  return el('tr', {},
+    el('td', { class: 'num' }, `${rank}`),
+    el('td', {}, el('a', { href: `https://finance.yahoo.co.jp/quote/${item.code}.T`, target: '_blank', rel: 'noopener' }, item.name), el('small', {}, ` ${item.code}`)),
+    el('td', { class: 'num' }, `${price(item.price)}円`, item.priceDate ? el('small', {}, `（${formatDate(item.priceDate)}）`) : null),
+    el('td', { class: 'num' }, `${price(item.avg)}円`),
+    el('td', { class: 'num' }, el('b', {}, `${item.gap.toLocaleString('ja-JP', { maximumFractionDigits: 1 })}%安い`)),
+    el('td', { class: 'num' }, `${price(item.low)} 〜 ${price(item.high)}`),
+    el('td', { class: 'num' }, yen(item.cost)),
+    el('td', { class: 'num' }, stat(item.stats.per, '倍')),
+    el('td', { class: 'num' }, stat(item.stats.pbr, '倍')),
+    el('td', { class: 'num' }, stat(item.stats.dividend, '%')),
+    el('td', {}, watch));
+}
+
+function renderAvg(r) {
+  avgResult = r;
+  showPane(true);
+  const view = load(AVG_VIEW_KEY) || {};
+  const sort = Object.hasOwn(AVG_SORTS, view.sort) ? view.sort : 'gap';
+  const minGap = AVG_GAPS.includes(view.minGap) ? view.minGap : 0;
+  const rows = r.items.filter((i) => i.gap >= minGap).sort(AVG_SORTS[sort]);
+
+  const gapSelect = el('select', {}, AVG_GAPS.map((g) => el('option', { value: String(g) }, g === 0 ? '平均より下ならすべて' : `平均より${g}%以上安い`)));
+  gapSelect.value = String(minGap);
+  const sortSelect = el('select', {}, Object.entries(AVG_SORT_LABEL).map(([k, label]) => el('option', { value: k }, label)));
+  sortSelect.value = sort;
+  const onChange = () => {
+    save(AVG_VIEW_KEY, { sort: sortSelect.value, minGap: Number(gapSelect.value) });
+    avgShown = AVG_PAGE;
+    renderAvg(avgResult);
+  };
+  gapSelect.addEventListener('change', onChange);
+  sortSelect.addEventListener('change', onChange);
+
+  const notes = [
+    r.stopped ? el('p', { class: 'status error' }, `⚠ ${r.stopped}（見られなかった ${r.skipped} 銘柄は表に入っていません）`) : null,
+    r.limited ? el('p', { class: 'hint' }, `動作確認用に、月足を取る銘柄を時価総額の大きい ${r.limited} 銘柄までにしています。`) : null,
+  ];
+  const head = ['順位', '銘柄', '今の株価', `過去${r.years}年の平均`, '平均より', `${r.years}年の安値〜高値(月末終値)`, '100株で', 'PER', 'PBR', '配当', ''];
+  const table = rows.length > 0
+    ? el('div', { class: 'snap-table-wrap' }, el('table', { class: 'snap-table avg-table' },
+      el('thead', {}, el('tr', {}, head.map((h, k) => el('th', {}, k === 4 ? term(h, 'longavg') : h)))),
+      el('tbody', {}, rows.slice(0, avgShown).map((item, k) => avgRow(item, k + 1, r.years)))))
+    : el('p', { class: 'empty' }, '条件に合う銘柄がありませんでした。');
+  let more = null;
+  if (rows.length > avgShown) {
+    more = el('button', { type: 'button', class: 'snap-button' }, `もっと見る（あと ${(rows.length - avgShown).toLocaleString('ja-JP')} 銘柄）`);
+    more.addEventListener('click', () => {
+      avgShown += AVG_PAGE;
+      renderAvg(avgResult);
+    });
+  }
+  const short = r.insufficient.length > 0
+    ? el('details', { class: 'avg-short' },
+      el('summary', {}, `データ不足で比べていない ${r.insufficient.length.toLocaleString('ja-JP')} 銘柄（上場して${r.years}年たっていない・月足が足りない）`),
+      el('p', {}, r.insufficient.map((i) => `${i.name}(${i.code}${i.first ? `・${ym(i.first)}から` : ''})`).join('、')))
+    : null;
+  $('avgview').replaceChildren(...[
+    el('p', { class: 'status' }, avgStatus(r)),
+    ...notes,
+    el('div', { class: 'sortbar' },
+      el('label', {}, '表示'), gapSelect,
+      el('label', {}, '並び順'), sortSelect,
+      el('span', { class: 'hint' }, `${rows.length.toLocaleString('ja-JP')} 銘柄`)),
+    table,
+    more,
+    short,
+    el('p', { class: 'hint' }, `「平均」は、今月を除く直近${r.years}年(${r.years * 12}か月)の毎月の最後の取引日の終値を足して月数で割った値です(株式分割は調整済み・配当は調整なし)。「◯%安い」は (1 − 今の株価 ÷ 平均) × 100。安いのには業績が悪くなったなどの理由があることも多いので(割安の罠)、決算と PER・PBR・ROE も確かめてください。株式併合や、増資で株数が大きく増えた銘柄は、Yahoo のデータのままだと昔の値段が今と比べものにならないことがあります(安値〜高値の幅が極端なものは注意)。`),
+  ].filter(Boolean));
+}
+
+// ---------------------------------------------------------------- 見張り
+
+// カードや表から開いたときの銘柄(コードを打ち替えたら消す)
+let watchDraft = null;
+
+const unixTime = (sec) => formatTime(new Date(sec * 1000).toISOString());
+const condText = (w) => `${price(w.price)}円${w.op === 'above' ? '以上' : '以下'}になったら`;
+
+// 今の画面の結果から銘柄の名前を探す(コードだけ打ったとき用。無ければサーバが英語名を入れる)
+function knownName(code) {
+  const lists = [current && current.items, (load(LAST_KEY) || {}).items, avgResult && avgResult.items];
+  for (const list of lists) {
+    const hit = Array.isArray(list) && list.find((i) => i.code === code);
+    if (hit) {
+      return hit.name;
+    }
+  }
+  return '';
+}
+
+function renderSuggest(draft) {
+  const box = $('w-suggest');
+  if (!draft || !draft.suggest) {
+    box.replaceChildren();
+    return;
+  }
+  box.replaceChildren(el('span', { class: 'hint' }, 'よく使う値段: '), ...draft.suggest.map((s) => {
+    const b = el('button', { type: 'button', class: 'chip' }, s.label);
+    b.addEventListener('click', () => {
+      $('w-price').value = s.price;
+      $('w-op').value = s.op;
+      $('w-note').value = s.note || '';
+    });
+    return b;
+  }));
+}
+
+function watchRow(w) {
+  const del = el('button', { type: 'button', class: 'snap-button quiet' }, '削除');
+  const actions = [del];
+  let state;
+  if (w.state === 'notified') {
+    const resume = el('button', { type: 'button', class: 'snap-button' }, '再開');
+    resume.addEventListener('click', async () => {
+      const res = await fetch(`/api/watches/${w.id}/resume`, { method: 'POST' });
+      if (res.ok) {
+        refreshWatches();
+      }
+    });
+    actions.unshift(resume);
+    state = el('small', { class: 'w-done' }, `🔔 ${formatTime(w.notifiedAt)} に知らせました（${price(w.hitPrice)}円${w.hitTime ? `・${unixTime(w.hitTime)} 時点` : ''}）。見張りは止めています`);
+  } else {
+    state = el('small', {}, '👀 見張り中',
+      w.lastPrice ? `（今 ${price(w.lastPrice)}円${w.lastTime ? `・${unixTime(w.lastTime)} 時点` : ''}）` : '',
+      w.priceError ? el('span', { class: 'w-warn' }, ` ⚠ ${w.priceError}`) : null);
+  }
+  const row = el('li', {},
+    el('div', { class: 's-main' },
+      el('b', {}, `${w.name || w.code}`), el('span', { class: 'code' }, ` ${w.code}`), ` ／ ${condText(w)}`,
+      w.note ? el('small', {}, `メモ: ${w.note}`) : null,
+      state,
+      w.error ? el('small', { class: 'w-warn' }, `⚠ 条件を満たしましたが、知らせられませんでした: ${w.error}（次の確認でまた送ります）`) : null),
+    el('div', { class: 's-actions' }, actions));
+  del.addEventListener('click', async () => {
+    if (!confirm(`${w.name || w.code} の見張り（${condText(w)}）を削除しますか？`)) {
+      return;
+    }
+    const res = await fetch(`/api/watches/${w.id}`, { method: 'DELETE' });
+    if (res.ok) {
+      row.remove();
+    }
+  });
+  return row;
+}
+
+function renderWatches(data) {
+  const l = data.line;
+  const m = data.monitor;
+  const lineText = l.dryRun
+    ? 'LINE: 送らないモード（STOCK_RADAR_LINE_DRY_RUN=1。サーバのログに出すだけ）'
+    : l.configured ? 'LINE: 設定済み' : 'LINE: まだ設定していません。README の「LINE で知らせる」にある line-setup.ps1 で登録すると届くようになります';
+  const when = m.anytime
+    ? '確認用モード（STOCK_RADAR_WATCH_ANYTIME=1）: 取引時間の外でも見ています'
+    : m.marketHours ? `今は取引時間中です。${m.minutes}分おきに確かめています` : `今は取引時間の外です。平日 9:00〜15:50 に${m.minutes}分おきに確かめます`;
+  $('w-status').className = `w-status${l.configured || l.dryRun ? '' : ' warn'}`;
+  $('w-status').replaceChildren(lineText, el('br'), when, m.lastRunAt ? `（最後に確かめた: ${formatTime(m.lastRunAt)}）` : '');
+  const list = [...data.watches].sort((x, y) => (x.state === y.state ? y.createdAt.localeCompare(x.createdAt) : x.state === 'watching' ? -1 : 1));
+  $('w-list').replaceChildren(...(list.length > 0
+    ? list.map(watchRow)
+    : [el('li', { class: 'hint' }, 'まだ見張っていません。上で銘柄コードと値段を入れるか、銘柄カードの「🔔 この銘柄を見張る」から登録できます。')]));
+}
+
+async function refreshWatches() {
+  try {
+    const res = await fetch('/api/watches');
+    const data = await res.json();
+    if (!res.ok) {
+      throw new Error(data.error || `エラー(${res.status})`);
+    }
+    renderWatches(data);
+  } catch (e) {
+    $('w-list').replaceChildren(el('li', { class: 'hint' }, `読み込めませんでした: ${e.message}`));
+  }
+}
+
+async function openWatches(draft = null) {
+  if (draft) {
+    watchDraft = draft;
+    $('w-code').value = draft.code;
+    $('w-price').value = '';
+    $('w-note').value = '';
+    $('w-name').textContent = draft.name || '';
+  }
+  renderSuggest(watchDraft);
+  $('w-msg').textContent = '';
+  if (!$('watches').open) {
+    $('watches').showModal();
+  }
+  if (draft) {
+    $('w-price').focus();
+  }
+  await refreshWatches();
+}
+
+async function addWatch(e) {
+  e.preventDefault();
+  const code = $('w-code').value.trim().toUpperCase();
+  const name = watchDraft && watchDraft.code === code ? watchDraft.name : knownName(code);
+  const body = { code, op: $('w-op').value, price: Number($('w-price').value), name, note: $('w-note').value };
+  const msg = $('w-msg');
+  try {
+    const res = await fetch('/api/watches', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    const j = await res.json();
+    if (!res.ok) {
+      throw new Error(j.error || `エラー(${res.status})`);
+    }
+    msg.textContent = `${j.watch.name || j.watch.code} を見張り始めました（今 ${price(j.watch.lastPrice)}円）。${j.already ? '⚠ 今の値段がもう条件を満たしているので、取引時間中なら次の確認で知らせます。' : ''}`;
+    $('w-price').value = '';
+    $('w-note').value = '';
+    await refreshWatches();
+  } catch (err) {
+    msg.textContent = `登録できませんでした: ${err.message}`;
+  }
+}
+
+function initWatches() {
+  $('open-watches').addEventListener('click', () => openWatches());
+  $('w-close').addEventListener('click', () => $('watches').close());
+  $('w-form').addEventListener('submit', addWatch);
+  $('w-code').addEventListener('input', () => {
+    const code = $('w-code').value.trim().toUpperCase();
+    if (watchDraft && watchDraft.code !== code) {
+      watchDraft = null;
+      renderSuggest(null);
+    }
+    $('w-name').textContent = watchDraft ? watchDraft.name : knownName(code);
+  });
+  $('w-check').addEventListener('click', async () => {
+    const b = $('w-check');
+    b.disabled = true;
+    try {
+      const res = await fetch('/api/watches/check', { method: 'POST' });
+      const data = await res.json();
+      if (res.ok) {
+        renderWatches(data);
+        $('w-msg').textContent = data.hits > 0 ? `${data.hits}件が条件を満たしたので知らせました。` : '今の値段にしました。';
+      } else {
+        $('w-msg').textContent = data.error || `エラー(${res.status})`;
+      }
+    } finally {
+      b.disabled = false;
+    }
+  });
+  $('w-test').addEventListener('click', async () => {
+    if (!confirm('LINE にテストのメッセージを1通送ります（LINE の無料プランは月200通まで）。送りますか？')) {
+      return;
+    }
+    const res = await fetch('/api/line/test', { method: 'POST' });
+    const j = await res.json().catch(() => ({}));
+    $('w-msg').textContent = res.ok
+      ? (j.dryRun ? '送らないモードなので、送るはずだった文をサーバのログに出しました。' : 'テストのメッセージを送りました。LINE に届いたか見てください。')
+      : `送れませんでした: ${j.error || res.status}`;
+  });
+}
+
 // ---------------------------------------------------------------- 操作
 
-const FILTER_SELECTS = ['per', 'pbr', 'cross', 'gc', 'dc'];
-const FILTER_CHECKS = ['gcSoon', 'dcSoon'];
+const FILTER_SELECTS = ['per', 'pbr', 'cross', 'gc', 'dc', 'years', 'mcap'];
+const FILTER_CHECKS = ['gcSoon', 'dcSoon', 'avgBudget'];
+
+const currentMode = () => document.querySelector('input[name=mode]:checked').value;
+const runLabel = () => (currentMode() === 'avg' ? '平均より安い銘柄を探す' : '買い候補を探す');
+
+// 平均割れのときは、その条件を出してクロスの絞り込みを隠す。「予算で絞る」を外したら予算の欄は使わない
+function syncMode() {
+  const avg = currentMode() === 'avg';
+  document.querySelectorAll('.avg-only').forEach((e) => {
+    e.hidden = !avg;
+  });
+  document.querySelectorAll('.cross-only').forEach((e) => {
+    e.hidden = avg;
+  });
+  const noBudget = avg && !$('avgBudget').checked;
+  $('max').disabled = noBudget;
+  $('min').disabled = noBudget;
+  if (!$('run').disabled) {
+    $('run').textContent = runLabel();
+  }
+}
 
 function readForm() {
   const f = {
@@ -798,15 +1245,21 @@ function scanQuery(f) {
 async function run(e) {
   e.preventDefault();
   const f = readForm();
-  if (!(f.max > 0)) {
-    showError('予算の上限を入れてください。');
-    return;
-  }
-  if (f.min >= f.max) {
-    showError('予算の下限は上限より小さくしてください。');
-    return;
+  if (f.mode !== 'avg' || f.avgBudget) {
+    if (!(f.max > 0)) {
+      showError('予算の上限を入れてください。');
+      return;
+    }
+    if (f.min >= f.max) {
+      showError('予算の下限は上限より小さくしてください。');
+      return;
+    }
   }
   save(STORE_KEY, f);
+  if (f.mode === 'avg') {
+    await startAvg(f);
+    return;
+  }
   const button = $('run');
   button.disabled = true;
   button.textContent = '調べています…';
@@ -823,14 +1276,14 @@ async function run(e) {
     showError('サーバにつながりませんでした。株レーダーが起動しているか確認してください。');
   } finally {
     button.disabled = false;
-    button.textContent = '買い候補を探す';
+    button.textContent = runLabel();
   }
 }
 
 function init() {
   const f = load(STORE_KEY);
   if (f) {
-    const radio = document.querySelector(`input[name=mode][value=${f.mode === 'long' ? 'long' : 'short'}]`);
+    const radio = document.querySelector(`input[name=mode][value=${['long', 'avg'].includes(f.mode) ? f.mode : 'short'}]`);
     radio.checked = true;
     if (f.max > 0) {
       $('max').value = f.max;
@@ -851,16 +1304,22 @@ function init() {
     }
   }
   syncCrossChecks();
+  syncMode();
   $('gc').addEventListener('change', syncCrossChecks);
   $('dc').addEventListener('change', syncCrossChecks);
+  document.querySelectorAll('input[name=mode]').forEach((r) => r.addEventListener('change', syncMode));
+  $('avgBudget').addEventListener('change', syncMode);
+  // 最初の状態(HTML に書いた selected・checked)に戻す
   $('clear').addEventListener('click', () => {
     for (const id of FILTER_SELECTS) {
-      $(id).selectedIndex = 0;
+      const options = [...$(id).options];
+      $(id).value = (options.find((o) => o.defaultSelected) || options[0]).value;
     }
     for (const id of FILTER_CHECKS) {
-      $(id).checked = true;
+      $(id).checked = $(id).defaultChecked;
     }
     syncCrossChecks();
+    syncMode();
   });
   // 前回の結果を出しておく(押した時刻が出るので古さは分かる)
   const sort = load(SORT_KEY);
@@ -873,11 +1332,25 @@ function init() {
       renderList();
     }
   });
+  // 前回の結果: 平均割れを選んでいればその表、それ以外は銘柄カード
   const last = load(LAST_KEY);
-  if (last && Array.isArray(last.items)) {
+  const lastAvg = load(AVG_KEY);
+  if (currentMode() === 'avg' && lastAvg && Array.isArray(lastAvg.items)) {
+    renderAvg(lastAvg);
+  } else if (last && Array.isArray(last.items)) {
     render(last);
   }
+  if (lastAvg && Array.isArray(lastAvg.items)) {
+    avgResult = lastAvg;
+  }
+  // 平均割れを調べている途中なら(画面を開き直したときなど)、進み具合を出す
+  fetch('/api/avgscan').then((res) => res.json()).then((job) => {
+    if (job.state === 'running') {
+      pollAvg();
+    }
+  }).catch(() => {});
   $('form').addEventListener('submit', run);
+  initWatches();
 
   renderGlossary();
   document.addEventListener('click', (e) => {
@@ -890,7 +1363,7 @@ function init() {
   $('g-close').addEventListener('click', () => $('glossary').close());
   $('s-close').addEventListener('click', () => $('snaps').close());
   // 枠の外(背景)を押しても閉じる
-  for (const id of ['glossary', 'snaps']) {
+  for (const id of ['glossary', 'snaps', 'watches']) {
     $(id).addEventListener('click', (e) => {
       if (e.target === e.currentTarget) {
         e.currentTarget.close();

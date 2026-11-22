@@ -12,6 +12,7 @@
   <div class="title-row">
     <h1><img src="icon.svg" alt="" width="28" height="28">株レーダー</h1>
     <span class="top-buttons">
+      <button type="button" id="open-watches" class="open-glossary">🔔 見張り</button>
       <button type="button" id="open-snaps" class="open-glossary">📸 スナップショット</button>
       <button type="button" class="open-glossary" data-term="">📖 用語集</button>
     </span>
@@ -25,11 +26,13 @@
       <legend>期間</legend>
       <label><input type="radio" name="mode" value="short" checked><span><b>短期</b><small>1〜2週間で売る</small></span></label>
       <label><input type="radio" name="mode" value="long"><span><b>長期</b><small>半年〜1年持つ</small></span></label>
+      <label><input type="radio" name="mode" value="avg"><span><b>平均割れ</b><small>過去N年の平均より安い</small></span></label>
     </fieldset>
     <div class="budget">
       <label>予算の上限<span class="field"><input id="max" type="number" min="1" max="10000" step="1" value="70" required><em>万円</em></span></label>
       <label>予算の下限<span class="field"><input id="min" type="number" min="0" max="10000" step="1" value="30"><em>万円</em></span></label>
       <p class="hint">100株を買うのに必要な金額で絞ります</p>
+      <label class="check avg-only" hidden><span><input id="avgBudget" type="checkbox">平均割れでも予算で絞る</span></label>
     </div>
     <button id="run" type="submit">買い候補を探す</button>
     <fieldset class="filters">
@@ -52,14 +55,32 @@
           <option value="2">2倍未満</option>
         </select>
       </label>
-      <label><span><button type="button" class="term" data-term="cross">クロスを見る線</button></span>
+      <label class="avg-only" hidden><span><button type="button" class="term" data-term="longavg">平均をとる期間</button></span>
+        <select id="years">
+          <option value="10" selected>過去10年</option>
+          <option value="3">過去3年</option>
+          <option value="5">過去5年</option>
+          <option value="15">過去15年</option>
+          <option value="20">過去20年</option>
+        </select>
+      </label>
+      <label class="avg-only" hidden><span><button type="button" class="term" data-term="mcap">時価総額</button></span>
+        <select id="mcap">
+          <option value="">指定なし(全部)</option>
+          <option value="10000000000">100億円以上</option>
+          <option value="50000000000">500億円以上</option>
+          <option value="100000000000">1000億円以上</option>
+        </select>
+      </label>
+      <p class="hint avg-only" hidden>平均割れは東証の普通株ぜんぶ(REIT・ETF・優先株を除く)から探します。PER・PBR・時価総額・予算で先に絞ると早く終わります。クロスの絞り込みは使いません</p>
+      <label class="cross-only"><span><button type="button" class="term" data-term="cross">クロスを見る線</button></span>
         <select id="cross">
           <option value="ma5_25">5日線と25日線</option>
           <option value="ma25_75">25日線と75日線</option>
           <option value="macd">MACD</option>
         </select>
       </label>
-      <div class="cross-cond">
+      <div class="cross-cond cross-only">
         <label><span>ゴールデンクロス</span>
           <select id="gc">
             <option value="">指定なし</option>
@@ -72,7 +93,7 @@
         </label>
         <label class="check"><input id="gcSoon" type="checkbox" checked>もうすぐ起きそうも含む</label>
       </div>
-      <div class="cross-cond">
+      <div class="cross-cond cross-only">
         <label><span>デッドクロス</span>
           <select id="dc">
             <option value="">指定なし</option>
@@ -110,6 +131,7 @@
     <span id="snap-msg" class="hint" role="status"></span>
   </div>
   <ol id="list" class="list"></ol>
+  <section id="avgview" class="avgview" hidden></section>
 </main>
 
 <footer class="foot">
@@ -133,6 +155,35 @@
   <div class="g-body">
     <p class="hint">調べた結果を保存しておくと、あとで開いて「その後どう動いたか」を今の値段と比べられます。</p>
     <ul id="s-list" class="s-list"></ul>
+  </div>
+</dialog>
+
+<dialog id="watches" class="glossary" aria-labelledby="w-title">
+  <div class="g-head">
+    <h2 id="w-title">🔔 値段の見張り</h2>
+    <button type="button" id="w-close" class="g-close" aria-label="閉じる">×</button>
+  </div>
+  <div class="g-body">
+    <p class="hint">決めた値段になったら LINE で知らせます。株レーダーが動いている間、平日の 9:00〜15:50 に数分おきに今の値段(約20分遅れ)を確かめます。知らせるのは1回だけで、知らせたら見張りを止めます(「再開」でまた見張れます)。値上がりを保証するものではありません。</p>
+    <p id="w-status" class="w-status"></p>
+    <form id="w-form" class="w-form">
+      <label>銘柄コード<input id="w-code" type="text" inputmode="text" maxlength="4" autocomplete="off" required placeholder="7203"></label>
+      <span id="w-name" class="w-name"></span>
+      <label>値段<span class="field"><input id="w-price" type="number" min="0" step="any" required><em>円</em></span></label>
+      <label>条件<select id="w-op">
+        <option value="below">以下になったら</option>
+        <option value="above">以上になったら</option>
+      </select></label>
+      <label>メモ(なくてよい)<input id="w-note" type="text" maxlength="40" autocomplete="off" placeholder="買いたい値段 など"></label>
+      <button type="submit" class="snap-button">見張る</button>
+      <div id="w-suggest" class="w-suggest"></div>
+      <p id="w-msg" class="hint" role="status"></p>
+    </form>
+    <ul id="w-list" class="s-list w-list"></ul>
+    <p class="w-actions">
+      <button type="button" id="w-check" class="snap-button quiet">今の値段を確かめる</button>
+      <button type="button" id="w-test" class="snap-button quiet">LINE にテスト送信</button>
+    </p>
   </div>
 </dialog>
 

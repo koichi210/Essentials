@@ -1,12 +1,15 @@
-// 株レーダーのサーバ。Yahoo Finance の公開データ(スクリーナー・日足)を取ってきて analyze.js で判定し、
-// 画面(public/)へ JSON で渡す。npm パッケージは使わない。書くのはスナップショットのファイルだけ。
+// 株レーダーのサーバ。Yahoo Finance の公開データ(スクリーナー・日足・月足)を取ってきて analyze.js で判定し、
+// 画面(public/)へ JSON で渡す。npm パッケージは使わない。書くのはスナップショット・見張り・月足のキャッシュだけ。
+// 動いている間は、取引時間中に見張りの銘柄の値段を数分おきに見て、条件を満たしたら LINE で知らせる(line.js)。
 'use strict';
 
 const http = require('http');
+const crypto = require('crypto');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const a = require('./analyze.js');
+const line = require('./line.js');
 
 const PORT = Number(process.env.PORT) || 8766;
 const HOST = '127.0.0.1';
@@ -25,6 +28,21 @@ const DATA_DIR = process.env.STOCK_RADAR_DATA || path.join(process.env.LOCALAPPD
 const SNAP_DIR = path.join(DATA_DIR, 'snapshots');
 const SNAP_ID = /^\d{13}$/;
 const MAX_BODY = 4 * 1024 * 1024;
+// 見張り: DATA_DIR/watches.json。取引時間中に WATCH_MINUTES 分おきに今の値段を見る
+const WATCH_FILE = path.join(DATA_DIR, 'watches.json');
+const WATCH_ID = /^[0-9a-f]{12}$/;
+const MAX_WATCHES = 100;
+const WATCH_MINUTES = Math.min(60, Math.max(1, Math.round(Number(process.env.STOCK_RADAR_WATCH_MINUTES) || 5)));
+// 動作確認用: 1 なら取引時間の外でも見張り、今日の値段でなくても条件を見る(ふだんは使わない)
+const WATCH_ANYTIME = process.env.STOCK_RADAR_WATCH_ANYTIME === '1';
+// 平均割れ: 月足は20年分を取り、DATA_DIR/cache/monthly/<コード>.json に1日覚えておく
+const AVG_YEARS = [3, 5, 10, 15, 20];
+const AVG_FETCH_YEARS = 20;
+const MONTHLY_DIR = path.join(DATA_DIR, 'cache', 'monthly');
+const MONTHLY_MS = 24 * 60 * 60 * 1000;
+const AVG_CONCURRENCY = 4;
+const MAX_ALL = 6000;
+const MAX_RATE_LIMITED = 10;
 // 待ち受けは 127.0.0.1 だけ。スマホから Tailscale serve 経由で開くときの名前(xxx.ts.net)は
 // DATA_DIR/config.json の allowedHosts か環境変数 STOCK_RADAR_HOSTS(カンマ区切り)で足す。公開リポジトリに書かないため
 const ALLOWED_HOSTS = new Set([`127.0.0.1:${PORT}`, `localhost:${PORT}`, ...extraHosts()]);
@@ -78,15 +96,15 @@ async function yahooSession(force = false) {
   return session;
 }
 
-async function screenPage(minPrice, maxPrice, offset, retried = false) {
+// 東証の銘柄を時価総額の大きい順に250件ずつ。operands は地域・取引所に足す条件(値段の幅・時価総額など)
+async function screenPage(operands, offset, retried = false) {
   const s = await yahooSession();
   const body = {
     size: 250, offset, sortField: 'intradaymarketcap', sortType: 'DESC', quoteType: 'EQUITY',
     query: { operator: 'AND', operands: [
       { operator: 'eq', operands: ['region', 'jp'] },
       { operator: 'eq', operands: ['exchange', 'JPX'] },
-      { operator: 'btwn', operands: ['intradayprice', minPrice, maxPrice] },
-      { operator: 'gt', operands: ['intradaymarketcap', MIN_MARKET_CAP] },
+      ...operands,
     ] },
   };
   const url = `https://query2.finance.yahoo.com/v1/finance/screener?crumb=${encodeURIComponent(s.crumb)}&lang=ja-JP&region=JP`;
@@ -98,7 +116,7 @@ async function screenPage(minPrice, maxPrice, offset, retried = false) {
   });
   if (res.status === 401 && !retried) {
     await yahooSession(true);
-    return screenPage(minPrice, maxPrice, offset, true);
+    return screenPage(operands, offset, true);
   }
   if (!res.ok) {
     throw new Error(`スクリーナーの取得に失敗しました(${res.status})`);
@@ -107,16 +125,25 @@ async function screenPage(minPrice, maxPrice, offset, retried = false) {
   return { total: r.total, quotes: r.quotes || [] };
 }
 
-async function screen(minPrice, maxPrice) {
+// 最大 maxCount 件まで、ページをめくって全部取る。onPage(取った件数, 全体の件数) で進み具合を知らせる
+async function screenAll(operands, maxCount, onPage = () => {}) {
   const all = [];
-  for (let offset = 0; offset < MAX_UNIVERSE; offset += 250) {
-    const page = await screenPage(minPrice, maxPrice, offset);
+  for (let offset = 0; offset < maxCount; offset += 250) {
+    const page = await screenPage(operands, offset);
     all.push(...page.quotes);
+    onPage(all.length, page.total);
     if (page.quotes.length < 250 || all.length >= page.total) {
       break;
     }
   }
   return all.filter((q) => q.quoteType === 'EQUITY' && q.regularMarketPrice > 0);
+}
+
+function screen(minPrice, maxPrice) {
+  return screenAll([
+    { operator: 'btwn', operands: ['intradayprice', minPrice, maxPrice] },
+    { operator: 'gt', operands: ['intradaymarketcap', MIN_MARKET_CAP] },
+  ], MAX_UNIVERSE);
 }
 
 // 日足・週足は10分覚えておく(条件を変えて何度か調べても速いように)
@@ -140,6 +167,63 @@ async function history(symbol, range, interval) {
 
 function chart(symbol) {
   return history(symbol, '6mo', '1d');
+}
+
+// 見張り用の今の値段(約20分遅れ)。日足のキャッシュは使わず毎回取る(1銘柄 1KB ほど)
+async function quoteNow(code) {
+  const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(code)}.T?range=1d&interval=1d`;
+  const res = await fetch(url, { headers: { 'User-Agent': UA }, signal: AbortSignal.timeout(15000) });
+  if (res.status === 404) {
+    throw new Error(`${code} という銘柄が見つかりません`);
+  }
+  if (!res.ok) {
+    throw new Error(`${code} の値段を取れませんでした(${res.status})`);
+  }
+  const q = a.quoteFromChart(await res.json());
+  if (!q) {
+    throw new Error(`${code} の値段がありません`);
+  }
+  return q;
+}
+
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+// 月足(20年分)。DATA_DIR/cache/monthly/<コード>.json に1日覚えておく。
+// 429(送りすぎ)や 5xx は少し待って2回まで取り直し、429 が続いたら job.stopped を立てて残りを取りに行かない
+async function monthlyHistory(code, job) {
+  const file = path.join(MONTHLY_DIR, `${code}.json`);
+  try {
+    const c = JSON.parse(await fs.promises.readFile(file, 'utf8'));
+    if (Date.now() - c.at < MONTHLY_MS && Array.isArray(c.months)) {
+      return { months: c.months, cached: true };
+    }
+  } catch {
+    // 無いか壊れていれば取り直す
+  }
+  const nowSec = Math.floor(Date.now() / 1000);
+  const period1 = nowSec - Math.round((AVG_FETCH_YEARS * 12 + 2) * 30.44 * 86400);
+  const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(code)}.T?period1=${period1}&period2=${nowSec}&interval=1mo`;
+  let res;
+  for (let i = 0; ; i++) {
+    res = await fetch(url, { headers: { 'User-Agent': UA }, signal: AbortSignal.timeout(20000) });
+    if (res.status === 429) {
+      job.rateLimited++;
+    }
+    if ((res.status !== 429 && res.status < 500) || i >= 2 || job.cancelled) {
+      break;
+    }
+    await sleep(3000 * (i + 1));
+  }
+  if (res.status === 429 && job.rateLimited >= MAX_RATE_LIMITED) {
+    job.stopped = 'Yahoo に何度も断られた(送りすぎ)ので、途中で止めました。しばらくたってからもう一度試してください。';
+  }
+  if (!res.ok) {
+    throw new Error(`${code} の月足を取れませんでした(${res.status})`);
+  }
+  const months = a.monthlyCloses(await res.json());
+  await fs.promises.mkdir(MONTHLY_DIR, { recursive: true });
+  await fs.promises.writeFile(file, JSON.stringify({ at: Date.now(), months }));
+  return { months, cached: false };
 }
 
 async function dividends(symbol, nowSec) {
@@ -511,6 +595,415 @@ async function handleSnapshots(req, res, pathname) {
   }
 }
 
+// JSON の本文を読む。読めなければ応答を返して undefined
+async function readJson(req, res) {
+  if (!String(req.headers['content-type'] || '').startsWith('application/json')) {
+    sendJson(res, 415, { error: 'JSON で送ってください。' });
+    return undefined;
+  }
+  try {
+    return JSON.parse(await readBody(req)) ?? {};
+  } catch {
+    sendJson(res, 400, { error: '送られてきた内容を読めませんでした。' });
+    return undefined;
+  }
+}
+
+// ---------------------------------------------------------------- 見張り(指定した値段になったら LINE で知らせる)
+
+// 画面から送られた見張りの条件。code: 4けた、op: above(以上) / below(以下)、price: 円。name・note は表示用
+function parseWatch(body) {
+  const code = String((body && body.code) ?? '').trim().toUpperCase();
+  if (!/^[0-9A-Z]{4}$/.test(code)) {
+    return { error: '銘柄コードは4けたで入れてください。' };
+  }
+  if (!Object.hasOwn(a.WATCH_OPS, body.op)) {
+    return { error: '「以上」か「以下」を選んでください。' };
+  }
+  const price = Number(body.price);
+  if (!Number.isFinite(price) || price <= 0 || price > 1e7) {
+    return { error: '値段は0円より大きく、1000万円までで入れてください。' };
+  }
+  const clean = (v, n) => String(v ?? '').replace(/[\u0000-\u001f\u007f]/g, ' ').trim().slice(0, n);
+  return { code, op: body.op, price, name: clean(body.name, 60), note: clean(body.note, 40) };
+}
+
+let watchList = null;
+let watchWrite = Promise.resolve();
+const monitor = { lastRunAt: null, running: false };
+
+async function loadWatches() {
+  if (watchList) {
+    return watchList;
+  }
+  try {
+    const v = JSON.parse(await fs.promises.readFile(WATCH_FILE, 'utf8'));
+    watchList = Array.isArray(v) ? v.filter((w) => w && WATCH_ID.test(w.id)) : [];
+  } catch (e) {
+    if (e.code !== 'ENOENT') {
+      // 壊れたファイルは消さずに残しておく
+      log(`watches.json を読めませんでした(watches.broken.json に残します): ${e.message}`);
+      await fs.promises.copyFile(WATCH_FILE, path.join(DATA_DIR, 'watches.broken.json')).catch(() => {});
+    }
+    watchList = [];
+  }
+  return watchList;
+}
+
+// 書きかけで落ちても壊れないように、別名で書いてから置き換える。書く順番は呼んだ順
+function saveWatches() {
+  const text = JSON.stringify(watchList, null, 1);
+  watchWrite = watchWrite.catch(() => {}).then(async () => {
+    await fs.promises.mkdir(DATA_DIR, { recursive: true });
+    const tmp = `${WATCH_FILE}.tmp`;
+    await fs.promises.writeFile(tmp, text);
+    await fs.promises.rename(tmp, WATCH_FILE);
+  });
+  return watchWrite;
+}
+
+// 見張っている銘柄の今の値段を見て、条件を満たしたものを LINE で1通にまとめて知らせる。
+// 自動(manual=false)のときは取引時間の外なら何もしない。手動(画面の「今の値段を確かめる」)は値段だけいつでも更新する。
+// 知らせるのは、取引時間中で今日ついた値段が条件を満たしたときだけ。送れたら「知らせた」にして止める(送れなければ次の回にまた試す)
+async function checkWatches(manual = false) {
+  const nowSec = Math.floor(Date.now() / 1000);
+  if (monitor.running || (!manual && !WATCH_ANYTIME && !a.isMarketHours(nowSec))) {
+    return { checked: 0, hits: 0 };
+  }
+  const active = (await loadWatches()).filter((w) => w.state === 'watching');
+  if (active.length === 0) {
+    return { checked: 0, hits: 0 };
+  }
+  monitor.running = true;
+  try {
+    const quotes = new Map();
+    await mapLimit([...new Set(active.map((w) => w.code))], 3, async (code) => {
+      quotes.set(code, await quoteNow(code).catch((e) => ({ error: e.message })));
+    });
+    const at = new Date().toISOString();
+    const canNotify = WATCH_ANYTIME || a.isMarketHours(nowSec);
+    const hits = [];
+    for (const w of active) {
+      const q = quotes.get(w.code);
+      w.checkedAt = at;
+      if (!q || q.error) {
+        w.priceError = q ? q.error : '値段を取れませんでした';
+        continue;
+      }
+      delete w.priceError;
+      w.lastPrice = q.price;
+      w.lastTime = q.time;
+      if (canNotify && (WATCH_ANYTIME || a.isTodayPrice(q.time, nowSec)) && a.watchHit(w, q.price)) {
+        hits.push({ watch: w, price: q.price, time: q.time });
+      }
+    }
+    if (hits.length > 0) {
+      try {
+        await line.pushText(DATA_DIR, a.watchMessage(hits), log);
+        for (const h of hits) {
+          Object.assign(h.watch, { state: 'notified', notifiedAt: at, hitPrice: h.price, hitTime: h.time });
+          delete h.watch.error;
+        }
+        log(`見張り: ${hits.map((h) => h.watch.code).join(',')} を知らせました`);
+      } catch (e) {
+        for (const h of hits) {
+          h.watch.error = e.message;
+        }
+        log(`見張り: ${e.message}`);
+      }
+    }
+    monitor.lastRunAt = at;
+    await saveWatches();
+    return { checked: active.length, hits: hits.length };
+  } finally {
+    monitor.running = false;
+  }
+}
+
+async function watchStatus() {
+  return {
+    watches: await loadWatches(),
+    line: { configured: line.isConfigured(DATA_DIR), dryRun: line.isDryRun() },
+    monitor: { minutes: WATCH_MINUTES, marketHours: a.isMarketHours(Math.floor(Date.now() / 1000)), anytime: WATCH_ANYTIME, lastRunAt: monitor.lastRunAt },
+  };
+}
+
+async function handleWatches(req, res, pathname) {
+  const m = pathname.match(/^\/api\/watches(?:\/([0-9a-f]{12})(\/resume)?|\/(check))?$/);
+  if (!m) {
+    res.writeHead(404).end();
+    return;
+  }
+  const [, id, resume, check] = m;
+  try {
+    if (!id && !check && req.method === 'GET') {
+      sendJson(res, 200, await watchStatus());
+    } else if (!id && !check && req.method === 'POST') {
+      const body = await readJson(req, res);
+      if (body === undefined) {
+        return;
+      }
+      const w = parseWatch(body);
+      if (w.error) {
+        sendJson(res, 400, { error: w.error });
+        return;
+      }
+      const list = await loadWatches();
+      if (list.length >= MAX_WATCHES) {
+        sendJson(res, 400, { error: `見張りは${MAX_WATCHES}件までです。いらないものを削除してください。` });
+        return;
+      }
+      // 銘柄があるかを確かめ、今の値段を一緒に覚えておく
+      let q;
+      try {
+        q = await quoteNow(w.code);
+      } catch (e) {
+        sendJson(res, 400, { error: e.message });
+        return;
+      }
+      const watch = {
+        id: crypto.randomBytes(6).toString('hex'),
+        code: w.code,
+        name: w.name || q.name,
+        op: w.op,
+        price: w.price,
+        note: w.note,
+        state: 'watching',
+        createdAt: new Date().toISOString(),
+        lastPrice: q.price,
+        lastTime: q.time,
+        checkedAt: new Date().toISOString(),
+      };
+      list.push(watch);
+      await saveWatches();
+      log(`見張り 追加 ${watch.code} ${watch.op}`);
+      sendJson(res, 200, { watch, already: a.watchHit(watch, q.price) });
+    } else if (check && req.method === 'POST') {
+      const r = await checkWatches(true);
+      sendJson(res, 200, { ...r, ...(await watchStatus()) });
+    } else if (id && req.method === 'DELETE' && !resume) {
+      const list = await loadWatches();
+      const i = list.findIndex((w) => w.id === id);
+      if (i < 0) {
+        sendJson(res, 404, { error: '見張りが見つかりません。' });
+        return;
+      }
+      list.splice(i, 1);
+      await saveWatches();
+      sendJson(res, 200, { id });
+    } else if (id && resume && req.method === 'POST') {
+      const w = (await loadWatches()).find((x) => x.id === id);
+      if (!w) {
+        sendJson(res, 404, { error: '見張りが見つかりません。' });
+        return;
+      }
+      w.state = 'watching';
+      for (const k of ['notifiedAt', 'hitPrice', 'hitTime', 'error']) {
+        delete w[k];
+      }
+      await saveWatches();
+      sendJson(res, 200, { watch: w });
+    } else {
+      res.writeHead(405).end();
+    }
+  } catch (e) {
+    log(`見張り 失敗: ${e.message}`);
+    sendJson(res, 500, { error: `見張りを扱えませんでした: ${e.message}` });
+  }
+}
+
+async function handleLineTest(req, res) {
+  if (req.method !== 'POST') {
+    res.writeHead(405).end();
+    return;
+  }
+  try {
+    const r = await line.pushText(DATA_DIR, '📡 株レーダーからのテストです。値段の見張りの知らせは、このトークに届きます。', log);
+    sendJson(res, 200, r);
+  } catch (e) {
+    sendJson(res, 502, { error: e.message });
+  }
+}
+
+function startMonitor() {
+  const tick = () => checkWatches().catch((e) => log(`見張り 失敗: ${e.message}`));
+  setTimeout(tick, 10 * 1000);
+  setInterval(tick, WATCH_MINUTES * 60 * 1000);
+}
+
+// ---------------------------------------------------------------- 平均割れ(過去N年の平均より安い銘柄)
+
+// 空なら null、lo〜hi の数ならその数、それ以外は NaN(JSON の本文用)
+function bodyNumber(v, lo, hi) {
+  if (v == null || v === '') {
+    return null;
+  }
+  const n = Number(v);
+  return Number.isFinite(n) && n >= lo && n <= hi ? n : NaN;
+}
+
+// years: 3・5・10・15・20 年。per・pbr: 既存の絞り込みと同じ。mcap: 時価総額(円)の下限。
+// budget: { min, max }(100株の金額、円)を付けたときだけ値段で絞る。limit: 月足を取る銘柄数の上限(動作確認用)
+function parseAvgScan(body) {
+  const b = body || {};
+  const years = b.years == null ? 10 : Number(b.years);
+  if (!AVG_YEARS.includes(years)) {
+    return { error: `年数は ${AVG_YEARS.join('・')} 年から選んでください。` };
+  }
+  const per = bodyNumber(b.per, 1, 1000);
+  const pbr = bodyNumber(b.pbr, 0.1, 100);
+  const mcap = bodyNumber(b.mcap, 0, 1e15);
+  const limit = bodyNumber(b.limit, 1, MAX_ALL);
+  if ([per, pbr, mcap, limit].some(Number.isNaN) || (limit != null && !Number.isInteger(limit))) {
+    return { error: '絞り込みの条件が正しくありません。' };
+  }
+  let budget = null;
+  if (b.budget) {
+    const max = Number(b.budget.max);
+    const min = Number(b.budget.min || 0);
+    if (!Number.isFinite(max) || max < 10000 || max > 1e8 || !Number.isFinite(min) || min < 0 || min >= max) {
+      return { error: '予算は1万円〜1億円で、下限は上限より小さくしてください。' };
+    }
+    budget = { min, max };
+  }
+  return { years, per, pbr, mcap: mcap || null, budget, limit };
+}
+
+let avgJob = null;
+
+function publicJob(job) {
+  if (!job) {
+    return { state: 'idle' };
+  }
+  const { req, state, phase, done, total, cached, startedAt, finishedAt, error, result } = job;
+  return { state, phase, done, total, cached, startedAt, finishedAt, error, req, result };
+}
+
+async function runAvgScan(job) {
+  const { req } = job;
+  const nowSec = Math.floor(Date.now() / 1000);
+  const operands = [];
+  if (req.budget) {
+    operands.push({ operator: 'btwn', operands: ['intradayprice', Math.max(1, req.budget.min / a.LOT), req.budget.max / a.LOT] });
+  }
+  if (req.mcap) {
+    operands.push({ operator: 'gt', operands: ['intradaymarketcap', req.mcap] });
+  }
+  job.phase = 'screen';
+  const all = await screenAll(operands, MAX_ALL, (got, total) => {
+    job.done = got;
+    job.total = total;
+  });
+  // REIT などを外し、PER・PBR(スクリーナーの値)で絞ってから月足を取る
+  const stocks = all.filter(a.isCommonStock);
+  const matched = stocks.filter((q) => a.matchValuation(q, req));
+  const { from, to } = a.avgWindow(req.years, nowSec);
+  // Yahoo のデータが平均の範囲より後から始まる銘柄(上場して N 年たっていない)は、月足を取らずにデータ不足へ
+  const young = matched.filter((q) => a.listedAfter(q, from));
+  let targets = matched.filter((q) => !a.listedAfter(q, from));
+  const limited = req.limit != null && targets.length > req.limit;
+  if (limited) {
+    targets = targets.slice(0, req.limit);
+  }
+  job.phase = 'history';
+  job.done = 0;
+  job.total = targets.length;
+  const rows = await mapLimit(targets, AVG_CONCURRENCY, async (q) => {
+    if (job.cancelled || job.stopped) {
+      return { skipped: true };
+    }
+    try {
+      const { months, cached } = await monthlyHistory(a.codeOf(q.symbol), job);
+      if (cached) {
+        job.cached++;
+      }
+      return a.belowAverage(q, months, req.years, nowSec);
+    } finally {
+      job.done++;
+    }
+  });
+  if (job.cancelled) {
+    return null;
+  }
+  const ok = rows.filter((r) => r && !r.error && !r.skipped);
+  const judged = ok.filter((r) => !r.excluded);
+  const insufficient = [
+    ...young.map((q) => ({ code: a.codeOf(q.symbol), name: a.belowAverage(q, [], req.years, nowSec).name, first: a.firstMonthOf(q), months: null })),
+    ...ok.filter((r) => r.excluded).map(({ code, name, first, months }) => ({ code, name, first, months })),
+  ];
+  const dataTimes = matched.map((q) => q.regularMarketTime).filter(Number.isFinite);
+  return {
+    at: new Date().toISOString(),
+    dataTime: dataTimes.length > 0 ? new Date(Math.max(...dataTimes) * 1000).toISOString() : null,
+    years: req.years,
+    window: { from, to },
+    filter: { per: req.per, pbr: req.pbr, mcap: req.mcap, budget: req.budget },
+    universe: all.length,
+    stocks: stocks.length,
+    matched: matched.length,
+    fetched: targets.length,
+    cached: job.cached,
+    limited: limited ? req.limit : null,
+    failed: rows.filter((r) => r && r.error).length,
+    skipped: rows.filter((r) => r && r.skipped).length,
+    stopped: job.stopped || null,
+    above: judged.filter((r) => r.gap <= 0).length,
+    insufficient,
+    items: judged.filter((r) => r.gap > 0).sort((x, y) => y.gap - x.gap || x.code.localeCompare(y.code)),
+  };
+}
+
+function startAvgScan(req) {
+  const job = { req, state: 'running', phase: 'screen', done: 0, total: 0, cached: 0, rateLimited: 0, startedAt: new Date().toISOString() };
+  avgJob = job;
+  const started = Date.now();
+  runAvgScan(job).then((result) => {
+    job.finishedAt = new Date().toISOString();
+    if (job.cancelled) {
+      job.state = 'cancelled';
+      log('平均割れ: やめました');
+      return;
+    }
+    job.state = 'done';
+    job.result = result;
+    log(`平均割れ ${req.years}年: 対象 ${result.matched} → 月足 ${result.fetched}(キャッシュ ${result.cached}・失敗 ${result.failed}) → 平均より下 ${result.items.length} ${Date.now() - started}ms`);
+  }).catch((e) => {
+    job.finishedAt = new Date().toISOString();
+    job.state = 'error';
+    job.error = `データを取れませんでした: ${e.message}`;
+    log(`平均割れ 失敗: ${e.message}`);
+  });
+  return job;
+}
+
+async function handleAvgScan(req, res, pathname) {
+  if (pathname === '/api/avgscan' && req.method === 'GET') {
+    sendJson(res, 200, publicJob(avgJob));
+  } else if (pathname === '/api/avgscan' && req.method === 'POST') {
+    if (avgJob && avgJob.state === 'running') {
+      sendJson(res, 409, { error: '今調べている途中です。終わるか「やめる」を押してからにしてください。', ...publicJob(avgJob) });
+      return;
+    }
+    const body = await readJson(req, res);
+    if (body === undefined) {
+      return;
+    }
+    const params = parseAvgScan(body);
+    if (params.error) {
+      sendJson(res, 400, { error: params.error });
+      return;
+    }
+    sendJson(res, 200, publicJob(startAvgScan(params)));
+  } else if (pathname === '/api/avgscan/cancel' && req.method === 'POST') {
+    if (avgJob && avgJob.state === 'running') {
+      avgJob.cancelled = true;
+    }
+    sendJson(res, 200, publicJob(avgJob));
+  } else {
+    res.writeHead(pathname === '/api/avgscan' || pathname === '/api/avgscan/cancel' ? 405 : 404).end();
+  }
+}
+
 // ---------------------------------------------------------------- HTTP
 
 function sendJson(res, status, body) {
@@ -535,6 +1028,14 @@ function serveStatic(res, pathname) {
   });
 }
 
+// GET 以外は Origin を確かめる API
+const WRITE_APIS = [
+  ['/api/snapshots', handleSnapshots],
+  ['/api/watches', handleWatches],
+  ['/api/line/test', handleLineTest],
+  ['/api/avgscan', handleAvgScan],
+];
+
 async function handle(req, res) {
   // DNS リバインディング対策: 自分宛ての Host 以外は断る
   if (!ALLOWED_HOSTS.has(String(req.headers.host || '').toLowerCase())) {
@@ -542,13 +1043,14 @@ async function handle(req, res) {
     return;
   }
   const url = new URL(req.url, `http://${req.headers.host}`);
-  if (url.pathname.startsWith('/api/snapshots')) {
-    // 書き換える操作は、この画面から来たものだけ受け付ける(よそのページからの送信を断る)
+  const writeApi = WRITE_APIS.find(([prefix]) => url.pathname === prefix || url.pathname.startsWith(`${prefix}/`));
+  if (writeApi) {
+    // 書き換える操作(と LINE 送信・重い調査の開始)は、この画面から来たものだけ受け付ける(よそのページからの送信を断る)
     if (req.method !== 'GET' && !ALLOWED_HOSTS.has(originHost(req.headers.origin))) {
       res.writeHead(403).end();
       return;
     }
-    await handleSnapshots(req, res, url.pathname);
+    await writeApi[1](req, res, url.pathname);
     return;
   }
   if (req.method !== 'GET') {
@@ -593,7 +1095,7 @@ async function handle(req, res) {
   serveStatic(res, url.pathname);
 }
 
-module.exports = { parseScan, shortCandidates, countExcluded, scan, isScanResult };
+module.exports = { parseScan, shortCandidates, countExcluded, scan, isScanResult, parseWatch, parseAvgScan };
 
 if (require.main === module) {
   http.createServer((req, res) => {
@@ -603,5 +1105,10 @@ if (require.main === module) {
         res.writeHead(500).end();
       }
     });
-  }).listen(PORT, HOST, () => log(`株レーダー http://${HOST}:${PORT}/ (受け付ける名前: ${[...ALLOWED_HOSTS].join(', ')})`));
+  }).listen(PORT, HOST, () => {
+    log(`株レーダー http://${HOST}:${PORT}/ (受け付ける名前: ${[...ALLOWED_HOSTS].join(', ')})`);
+    const lineMode = line.isDryRun() ? '送らないモード' : line.isConfigured(DATA_DIR) ? '設定あり' : '未設定';
+    log(`見張り: 取引時間中に${WATCH_MINUTES}分おき${WATCH_ANYTIME ? '(時間外も見る確認用モード)' : ''} / LINE: ${lineMode}`);
+    startMonitor();
+  });
 }

@@ -340,3 +340,140 @@ test('スナップショット: 保存できるのは調べた結果の形をし
   assert.strictEqual(s.isScanResult({ ...ok, items: [{ code: '7203', price: 'a', target: 1, stop: 1 }] }), false);
   assert.strictEqual(s.isScanResult(null), false);
 });
+
+// 日本時間の y-m-d h:mm を秒にする
+const jst = (y, m, d, h = 0, min = 0) => Date.UTC(y, m - 1, d, h - 9, min) / 1000;
+
+test('見張り: 取引時間は平日の 9:00〜15:50(日本時間)、今日ついた値段だけで知らせる', () => {
+  // 2026-11-24 は火曜、2026-11-22 は日曜
+  assert.strictEqual(a.isMarketHours(jst(2026, 11, 24, 8, 59)), false);
+  assert.strictEqual(a.isMarketHours(jst(2026, 11, 24, 9, 0)), true);
+  assert.strictEqual(a.isMarketHours(jst(2026, 11, 24, 15, 50)), true);
+  assert.strictEqual(a.isMarketHours(jst(2026, 11, 24, 15, 51)), false);
+  assert.strictEqual(a.isMarketHours(jst(2026, 11, 22, 10, 0)), false);
+  const now = jst(2026, 11, 24, 9, 10);
+  assert.strictEqual(a.isTodayPrice(jst(2026, 11, 24, 9, 1), now), true);
+  // 朝の取引の前は前の日の終値(15:30)が返る → 知らせない
+  assert.strictEqual(a.isTodayPrice(jst(2026, 11, 23, 15, 30), now), false);
+  assert.strictEqual(a.isTodayPrice(jst(2026, 11, 24, 8, 0), now), false);
+  assert.strictEqual(a.isTodayPrice(null, now), false);
+});
+
+test('見張り: 以上・以下はちょうどの値段も含む', () => {
+  assert.strictEqual(a.watchHit({ op: 'above', price: 3000 }, 3000), true);
+  assert.strictEqual(a.watchHit({ op: 'above', price: 3000 }, 2999), false);
+  assert.strictEqual(a.watchHit({ op: 'below', price: 3000 }, 3000), true);
+  assert.strictEqual(a.watchHit({ op: 'below', price: 3000 }, 3001), false);
+  assert.strictEqual(a.watchHit({ op: 'below', price: 3000 }, NaN), false);
+});
+
+test('見張り: chart API の meta から今の値段を取り、LINE の文は1通にまとめる', () => {
+  const q = a.quoteFromChart({ chart: { result: [{ meta: { regularMarketPrice: 3312, regularMarketTime: 1795156200, longName: 'Toyota Motor Corporation' } }] } });
+  assert.deepStrictEqual(q, { price: 3312, time: 1795156200, name: 'Toyota Motor Corporation' });
+  assert.strictEqual(a.quoteFromChart({ chart: { result: [{ meta: {} }] } }), null);
+  assert.strictEqual(a.quoteFromChart({}), null);
+  const text = a.watchMessage([
+    { watch: { code: '7203', name: 'トヨタ自動車', op: 'below', price: 3000, note: '買い' }, price: 2998, time: jst(2026, 11, 24, 10, 15) },
+    { watch: { code: '6758', name: '', op: 'above', price: 4000 }, price: 4010, time: null },
+  ]);
+  assert.ok(text.includes('トヨタ自動車(7203) 2,998円［買い］'));
+  assert.ok(text.includes('3,000円以下になりました・11/24 10:15時点'));
+  assert.ok(text.includes('・6758 4,010円'));
+  assert.ok(text.includes('4,000円以上になりました'));
+  assert.ok(text.includes('約20分遅れ'));
+});
+
+test('平均割れ: 月の計算と、平均に使う範囲(今月を除く直近 N×12 か月)', () => {
+  assert.strictEqual(a.addMonths('2026-11', -1), '2026-10');
+  assert.strictEqual(a.addMonths('2026-01', -1), '2025-12');
+  assert.strictEqual(a.addMonths('2026-10', -119), '2016-11');
+  assert.deepStrictEqual(a.avgWindow(10, jst(2026, 11, 22, 12)), { from: '2016-11', to: '2026-10' });
+  assert.deepStrictEqual(a.avgWindow(3, jst(2026, 1, 5, 12)), { from: '2023-01', to: '2025-12' });
+});
+
+test('平均割れ: 月足は同じ月なら後の足を使い、月の順に並べる', () => {
+  const json = { chart: { result: [{
+    timestamp: [jst(2026, 10, 1), jst(2026, 9, 1), jst(2026, 11, 1), jst(2026, 11, 20, 15, 30), jst(2026, 8, 1)],
+    indicators: { quote: [{ close: [3070, 2900.04, 3300, 3312, null] }] },
+  }] } };
+  assert.deepStrictEqual(a.monthlyCloses(json), [['2026-09', 2900], ['2026-10', 3070], ['2026-11', 3312]]);
+  assert.deepStrictEqual(a.monthlyCloses({}), []);
+});
+
+// from から n か月分、close(i) の値の月足を作る
+function makeMonths(from, n, close) {
+  return Array.from({ length: n }, (_, i) => [a.addMonths(from, i), close(i)]);
+}
+
+test('平均割れ: 直近 N 年の月末終値の平均と比べ、上場して N 年たっていなければデータ不足', () => {
+  const now = jst(2026, 11, 22, 12);
+  // 2016-11〜2026-10 の120か月は 1000〜2190(平均 1595)。それより前の月と今月は平均に入らない
+  const months = [['2016-10', 99999], ...makeMonths('2016-11', 120, (i) => 1000 + i * 10), ['2026-11', 1]];
+  const avg = a.longAverage(months, 10, now);
+  assert.strictEqual(avg.avg, 1595);
+  assert.deepStrictEqual([avg.low, avg.high, avg.count, avg.from, avg.to], [1000, 2190, 120, '2016-11', '2026-10']);
+  // 1か月の欠けは許す・2か月欠けたらデータ不足
+  assert.strictEqual(a.longAverage(months.filter(([m]) => m !== '2020-05'), 10, now).count, 119);
+  const short = a.longAverage(months.filter(([m]) => m !== '2020-05' && m !== '2020-06'), 10, now);
+  assert.deepStrictEqual([short.short, short.count, short.need], [true, 118, 120]);
+  // 7年前に上場
+  const young = makeMonths('2019-11', 85, () => 500);
+  assert.deepStrictEqual(a.longAverage(young, 10, now), { short: true, count: 84, need: 120, first: '2019-11' });
+  assert.strictEqual(a.longAverage(young, 5, now).avg, 500);
+
+  const q = { symbol: '1234.T', longName: 'テスト工業', regularMarketPrice: 1276, regularMarketTime: jst(2026, 11, 20, 15, 30), forwardPE: 9.04, priceToBook: 0.812, dividendYield: 3.21, marketCap: 8e10 };
+  const r = a.belowAverage(q, months, 10, now);
+  assert.strictEqual(r.code, '1234');
+  assert.strictEqual(r.avg, 1595);
+  // (1 − 1276 ÷ 1595) × 100 = 20.0
+  assert.strictEqual(r.gap, 20);
+  assert.strictEqual(r.cost, 127600);
+  assert.strictEqual(r.priceDate, '2026-11-20');
+  assert.deepStrictEqual(r.stats, { per: 9, pbr: 0.81, dividend: 3.2 });
+  assert.strictEqual(a.belowAverage({ ...q, regularMarketPrice: 1700 }, months, 10, now).gap, -6.6);
+  assert.deepStrictEqual(a.belowAverage(q, young, 10, now), { code: '1234', name: 'テスト工業', excluded: 'データ不足', months: 84, first: '2019-11' });
+});
+
+test('平均割れ: 対象は東証の普通株だけ(REIT・優先株・別の市場の重複を外す)と、上場日での先回りの判定', () => {
+  assert.strictEqual(a.isCommonStock({ symbol: '7203.T', longName: 'トヨタ自動車', shortName: 'TOYOTA MOTOR CORP' }), true);
+  assert.strictEqual(a.isCommonStock({ symbol: '130A.T', longName: 'ベリサーブ' }), true);
+  assert.strictEqual(a.isCommonStock({ symbol: '8951.T', longName: '日本ビルファンド投資法人' }), false);
+  assert.strictEqual(a.isCommonStock({ symbol: '3487.T', shortName: 'CRE LOGISTICS REIT INC' }), false);
+  assert.strictEqual(a.isCommonStock({ symbol: '9388@F.T', longName: '資本' }), false);
+  assert.strictEqual(a.isCommonStock({ symbol: '25935.T', longName: '伊藤園 優先株' }), false);
+  const q = { firstTradeDateMilliseconds: Date.UTC(2019, 3, 1) };
+  assert.strictEqual(a.firstMonthOf(q), '2019-04');
+  assert.strictEqual(a.firstMonthOf({}), null);
+  assert.strictEqual(a.listedAfter(q, '2016-11'), true);
+  assert.strictEqual(a.listedAfter(q, '2019-04'), false);
+  assert.strictEqual(a.listedAfter({}, '2016-11'), false);
+});
+
+test('見張りの条件の検証', () => {
+  assert.deepStrictEqual(s.parseWatch({ code: '7203', op: 'below', price: '3000', name: 'トヨタ', note: '買い' }), { code: '7203', op: 'below', price: 3000, name: 'トヨタ', note: '買い' });
+  assert.strictEqual(s.parseWatch({ code: '130a', op: 'above', price: 1 }).code, '130A');
+  assert.ok(s.parseWatch({ code: '../x', op: 'below', price: 1 }).error);
+  assert.ok(s.parseWatch({ code: '7203', op: 'constructor', price: 1 }).error);
+  assert.ok(s.parseWatch({ code: '7203', op: 'below', price: 0 }).error);
+  assert.ok(s.parseWatch({ code: '7203', op: 'below', price: 'abc' }).error);
+  assert.ok(s.parseWatch(null).error);
+  assert.strictEqual(s.parseWatch({ code: '7203', op: 'below', price: 1, note: 'x'.repeat(80) }).note.length, 40);
+  assert.ok(!s.parseWatch({ code: '7203', op: 'below', price: 1, note: 'a\nb' }).note.includes('\n'));
+});
+
+test('平均割れの条件の検証', () => {
+  assert.deepStrictEqual(s.parseAvgScan({}), { years: 10, per: null, pbr: null, mcap: null, budget: null, limit: null });
+  assert.deepStrictEqual(s.parseAvgScan({ years: 5, per: '15', pbr: 1, mcap: 5e10, budget: { min: 300000, max: 700000 }, limit: 20 }),
+    { years: 5, per: 15, pbr: 1, mcap: 5e10, budget: { min: 300000, max: 700000 }, limit: 20 });
+  assert.ok(s.parseAvgScan({ years: 7 }).error);
+  assert.ok(s.parseAvgScan({ per: 'abc' }).error);
+  assert.ok(s.parseAvgScan({ budget: { min: 700000, max: 300000 } }).error);
+  assert.ok(s.parseAvgScan({ limit: 1.5 }).error);
+});
+
+test('LINE: 応答の文からトークン・ユーザーIDを消す', () => {
+  const line = require('../line.js');
+  const secret = { token: 'tok123456789012345678901234', to: 'U0123456789abcdef0123456789abcdef' };
+  assert.strictEqual(line.redact('bad tok123456789012345678901234 for U0123456789abcdef0123456789abcdef', secret), 'bad *** for ***');
+  assert.strictEqual(line.redact(undefined, secret), '');
+});
