@@ -477,3 +477,13 @@ test('LINE: 応答の文からトークン・ユーザーIDを消す', () => {
   assert.strictEqual(line.redact('bad tok123456789012345678901234 for U0123456789abcdef0123456789abcdef', secret), 'bad *** for ***');
   assert.strictEqual(line.redact(undefined, secret), '');
 });
+
+test('停止: PC の画面(127.0.0.1 / localhost)からだけ受け付ける', () => {
+  assert.strictEqual(s.canShutdown('127.0.0.1:8766', 'http://127.0.0.1:8766'), true);
+  assert.strictEqual(s.canShutdown('localhost:8766', 'http://localhost:8766'), true);
+  assert.strictEqual(s.canShutdown('LOCALHOST:8766', 'http://localhost:8766'), true);
+  assert.strictEqual(s.canShutdown('mypc.example.ts.net', 'https://mypc.example.ts.net'), false);
+  assert.strictEqual(s.canShutdown('127.0.0.1:8766', 'https://evil.example.com'), false);
+  assert.strictEqual(s.canShutdown('127.0.0.1:8766', undefined), false);
+  assert.strictEqual(s.canShutdown(undefined, 'http://127.0.0.1:8766'), false);
+});

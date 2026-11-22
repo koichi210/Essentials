@@ -1372,6 +1372,35 @@ function init() {
   }
   $('snap-save').addEventListener('click', saveSnapshot);
   $('open-snaps').addEventListener('click', openSnapshots);
+  initStop();
+}
+
+// 停止ボタン。スマホ(Tailscale)からは起動し直せないので、PC の画面のときだけ出す
+function initStop() {
+  if (!['127.0.0.1', 'localhost'].includes(location.hostname)) {
+    return;
+  }
+  const b = $('stop-server');
+  b.hidden = false;
+  b.addEventListener('click', async () => {
+    if (!confirm('株レーダーを止めますか？\n止めると、値段の見張り（LINE 通知）も止まります。')) {
+      return;
+    }
+    b.disabled = true;
+    try {
+      const res = await fetch('/api/shutdown', { method: 'POST' });
+      const j = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        alert(`止められませんでした: ${j.error || res.status}`);
+        b.disabled = false;
+        return;
+      }
+    } catch (e) {
+      // 止まる途中で通信が切れることがあるので、そのまま止まった扱いにする
+    }
+    document.body.innerHTML = '<div class="panel stopped"><h1>⏻ 株レーダーを止めました</h1>'
+      + '<p>このタブは閉じて大丈夫です。<br>また使うときは <code>start.bat</code> か、秘書さんの「株レーダー」メニューで起動してください。</p></div>';
+  });
 }
 
 init();

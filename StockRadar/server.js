@@ -67,6 +67,13 @@ function extraHosts() {
   return hosts.map((h) => String(h).trim().toLowerCase().replace(/\.$/, '')).filter(Boolean);
 }
 
+// 停止は PC の画面(127.0.0.1 / localhost)からだけ受け付ける。
+// スマホ(Tailscale)から止めると、PC に戻るまで起動し直せないため
+function canShutdown(host, origin) {
+  const local = new Set([`127.0.0.1:${PORT}`, `localhost:${PORT}`]);
+  return local.has(String(host || '').toLowerCase()) && local.has(originHost(origin));
+}
+
 // Origin(https://xxx.ts.net など)から host[:port] を取り出す。読めなければ ''
 function originHost(origin) {
   try {
@@ -1043,7 +1050,22 @@ async function handle(req, res) {
     return;
   }
   const url = new URL(req.url, `http://${req.headers.host}`);
-  const writeApi = WRITE_APIS.find(([prefix]) => url.pathname === prefix || url.pathname.startsWith(`${prefix}/`));
+  if (url.pathname === '/api/shutdown') {
+    if (req.method !== 'POST') {
+      res.writeHead(405).end();
+      return;
+    }
+    if (!canShutdown(req.headers.host, req.headers.origin)) {
+      sendJson(res, 403, { error: '止められるのは PC の画面からだけです。' });
+      return;
+    }
+    log('画面の「停止」で終了します');
+    sendJson(res, 200, { ok: true });
+    // 返事を送り切ってから終わる
+    res.on('finish', () => setTimeout(() => process.exit(0), 200));
+    return;
+  }
+  const writeApi =WRITE_APIS.find(([prefix]) => url.pathname === prefix || url.pathname.startsWith(`${prefix}/`));
   if (writeApi) {
     // 書き換える操作(と LINE 送信・重い調査の開始)は、この画面から来たものだけ受け付ける(よそのページからの送信を断る)
     if (req.method !== 'GET' && !ALLOWED_HOSTS.has(originHost(req.headers.origin))) {
@@ -1095,7 +1117,7 @@ async function handle(req, res) {
   serveStatic(res, url.pathname);
 }
 
-module.exports = { parseScan, shortCandidates, countExcluded, scan, isScanResult, parseWatch, parseAvgScan };
+module.exports = { parseScan, shortCandidates, countExcluded, scan, isScanResult, parseWatch, parseAvgScan, canShutdown };
 
 if (require.main === module) {
   http.createServer((req, res) => {
