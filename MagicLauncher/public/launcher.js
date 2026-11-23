@@ -1293,7 +1293,7 @@
     }
     function startDrag(src) {
       dropCarry();
-      const orb = setC(el('div', 'ml-orb'), srcColor(src));
+      const orb = setC(el('div', 'ml-orb ' + src.type), srcColor(src)); // 種類ごとに玉の大きさを変える(タグは小さめ)
       const cap = src.type === 'item' ? [esc(src.it.name), '同じ先頭タグの円に重ねて入れ替え']
         : src.type === 'tag' ? ['#' + esc(src.tag.label), 'タグに重ねて入れ替え／別の魔法陣の空き所へ移す']
           : [esc(src.circle.name), '別の魔法陣の中心に重ねて並びを入れ替え'];
