@@ -186,6 +186,14 @@ body.lite .ml-hint, body.no-webgl .ml-hint { display: none; }
 .ml-orb.tag .ball::after { inset: -6px; }
 .ml-orb.tag .cap { left: 20px; top: 8px; }
 .ml-orb.tag.ok .ball { box-shadow: 0 0 12px 4px #fff, 0 0 34px 10px var(--c, #6fb4ff), inset 0 0 7px #fff; }
+/* 項目(小さい魔法陣)はタグよりさらに小さい玉 */
+.ml-orb.item .ball {
+  left: -7px; top: -7px; width: 14px; height: 14px; font-size: 9px;
+  box-shadow: 0 0 6px 2px var(--c, #6fb4ff), 0 0 16px 4px var(--c, #6fb4ff), inset 0 0 4px rgba(255, 255, 255, .6);
+}
+.ml-orb.item .ball::after { inset: -4px; }
+.ml-orb.item .cap { left: 14px; top: 5px; }
+.ml-orb.item.ok .ball { box-shadow: 0 0 8px 3px #fff, 0 0 22px 6px var(--c, #6fb4ff), inset 0 0 4px #fff; }
 .ml-orb.ok .ball { transform: scale(1.3); box-shadow: 0 0 18px 6px #fff, 0 0 54px 16px var(--c, #6fb4ff), inset 0 0 10px #fff; }
 .ml-orb .cap {
   position: absolute; left: 26px; top: 12px; white-space: nowrap; font-size: 13px;
