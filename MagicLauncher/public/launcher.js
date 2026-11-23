@@ -695,13 +695,19 @@
 
     function v3(x, y) { return new T.Vector3(x, y, 0); }
     function order(obj, n) { obj.traverse((o) => { o.renderOrder = n; }); }
+    // 下を隠す円と当たり判定の円は、大きさ 1 の形と材質を全部で共有して scale で合わせる（数百個あるので）
+    const occMat = new T.MeshBasicMaterial({ color: '#030814', transparent: true, opacity: 1, depthWrite: false });
+    const hitMat = new T.MeshBasicMaterial({ visible: false });
+    occMat.userData.shared = hitMat.userData.shared = true;
     function occluder(r) {
-      const m = new T.Mesh(new T.CircleGeometry(r, 40), new T.MeshBasicMaterial({ color: '#030814', transparent: true, opacity: 1, depthWrite: false }));
+      const m = new T.Mesh(M.unitCircle(40), occMat);
+      m.scale.set(r, r, 1);
       m.renderOrder = 2;
       return m;
     }
     function hitMesh(r, ref) {
-      const m = new T.Mesh(new T.CircleGeometry(r, 24), new T.MeshBasicMaterial({ visible: false }));
+      const m = new T.Mesh(M.unitCircle(24), hitMat);
+      m.scale.set(r, r, 1);
       m.userData.ref = ref;
       hitList.push(m);
       return m;
@@ -762,8 +768,8 @@
       dropCarry();
       circles.forEach((C) => C.flow.clear());
       board.traverse((o) => {
-        if (o.geometry && !o.isSprite) o.geometry.dispose();
-        if (o.material) o.material.dispose();
+        if (o.geometry && !o.isSprite && !M.isShared(o.geometry)) o.geometry.dispose();
+        if (o.material && !M.isShared(o.material)) o.material.dispose();
       });
       while (board.children.length) board.remove(board.children[0]);
       labels.forEach((l) => l.el.remove());
@@ -1260,7 +1266,8 @@
       const r = src.type === 'item' ? src.R : src.type === 'tag' ? 0.55 : HUB_R;
       const col = new T.Color(srcColor(src));
       const h = new T.Group();
-      const pit = new T.Mesh(new T.CircleGeometry(r * 0.98, 48), new T.MeshBasicMaterial({ color: '#000000', transparent: true, opacity: 0, depthWrite: false }));
+      const pit = new T.Mesh(M.unitCircle(48), new T.MeshBasicMaterial({ color: '#000000', transparent: true, opacity: 0, depthWrite: false }));
+      pit.scale.set(r * 0.98, r * 0.98, 1);
       pit.renderOrder = 2;
       h.add(pit);
       const rim = M.ring(r, Math.max(0.04, r * 0.05), col, 0);
@@ -1288,7 +1295,7 @@
       if (!carry) return;
       if (carry.orb) carry.orb.remove();
       if (carry.hole.parent) carry.hole.parent.remove(carry.hole);
-      carry.hole.traverse((o) => { if (o.geometry) o.geometry.dispose(); if (o.material) o.material.dispose(); });
+      carry.hole.traverse((o) => { if (o.geometry && !M.isShared(o.geometry)) o.geometry.dispose(); if (o.material) o.material.dispose(); });
       carry = null;
     }
     function startDrag(src) {
@@ -1724,6 +1731,13 @@
     return {
       build, onFilter, home: () => home(false), cancelDrag, isDragging: () => !!drag,
       // 確認用: 円・タグの分岐点・中心の画面座標と、運んでいる玉の状態
+      // 確認用: 描画の部品数と GPU に載せた形・画像の数
+      mem: () => {
+        let objs = 0, draws = 0;
+        const geos = new Set(), mats = new Set();
+        scene.traverse((o) => { objs++; if (o.geometry) geos.add(o.geometry); if (o.material) { mats.add(o.material); if (o.visible) draws++; } });
+        return Object.assign({ objs, draws, geos: geos.size, mats: mats.size }, st.renderer.info.memory);
+      },
       where: () => ({ items: nodes.map((n) => Object.assign({ name: n.it.name, tag: n.tag.name }, screenOf(n))),
         tags: tagNodes.map((tn) => Object.assign({ name: tn.tag.name }, screenOf(tn))),
         hubs: circles.map((C) => Object.assign({ name: C.name }, screenOf(C.hubRef))),
@@ -1832,7 +1846,7 @@
         S.mode = '3d';
         scene3d.build(S.view);
         scene3d.onFilter(false);
-        window.__magicLauncher = { debug: scene3d.debug, where: scene3d.where, state: () => S };
+        window.__magicLauncher = { debug: scene3d.debug, where: scene3d.where, mem: scene3d.mem, reload, state: () => S };
       }).catch((e) => startList('3D を読み込めないため、一覧で表示しています（' + e.message + '）'));
     }).catch((e) => {
       const b = $('ml-banner');

@@ -34,11 +34,17 @@
   function damp(cur, target, k, dt) { return cur + (target - cur) * (1 - Math.exp(-k * dt)); }
   function color(c) { return c instanceof T.Color ? c.clone() : new T.Color(c); }
 
+  // matPool があるあいだ(sigil の組み立て中)は、同じ色・同じ濃さの材質を 1 つにまとめる
+  var matPool = null;
   function basic(col, opacity) {
-    return new T.MeshBasicMaterial({
-      color: color(col), transparent: true, opacity: opacity == null ? 1 : opacity,
+    var c = color(col), op = opacity == null ? 1 : opacity, key = c.getHexString() + ':' + op;
+    if (matPool && matPool[key]) return matPool[key];
+    var m = new T.MeshBasicMaterial({
+      color: c, transparent: true, opacity: op,
       depthWrite: false, side: T.DoubleSide, blending: T.AdditiveBlending,
     });
+    if (matPool) matPool[key] = m;
+    return m;
   }
 
   // ---------------------------------------------------------------- テクスチャ
@@ -82,6 +88,8 @@
     }
     var tex = new T.CanvasTexture(c);
     tex.anisotropy = 4;
+    // GPU へ送った後は 1024 四方のキャンバス(約 4MB)を持っておく必要がないので縮めて手放す（描き直すことはない）
+    tex.onUpdate = function () { c.width = c.height = 1; tex.onUpdate = null; };
     return tex;
   }
   // 記号1文字分：縦棒・横棒・小円・三角・点の組み合わせ（文字体系ではない、ただの図形）
@@ -99,14 +107,36 @@
   }
 
   // ---------------------------------------------------------------- 部品
-  function ring(r, width, col, opacity, start, len, seg) {
-    var g = new T.RingGeometry(r - width / 2, r + width / 2, seg || 96, 1, start || 0, len == null ? Math.PI * 2 : len);
-    return new T.Mesh(g, basic(col, opacity));
+  // 形(ジオメトリ)は大きさ 1 のものを使い回し、メッシュの scale で大きさを合わせる（同じ形を何百個も持たない）。
+  // 使い回しの形は userData.shared = true。片付けで dispose しないこと（isShared で見分ける）
+  var geoCache = {};
+  function sharedGeo(key, make) {
+    var g = geoCache[key];
+    if (!g) { g = geoCache[key] = make(); g.userData.shared = true; }
+    return g;
   }
-  function disc(r, col, opacity) { return new T.Mesh(new T.CircleGeometry(r, 48), basic(col, opacity)); }
+  function isShared(o) { return !!(o && o.userData && o.userData.shared); }
+  function unitCircle(seg) { return sharedGeo('circle' + (seg || 48), function () { return new T.CircleGeometry(1, seg || 48); }); }
+  var unitPlane = function () { return sharedGeo('plane', function () { return new T.PlaneGeometry(1, 1); }); };
+  // 輪は外径で割った形(内径の比・弧の長さ・分割数)で使い回す。弧の始まりはメッシュの回転で付ける
+  function ring(r, width, col, opacity, start, len, seg) {
+    var out = r + width / 2, inn = Math.max(0, (r - width / 2) / out);
+    var L = len == null ? Math.PI * 2 : len, n = seg || 96;
+    var key = 'ring' + inn.toFixed(4) + ':' + L.toFixed(4) + ':' + n;
+    var m = new T.Mesh(sharedGeo(key, function () { return new T.RingGeometry(inn, 1, n, 1, 0, L); }), basic(col, opacity));
+    m.scale.set(out, out, 1);
+    m.rotation.z = start || 0;
+    return m;
+  }
+  function disc(r, col, opacity) {
+    var m = new T.Mesh(unitCircle(48), basic(col, opacity));
+    m.scale.set(r, r, 1);
+    return m;
+  }
   function bar(x1, y1, x2, y2, width, col, opacity) {
     var dx = x2 - x1, dy = y2 - y1, len = Math.sqrt(dx * dx + dy * dy);
-    var m = new T.Mesh(new T.PlaneGeometry(len, width), basic(col, opacity));
+    var m = new T.Mesh(unitPlane(), basic(col, opacity));
+    m.scale.set(len, width, 1);
     m.position.set((x1 + x2) / 2, (y1 + y2) / 2, 0);
     m.rotation.z = Math.atan2(dy, dx);
     return m;
@@ -132,7 +162,13 @@
     o = o || {};
     var R = rng(seed), r = o.radius || 1, col = color(o.color || '#ff5fd2');
     var g = new T.Group(), spin = [], mats = [];
-    function add(m, parent) { (parent || g).add(m); mats.push(m.material); m.material.userData.base = m.material.opacity; return m; }
+    // 材質は同じ色・濃さどうしで共有(setOpacity は魔法陣 1 つ分まとめて変えるので共有しても同じ見た目)
+    function add(m, parent) {
+      (parent || g).add(m);
+      if (mats.indexOf(m.material) < 0) { mats.push(m.material); m.material.userData.base = m.material.opacity; }
+      return m;
+    }
+    matPool = {};
     var lw = r * 0.022;
 
     // 外側の二重円
@@ -197,6 +233,7 @@
     add(ring(r * 0.27, lw * 1.3, col, 0.95));
     add(disc(r * 0.13, col.clone().lerp(new T.Color('#ffffff'), 0.55), 0.95));
 
+    matPool = null;
     g.userData.spin = spin;
     g.userData.mats = mats;
     return g;
@@ -377,8 +414,11 @@
   function stage(container, o) {
     o = o || {};
     var renderer;
+    // 光のにじみ(bloom)を使うときは、絵は別のバッファに描いてから画面へ写すだけなので、
+    // 画面側のなめらか処理(4 倍の大きさのバッファ)と奥行きのバッファは使われない → 作らない（見た目は同じでメモリが減る）
+    var useComposer = o.bloom !== false && !!(T.EffectComposer && T.UnrealBloomPass);
     try {
-      renderer = new T.WebGLRenderer({ antialias: true, alpha: false, powerPreference: 'high-performance' });
+      renderer = new T.WebGLRenderer({ antialias: !useComposer, depth: !useComposer, stencil: false, alpha: false, powerPreference: 'high-performance' });
     } catch (e) { return null; }
     if (!renderer.getContext()) return null;
     renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
@@ -387,11 +427,17 @@
     var scene = new T.Scene();
     var camera = new T.PerspectiveCamera(o.fov || 45, 1, 0.1, 500);
     var composer = null, bloom = null;
-    if (o.bloom !== false && T.EffectComposer && T.UnrealBloomPass) {
+    if (useComposer) {
       composer = new T.EffectComposer(renderer);
       composer.addPass(new T.RenderPass(scene, camera));
       bloom = new T.UnrealBloomPass(new T.Vector2(256, 256), o.bloomStrength || 1.15, o.bloomRadius || 0.55, o.bloomThreshold == null ? 0.12 : o.bloomThreshold);
       composer.addPass(bloom);
+      // 場面を描くバッファ(readBuffer。RenderPass もにじみも入れ替えをしないのでずっと同じ)だけは奥行きが要る
+      // (結晶の線が奥行きで後ろの光を隠している)。残り(使われない writeBuffer と、にじみ用の画面全体の板を描くだけのバッファ)の
+      // 奥行きは作らない。GPU 側の確保は初めて描くときなので、その前に外せば確保されない（大きさを変えても引き継がれる）
+      [composer.writeBuffer, bloom.renderTargetBright]
+        .concat(bloom.renderTargetsHorizontal || [], bloom.renderTargetsVertical || [])
+        .forEach(function (rt) { if (rt) rt.depthBuffer = false; });
     }
     var st = { renderer: renderer, scene: scene, camera: camera, composer: composer, bloom: bloom, w: 1, h: 1 };
     st.size = function () {
@@ -429,7 +475,7 @@
   window.Magic = {
     hash: hash, rng: rng, ease: ease, damp: damp, clamp01: clamp01, esc: esc,
     glowTexture: glowTexture, glyphRingTexture: glyphRingTexture,
-    ring: ring, disc: disc, bar: bar, glow: glow, sigil: sigil, crystal: crystal,
+    ring: ring, disc: disc, bar: bar, unitCircle: unitCircle, isShared: isShared, glow: glow, sigil: sigil, crystal: crystal,
     setOpacity: setOpacity, tickSpin: tickSpin, stars: stars, smoke: smoke,
     octi: octi, ribbon: ribbon, Path: Path, Flow: Flow, Labels: Labels, stage: stage, leaveTo: leaveTo,
   };
