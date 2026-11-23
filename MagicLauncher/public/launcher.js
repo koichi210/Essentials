@@ -759,6 +759,7 @@
 
     // ---------------------------------------------------------------- 組み立て
     function clearBoard() {
+      dropCarry();
       circles.forEach((C) => C.flow.clear());
       board.traverse((o) => {
         if (o.geometry && !o.isSprite) o.geometry.dispose();
@@ -1240,14 +1241,118 @@
       if (t.type === 'hub' || t.type === 'area') return t.circle.hubLabel.el;
       return null;
     }
+    // ドラッグ中は、持ち上げた物を「光の玉」にしてカーソルに付けて運ぶ。元の場所は玉が外れた穴になる。
+    // carry は離した後も、玉が戻る(または相手へ飛び込む)動きが終わるまで残る
+    let carry = null;
+    function srcColor(src) { return src.type === 'hub' ? src.circle.color : src.tag.color; }
+    function liftOf(o) { return carry && carry.obj === o ? carry.k : 0; }
+    // 物の中心の画面座標と半径(px)
+    function screenOf(t) {
+      const g = t.circle.group;
+      const [x, y] = t.type === 'hub' || t.type === 'area' ? [0, 0] : t.pos;
+      const r = t.type === 'item' ? t.R : t.type === 'tag' ? 0.45 : HUB_R;
+      const a = g.localToWorld(new T.Vector3(x, y, 0)).project(camera), b = g.localToWorld(new T.Vector3(x + r, y, 0)).project(camera);
+      const sx = (a.x * 0.5 + 0.5) * st.w, sy = (-a.y * 0.5 + 0.5) * st.h;
+      return { x: sx, y: sy, r: Math.hypot((b.x * 0.5 + 0.5) * st.w - sx, (-b.y * 0.5 + 0.5) * st.h - sy) };
+    }
+    // 穴: 黒い円＋縁の光の輪＋内側の切れ切れの輪（玉がはまっていた台座のように）
+    function makeHole(src) {
+      const r = src.type === 'item' ? src.R : src.type === 'tag' ? 0.55 : HUB_R;
+      const col = new T.Color(srcColor(src));
+      const h = new T.Group();
+      const pit = new T.Mesh(new T.CircleGeometry(r * 0.98, 48), new T.MeshBasicMaterial({ color: '#000000', transparent: true, opacity: 0, depthWrite: false }));
+      pit.renderOrder = 2;
+      h.add(pit);
+      const rim = M.ring(r, Math.max(0.04, r * 0.05), col, 0);
+      const inner = new T.Group();
+      for (let i = 0; i < 8; i++) inner.add(M.ring(r * 0.74, Math.max(0.025, r * 0.03), col, 0, i * Math.PI / 4 + 0.12, Math.PI / 4 - 0.24, 12));
+      const shine = M.glow(col, r * 3.2, 0);
+      shine.position.z = -0.06;
+      h.add(rim, inner, shine);
+      [rim, inner].forEach((o) => order(o, 3));
+      const [x, y] = src.type === 'hub' ? [0, 0] : src.pos;
+      h.position.set(x, y, 0.03);
+      src.circle.group.add(h);
+      h.userData = { pit, rim, inner, shine };
+      return h;
+    }
+    function setHole(h, k) {
+      const u = h.userData;
+      u.pit.material.opacity = 0.92 * k;
+      u.rim.material.opacity = (0.55 + 0.2 * Math.sin(time * 3)) * k;
+      u.inner.children.forEach((m) => { m.material.opacity = 0.28 * k; });
+      u.inner.rotation.z = -time * 0.4;
+      u.shine.material.opacity = 0.2 * k;
+    }
+    function dropCarry() {
+      if (!carry) return;
+      if (carry.orb) carry.orb.remove();
+      if (carry.hole.parent) carry.hole.parent.remove(carry.hole);
+      carry.hole.traverse((o) => { if (o.geometry) o.geometry.dispose(); if (o.material) o.material.dispose(); });
+      carry = null;
+    }
     function startDrag(src) {
-      const g = el('div', 'ml-ghost');
-      if (src.type === 'item') { setC(g, src.tag.color); g.innerHTML = esc(src.it.emoji + ' ' + src.it.name) + '<small>同じ先頭タグの円に重ねて入れ替え</small>'; }
-      else if (src.type === 'tag') { setC(g, src.tag.color); g.innerHTML = '#' + esc(src.tag.label) + '<small>タグに重ねて入れ替え／別の魔法陣の空き所へ移す</small>'; }
-      else { setC(g, src.circle.color); g.innerHTML = esc(src.circle.name) + '<small>別の魔法陣の中心に重ねて並びを入れ替え</small>'; }
-      document.body.appendChild(g);
-      drag = { src, ghost: g, drop: null, hl: null };
+      dropCarry();
+      const orb = setC(el('div', 'ml-orb'), srcColor(src));
+      const cap = src.type === 'item' ? [esc(src.it.name), '同じ先頭タグの円に重ねて入れ替え']
+        : src.type === 'tag' ? ['#' + esc(src.tag.label), 'タグに重ねて入れ替え／別の魔法陣の空き所へ移す']
+          : [esc(src.circle.name), '別の魔法陣の中心に重ねて並びを入れ替え'];
+      orb.innerHTML = '<i class="ball">' + (src.type === 'item' && src.it.emoji ? esc(src.it.emoji) : '') + '</i>'
+        + '<span class="cap">' + cap[0] + '<small>' + cap[1] + '</small></span>';
+      const p = screenOf(src);
+      orb.style.left = p.x + 'px';
+      orb.style.top = p.y + 'px';
+      document.body.appendChild(orb);
+      carry = { src, obj: src.type === 'hub' ? src.circle : src, hole: makeHole(src), orb, k: 0, held: true, anim: null, lastX: p.x, lastY: p.y };
+      drag = { src, drop: null, hl: null };
       if (hover) { hover.nameLabel.el.classList.remove('on'); hover = null; }
+    }
+    // 玉の通った跡に光の粒を残す
+    function sparkle(x, y) {
+      const s = setC(el('div', 'ml-spark'), srcColor(carry.src));
+      s.style.left = x + (Math.random() - 0.5) * 10 + 'px';
+      s.style.top = y + (Math.random() - 0.5) * 10 + 'px';
+      s.style.setProperty('--dx', (Math.random() - 0.5) * 30 + 'px');
+      s.style.setProperty('--dy', (Math.random() * 18 + 6) + 'px');
+      s.addEventListener('animationend', () => s.remove());
+      document.body.appendChild(s);
+    }
+    // 取り消し: 玉が元の穴へ戻ってはまる(穴の位置は毎フレーム取り直す)
+    function returnOrb() {
+      const r = carry.orb.getBoundingClientRect();
+      carry.anim = { fx: r.left + r.width / 2, fy: r.top + r.height / 2, t: 0 };
+      carry.orb.classList.add('flying');
+    }
+    // 入れ替え: 玉は相手へ飛び込んではじける。保存後の作り直しで carry が消えても最後まで見せるので、carry から切り離して CSS で動かす
+    function burstOrb(to) {
+      const orb = carry.orb;
+      carry.orb = null;
+      orb.classList.add('flying');
+      orb.style.transition = 'left .2s ease-in, top .2s ease-in';
+      void orb.offsetWidth;
+      orb.style.left = to.x + 'px';
+      orb.style.top = to.y + 'px';
+      setTimeout(() => orb.classList.add('burst'), 200);
+      setTimeout(() => orb.remove(), 650);
+    }
+    function tickCarry(dt) {
+      if (!carry) return;
+      carry.k = M.damp(carry.k, carry.held ? 1 : 0, 14, dt);
+      setHole(carry.hole, carry.k);
+      const a = carry.anim;
+      if (a) {
+        a.t = Math.min(1, a.t + dt / 0.3);
+        const e = M.ease(a.t);
+        const to = screenOf(carry.src);
+        carry.orb.style.left = a.fx + (to.x - a.fx) * e + 'px';
+        carry.orb.style.top = a.fy + (to.y - a.fy) * e + 'px';
+        if (a.t >= 1) {
+          carry.anim = null;
+          carry.orb.classList.add('gone');
+          carry.held = false;
+        }
+      }
+      if (!carry.held && !carry.anim && carry.k < 0.02) dropCarry();
     }
     function dropFor(src, t) {
       if (!t) return null;
@@ -1261,8 +1366,15 @@
       return null;
     }
     function moveDrag(e) {
-      drag.ghost.style.left = e.clientX + 'px';
-      drag.ghost.style.top = e.clientY + 'px';
+      if (carry && !carry.anim) {
+        carry.orb.style.left = e.clientX + 'px';
+        carry.orb.style.top = e.clientY + 'px';
+        if (Math.hypot(e.clientX - carry.lastX, e.clientY - carry.lastY) > 9) {
+          sparkle(e.clientX, e.clientY);
+          carry.lastX = e.clientX;
+          carry.lastY = e.clientY;
+        }
+      }
       const d = dropFor(drag.src, targetAt(e.clientX, e.clientY));
       const hl = d ? labelOf(d.t) : null;
       if (hl !== drag.hl) {
@@ -1270,18 +1382,29 @@
         if (hl) hl.classList.add('ml-drop-target');
         drag.hl = hl;
       }
+      if (carry) carry.orb.classList.toggle('ok', !!d);
       drag.drop = d;
     }
-    function endDrag() {
+    // ok = 入れ替え先へ落とした: 玉は相手へ飛び込んではじけ、穴は作り直しまでそのまま。
+    // それ以外(取り消し): 玉は元の穴へ戻ってはまる
+    function endDrag(ok) {
       if (!drag) return;
       if (drag.hl) drag.hl.classList.remove('ml-drop-target');
-      drag.ghost.remove();
+      const d = drag.drop;
       drag = null;
+      if (!carry || !carry.orb) return;
+      if (ok && d) {
+        burstOrb(screenOf(d.t));
+        const c = carry;
+        setTimeout(() => { if (carry === c) c.held = false; }, 2500); // 保存に失敗して作り直しが来なくても穴は閉じる
+      } else {
+        returnOrb();
+      }
     }
-    function cancelDrag() { endDrag(); press = null; controls.enabled = true; flushPending(); }
+    function cancelDrag() { endDrag(false); press = null; controls.enabled = true; flushPending(); }
     function finishDrag() {
       const src = drag.src, d = drag.drop;
-      endDrag();
+      endDrag(true);
       if (!d) return; // 何もない所で離すと取り消し
       if (d.kind === 'items') mutate('/api/items/swap', { a: src.it.id, b: d.t.it.id }).catch(() => {});
       else if (d.kind === 'tags') mutate('/api/tags/swap', { a: src.tag.name, b: d.t.tag.name }).catch(() => {});
@@ -1525,6 +1648,7 @@
       if (starField) starField.rotation.z += dt * 0.003;
 
       updateIdle(Math.min(raw, 0.3), now); // 回る速さ・戻る 1 秒は実時間で（重い端末でも長引かない）
+      tickCarry(Math.min(raw, 0.05));
       const active = filterActive();
       const crossHidden = idle.blend > 0;
 
@@ -1535,9 +1659,17 @@
         M.tickSpin(C.hub, dt);
         M.tickSpin(C.core, dt);
         const ah = M.ease((time - appearStart - 0.05) / 0.8);
-        C.hub.scale.setScalar(0.4 + 0.6 * ah);
-        M.setOpacity(C.hub, ah);
-        C.hubGlyph.material.opacity = 0.5 * ah;
+        const lift = liftOf(C); // 中心を持ち上げている間は、中心の魔法陣と結晶が抜けて穴になる
+        C.hub.scale.setScalar((0.4 + 0.6 * ah) * (1 - 0.85 * lift));
+        M.setOpacity(C.hub, ah * (1 - lift));
+        C.hubGlyph.material.opacity = 0.5 * ah * (1 - lift);
+        C.core.scale.setScalar(1 - 0.9 * lift);
+        C.core.visible = lift < 0.95;
+      });
+      tagNodes.forEach((tn) => {
+        const lift = liftOf(tn);
+        tn.junction.scale.setScalar(1 - 0.9 * lift);
+        tn.junction.visible = lift < 0.95;
       });
       const traceIn = M.ease((time - appearStart - 0.25) / 0.9);
 
@@ -1547,11 +1679,13 @@
         n.hover = M.damp(n.hover, on ? 1 : 0, 10, dt);
         const m = !active || S.match[n.it.id];
         n.dim = M.damp(n.dim, m ? 1 : 0.18, 8, dt); // 合わない円は暗く
-        n.sigil.scale.setScalar((0.3 + 0.7 * n.appear) * (1 + 0.14 * n.hover));
+        const lift = liftOf(n); // 持ち上げている間は円が抜けて穴になる
+        n.sigil.scale.setScalar((0.3 + 0.7 * n.appear) * (1 + 0.14 * n.hover) * (1 - 0.85 * lift));
+        n.sigil.visible = lift < 0.95;
         M.tickSpin(n.sigil, dt * (1 + n.hover * 2.5));
-        M.setOpacity(n.sigil, n.appear * n.dim * (0.85 + 0.15 * n.hover + 0.08 * Math.sin(time * 1.4 + n.delay * 9)));
-        n.halo.material.opacity = (0.06 + 0.45 * n.hover) * n.appear * n.dim; // ホバーで円が光る
-        n.stream.on = n.appear > 0.5 && m;
+        M.setOpacity(n.sigil, n.appear * n.dim * (1 - lift) * (0.85 + 0.15 * n.hover + 0.08 * Math.sin(time * 1.4 + n.delay * 9)));
+        n.halo.material.opacity = (0.06 + 0.45 * n.hover) * n.appear * n.dim * (1 - lift); // ホバーで円が光る
+        n.stream.on = n.appear > 0.5 && m && lift < 0.5;
         n.hot.on = on;
         const op = Math.round(Math.min(1, n.appear * 1.2) * (0.28 + 0.72 * n.dim) * 50) / 50;
         if (op !== n.nameLabel.op) { n.nameLabel.op = op; n.nameLabel.el.style.opacity = op; }
@@ -1589,6 +1723,11 @@
 
     return {
       build, onFilter, home: () => home(false), cancelDrag, isDragging: () => !!drag,
+      // 確認用: 円・タグの分岐点・中心の画面座標と、運んでいる玉の状態
+      where: () => ({ items: nodes.map((n) => Object.assign({ name: n.it.name, tag: n.tag.name }, screenOf(n))),
+        tags: tagNodes.map((tn) => Object.assign({ name: tn.tag.name }, screenOf(tn))),
+        hubs: circles.map((C) => Object.assign({ name: C.name }, screenOf(C.hubRef))),
+        carry: carry ? { k: carry.k, held: carry.held, anim: !!carry.anim, src: carry.src.type } : null }),
       debug: () => ({ circles: circles.map((C) => ({ name: C.name, x: C.group.position.x, y: C.group.position.y, sc: C.sc, frameR: C.frameR })),
         nodes: nodes.length, tags: tagNodes.length, secLines: secLines.length, idle: { on: idle.on, blend: idle.blend, mode: idle.mode, theta: board.rotation.z },
         why: { mouseOut, outFor: performance.now() - mouseOutAt, keyAgo: performance.now() - lastKey, press: !!press, drag: !!drag, filter: filterActive(), modal: S.modal },
@@ -1693,7 +1832,7 @@
         S.mode = '3d';
         scene3d.build(S.view);
         scene3d.onFilter(false);
-        window.__magicLauncher = { debug: scene3d.debug, state: () => S };
+        window.__magicLauncher = { debug: scene3d.debug, where: scene3d.where, state: () => S };
       }).catch((e) => startList('3D を読み込めないため、一覧で表示しています（' + e.message + '）'));
     }).catch((e) => {
       const b = $('ml-banner');
