@@ -462,8 +462,10 @@
     $('f-path').addEventListener('blur', () => { $('f-path').value = stripQuotes($('f-path').value); onPathChange(); });
     $('f-path').addEventListener('paste', () => setTimeout(() => { $('f-path').value = stripQuotes($('f-path').value); onPathChange(); }, 0));
     $('f-name').addEventListener('keydown', (e) => {
-      // 名前が空欄のときにスペースを押すと、透かし文字（パスから作った名前）が入る
-      if (e.key === ' ' && !e.isComposing && $('f-name').value === '' && $('f-name').placeholder && derivedName($('f-path').value)) {
+      // 名前が空欄のときにスペースか Tab を押すと、透かし文字（パスから作った名前）が入る。
+      // Tab はその場に留まる(入ったら次の Tab でいつもどおり次の欄へ)。Shift+Tab は戻るだけ
+      const fill = e.key === ' ' || (e.key === 'Tab' && !e.shiftKey);
+      if (fill && !e.isComposing && $('f-name').value === '' && $('f-name').placeholder && derivedName($('f-path').value)) {
         e.preventDefault();
         $('f-name').value = derivedName($('f-path').value);
       }
