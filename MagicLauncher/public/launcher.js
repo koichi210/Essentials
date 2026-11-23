@@ -1284,8 +1284,9 @@
 
     function idleWanted(now) {
       const mode = S.state ? S.state.idle : 'off';
+      // タグを選んで寄っている（絞り込み中）ときも、マウスが外れたら動き出す
       return mode !== 'off' && mouseOut && now - mouseOutAt > 1000 && now - lastKey > 1000 &&
-        !filterActive() && !S.modal && !drag && !press && circles.length > 0;
+        !S.modal && !drag && !press && circles.length > 0;
     }
     function homeHalf() {
       const h = fitBox(layoutBox, 1.04);
