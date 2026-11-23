@@ -689,7 +689,7 @@
     let fly = null, atHome = true;
     let time = 0;
     let measureAll = true;
-    let lastFs = -1, lastFar = null, lastSmall = null;
+    let lastFs = -1, lastFar = null, lastSmall = null, labelsFrozen = false;
 
     function v3(x, y) { return new T.Vector3(x, y, 0); }
     function order(obj, n) { obj.traverse((o) => { o.renderOrder = n; }); }
@@ -1433,6 +1433,16 @@
         measureAll = true;
       }
       const W = st.w, H = st.h;
+      // 待機で動いている間は、止まっていたときの「重ならないよう下へずらした量」をそのまま使い、
+      // 重なりの計算をしない（毎フレーム計算すると、重なる瞬間に札が飛び跳ねてチラつく）。
+      // ずらした量は札の高さに対する割合で持つ（動きながら文字の大きさが変わっても同じ見た目）
+      const frozen = idle.on || idle.blend > 0;
+      if (frozen && !labelsFrozen) {
+        labels.forEach((l) => { l.off = l.top == null || !l.h ? 0 : (l.top - l.y) / l.h; });
+        labelsFrozen = true;
+      } else if (!frozen) {
+        labelsFrozen = false;
+      }
       labels.forEach((l) => {
         l.anchor.getWorldPosition(wp);
         wp.project(camera);
@@ -1447,7 +1457,8 @@
       // 名前どうしが重なったら、下の方を重ならない所まで下へずらす（中心の名前は動かない側）
       const placed = [];
       const flowL = [];
-      labels.forEach((l) => {
+      if (frozen) labels.forEach((l) => { if (!l.center) l.top = l.y + (l.off || 0) * l.h; });
+      else labels.forEach((l) => {
         if (!l.vis || l.center) return;
         if (l.kind === 'name' && far) return;
         if (l.fixed) { l.top = l.y; placed.push([l.x - l.w / 2, l.y, l.x + l.w / 2, l.y + l.h]); } else flowL.push(l);
