@@ -865,16 +865,21 @@
       tags.forEach((tv) => {
         const start = Math.PI / 2 - (used - w0 / 2) * unit;
         used += tv._w + GAP;
+        // 内→外のジグザグだけだと奇数個のとき左右対称になり「虫の脚」に見えるので、
+        // 項目ごとの乱数(id 固定なので毎回同じ)で角度と距離を少しずらし、枝の曲がる順も散らす
+        const phase = M.rng(tv.name + '#phase')() < 0.5 ? 0 : 1;
         tv.items.forEach((it, i) => {
-          const a = start - (i + 0.5) * unit;
-          const dist = ring0 + (i % rings) * RING_STEP;
-          itemPos.set(it, { dist, P: [Math.cos(a) * dist, Math.sin(a) * dist] });
+          const r = M.rng(it.id + '#place');
+          const a = start - (i + 0.5 + (r() - 0.5) * 0.45) * unit;
+          const dist = ring0 + ((i + phase) % rings) * RING_STEP + (r() - 0.5) * 0.7;
+          itemPos.set(it, { dist, P: [Math.cos(a) * dist, Math.sin(a) * dist], straightFirst: r() < 0.5 });
         });
       });
       used = 0;
       tags.forEach((tv, ti) => {
         // 最初のタグの真ん中を真上に置き、時計回りに並べる
-        const mid = Math.PI / 2 - (used + tv._w / 2 - w0 / 2) * unit;
+        const mid0 = Math.PI / 2 - (used + tv._w / 2 - w0 / 2) * unit;
+        const mid = mid0 + (M.rng(tv.name + '#junc')() - 0.5) * Math.min(0.5, tv._w * 0.3) * unit; // 分岐点も扇の真ん中から少しずらす
         const crowded = (tv._w + GAP) * unit * juncR < 1.7; // 混んでいるときは 1 つおきに内側へ
         used += tv._w + GAP;
         const jr = juncR - (crowded && ti % 2 === 1 ? 1.0 : 0);
@@ -902,7 +907,7 @@
         tagByName[tv.name] = tn;
 
         tv.items.forEach((it, i) => {
-          const { dist, P } = itemPos.get(it);
+          const { dist, P, straightFirst } = itemPos.get(it);
           const R = 0.85 + M.rng(it.id + '-size')() * 0.3;
           const s = M.sigil(it.id, { radius: R, color: tcol, lite: many });
           s.position.set(P[0], P[1], 0.02);
@@ -915,7 +920,7 @@
           g.add(halo);
           const avoid = [];
           itemPos.forEach((o, other) => { if (other !== it) avoid.push(o.P); });
-          const route = branchRoute(J, P, i % 2 === 1, avoid).map((p) => v3(p[0], p[1])); // 枝: 八方向の折れ線（交互に曲がる順を変える）
+          const route = branchRoute(J, P, straightFirst, avoid).map((p) => v3(p[0], p[1])); // 枝: 八方向の折れ線（曲がる順は項目ごとの乱数）
           const branch = addTrace(C, route, tcol, 0.5, 0.06, { tag: tv.name, item: it.id });
           const path = new M.Path([trunkPts[0]].concat(route));
           const stream = C.flow.add(path, tcol, { count: many ? 1 : 2, speed: 2.4 + M.rng(it.id + '-sp')(), size: 0.42 });
