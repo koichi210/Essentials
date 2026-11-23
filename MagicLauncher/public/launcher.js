@@ -683,7 +683,7 @@
     let fly = null, atHome = true;
     let time = 0;
     let measureAll = true;
-    let lastFs = -1, lastFar = null;
+    let lastFs = -1, lastFar = null, lastSmall = null;
 
     function v3(x, y) { return new T.Vector3(x, y, 0); }
     function order(obj, n) { obj.traverse((o) => { o.renderOrder = n; }); }
@@ -1398,8 +1398,10 @@
     function updateLabels() {
       const dist = camera.position.distanceTo(controls.target);
       const ppu = st.h / (2 * dist * TAN); // 1 目盛り（ワールド 1）あたりの px
-      const far = ppu < 14; // 引きすぎたら名前を隠して絵文字だけ
+      const far = ppu < 5; // 全体表示でも名前は出す。豆粒ほど引いたときだけ隠して絵文字だけ
       if (far !== lastFar) { labelsRoot.classList.toggle('far', far); lastFar = far; measureAll = true; }
+      const small = ppu < 14; // 引きの表示では名前の札を細く短く
+      if (small !== lastSmall) { labelsRoot.classList.toggle('small', small); lastSmall = small; measureAll = true; }
       const fs = Math.round(clamp(ppu * 0.42, 10, 26) * 2) / 2; // 寄ると魔法陣と同じ割合で文字も大きく
       if (fs !== lastFs) {
         lastFs = fs;

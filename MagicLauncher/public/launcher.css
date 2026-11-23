@@ -139,6 +139,7 @@ body.lite .ml-hint, body.no-webgl .ml-hint { display: none; }
 .ml-labels { position: absolute; inset: 0; pointer-events: none; overflow: hidden; z-index: 2; }
 .ml-labels > * { position: absolute; left: 0; top: 0; pointer-events: auto; will-change: transform; user-select: none; }
 .ml-labels.far .ml-name { display: none; }
+.ml-labels.small .ml-name { max-width: 10em; padding: 0 5px; border-radius: 4px; line-height: 1.35; }
 .ml-name {
   display: inline-flex; align-items: center; gap: 4px; max-width: 16em;
   padding: 1px 8px; border-radius: 6px; white-space: nowrap; cursor: pointer;
