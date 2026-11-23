@@ -1616,7 +1616,8 @@
         if (l.kind === 'name' && far) return; // 引きの表示では名前は CSS で隠れている（位置は計算しない）
         const x = l.x - l.w / 2;
         const y = l.center ? l.y - l.h / 2 : (l.top == null ? l.y : l.top);
-        l.el.style.transform = 'translate(' + x.toFixed(1) + 'px,' + y.toFixed(1) + 'px)';
+        const tf = 'translate(' + x.toFixed(1) + 'px,' + y.toFixed(1) + 'px)';
+        if (tf !== l.tf) { l.tf = tf; l.el.style.transform = tf; } // 同じ位置なら書かない(スタイルの再計算とゴミを減らす)
       });
     }
 
@@ -1734,9 +1735,14 @@
       // 確認用: 描画の部品数と GPU に載せた形・画像の数
       mem: () => {
         let objs = 0, draws = 0;
-        const geos = new Set(), mats = new Set();
-        scene.traverse((o) => { objs++; if (o.geometry) geos.add(o.geometry); if (o.material) { mats.add(o.material); if (o.visible) draws++; } });
-        return Object.assign({ objs, draws, geos: geos.size, mats: mats.size }, st.renderer.info.memory);
+        const geos = new Set(), mats = new Set(), byKind = {};
+        const kindOf = (o) => { for (let p = o; p; p = p.parent) if (p.userData.spin) return 'sigil'; return o.type; };
+        scene.traverse((o) => {
+          objs++;
+          if (o.geometry) geos.add(o.geometry);
+          if (o.material) { mats.add(o.material); if (o.visible) { draws++; const k = kindOf(o); byKind[k] = (byKind[k] || 0) + 1; } }
+        });
+        return Object.assign({ objs, draws, byKind, geos: geos.size, mats: mats.size, calls: st.renderer.info.render.calls }, st.renderer.info.memory);
       },
       where: () => ({ items: nodes.map((n) => Object.assign({ name: n.it.name, tag: n.tag.name }, screenOf(n))),
         tags: tagNodes.map((tn) => Object.assign({ name: tn.tag.name }, screenOf(tn))),

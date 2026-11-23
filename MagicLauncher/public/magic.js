@@ -234,10 +234,48 @@
     add(disc(r * 0.13, col.clone().lerp(new T.Color('#ffffff'), 0.55), 0.95));
 
     matPool = null;
+    // 部品(数十個)を、回る単位(本体・弧・目盛り・記号)ごとに 1 つのメッシュへまとめる。
+    // 描く回数が 1/10 ほどになり、three.js が 1 回描くたびに出す細かいゴミと CPU が減る。
+    // 色×濃さは頂点の色に焼き込み、材質の濃さは setOpacity の倍率だけにする。
+    // 足し算の重ね方(AdditiveBlending)なので、部品を描く順が変わっても見た目は同じ
+    var merged = new T.MeshBasicMaterial({
+      color: 0xffffff, vertexColors: true, transparent: true, opacity: 1,
+      depthWrite: false, side: T.DoubleSide, blending: T.AdditiveBlending,
+    });
+    merged.userData.base = 1;
+    [g].concat(spin.map(function (s) { return s.obj; })).forEach(function (c) { mergeParts(c, merged); });
     g.userData.spin = spin;
-    g.userData.mats = mats;
+    g.userData.mats = [merged];
     return g;
   }
+  var _mv = null;
+  function mergeParts(container, mat) {
+    var parts = container.children.filter(function (c) { return c.isMesh; });
+    if (!parts.length) return;
+    _mv = _mv || new T.Vector3();
+    var pos = [], col = [], idx = [], base = 0;
+    parts.forEach(function (m) {
+      m.updateMatrix();
+      var geo = m.geometry, p = geo.attributes.position, c = m.material.color, o = m.material.opacity, i;
+      for (i = 0; i < p.count; i++) {
+        _mv.fromBufferAttribute(p, i).applyMatrix4(m.matrix);
+        pos.push(_mv.x, _mv.y, _mv.z);
+        col.push(c.r * o, c.g * o, c.b * o);
+      }
+      if (geo.index) for (i = 0; i < geo.index.count; i++) idx.push(geo.index.getX(i) + base);
+      else for (i = 0; i < p.count; i++) idx.push(i + base);
+      base += p.count;
+      container.remove(m);
+    });
+    var geo = new T.BufferGeometry();
+    geo.setAttribute('position', new T.Float32BufferAttribute(pos, 3));
+    geo.setAttribute('color', new T.Float32BufferAttribute(col, 3));
+    geo.setIndex(base > 65535 ? new T.Uint32BufferAttribute(idx, 1) : new T.Uint16BufferAttribute(idx, 1));
+    geo.computeBoundingSphere(); // 画面外の判定用。GPU へ送った後は JS 側の配列を手放す(当たり判定は別の円で取っている)
+    [geo.attributes.position, geo.attributes.color, geo.index].forEach(function (a) { a.onUpload(dropArray); });
+    container.add(new T.Mesh(geo, mat));
+  }
+  function dropArray() { this.array = null; }
 
   // 結晶（中核）: 外側ワイヤーの二十面体＋内側の面
   function crystal(col, size) {
