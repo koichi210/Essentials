@@ -925,14 +925,12 @@
           const hit = hitMesh(R * 1.15, node);
           hit.position.set(P[0], P[1], 0.05);
           g.add(hit);
+          // 円の上には何も載せず魔法陣の図柄を見せる。絵文字は名前の札の頭に（stable のトップと同じ）
           const missing = it.kind === 'missing';
-          const em = setC(el('div', 'ml-emoji' + (missing ? ' missing' : '')), tv.color);
-          em.textContent = it.emoji;
-          em.title = it.name + '\n' + it.path;
-          node.emojiLabel = addLabel(em, anchor(g, P[0], P[1]), { ref: node, kind: 'emoji', center: true, R, circle: C });
-          const nm = setC(el('div', 'ml-name' + (missing ? ' missing' : ''), '<span>' + esc(it.name) + '</span>'), tv.color);
+          const nm = setC(el('div', 'ml-name' + (missing ? ' missing' : ''),
+            (it.emoji ? '<i class="e">' + esc(it.emoji) + '</i>' : '') + '<span>' + esc(it.name) + '</span>'), tv.color);
           nm.title = it.path + (it.note ? '\n' + it.note : '') + (missing ? '\n（この PC には見つかりません）' : '');
-          node.nameLabel = addLabel(nm, anchor(g, P[0], P[1] - R - 0.25), { ref: node, kind: 'name', circle: C });
+          node.nameLabel = addLabel(nm, anchor(g, P[0], P[1] - R - 0.45), { ref: node, kind: 'name', circle: C });
           C.nodes.push(node);
           nodes.push(node);
         });
@@ -1207,9 +1205,9 @@
       const n = t && t.type === 'item' ? t : null;
       const tg = t && t.type === 'tag' ? t : null;
       if (n !== hover) {
-        if (hover) { hover.nameLabel.el.classList.remove('on'); hover.emojiLabel.el.classList.remove('on'); }
+        if (hover) { hover.nameLabel.el.classList.remove('on'); }
         hover = n;
-        if (hover) { hover.nameLabel.el.classList.add('on'); hover.emojiLabel.el.classList.add('on'); }
+        if (hover) { hover.nameLabel.el.classList.add('on'); }
       }
       hoverTag = tg;
       canvas.style.cursor = t && (t.type === 'item' || t.type === 'tag' || t.type === 'hub') ? 'pointer' : '';
@@ -1229,7 +1227,7 @@
       else { setC(g, src.circle.color); g.innerHTML = esc(src.circle.name) + '<small>別の魔法陣の中心に重ねて並びを入れ替え</small>'; }
       document.body.appendChild(g);
       drag = { src, ghost: g, drop: null, hl: null };
-      if (hover) { hover.nameLabel.el.classList.remove('on'); hover.emojiLabel.el.classList.remove('on'); hover = null; }
+      if (hover) { hover.nameLabel.el.classList.remove('on'); hover = null; }
     }
     function dropFor(src, t) {
       if (!t) return null;
@@ -1423,14 +1421,9 @@
         l.vis = wp.z < 1 && wp.z > -1;
         l.x = (wp.x * 0.5 + 0.5) * W;
         l.y = (-wp.y * 0.5 + 0.5) * H;
-        if (l.kind === 'emoji') {
-          const px = Math.round(clamp(l.R * (l.circle ? l.circle.sc : 1) * ppu * 0.78, 9, 64));
-          if (px !== l.fsz) { l.fsz = px; l.el.style.fontSize = px + 'px'; }
-          l.w = l.h = px * 1.6;
-        }
       });
       if (measureAll) {
-        labels.forEach((l) => { if (l.kind !== 'emoji') { l.w = l.el.offsetWidth; l.h = l.el.offsetHeight; } });
+        labels.forEach((l) => { l.w = l.el.offsetWidth; l.h = l.el.offsetHeight; });
         measureAll = false;
       }
       // 名前どうしが重なったら、下の方を重ならない所まで下へずらす（中心の名前は動かない側）
@@ -1530,7 +1523,7 @@
         n.stream.on = n.appear > 0.5 && m;
         n.hot.on = on;
         const op = Math.round(Math.min(1, n.appear * 1.2) * (0.28 + 0.72 * n.dim) * 50) / 50;
-        if (op !== n.nameLabel.op) { n.nameLabel.op = op; n.nameLabel.el.style.opacity = op; n.emojiLabel.el.style.opacity = op; }
+        if (op !== n.nameLabel.op) { n.nameLabel.op = op; n.nameLabel.el.style.opacity = op; }
       });
       circles.forEach((C) => C.traces.forEach((tr) => {
         const hot = (hover && (tr.item === hover.it.id || (!tr.item && tr.tag === hover.tag.name))) || (hoverTag && tr.tag === hoverTag.tag.name);

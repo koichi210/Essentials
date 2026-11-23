@@ -150,13 +150,8 @@ body.lite .ml-hint, body.no-webgl .ml-hint { display: none; }
 }
 .ml-name span { overflow: hidden; text-overflow: ellipsis; }
 .ml-name.missing { border-style: dashed; color: #ffd98a; }
-.ml-name.on, .ml-emoji.on + .ml-name { background: color-mix(in srgb, var(--c) 35%, #06102a); box-shadow: 0 0 14px var(--c); }
-.ml-emoji {
-  display: flex; align-items: center; justify-content: center; cursor: pointer;
-  width: 1.6em; height: 1.6em; border-radius: 50%; line-height: 1;
-  background: rgba(6, 16, 40, 0.55); border: 1px solid color-mix(in srgb, var(--c) 55%, transparent);
-}
-.ml-emoji.missing { border-style: dashed; border-color: #ffcf6a; }
+.ml-name.on { background: color-mix(in srgb, var(--c) 35%, #06102a); box-shadow: 0 0 14px var(--c); }
+.ml-name .e { flex: none; font-style: normal; font-size: 1.05em; }
 .ml-tag {
   padding: 0 8px; border-radius: 9px; font-size: var(--fs-tag, 11px); line-height: 1.6; cursor: pointer; white-space: nowrap;
   background: rgba(6, 16, 40, 0.85); border: 1px solid var(--c); color: var(--c); font-weight: 600;
