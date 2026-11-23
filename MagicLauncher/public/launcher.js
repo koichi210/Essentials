@@ -25,7 +25,8 @@
   const RING_STEP = 2.9;
   const HUB_CLEAR = HUB_R * 1.6; // 枝の曲がり角をこれより中心に近づけない(中心の魔法陣の記号の輪の外)
   const AVOID_R = 1.5; // 回り道を選ぶとき、ほかの円の中心からこれより近くを通る道は使わない(円の半径 1.15 + すき間)
-  const OCTI_DIRS = [[1, 0], [0, 1], [1, 1], [1, -1]]; // 八方向の直線の向き(逆向きは同じ直線)
+  const JUNC_CLEAR = 3.9; // 円の中心を分岐点からこれより近づけない(円の半径＋名前の札＋分岐点の輪＋タグ名の札が重ならない)
+  const OCTI_DIRS =[[1, 0], [0, 1], [1, 1], [1, -1]]; // 八方向の直線の向き(逆向きは同じ直線)
   const FLOAT_SCALE = 0.3; // 漂うときの大きさの揺れ幅(×0.7〜×1.3)
   const FRAME_SPIN = 0.05; // 外枠の記号の輪が時計回りに回る速さ(rad/秒。約 2 分で 1 周)
   const CIRCLE_GAP = 1.6; // 魔法陣どうしの間隔
@@ -862,8 +863,15 @@
       const w0 = tags.length ? tags[0]._w : 0;
       // 同じタグの円は扇形の中に並べ、輪を内→外へジグザグに使う(枝の回り道がほかの円を避けられるよう先に全部の位置を決める)
       const itemPos = new Map();
-      tags.forEach((tv) => {
+      const juncs = new Map(); // タグ → { mid, J } 分岐点(円の位置を決める前に、分岐点に近すぎないか見るので先に決める)
+      tags.forEach((tv, ti) => {
         const start = Math.PI / 2 - (used - w0 / 2) * unit;
+        // 最初のタグの真ん中を真上に置き、時計回りに並べる
+        const mid0 = Math.PI / 2 - (used + tv._w / 2 - w0 / 2) * unit;
+        const mid = mid0 + (M.rng(tv.name + '#junc')() - 0.5) * Math.min(0.5, tv._w * 0.3) * unit; // 分岐点も扇の真ん中から少しずらす
+        const crowded = (tv._w + GAP) * unit * juncR < 1.7; // 混んでいるときは 1 つおきに内側へ
+        const jr = juncR - (crowded && ti % 2 === 1 ? 1.0 : 0);
+        juncs.set(tv, { mid, J: [Math.cos(mid) * jr, Math.sin(mid) * jr] });
         used += tv._w + GAP;
         // 内→外のジグザグだけだと奇数個のとき左右対称になり「虫の脚」に見えるので、
         // 項目ごとの乱数(id 固定なので毎回同じ)で角度と距離を少しずらし、枝の曲がる順も散らす
@@ -872,18 +880,23 @@
           const r = M.rng(it.id + '#place');
           const a = start - (i + 0.5 + (r() - 0.5) * 0.45) * unit;
           const dist = ring0 + ((i + phase) % rings) * RING_STEP + (r() - 0.5) * 0.7;
-          itemPos.set(it, { dist, P: [Math.cos(a) * dist, Math.sin(a) * dist], straightFirst: r() < 0.5 });
+          itemPos.set(it, { a, dist, straightFirst: r() < 0.5 });
         });
       });
-      used = 0;
-      tags.forEach((tv, ti) => {
-        // 最初のタグの真ん中を真上に置き、時計回りに並べる
-        const mid0 = Math.PI / 2 - (used + tv._w / 2 - w0 / 2) * unit;
-        const mid = mid0 + (M.rng(tv.name + '#junc')() - 0.5) * Math.min(0.5, tv._w * 0.3) * unit; // 分岐点も扇の真ん中から少しずらす
-        const crowded = (tv._w + GAP) * unit * juncR < 1.7; // 混んでいるときは 1 つおきに内側へ
-        used += tv._w + GAP;
-        const jr = juncR - (crowded && ti % 2 === 1 ? 1.0 : 0);
-        const J = [Math.cos(mid) * jr, Math.sin(mid) * jr];
+      // 分岐点(とその下のタグ名の札)に円や名前の札が重ならないよう、近すぎる円は同じ向きのまま外へ離す
+      itemPos.forEach((o) => {
+        juncs.forEach(({ J }) => {
+          const jr = Math.hypot(J[0], J[1]);
+          const d = Math.atan2(J[1], J[0]) - o.a;
+          const s = jr * Math.sin(d), c = jr * Math.cos(d);
+          if (Math.abs(s) < JUNC_CLEAR && Math.abs(o.dist - c) < Math.sqrt(JUNC_CLEAR * JUNC_CLEAR - s * s)) {
+            o.dist = c + Math.sqrt(JUNC_CLEAR * JUNC_CLEAR - s * s); // 分岐点から JUNC_CLEAR 離れる所まで
+          }
+        });
+        o.P = [Math.cos(o.a) * o.dist, Math.sin(o.a) * o.dist];
+      });
+      tags.forEach((tv) => {
+        const { mid, J } = juncs.get(tv);
         const tcol = new T.Color(tv.color);
         const trunkPts = [v3(Math.cos(mid) * HUB_R, Math.sin(mid) * HUB_R), v3(J[0], J[1])];
         const trunk = addTrace(C, trunkPts, tcol, 0.55, 0.075, { tag: tv.name }); // 幹（中心→分岐点）
