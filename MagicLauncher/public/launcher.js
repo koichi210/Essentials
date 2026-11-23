@@ -541,7 +541,7 @@
       '</div><p>この数を超えた魔法陣は、下の段へ折り返します（2 つなら 2 列、3 つなら 3 列）。</p></section>';
     html += '<section><h3>待機中の動き</h3><div class="btns">' +
       idles.map((c) => '<button type="button" class="ml-btn' + (s.idle === c[0] ? ' on' : '') + '" data-idle="' + c[0] + '">' + c[1] + '</button>').join('') +
-      '</div><p>マウスがブラウザの外に出て 1 秒たつと、魔法陣がゆっくり動き出します。マウスを戻すと、魔法陣が全部窓に入る全体表示に戻ります（マウスが上にある間・キー操作中・絞り込み中・ダイアログ中は動きません）。</p></section>';
+      '</div><p>マウスがブラウザの外に出て 1 秒たつと、魔法陣がゆっくり動き出します。マウスを戻すと、魔法陣が全部窓に入る全体表示に戻ります（マウスが上にある間・キー操作中・ダイアログ中は動きません。タグを選んで寄っていても動き出します）。</p></section>';
     html += '<section><h3>魔法陣の色</h3>' + v.circles.map((c) =>
       '<div class="ml-swatch-row"><input type="color" data-circle="' + esc(c.name) + '" value="' + esc(c.color) + '"><span class="nm">' + esc(c.name) + '</span>' +
       (s.circleColors[c.name] ? '<button type="button" class="ml-btn" data-circle-auto="' + esc(c.name) + '">自動の色に戻す</button>' : '') + '</div>').join('') + '</section>';
@@ -556,6 +556,11 @@
   }
   function bindSettings() {
     const box = $('ml-settings');
+    // 枠の外（暗い所）をクリックしたら「閉じる」と同じ。押した所も離した所も外のときだけ（中で文字を選んで外で離しても閉じない）
+    const back = $('ml-settings-dlg');
+    let downOut = false;
+    back.addEventListener('mousedown', (e) => { downOut = e.target === back; });
+    back.addEventListener('click', (e) => { if (downOut && e.target === back) hideModal(); downOut = false; });
     box.addEventListener('click', (e) => {
       const b = e.target.closest('button');
       if (!b) return;
