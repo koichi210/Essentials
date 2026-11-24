@@ -110,6 +110,25 @@ namespace SecretaryGadget
             return hit ?? (skins.Count > 0 ? skins[0] : BuiltIn);
         }
 
+        /// <summary>交代先: 一覧で今のスキンの次(最後なら先頭へ戻る)。今のスキンが一覧に無ければ先頭。2つ未満なら null(交代しない)。</summary>
+        public static SkinInfo? Next(IReadOnlyList<SkinInfo> skins, string? currentId)
+        {
+            if (skins.Count < 2)
+            {
+                return null;
+            }
+            int index = -1;
+            for (int i = 0; i < skins.Count; i++)
+            {
+                if (string.Equals(skins[i].Id, currentId, StringComparison.OrdinalIgnoreCase))
+                {
+                    index = i;
+                    break;
+                }
+            }
+            return skins[(index + 1) % skins.Count];
+        }
+
         /// <summary>
         /// 絵を読む。BitmapCacheOption.OnLoad でファイルを掴まない(差し替え可能)。読めなければ埋め込みの既定絵。
         /// </summary>

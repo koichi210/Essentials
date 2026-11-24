@@ -141,6 +141,8 @@ namespace SecretaryGadget
             {
                 skinMenu.DropDownItems.Add(new Forms.ToolStripSeparator());
             }
+            skinMenu.DropDownItems.Add(Item("1時間ごとに秘書を交代する", ToggleSkinRotation, check: _settings.SkinRotateHourly, enabled: _skins.Count >= 2 || _settings.SkinRotateHourly));
+            skinMenu.DropDownItems.Add(new Forms.ToolStripSeparator());
             skinMenu.DropDownItems.Add(Item("スキン一覧を読み直す", ReloadSkins));
             skinMenu.DropDownItems.Add(Item("スキンを追加するフォルダを開く", () =>
             {
@@ -277,6 +279,50 @@ namespace SecretaryGadget
             _skin = skin;
             ApplySkinToWindow();
             Enqueue(NoticeTexts.SkinChanged(skin.Name));
+        }
+
+        private void ToggleSkinRotation()
+        {
+            _settings.SkinRotateHourly = !_settings.SkinRotateHourly;
+            // 途中から ON にしたら、次の正時に1回目の交代
+            _rotateHourMark = HourOf(DateTime.Now);
+            Enqueue(NoticeTexts.SettingChanged("1時間ごとに秘書を交代する", _settings.SkinRotateHourly));
+        }
+
+        private static DateTime HourOf(DateTime t) => new DateTime(t.Year, t.Month, t.Day, t.Hour, 0, 0, t.Kind);
+
+        /// <summary>
+        /// 正時をまたいだら一覧の次のスキンへ交代する(Flush から3秒ごと)。吹き出しを出している間は引っ込むまで待つ。
+        /// おやすみ・休憩中は絵だけ替えて、交代のあいさつは出さない。スリープ明けで何時間ぶんまたいでも交代は1回。
+        /// </summary>
+        private void CheckSkinRotation(DateTime now)
+        {
+            DateTime hour = HourOf(now);
+            if (!_settings.SkinRotateHourly)
+            {
+                _rotateHourMark = hour;
+                return;
+            }
+            if (hour == _rotateHourMark || _window == null || _window.IsShowing)
+            {
+                return;
+            }
+            _rotateHourMark = hour;
+            SkinInfo? next = SkinCatalog.Next(_skins, _skin.Id);
+            if (next == null)
+            {
+                return;
+            }
+            _options.ClearSkin();
+            _settings.Skin = next.Id;
+            _skin = next;
+            ApplySkinToWindow();
+            _settings.Save();
+            Log.Write("1時間ごとの交代: " + next.Id);
+            if (!_settings.Paused && !_onBreak)
+            {
+                Enqueue(NoticeTexts.SkinRotated(next.Name));
+            }
         }
 
         private void ReloadSkins()

@@ -323,6 +323,11 @@ namespace SecretaryGadget
             return new Notice(NoticeKind.Greeting, "担当を交代しました", $"本日からは{skinName}がお知らせを担当します。", "よろしくお願いいたします。");
         }
 
+        public static Notice SkinRotated(string skinName)
+        {
+            return new Notice(NoticeKind.Greeting, "交代の時間です", $"ここからは{skinName}がお知らせを担当します。", "よろしくお願いいたします。");
+        }
+
         public static Notice BreakStarted(DateTime resumeAt)
         {
             return new Notice(NoticeKind.Greeting, "休憩します", $"{resumeAt:HH:mm} に再開します。");

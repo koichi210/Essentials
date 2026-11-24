@@ -43,6 +43,9 @@ namespace SecretaryGadget
         private DispatcherTimer? _flushTimer;
         private DispatcherTimer? _suppressTimer;
         private DispatcherTimer? _memoryTimer;
+
+        /// <summary>1時間ごとの交代で、最後に交代した(またはONにした・起動した)時刻の正時</summary>
+        private DateTime _rotateHourMark = HourOf(DateTime.Now);
         private int _memoryTicks;
         private DateTime? _breakUntil;
         private int _breakMinutes;
@@ -289,6 +292,7 @@ namespace SecretaryGadget
                 SetNoHide(false);
             }
             CheckTimers(now);
+            CheckSkinRotation(now);
             if (_mentionCounter?.Count == 0 && _teamsSenders.Count > 0)
             {
                 _teamsSenders.Clear();

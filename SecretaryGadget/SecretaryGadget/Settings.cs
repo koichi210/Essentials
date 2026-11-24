@@ -34,6 +34,9 @@ namespace SecretaryGadget
 
         public double SkinScale { get; set; } = 1.0;
 
+        /// <summary>正時ごとにスキン一覧の次の秘書さんへ交代する</summary>
+        public bool SkinRotateHourly { get; set; } = false;
+
         public int DisplayHeight { get; set; } = 420;
 
         public int DisplaySeconds { get; set; } = 20;
