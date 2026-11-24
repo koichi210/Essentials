@@ -5,6 +5,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 
 namespace SecretaryGadget
@@ -27,9 +28,18 @@ namespace SecretaryGadget
         /// <summary>起動するファイルに渡す引数(秘書さん自身の機能では使わない)</summary>
         public string Arguments { get; set; } = string.Empty;
 
+        /// <summary>秘書さん自身の機能(@ を除いた名前, 説明)。設定画面の候補とチェックに使う。</summary>
+        public static IReadOnlyList<(string Name, string Title)> Builtins { get; } = new[]
+        {
+            ("schedule", "本日の予定"),
+            ("timer", "タイマー"),
+        };
+
+        [JsonIgnore]
         public bool IsBuiltin => Path.StartsWith(BuiltinPrefix, StringComparison.Ordinal);
 
         /// <summary>秘書さん自身の機能の名前(@ を除いたもの、小文字)。そうでなければ空。</summary>
+        [JsonIgnore]
         public string BuiltinName => IsBuiltin ? Path.Substring(BuiltinPrefix.Length).Trim().ToLowerInvariant() : string.Empty;
 
         /// <summary>既定の並び。外のツールは場所を知らないので入れない(使う人が settings.json に書き足す)。</summary>
@@ -53,6 +63,33 @@ namespace SecretaryGadget
                 .Where(e => e != null && !string.IsNullOrWhiteSpace(e.Label) && !string.IsNullOrWhiteSpace(e.Path))
                 .Select(e => new CallMenuEntry { Label = e.Label.Trim(), Path = e.Path.Trim(), Arguments = e.Arguments?.Trim() ?? string.Empty })
                 .ToList();
+        }
+
+        /// <summary>
+        /// 設定画面で保存する前のチェック。問題が無ければ null、あれば (何行目か(0始まり), 理由)。
+        /// 表示名・起動先の空欄と、知らない「@」の機能名を見る(ファイルの有無は見ない: 別のPC用の行もありうるため)。
+        /// </summary>
+        public static (int Index, string Message)? FindProblem(IReadOnlyList<CallMenuEntry> entries)
+        {
+            for (int i = 0; i < entries.Count; i++)
+            {
+                CallMenuEntry e = entries[i];
+                string row = $"{i + 1}行目";
+                if (string.IsNullOrWhiteSpace(e.Label))
+                {
+                    return (i, $"{row}の表示名が空です。");
+                }
+                if (string.IsNullOrWhiteSpace(e.Path))
+                {
+                    return (i, $"{row}（{e.Label.Trim()}）の起動するものが空です。");
+                }
+                CallMenuEntry trimmed = new CallMenuEntry { Path = e.Path.Trim() };
+                if (trimmed.IsBuiltin && !Builtins.Any(b => b.Name == trimmed.BuiltinName))
+                {
+                    return (i, $"{row}（{e.Label.Trim()}）の「{trimmed.Path}」という機能はありません。");
+                }
+            }
+            return null;
         }
 
         /// <summary>

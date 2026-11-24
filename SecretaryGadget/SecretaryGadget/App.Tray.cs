@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using Microsoft.Win32;
@@ -169,6 +170,8 @@ namespace SecretaryGadget
             settingsMenu.DropDownItems.Add(Toggle("会議の開始前に知らせる", () => _settings.NotifyMeetings, v => _settings.NotifyMeetings = v));
             settingsMenu.DropDownItems.Add(Toggle("Teams のメンションを知らせる", () => _settings.NotifyTeams, v => _settings.NotifyTeams = v));
             settingsMenu.DropDownItems.Add(new Forms.ToolStripSeparator());
+            settingsMenu.DropDownItems.Add(Item("呼んだときの選択肢を編集…", EditCallMenu));
+            settingsMenu.DropDownItems.Add(new Forms.ToolStripSeparator());
             settingsMenu.DropDownItems.Add(Item("テスト通知を出す", () => Enqueue(NoticeTexts.Test())));
             settingsMenu.DropDownItems.Add(Item("ログフォルダを開く", () =>
             {
@@ -255,6 +258,23 @@ namespace SecretaryGadget
                 UpdateTrayText();
             }
             Enqueue(NoticeTexts.SettingsDirChanged(newDir, loaded));
+        }
+
+        /// <summary>
+        /// 「秘書さんを呼ぶ」の吹き出しの選択肢を画面で編集する。settings.json を手で書き換えていてもそちらを元に開く。
+        /// 保存はメニュー項目共通の書き戻し(Item)で行う。
+        /// </summary>
+        private void EditCallMenu()
+        {
+            _settings.CallMenu = Settings.ReadCallMenu(_settings.FilePath) ?? _settings.CallMenu;
+            List<CallMenuEntry>? edited = CallMenuDialog.Ask(_settings.CallMenu);
+            if (edited == null)
+            {
+                return;
+            }
+            _settings.CallMenu = edited;
+            Log.Write($"呼んだときの選択肢を保存しました({edited.Count}件)");
+            Enqueue(NoticeTexts.CallMenuSaved(edited.Count));
         }
 
         private void TogglePaused()
