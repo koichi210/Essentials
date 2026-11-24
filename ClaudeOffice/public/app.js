@@ -10,6 +10,7 @@ import { Kit, createSky, timeLook, arcPositions, buildClassroom, projectColor, w
 import { buildTavern } from './tavern.js';
 import { buildMakai } from './makai.js';
 import { buildSpot } from './spots.js';
+import { mergeStatic } from './merge.js';
 import { createWander } from './wander.js';
 import { createAvatar } from './avatar.js';
 import { deriveState, assignSeats, elapsed } from './people.js';
@@ -82,13 +83,40 @@ computeMode();
 // ---------------------------------------------------------------- 描画の土台
 
 const stage = document.getElementById('stage');
-const renderer = new THREE.WebGLRenderer({ antialias: true });
-renderer.toneMapping = THREE.NeutralToneMapping;
-renderer.toneMappingExposure = 1.0;
-renderer.shadowMap.enabled = true;
-renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-renderer.shadowMap.autoUpdate = false;
-stage.appendChild(renderer.domElement);
+// 光のにじみ(ブルーム)を使うスキン。にじみを使うときは、場面を別のバッファに描いてから画面へ写すだけなので、
+// 画面側のなめらか処理(MSAA: 画面の4倍のバッファ)と奥行きのバッファは使われない → 作らない(見た目は同じで GPU のメモリが減る)。
+// この設定は WebGL を作ったあとは変えられないので、にじみの有無が変わるときは描画の土台(canvas)ごと作り直す。
+// カメラ操作とクリックは canvas ではなく #stage で受けるので、作り直しても付け直さなくてよい
+const BLOOM_SKINS = new Set(['isekai', 'makai']);
+let renderer = null;
+let rendererForComposer = null;
+let composer = null;
+let bloomPass = null;
+
+function setupRenderer(forComposer) {
+  if (renderer && rendererForComposer === forComposer) {
+    return;
+  }
+  if (renderer) {
+    composer?.dispose();
+    composer = null;
+    bloomPass = null;
+    renderer.dispose();
+    renderer.forceContextLoss();
+    renderer.domElement.remove();
+  }
+  renderer = new THREE.WebGLRenderer(forComposer ? { antialias: false, depth: false } : { antialias: true });
+  rendererForComposer = forComposer;
+  renderer.toneMapping = THREE.NeutralToneMapping;
+  renderer.toneMappingExposure = 1.0;
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  renderer.shadowMap.autoUpdate = false;
+  stage.appendChild(renderer.domElement);
+  if (window.__claudeOffice) {
+    window.__claudeOffice.renderer = renderer;
+  }
+}
 const labelRenderer = new CSS2DRenderer({ element: document.getElementById('labels') });
 
 const scene = new THREE.Scene();
@@ -96,7 +124,7 @@ const VIEW_H = 30;
 const camera = new THREE.OrthographicCamera(-20, 20, VIEW_H / 2, -VIEW_H / 2, 0.1, 300);
 camera.position.set(32, 30, 34);
 camera.zoom = 1.1;
-const controls = new OrbitControls(camera, renderer.domElement);
+const controls = new OrbitControls(camera, stage);
 controls.target.set(-1, 1, -2);
 controls.enableDamping = true;
 controls.minZoom = 0.6;
@@ -117,9 +145,6 @@ Object.assign(sunLight.shadow.camera, { left: -24, right: 24, top: 24, bottom: -
 sunLight.shadow.bias = -0.0005;
 scene.add(sunLight);
 scene.add(sunLight.target);
-
-let composer = null;
-let bloomPass = null;
 
 // 島は右パネルを避けた空きスペースの中央に来るようカメラをずらす
 function resize() {
@@ -150,7 +175,17 @@ window.addEventListener('resize', resize);
 
 let ctx = null;
 let wander = null;
+
+// にじみを使うか(スキン・エフェクト・超軽量で決まる)。スキンを作る前は名前で判断する
+function wantComposer() {
+  const o = store.options;
+  const bloom = ctx ? ctx.bloom : BLOOM_SKINS.has(o.skin);
+  return !!bloom && o.effects === 'on' && o.ultra !== 'on';
+}
+setupRenderer(wantComposer());
 const avatars = new Map(); // id -> { avatar, bubble, tag, floaty, subs:[], seat }
+// 超軽量用の●の玉の形(全員で共有)
+const DOT_GEO = new THREE.SphereGeometry(0.42, 14, 10);
 let seatMap = new Map();
 
 function clearAvatars() {
@@ -168,10 +203,94 @@ function removeAvatar(a) {
   }
   for (const s of a.subs) {
     s.label.element.remove();
+    s.avatar.root.parent?.remove(s.avatar.root);
     s.avatar.dispose();
   }
   a.avatar.root.parent?.remove(a.avatar.root);
   a.avatar.dispose();
+  a.dot.material.dispose();
+}
+
+// スキンを作り直すときの片付け。Kit で作らなかった形・材質・絵(床や溶岩の Canvas など)も GPU から消す
+function disposeTree(root) {
+  const items = new Set();
+  root.traverse((o) => {
+    if (o.geometry) {
+      items.add(o.geometry);
+    }
+    for (const m of Array.isArray(o.material) ? o.material : o.material ? [o.material] : []) {
+      items.add(m);
+      for (const k of Object.keys(m)) {
+        if (m[k] && m[k].isTexture) {
+          items.add(m[k]);
+        }
+      }
+    }
+  });
+  items.forEach((x) => x.dispose());
+}
+
+// 動かない家具を材質ごとに1つにまとめる。どれが動くかは、毎フレームの処理を時刻・昼夜・作業中/待ちを変えて
+// 実際に回し、位置・向き・大きさ・表示が変わった物を「動く物」とする。動く物を中に持つグループ(犬・鳥・時計など)は
+// 境界として、その中だけでまとめる(試した間にたまたま止まっていた役者の体も、入れ物ごと動けるように)。
+// 時刻は今より少し前を使い、経過時間で動く処理(犬の歩きなど)が止まらないようにする
+function bakeWorld() {
+  const snap = [];
+  const mats = new Map();
+  // 色は 1 を超えて光らせる物もあるので、丸めずに生の値で比べる
+  const rgb = (c) => (c ? `${c.r},${c.g},${c.b}` : '');
+  const matKey = (m) => `${rgb(m.color)}|${rgb(m.emissive)}|${m.emissiveIntensity}|${m.opacity}|${m.visible}`;
+  ctx.root.traverse((o) => {
+    snap.push([o, o.position.clone(), o.quaternion.clone(), o.scale.clone(), o.visible]);
+    for (const m of Array.isArray(o.material) ? o.material : o.material ? [o.material] : []) {
+      mats.set(m, matKey(m));
+    }
+  });
+  const moved = new Set();
+  const changed = new Set();
+  const t0 = Math.max(0, clock.getElapsedTime() - 0.6);
+  for (let k = 0; k < 12; k++) {
+    const t = t0 + k * 0.05;
+    const hour = (k * 2.1) % 24;
+    const look = timeLook(hour, ctx.keys);
+    ctx.update?.(t, look);
+    ctx.fancy?.update(t, look);
+    ctx.spot?.update(t, k % 2 === 1);
+    ctx.cloudsObj?.update(t, look.cloud);
+    ctx.clock?.update(new Date(2026, 0, 1, Math.floor(hour), k * 5, k * 7));
+    for (const [o, p, q, s, vis] of snap) {
+      if (!moved.has(o) && (!o.position.equals(p) || !o.quaternion.equals(q) || !o.scale.equals(s) || o.visible !== vis)) {
+        moved.add(o);
+      }
+    }
+    for (const [m, key] of mats) {
+      if (matKey(m) !== key) {
+        changed.add(m);
+      }
+    }
+  }
+  // 設定で表示を切り替える物
+  if (ctx.fancy) {
+    moved.add(ctx.fancy.group);
+  }
+  // 光を受ける普通の材質で、色だけが違う物(光らない・絵なし・不透明・試した間に色が変わらない)は、
+  // 頂点色にして色違いもまとめる。陰影の計算は同じ(材質の色(白) × 頂点色)
+  const shared = new Map();
+  const recolor = (m) => {
+    if (!m.isMeshStandardMaterial || m.isMeshPhysicalMaterial || changed.has(m) || m.emissive.getHex() !== 0 || m.envMap || m.alphaTest || m.opacity !== 1) {
+      return null;
+    }
+    const sig = [m.roughness, m.metalness, m.flatShading, m.side, m.fog, m.toneMapped, m.wireframe, m.depthTest, m.depthWrite, m.colorWrite, m.polygonOffset, m.dithering, m.blending].join('|');
+    if (!shared.has(sig)) {
+      const v = m.clone();
+      v.color.set('#ffffff');
+      v.vertexColors = true;
+      shared.set(sig, v);
+    }
+    return shared.get(sig);
+  };
+  ctx.moved = moved;
+  mergeStatic(ctx.root, { dynamic: moved, region: 'auto', recolor });
 }
 
 // NPC(酒場=女主人、教室=女性教師)。セッションではないので席には座らず、持ち場でにこにこ立っている
@@ -197,6 +316,7 @@ function addNpc(skin) {
 function removeNpc() {
   if (ctx && ctx.npc) {
     ctx.npc.tag.element.remove();
+    ctx.npc.avatar.root.parent?.remove(ctx.npc.avatar.root);
     ctx.npc.avatar.dispose();
     ctx.npc = null;
   }
@@ -211,6 +331,7 @@ async function buildSkin() {
     ctx.labels?.forEach((l) => l.element.remove());
     scene.remove(ctx.root);
     ctx.kit.dispose();
+    disposeTree(ctx.root);
   }
   const skin = store.options.skin;
   document.body.classList.remove(...SKINS.map((s) => `skin-${s}`));
@@ -231,9 +352,10 @@ async function buildSkin() {
   } else {
     buildClassroom(ctx);
   }
-  addNpc(skin);
   // 立ち寄り先(水槽・カウンター・大釜)と、席を立って歩き回る仕組み
   buildSpot(ctx, skin);
+  bakeWorld();
+  addNpc(skin);
   wander = createWander(ctx);
   ctx.ultra = null;
   // 点光源は4灯まで
@@ -271,6 +393,8 @@ function applyOptions() {
   if (ctx.fancy) {
     ctx.fancy.group.visible = ctx.effects;
   }
+  // にじみの有無が変わったら描画の土台を作り直す(スキンを作り直す途中で、まだ何も描いていないときだけ呼ばれる)
+  setupRenderer(wantComposer());
   renderer.shadowMap.enabled = o.shadows === 'on';
   sunLight.castShadow = o.shadows === 'on';
   scene.traverse((m) => {
@@ -279,13 +403,22 @@ function applyOptions() {
     }
   });
   // ブルームは追加スキンだけ(教室は直接描く)
-  if (ctx.bloom && ctx.effects && o.ultra !== 'on') {
+  if (wantComposer()) {
     if (!composer) {
       composer = new EffectComposer(renderer);
       composer.addPass(new RenderPass(scene, camera));
       bloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth / 2, window.innerHeight / 2), 0.8, 0.5, ctx.bloomThreshold ?? 0.75);
       composer.addPass(bloomPass);
-      composer.addPass(new OutputPass());
+      // 最後の OutputPass は画面へ写すだけなので、読み書きのバッファを入れ替えさせない。
+      // こうすると場面はいつも readBuffer に描かれ、writeBuffer(画面と同じ大きさ)は一度も使われず GPU に確保されない
+      const output = new OutputPass();
+      output.needsSwap = false;
+      composer.addPass(output);
+      // にじみ用のバッファは画面全体の板を描くだけなので奥行きは要らない(readBuffer の奥行きは場面に要るので残す)。
+      // GPU に確保されるのは初めて描くときなので、その前に外せば確保されない(大きさを変えても引き継がれる)
+      [composer.writeBuffer, bloomPass.renderTargetBright, ...bloomPass.renderTargetsHorizontal, ...bloomPass.renderTargetsVertical].forEach((rt) => {
+        rt.depthBuffer = false;
+      });
     }
   } else if (composer) {
     composer.dispose();
@@ -378,7 +511,7 @@ function syncPeople() {
       ctx.root.add(avatar.root);
       a = { avatar, seat: seatIdx, subs: [], move: wander.init(clock.getElapsedTime()) };
       // 超軽量用の●の玉(プロジェクトの色)
-      a.dot = new THREE.Mesh(new THREE.SphereGeometry(0.42, 14, 10), new THREE.MeshBasicMaterial({ color }));
+      a.dot = new THREE.Mesh(DOT_GEO, new THREE.MeshBasicMaterial({ color }));
       a.dot.position.y = 1.1;
       a.dot.visible = false;
       avatar.root.add(a.dot);
@@ -468,7 +601,7 @@ const pointer = new THREE.Vector2();
 const tip = document.getElementById('tip');
 
 function pick(e) {
-  const r = renderer.domElement.getBoundingClientRect();
+  const r = stage.getBoundingClientRect();
   pointer.set(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
   ray.setFromCamera(pointer, camera);
   const hits = ray.intersectObjects(ctx.root.children, true);
@@ -483,7 +616,11 @@ function pick(e) {
     }
     while (o) {
       if (o.userData.kind === 'book') {
-        return { kind: 'book', session: o.userData.session };
+        // 本棚は1つの InstancedMesh。何冊目に当たったかで会話を引く
+        const session = o.userData.sessions ? o.userData.sessions[h.instanceId] : o.userData.session;
+        if (session) {
+          return { kind: 'book', session };
+        }
       }
       if (o.userData.sessionId) {
         return { kind: 'person', id: o.userData.sessionId };
@@ -498,11 +635,11 @@ function pick(e) {
 }
 
 let downAt = null;
-renderer.domElement.addEventListener('pointerdown', (e) => {
+stage.addEventListener('pointerdown', (e) => {
   downAt = { x: e.clientX, y: e.clientY };
 });
 let clickTimer = null;
-renderer.domElement.addEventListener('click', (e) => {
+stage.addEventListener('click', (e) => {
   if (!ctx || (downAt && Math.hypot(e.clientX - downAt.x, e.clientY - downAt.y) > 5)) {
     return;
   }
@@ -524,14 +661,14 @@ renderer.domElement.addEventListener('click', (e) => {
     }
   }, 230);
 });
-renderer.domElement.addEventListener('dblclick', (e) => {
+stage.addEventListener('dblclick', (e) => {
   clearTimeout(clickTimer);
   const p = ctx && pick(e);
   if (p && (p.kind === 'person' || p.kind === 'book')) {
     openInVscode(p.kind === 'person' ? p.id : p.session.id);
   }
 });
-renderer.domElement.addEventListener('pointermove', (e) => {
+stage.addEventListener('pointermove', (e) => {
   if (!ctx) {
     return;
   }
@@ -542,10 +679,10 @@ renderer.domElement.addEventListener('pointermove', (e) => {
     tip.style.left = `${e.clientX + 14}px`;
     tip.style.top = `${e.clientY + 10}px`;
     tip.hidden = false;
-    renderer.domElement.style.cursor = 'pointer';
+    stage.style.cursor = 'pointer';
   } else {
     tip.hidden = true;
-    renderer.domElement.style.cursor = p ? 'pointer' : '';
+    stage.style.cursor = p ? 'pointer' : '';
   }
 });
 window.addEventListener('keydown', (e) => {
@@ -606,7 +743,9 @@ const actions = {
     }
     computeMode();
     renderHUD(store, actions);
-    if (key === 'skin') {
+    if (key === 'skin' || wantComposer() !== rendererForComposer) {
+      // にじみの有無が変わるときは描画の土台を作り直すので、場面も作り直す
+      // (一度 GPU へ送ったら Canvas を縮めている絵があり、新しい土台へは送り直せないため)
       await buildSkin();
     } else {
       document.getElementById('loading').hidden = false;
@@ -747,7 +886,9 @@ function frame() {
       s.avatar.update(t, 'working');
     }
     const g = ctx.glows[a.seat];
-    if (g && a.state) {
+    if (g && a.state && g.key !== a.state.key) {
+      // 色の文字列の読み取りはゴミが出るので、状態が変わったときだけ
+      g.key = a.state.key;
       g.screen.material.color.set(GLOW[a.state.key] || GLOW.sleeping);
     }
   }
@@ -802,7 +943,7 @@ async function start() {
   if (store.previewHour !== null) {
     renderTimeline(store, actions);
   }
-  window.__claudeOffice = { store, avatars, renderer, toast, hhmm };
+  window.__claudeOffice = { store, avatars, renderer, scene, camera, toast, hhmm, get ctx() { return ctx; } };
 }
 
 start();

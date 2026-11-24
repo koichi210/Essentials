@@ -189,6 +189,17 @@ export class Kit {
     return this.mats.get(key);
   }
 
+  // 光の当たらない単色(MeshBasicMaterial)も色ごとに使い回す(同じ材質の物は1つにまとめて描ける)。
+  // 色を毎フレーム変える物(状態で光る画面・水晶玉)には使わない。color は '#rrggbb' か、1 を超えて光らせる THREE.Color
+  basic(color, opts = {}) {
+    const name = color.isColor ? `${color.r},${color.g},${color.b}` : color;
+    const key = `basic|${name}|${JSON.stringify(opts)}`;
+    if (!this.mats.has(key)) {
+      this.mats.set(key, new THREE.MeshBasicMaterial({ color, ...opts }));
+    }
+    return this.mats.get(key);
+  }
+
   geom(kind, ...args) {
     const key = `${kind}|${args.join(',')}`;
     if (!this.geoms.has(key)) {
@@ -349,6 +360,18 @@ export function propLabel(ctx, parent, text, x, y, z) {
   return o;
 }
 
+// 一度 GPU へ送ったら描き直さない絵(床・溶岩・魔法陣・旗など)。送ったあと Canvas を 1×1 に縮めて、
+// ページ側に残る絵のメモリを返す(GPU 側の絵はそのまま。ホワイトボード・カレンダー・顔のように描き直す物には使わない)
+export function staticCanvasTexture(canvas) {
+  const t = new THREE.CanvasTexture(canvas);
+  t.onUpdate = () => {
+    t.onUpdate = null;
+    canvas.width = 1;
+    canvas.height = 1;
+  };
+  return t;
+}
+
 export function glowDot() {
   const c = document.createElement('canvas');
   c.width = c.height = 64;
@@ -359,7 +382,7 @@ export function glowDot() {
   grad.addColorStop(1, 'rgba(255,255,255,0)');
   g.fillStyle = grad;
   g.fillRect(0, 0, 64, 64);
-  return new THREE.CanvasTexture(c);
+  return staticCanvasTexture(c);
 }
 
 // 光の粒(画面上の大きさ固定)。mode: float=ふわふわ漂う / rise=下から上へ昇って消える
@@ -426,7 +449,7 @@ export function wallClock(kit, parent, x, y, z, rotY, frameColor = '#5a4636') {
     const a = (i / 12) * Math.PI * 2;
     c.fillRect(64 + Math.sin(a) * 50 - 2, 64 - Math.cos(a) * 50 - 2, 4, 4);
   }
-  const face = new THREE.Mesh(new THREE.CircleGeometry(0.8, 32), new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(canvas), color: '#d0d0d0' }));
+  const face = new THREE.Mesh(new THREE.CircleGeometry(0.8, 32), new THREE.MeshBasicMaterial({ map: staticCanvasTexture(canvas), color: '#d0d0d0' }));
   face.position.z = 0.06;
   g.add(face);
   const rim = new THREE.Mesh(kit.geom('torus', 0.82, 0.07, 8, 32), kit.mat(frameColor));
@@ -514,16 +537,31 @@ export function archiveShelf(kit, parent, woodColor = '#6b4428') {
   parent.add(g);
   const books = new THREE.Group();
   g.add(books);
-  const geo = new THREE.BoxGeometry(1, 1, 0.8);
-  const mats = new Map();
+  // 本は最大160冊を1つの InstancedMesh でまとめて描く(1冊ずつ描くと160回)。
+  // 色は1冊ずつの instanceColor。棚の奥は影で暗くなるので、本の色の 0.35 倍で自分でも光らせる(もとは1冊ずつ emissive=本の色)
+  const MAX = 160;
+  const mat = new THREE.MeshStandardMaterial({ color: '#ffffff', emissive: '#ffffff', emissiveIntensity: 0.35, roughness: 0.85 });
+  mat.onBeforeCompile = (shader) => {
+    shader.fragmentShader = shader.fragmentShader.replace('vec3 totalEmissiveRadiance = emissive;', 'vec3 totalEmissiveRadiance = emissive * vColor;');
+  };
+  const shelfBooks = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 0.8), mat, MAX);
+  shelfBooks.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(MAX * 3), 3);
+  shelfBooks.castShadow = true;
+  shelfBooks.count = 0;
+  // クリック判定: 当たった instanceId の会話
+  shelfBooks.userData = { kind: 'book', sessions: [] };
+  books.add(shelfBooks);
+  const m4 = new THREE.Matrix4();
+  const q = new THREE.Quaternion();
+  const p = new THREE.Vector3();
+  const sc = new THREE.Vector3();
+  const col = new THREE.Color();
   return {
     group: g,
     books,
     // 過去セッション最大160冊(4段)。色=プロジェクト色、高さ=ツール数の log、厚み=ID のハッシュ
     setBooks(list) {
-      while (books.children.length) {
-        books.remove(books.children[0]);
-      }
+      const sessions = [];
       let row = 0;
       let x = -W / 2 + 0.12;
       for (const s of list.slice(0, 160)) {
@@ -538,19 +576,22 @@ export function archiveShelf(kit, parent, woodColor = '#6b4428') {
         const h = Math.min(0.92, 0.45 + Math.log10(1 + (s.toolCalls || 0)) * 0.17);
         // 同じプロジェクトの本が並んでも1冊ずつ見分けられるよう、明るさを3段階ずらす
         const shade = (fnv1a(`${s.id}:b`) % 3) - 1;
-        const color = `#${new THREE.Color(projectColor(s.project)).offsetHSL(0, 0, shade * 0.07).getHexString()}`;
-        if (!mats.has(color)) {
-          // 棚の奥は影で暗くなるので、少し自分で光らせて色を読めるようにする
-          mats.set(color, kit.mat(color, { emissive: color, emissiveIntensity: 0.35 }));
-        }
-        const b = new THREE.Mesh(geo, mats.get(color));
-        b.scale.set(thick, h, 1);
-        b.position.set(x + thick / 2, 0.15 + row * 1.05 + h / 2, 0.02);
-        b.userData = { kind: 'book', session: s };
-        b.castShadow = true;
-        books.add(b);
+        // もとの「#rrggbb に丸めた色」と同じ色にする
+        col.set(`#${col.set(projectColor(s.project)).offsetHSL(0, 0, shade * 0.07).getHexString()}`);
+        const i = sessions.length;
+        m4.compose(p.set(x + thick / 2, 0.15 + row * 1.05 + h / 2, 0.02), q, sc.set(thick, h, 1));
+        shelfBooks.setMatrixAt(i, m4);
+        shelfBooks.setColorAt(i, col);
+        sessions.push(s);
         x += thick + 0.02;
       }
+      shelfBooks.count = sessions.length;
+      shelfBooks.userData.sessions = sessions;
+      shelfBooks.instanceMatrix.needsUpdate = true;
+      shelfBooks.instanceColor.needsUpdate = true;
+      // 画面外判定・クリック判定の範囲を作り直す
+      shelfBooks.boundingSphere = null;
+      shelfBooks.boundingBox = null;
     },
   };
 }
@@ -654,7 +695,7 @@ function deskSet(kit, parent, seat, i, glows) {
   const screen = new THREE.Mesh(new THREE.PlaneGeometry(1.0, 0.58), new THREE.MeshBasicMaterial({ color: '#2a2f3a', toneMapped: false }));
   screen.position.set(x, 1.52, z - 0.215);
   parent.add(screen);
-  const logo = new THREE.Mesh(new THREE.CircleGeometry(0.07, 12), new THREE.MeshBasicMaterial({ color: '#d97757', toneMapped: false }));
+  const logo = new THREE.Mesh(new THREE.CircleGeometry(0.07, 12), kit.basic('#d97757', { toneMapped: false }));
   logo.position.set(x, 1.52, z - 0.21);
   parent.add(logo);
   glows[i] = { screen, logo };

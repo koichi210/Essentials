@@ -1,7 +1,7 @@
 // 魔界スキン: 赤い月と夕焼け色の空。黒い島を溶岩のひびが走り、黒い尖塔が囲む。
 // 館は黒い壁に魔王軍の旗とステンドグラス、奥に魔王の玉座、長い晩餐テーブル。外に魔界の門と墓場
 import * as THREE from 'three';
-import { ROOM, island, clouds, lampLight, wallClock, calendar, archiveShelf, whiteboard, makeBird, propLabel, sparkles, SHELF_POS, BOARD_POS } from './world.js';
+import { ROOM, island, clouds, lampLight, wallClock, calendar, archiveShelf, whiteboard, makeBird, propLabel, sparkles, staticCanvasTexture, SHELF_POS, BOARD_POS } from './world.js';
 import { stainedGlass } from './tavern.js';
 
 // 空のキーフレーム(上・中・下・太陽色・太陽の強さ・半球光・ランプ・雲・星)。昼は赤紫〜橙、夜は暗い赤紫
@@ -32,7 +32,7 @@ export function skull(kit, parent, x, y, z, s = 1, rotY = 0, eyes = false) {
   kit.box(g, 0.26, 0.12, 0.22, BONE, 0, -0.23, 0.05);
   kit.box(g, 0.22, 0.03, 0.02, '#2a2230', 0, -0.23, 0.17);
   for (const sx of [-1, 1]) {
-    const socket = new THREE.Mesh(kit.geom('sph', 0.075, 8, 6), new THREE.MeshBasicMaterial({ color: eyes ? '#ff3a2a' : '#120a14', toneMapped: false }));
+    const socket = new THREE.Mesh(kit.geom('sph', 0.075, 8, 6), kit.basic(eyes ? '#ff3a2a' : '#120a14', { toneMapped: false }));
     socket.position.set(sx * 0.1, -0.01, 0.2);
     g.add(socket);
   }
@@ -119,7 +119,7 @@ function lavaGround() {
     }
   }
   const tex = (cv) => {
-    const t = new THREE.CanvasTexture(cv);
+    const t = staticCanvasTexture(cv);
     t.colorSpace = THREE.SRGBColorSpace;
     t.anisotropy = 4;
     return t;
@@ -164,7 +164,7 @@ function gridFloor(R) {
     c.fillRect(px(x), pz(-8.05) - 3, 10, 6);
     c.fillRect(px(x), pz(1.85) - 3, 10, 6);
   }
-  const t = new THREE.CanvasTexture(cv);
+  const t = staticCanvasTexture(cv);
   t.colorSpace = THREE.SRGBColorSpace;
   t.anisotropy = 4;
   return t;
@@ -215,7 +215,7 @@ function demonBanner() {
   c.font = 'bold 64px "Yu Mincho", "MS Mincho", serif';
   c.textAlign = 'center';
   c.fillText('魔', 64, 220);
-  const t = new THREE.CanvasTexture(cv);
+  const t = staticCanvasTexture(cv);
   t.colorSpace = THREE.SRGBColorSpace;
   return t;
 }
@@ -242,7 +242,7 @@ function swirlTexture() {
     }
     c.stroke();
   }
-  const t = new THREE.CanvasTexture(cv);
+  const t = staticCanvasTexture(cv);
   t.colorSpace = THREE.SRGBColorSpace;
   return t;
 }
@@ -296,7 +296,7 @@ export function buildMakai(ctx) {
       c.fillStyle = '#ffe0a0';
       c.fillRect((y * 7) % 28, y, 4, 8);
     }
-    const t = new THREE.CanvasTexture(cv);
+    const t = staticCanvasTexture(cv);
     t.colorSpace = THREE.SRGBColorSpace;
     t.wrapS = t.wrapT = THREE.RepeatWrapping;
     return t;
@@ -414,7 +414,7 @@ export function buildMakai(ctx) {
     const orb = new THREE.Mesh(new THREE.SphereGeometry(0.14, 16, 12), new THREE.MeshBasicMaterial({ color: '#3a3f55', toneMapped: false }));
     orb.position.set(ox, 1.28, oz);
     room.add(orb);
-    const halo = new THREE.Mesh(new THREE.TorusGeometry(0.19, 0.012, 6, 24), new THREE.MeshBasicMaterial({ color: '#ff3a5a', toneMapped: false }));
+    const halo = new THREE.Mesh(new THREE.TorusGeometry(0.19, 0.012, 6, 24), kit.basic('#ff3a5a', { toneMapped: false }));
     halo.position.set(ox, 1.28, oz);
     halo.rotation.x = Math.PI / 2;
     room.add(halo);

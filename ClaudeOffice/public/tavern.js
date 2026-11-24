@@ -1,7 +1,7 @@
 // 異世界スキン「冒険者の酒場」: 夕暮れのラベンダー色の空と淡い大きな月。木組みの壁にステンドグラス、
 // 赤い丸ラグの上の丸テーブル、光る酒瓶の棚。外はストーンサークルと水晶玉、錬金釜、パステルの木々
 import * as THREE from 'three';
-import { ROOM, island, clouds, tree, pine, lampLight, wallClock, calendar, archiveShelf, whiteboard, propLabel, sparkles, SHELF_POS, BOARD_POS } from './world.js';
+import { ROOM, island, clouds, tree, pine, lampLight, wallClock, calendar, archiveShelf, whiteboard, propLabel, sparkles, staticCanvasTexture, SHELF_POS, BOARD_POS } from './world.js';
 
 // 空のキーフレーム(上・中・下・太陽色・太陽の強さ・半球光・ランプ・雲・星)。昼もラベンダー寄り
 export const ISEKAI_KEYS = [
@@ -63,7 +63,7 @@ export function stainedGlass(kit, parent, x, y, z, w, h, rotY, palette, frame = 
   c.lineWidth = 9;
   c.strokeStyle = frame;
   c.stroke();
-  const tex = new THREE.CanvasTexture(cv);
+  const tex = staticCanvasTexture(cv);
   tex.colorSpace = THREE.SRGBColorSpace;
   const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshBasicMaterial({ map: tex, transparent: true, alphaTest: 0.5, toneMapped: false, color: new THREE.Color(glow, glow, glow) }));
   const g = new THREE.Group();
@@ -98,7 +98,7 @@ function plankFloor(w, d, base, line) {
     c.fillStyle = line;
     c.fillRect(0, j * row, cv.width, 2);
   }
-  const tex = new THREE.CanvasTexture(cv);
+  const tex = staticCanvasTexture(cv);
   tex.colorSpace = THREE.SRGBColorSpace;
   tex.anisotropy = 4;
   return tex;
@@ -139,7 +139,7 @@ export function magicCircle(radius, color, opacity = 0.8) {
     c.fillText(['ᚠ', 'ᚦ', 'ᚨ', 'ᛉ', 'ᛟ', 'ᛞ', 'ᚱ'][i % 7], 0, -232 + 26);
     c.restore();
   }
-  const tex = new THREE.CanvasTexture(cv);
+  const tex = staticCanvasTexture(cv);
   tex.colorSpace = THREE.SRGBColorSpace;
   const m = new THREE.Mesh(new THREE.PlaneGeometry(radius * 2, radius * 2), new THREE.MeshBasicMaterial({ map: tex, transparent: true, opacity, depthWrite: false, toneMapped: false, blending: THREE.AdditiveBlending }));
   m.rotation.x = -Math.PI / 2;
@@ -197,7 +197,7 @@ function roundTable(kit, room, [tx, tz], seats, glows, flames) {
     const orb = new THREE.Mesh(new THREE.SphereGeometry(0.15, 16, 12), new THREE.MeshBasicMaterial({ color: '#3a3f55', toneMapped: false }));
     orb.position.set(ox, 1.27, oz);
     room.add(orb);
-    const halo = new THREE.Mesh(new THREE.TorusGeometry(0.2, 0.012, 6, 24), new THREE.MeshBasicMaterial({ color: '#e9c46a', toneMapped: false }));
+    const halo = new THREE.Mesh(new THREE.TorusGeometry(0.2, 0.012, 6, 24), kit.basic('#e9c46a', { toneMapped: false }));
     halo.position.set(ox, 1.27, oz);
     halo.rotation.x = Math.PI / 2;
     room.add(halo);
@@ -298,7 +298,7 @@ export function buildTavern(ctx) {
     kit.box(room, 2.7, 0.06, 0.45, '#6a4228', 4.5, y, R.z0 + 0.5);
     for (let k = 0; k < 7; k++) {
       const c = new THREE.Color(bottleColors[(k + r * 3) % bottleColors.length]);
-      const mat = new THREE.MeshBasicMaterial({ color: c.clone().multiplyScalar(1.15), toneMapped: false });
+      const mat = kit.basic(c.clone().multiplyScalar(1.15), { toneMapped: false });
       const bx = 3.35 + k * 0.38;
       const b = new THREE.Mesh(kit.geom('cyl', 0.08, 0.1, 0.32, 8), mat);
       b.position.set(bx, y + 0.19, R.z0 + 0.5);

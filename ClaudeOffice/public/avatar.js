@@ -1,6 +1,7 @@
 // 手続き生成のちびキャラ(外部素材なし)。見た目はセッション ID のハッシュで決め、服の色はプロジェクト色
 import * as THREE from 'three';
 import { fnv1a } from './world.js';
+import { mergeStatic } from './merge.js';
 
 const SKIN_TONES = ['#ffe0c7', '#f6d0b1', '#eec09a', '#d9a37c', '#fbe3d3', '#e8b892'];
 const EYE_COLORS = ['#3b2a20', '#2d4f8a', '#2f6b4f', '#7a3b8f', '#8a4a20', '#333a44'];
@@ -28,6 +29,10 @@ function toon(color) {
   }
   return toonCache.get(color);
 }
+
+// 部品をまとめるときの共有の材質(色は頂点色。陰影の計算は toon() と同じ)
+const toonVertex = new THREE.MeshToonMaterial({ color: '#ffffff', vertexColors: true, gradientMap: gradient });
+const recolor = (m) => (m.isMeshToonMaterial && !m.vertexColors ? toonVertex : null);
 
 function geo(kind, ...args) {
   const key = `${kind}|${args.join(',')}`;
@@ -488,6 +493,13 @@ export function createAvatar({ id, color, skin = 'default', standing = false, sc
     legs.push({ leg, shin });
   }
   root.scale.setScalar(scale);
+  // 動く関節(update で向き・位置・表示を変える物)ごとに、その下の部品と輪郭線を1つずつにまとめる。
+  // 1人あたり描く回数がおよそ半分になる。クリック判定に使うので頂点の配列は残す
+  const joints = new Set([root, body, head, face, ...arms, ...legs.map((l) => l.leg), ...legs.map((l) => l.shin).filter(Boolean), ...wings.map((w) => w.pivot)]);
+  if (tail) {
+    joints.add(tail);
+  }
+  const merged = mergeStatic(root, { dynamic: joints, region: 'dynamic', recolor, keepArrays: true });
 
   let expr = '';
   let blinkUntil = 0;
@@ -624,6 +636,7 @@ export function createAvatar({ id, color, skin = 'default', standing = false, sc
       faceTex.dispose();
       face.material.dispose();
       face.geometry.dispose();
+      merged.forEach((g) => g.dispose());
     },
   };
 }
