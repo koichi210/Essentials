@@ -539,7 +539,8 @@ namespace SecretaryGadget
                 result.Connected ? result.Upcoming : null,
                 showMail,
                 showTeams,
-                showMeetings));
+                showMeetings,
+                _skin.AskRequest));
             Log.Write($"秘書さんを呼ぶ: Outlook {(result.Connected ? "接続" : showMail || showMeetings ? "不在" : "使わない")}");
             Enqueue(notice);
             if (result.Connected && _outlook != null && !string.IsNullOrWhiteSpace(_settings.MarkReadSearchFolder))
@@ -750,7 +751,8 @@ namespace SecretaryGadget
                     },
                     _settings.NotifyOutlookMail,
                     _settings.NotifyTeams,
-                    _settings.NotifyMeetings));
+                    _settings.NotifyMeetings,
+                    _skin.AskRequest));
             }
             else if (_options.PreviewSchedule)
             {

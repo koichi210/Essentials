@@ -91,6 +91,16 @@ namespace SecretaryGadget.Tests
         }
 
         [TestMethod]
+        public void Call_AllNotificationsOff_UsesSkinAskRequest()
+        {
+            DateTime now = _day.AddHours(10);
+            Notice n = NoticeTexts.Call(now, "テストさん", null, Array.Empty<string>(), null, null, Array.Empty<string>(), null, showMail: false, showTeams: false, showMeetings: false, askRequest: "いかがなさいましたか？");
+            Assert.AreEqual("いかがなさいましたか？", n.Line1);
+            Notice blank = NoticeTexts.Call(now, "テストさん", null, Array.Empty<string>(), null, null, Array.Empty<string>(), null, showMail: false, showTeams: false, showMeetings: false, askRequest: "  ");
+            Assert.AreEqual(NoticeTexts.AskRequest, blank.Line1);
+        }
+
+        [TestMethod]
         public void Call_SomeNotificationsOff_OmitsThoseLines()
         {
             DateTime now = _day.AddHours(9);

@@ -13,12 +13,13 @@ namespace SecretaryGadget
     /// <summary>スキン1つ分(フォルダ名=ID)。</summary>
     internal sealed class SkinInfo
     {
-        public SkinInfo(string id, string name, string? folder, double? bubbleOverlap)
+        public SkinInfo(string id, string name, string? folder, double? bubbleOverlap, string? askRequest = null)
         {
             Id = id;
             Name = name;
             Folder = folder;
             BubbleOverlap = bubbleOverlap;
+            AskRequest = askRequest;
         }
 
         public string Id { get; }
@@ -31,6 +32,9 @@ namespace SecretaryGadget
 
         /// <summary>絵の幅に対する吹き出しの重なり率(手動指定)。nullなら自動計算。</summary>
         public double? BubbleOverlap { get; }
+
+        /// <summary>「秘書さんを呼ぶ」で用件を尋ねるセリフ(skin.json の AskRequest)。nullなら共通の「ご用件はなんでしょうか？」。</summary>
+        public string? AskRequest { get; }
     }
 
     /// <summary>読み込んだスキン画像と、行ごとの「最も左の不透明画素」(重なり率の自動計算用)。</summary>
@@ -222,6 +226,7 @@ namespace SecretaryGadget
         {
             string name = id;
             double? overlap = null;
+            string? askRequest = null;
             string metaPath = Path.Combine(dir, _metaFileName);
             if (File.Exists(metaPath))
             {
@@ -236,13 +241,17 @@ namespace SecretaryGadget
                     {
                         overlap = o.GetDouble();
                     }
+                    if (doc.RootElement.TryGetProperty("AskRequest", out JsonElement a) && a.ValueKind == JsonValueKind.String && !string.IsNullOrWhiteSpace(a.GetString()))
+                    {
+                        askRequest = a.GetString()!.Trim();
+                    }
                 }
                 catch (Exception ex)
                 {
                     Log.Write("skin.json が読めないため既定値を使います: " + ex.GetType().Name);
                 }
             }
-            return new SkinInfo(id, name, dir, overlap);
+            return new SkinInfo(id, name, dir, overlap, askRequest);
         }
     }
 }

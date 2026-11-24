@@ -96,7 +96,7 @@ namespace SecretaryGadget
             return $"{Greeting(now)}、{userName}";
         }
 
-        /// <summary>「秘書さんを呼ぶ」で知らせる項目が何も無いときの文面</summary>
+        /// <summary>「秘書さんを呼ぶ」で知らせる項目が何も無いときの文面(スキンの skin.json に AskRequest があればそちら)</summary>
         public const string AskRequest = "ご用件はなんでしょうか？";
 
         public static Notice Startup(DateTime now, string userName)
@@ -143,7 +143,7 @@ namespace SecretaryGadget
 
         /// <summary>
         /// 「秘書さんを呼ぶ」の文面。unreadがnullならOutlook不在(古い件数は使わない)。
-        /// 設定で知らせないことにした項目(メール・Teams・会議)の行は出さず、全部オフなら用件を尋ねる。
+        /// 設定で知らせないことにした項目(メール・Teams・会議)の行は出さず、全部オフなら用件を尋ねる(askRequest はスキンごとのセリフ)。
         /// </summary>
         public static Notice Call(
             DateTime now,
@@ -156,12 +156,13 @@ namespace SecretaryGadget
             IReadOnlyList<MeetingInfo>? upcoming,
             bool showMail = true,
             bool showTeams = true,
-            bool showMeetings = true)
+            bool showMeetings = true,
+            string? askRequest = null)
         {
             string headline = GreetingHeadline(now, userName);
             if (!showMail && !showTeams && !showMeetings)
             {
-                return new Notice(NoticeKind.Greeting, headline, AskRequest);
+                return new Notice(NoticeKind.Greeting, headline, string.IsNullOrWhiteSpace(askRequest) ? AskRequest : askRequest);
             }
 
             string mailLine;
