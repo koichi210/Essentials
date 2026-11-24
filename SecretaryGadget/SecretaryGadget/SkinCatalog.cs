@@ -185,6 +185,14 @@ namespace SecretaryGadget
             return new Icon(stream);
         }
 
+        /// <summary>メニューに添える小さな絵(トレイアイコンと同じ icon.ico から、指定の大きさに近いものを選ぶ)。</summary>
+        public static Bitmap LoadMenuImage(SkinInfo skin, System.Drawing.Size size)
+        {
+            using Icon icon = LoadIcon(skin);
+            using var sized = new Icon(icon, size);
+            return sized.ToBitmap();
+        }
+
         /// <summary>行ごとに α&gt;32 の最も左の x を求める(画像読込時に前計算)。</summary>
         public static int[] ComputeLeftmost(BitmapSource bitmap)
         {

@@ -15,6 +15,9 @@ namespace SecretaryGadget
 
         private Forms.NotifyIcon? _tray;
 
+        /// <summary>スキンメニューに添えた絵。メニューを作り直すたびに捨てる。</summary>
+        private readonly List<System.Drawing.Image> _skinMenuImages = new List<System.Drawing.Image>();
+
         private void CreateTray()
         {
             var menu = new Forms.ContextMenuStrip();
@@ -113,6 +116,11 @@ namespace SecretaryGadget
                 old.Dispose();
             }
             menu.Items.Clear();
+            foreach (System.Drawing.Image image in _skinMenuImages)
+            {
+                image.Dispose();
+            }
+            _skinMenuImages.Clear();
 
             // 秘書さんを呼ぶ(トレイ左クリック)・本日の予定・箱庭・株レーダー・タイマーは、呼んだときの吹き出しの選択肢(CallMenu)へ移した
             var breakMenu = new Forms.ToolStripMenuItem(_onBreak && _breakUntil != null ? $"休憩（{_breakUntil.Value:HH:mm} 再開予定）" : "休憩");
@@ -133,10 +141,27 @@ namespace SecretaryGadget
             menu.Items.Add(sizeMenu);
 
             var skinMenu = new Forms.ToolStripMenuItem("スキン");
+            // 絵とチェックを別の列に出す(既定だと選択中の行は絵がチェックの代わりになって見分けにくい)
+            if (skinMenu.DropDown is Forms.ToolStripDropDownMenu skinDropDown)
+            {
+                skinDropDown.ShowCheckMargin = true;
+                skinDropDown.ShowImageMargin = true;
+            }
             foreach (SkinInfo skin in _skins)
             {
                 SkinInfo captured = skin;
-                skinMenu.DropDownItems.Add(Item(skin.Name, () => ChangeSkin(captured), check: skin.Id == _skin.Id));
+                Forms.ToolStripMenuItem skinItem = Item(skin.Name, () => ChangeSkin(captured), check: skin.Id == _skin.Id);
+                try
+                {
+                    System.Drawing.Image image = SkinCatalog.LoadMenuImage(skin, menu.ImageScalingSize);
+                    _skinMenuImages.Add(image);
+                    skinItem.Image = image;
+                }
+                catch (Exception ex)
+                {
+                    Log.Write("スキンメニューの絵を読めませんでした: " + ex.GetType().Name);
+                }
+                skinMenu.DropDownItems.Add(skinItem);
             }
             if (_skins.Count > 0)
             {
