@@ -110,14 +110,14 @@ namespace SecretaryGadget.Tests
         [TestMethod]
         public void Layout_FollowsFormula()
         {
-            // 絵 1024x1536、等倍 h=420 → 絵幅 280
+            // 絵 1024x1536、等倍 h=420 → 絵幅 280。吹き出し(100)は下端を窓の下端−4 に固定
             var r = BubbleLayout.Compute(420, 1.0, 100, 1024, 1536, HalfOpaque(1024, 1536), null);
             Assert.AreEqual(420, r.WindowHeight, 1e-9);
             Assert.AreEqual(280, r.ImageWidth, 1e-9);
             Assert.AreEqual(0, r.ImageTop, 1e-9);
-            double faceY = 0.23 * 420;
-            Assert.AreEqual(faceY - 36, r.BubbleTop, 1e-9);
-            Assert.AreEqual(faceY, r.TailTip, 1e-9);
+            Assert.AreEqual(420 - 100 - 4, r.BubbleTop, 1e-9);
+            // 顔の高さまで届かない吹き出しは、しっぽを吹き出しの上の方(上端+22)から出す
+            Assert.AreEqual(r.BubbleTop + 22, r.TailTip, 1e-9);
             // L(吹き出しの行)=0.5 → r = 0.5 − (14+6)/280。キャラの左端は 306+14+6=326 に来る
             double expected = 0.5 - 20.0 / 280;
             Assert.AreEqual(expected, r.Overlap, 1e-9);
@@ -127,62 +127,51 @@ namespace SecretaryGadget.Tests
         }
 
         [TestMethod]
-        public void Layout_TallBubbleRaisesWindowAndClampsBubbleTop()
+        public void Layout_TallBubbleRaisesWindowAndKeepsBottom()
         {
             var r = BubbleLayout.Compute(420, 0.25, 300, 1024, 1536, HalfOpaque(1024, 1536), 0.34);
             Assert.AreEqual(308, r.WindowHeight, 1e-9);
             Assert.AreEqual(308 - 105, r.ImageTop, 1e-9);
             Assert.AreEqual(4, r.BubbleTop, 1e-9);
+            Assert.AreEqual(r.WindowHeight - 4, r.BubbleTop + 300, 1e-9);
             Assert.AreEqual(0.34, r.Overlap, 1e-9);
         }
 
         [TestMethod]
-        public void Layout_TransparentRowsDoNotLimitOverlap()
+        public void Layout_RowsAboveBubbleDoNotLimitOverlap()
         {
+            // 上の方(吹き出しより上の行)は x=0.05 まで張り出しているが、吹き出しの行は x=0.5
             int[] leftmost = new int[1536];
             for (int y = 0; y < leftmost.Length; y++)
             {
-                // 顔の行(上から23%付近)は x=0.3、それ以外は全透明
-                leftmost[y] = y > 300 && y < 420 ? 307 : 1024;
+                leftmost[y] = y < 600 ? 51 : 512;
             }
             var r = BubbleLayout.Compute(420, 1.0, 100, 1024, 1536, leftmost, null);
-            Assert.AreEqual(307.0 / 1024 - 20.0 / 280, r.Overlap, 1e-9);
+            Assert.AreEqual(0.5 - 20.0 / 280, r.Overlap, 1e-9);
         }
 
         [TestMethod]
-        public void Layout_RaisesBubbleAboveWideShoulders()
+        public void Layout_WideBottomPushesCharacterRight()
         {
-            // 顔(上から23%)までは x=0.5、そこから60px下(窓座標)で肩が x=0.05 まで張り出す絵
+            // 下の方(吹き出しの行)が x=0.05 まで張り出す絵は、重ならないよう右へずらす
             int[] leftmost = new int[1536];
             for (int y = 0; y < leftmost.Length; y++)
             {
-                leftmost[y] = y < (0.23 * 420 + 60) * 1536 / 420 ? 512 : 51;
+                leftmost[y] = y < 1100 ? 512 : 51;
             }
             var r = BubbleLayout.Compute(420, 1.0, 100, 1024, 1536, leftmost, null);
-            double faceY = 0.23 * 420;
-            // 既定の高さ(faceY−36)だと影まで肩の行に入るので、肩より上に収まる高さまで上げる
-            Assert.IsTrue(r.BubbleTop < faceY - 36);
-            Assert.IsTrue(r.BubbleTop + 100 + BubbleLayout.ShadowBelow <= faceY + 60);
-            Assert.AreEqual(0.5 - 20.0 / 280, r.Overlap, 1e-9);
-            // しっぽは顔を指したまま
-            Assert.AreEqual(faceY, r.TailTip, 1e-9);
+            Assert.AreEqual(51.0 / 1024 - 20.0 / 280, r.Overlap, 1e-9);
+            Assert.AreEqual(326, r.ImageLeft + 280 * 51.0 / 1024, 1e-9);
         }
 
         [TestMethod]
-        public void Layout_TallBubbleRisesAboveHeadAndGrowsWindowUpward()
+        public void Layout_TallBubbleGrowsUpwardAndTailPointsAtFace()
         {
-            // 同じ肩の張った絵に背の高い吹き出し(200)。絵の中に収めると肩の行に入るので、頭より上へはみ出させる
-            int[] leftmost = new int[1536];
-            for (int y = 0; y < leftmost.Length; y++)
-            {
-                leftmost[y] = y < (0.23 * 420 + 60) * 1536 / 420 ? 512 : 51;
-            }
-            var r = BubbleLayout.Compute(420, 1.0, 200, 1024, 1536, leftmost, null);
-            Assert.AreEqual(0.5 - 20.0 / 280, r.Overlap, 1e-9);
-            Assert.IsTrue(r.WindowHeight > 420);
-            Assert.AreEqual(r.WindowHeight - 420, r.ImageTop, 1e-9);
-            Assert.IsTrue(r.BubbleTop >= 4);
-            Assert.IsTrue(r.BubbleTop + 200 + BubbleLayout.ShadowBelow <= r.ImageTop + 0.23 * 420 + 60);
+            // 絵より背の高い吹き出し(500)は、下端を固定したまま窓ごと上へ伸びる。顔の高さに届くのでしっぽは顔を指す
+            var r = BubbleLayout.Compute(420, 1.0, 500, 1024, 1536, HalfOpaque(1024, 1536), null);
+            Assert.AreEqual(508, r.WindowHeight, 1e-9);
+            Assert.AreEqual(88, r.ImageTop, 1e-9);
+            Assert.AreEqual(4, r.BubbleTop, 1e-9);
             Assert.AreEqual(r.ImageTop + 0.23 * 420, r.TailTip, 1e-9);
         }
 

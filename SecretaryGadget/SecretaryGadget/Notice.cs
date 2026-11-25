@@ -18,8 +18,24 @@ namespace SecretaryGadget
         Timer,
     }
 
-    /// <summary>吹き出しの下に並べる選択肢1行分。選ぶと秘書さんが引っ込んでから Run を呼ぶ。</summary>
-    internal sealed record BubbleMenuItem(string Label, Action Run);
+    /// <summary>吹き出しの下に並べる行の種類。選べるのは Action だけ(区切り線・見出し・お知らせの行は押せない)。</summary>
+    internal enum BubbleMenuKind
+    {
+        Action,
+        Separator,
+        Header,
+        Info,
+    }
+
+    /// <summary>吹き出しの下に並べる1行分。Action の行を選ぶと秘書さんが引っ込んでから Run を呼ぶ。</summary>
+    internal sealed record BubbleMenuItem(string Label, Action? Run, BubbleMenuKind Kind = BubbleMenuKind.Action)
+    {
+        public static BubbleMenuItem Separator() => new(string.Empty, null, BubbleMenuKind.Separator);
+
+        public static BubbleMenuItem Header(string label) => new(label, null, BubbleMenuKind.Header);
+
+        public static BubbleMenuItem Info(string label) => new(label, null, BubbleMenuKind.Info);
+    }
 
     /// <summary>吹き出し1回分のお知らせ。</summary>
     internal sealed class Notice
@@ -322,6 +338,32 @@ namespace SecretaryGadget
         public static Notice SkinChanged(string skinName)
         {
             return new Notice(NoticeKind.Greeting, "担当を交代しました", $"本日からは{skinName}がお知らせを担当します。", "よろしくお願いいたします。");
+        }
+
+        /// <summary>呼んだときの吹き出しに出す「入力待ちセッション」の行数の上限(超えた分は「ほか N 件」)</summary>
+        public const int WaitingSessionsMax = 8;
+
+        /// <summary>
+        /// 呼んだときの吹き出しの選択肢の下に付ける、Claude Code の入力待ちの会話の一覧(区切り線・見出し・1件1行。押せない行)。
+        /// 待っている時間の長い順。無いときも見出しは出して「ありません」と書く。
+        /// </summary>
+        public static IReadOnlyList<BubbleMenuItem> WaitingSessionsMenu(IReadOnlyList<WaitingSession> waiting)
+        {
+            var rows = new List<BubbleMenuItem> { BubbleMenuItem.Separator(), BubbleMenuItem.Header("入力待ちセッション") };
+            if (waiting.Count == 0)
+            {
+                rows.Add(BubbleMenuItem.Info("・いまはありません"));
+                return rows;
+            }
+            foreach (WaitingSession w in waiting.Take(WaitingSessionsMax))
+            {
+                rows.Add(BubbleMenuItem.Info("・" + (string.IsNullOrWhiteSpace(w.Title) ? "(無題)" : w.Title)));
+            }
+            if (waiting.Count > WaitingSessionsMax)
+            {
+                rows.Add(BubbleMenuItem.Info($"ほか {waiting.Count - WaitingSessionsMax} 件"));
+            }
+            return rows;
         }
 
         public static Notice CallMenuSaved(int count)

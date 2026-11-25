@@ -549,13 +549,28 @@ namespace SecretaryGadget
             }
         }
 
-        /// <summary>「秘書さんを呼ぶ」の吹き出しに、settings.json の CallMenu の選択肢を付ける。</summary>
-        private Notice WithCallMenu(Notice notice)
+        /// <summary>「秘書さんを呼ぶ」の吹き出しに、settings.json の CallMenu の選択肢と、その下に Claude Code の入力待ちの会話の一覧を付ける。</summary>
+        private Notice WithCallMenu(Notice notice, IReadOnlyList<WaitingSession>? waiting = null)
         {
+            var menu = _settings.CallMenu.Select(e => new BubbleMenuItem(e.Label, () => RunCallMenuEntry(e))).ToList();
+            menu.AddRange(NoticeTexts.WaitingSessionsMenu(waiting ?? ReadWaitingSessions()));
             return new Notice(notice.Kind, notice.Headline, notice.Line1, notice.Line2, notice.Line3)
             {
-                Menu = _settings.CallMenu.Select(e => new BubbleMenuItem(e.Label, () => RunCallMenuEntry(e))).ToList(),
+                Menu = menu,
             };
+        }
+
+        private static IReadOnlyList<WaitingSession> ReadWaitingSessions()
+        {
+            try
+            {
+                return ClaudeSessions.ReadWaiting();
+            }
+            catch (Exception ex)
+            {
+                Log.Write("入力待ちの会話を読めませんでした: " + ex.GetType().Name);
+                return Array.Empty<WaitingSession>();
+            }
         }
 
         /// <summary>
@@ -603,7 +618,7 @@ namespace SecretaryGadget
             Log.Write($"吹き出しのメニュー: {item.Label}");
             try
             {
-                item.Run();
+                item.Run?.Invoke();
             }
             catch (Exception ex)
             {

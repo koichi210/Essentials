@@ -27,6 +27,8 @@ namespace SecretaryGadget
         private static readonly TimeSpan _peekTimeout = TimeSpan.FromSeconds(8);
         private static readonly Brush _menuForeground = Frozen(Color.FromRgb(0x2E, 0x3A, 0x59));
         private static readonly Brush _menuHover = Frozen(Color.FromRgb(0xE6, 0xEC, 0xF7));
+        private static readonly Brush _menuSeparator = Frozen(Color.FromRgb(0xD5, 0xDB, 0xE6));
+        private static readonly Brush _menuInfo = Frozen(Color.FromRgb(0x4A, 0x52, 0x66));
 
         private readonly DispatcherTimer _autoHideTimer;
         private readonly DispatcherTimer _peekTimer;
@@ -311,9 +313,36 @@ namespace SecretaryGadget
             MenuPanel.Visibility = Visibility.Visible;
         }
 
-        /// <summary>選択肢1行。行全体(左右の余白まで)を当たり判定にし、マウスが乗ったら色を付ける。</summary>
-        private static Border CreateMenuRow(BubbleMenuItem item)
+        /// <summary>
+        /// 1行分。選択肢(Action)は行全体(左右の余白まで)を当たり判定にし、マウスが乗ったら色を付ける。
+        /// 区切り線・見出し・お知らせの行は Tag を付けない(FindMenuItem が拾わない＝押せない)。
+        /// </summary>
+        private static FrameworkElement CreateMenuRow(BubbleMenuItem item)
         {
+            switch (item.Kind)
+            {
+                case BubbleMenuKind.Separator:
+                    return new Border { Height = 1, Background = _menuSeparator, Margin = new Thickness(0, 6, 0, 4) };
+                case BubbleMenuKind.Header:
+                    return new TextBlock
+                    {
+                        Text = item.Label,
+                        FontSize = 12,
+                        FontWeight = FontWeights.SemiBold,
+                        Foreground = _menuForeground,
+                        Margin = new Thickness(0, 0, 0, 2),
+                    };
+                case BubbleMenuKind.Info:
+                    return new TextBlock
+                    {
+                        Text = item.Label,
+                        FontSize = 13,
+                        Foreground = _menuInfo,
+                        Margin = new Thickness(4, 1, 0, 1),
+                        TextTrimming = TextTrimming.CharacterEllipsis,
+                        ToolTip = item.Label,
+                    };
+            }
             var row = new Border
             {
                 Tag = item,
@@ -505,15 +534,13 @@ namespace SecretaryGadget
         double Overlap);
 
     /// <summary>
-    /// 配置計算。
-    /// h = DisplayHeight×scale、吹き出しを幅300で Measure → bh、wh = max(h, bh+8)、imageTop = wh−h、faceY = imageTop + 0.23h、
-    /// bubbleTop = clamp(faceY−36, 4, wh−bh−4)、tailTip = clamp(faceY, bubbleTop+22, bubbleTop+bh−22)、
+    /// 配置計算。吹き出しは下端を窓の下端(＝タスクバーのすぐ上)に固定し、中身が増えたら上へ伸ばす。
+    /// h = DisplayHeight×scale、吹き出しを幅300で Measure → bh、wh = max(h, bh+8)(窓は下端固定なので、背の高い吹き出しは窓ごと上へ伸びる)、
+    /// imageTop = wh−h、bubbleTop = wh−bh−4、faceY = imageTop + 0.23h、tailTip = clamp(faceY, bubbleTop+22, bubbleTop+bh−22)
+    /// (吹き出しが顔の高さまで届けばしっぽは顔を指し、届かなければ吹き出しの上の方から出る)、
     /// 重なり率 r = skin.BubbleOverlap ?? min(0.5, L(吹き出しの行＋影) − (しっぽの張り出し14 + すき間6)/絵幅)、
-    /// BubbleOverlap が無いときは、しっぽが faceY を指せる範囲(faceY−bh+22 〜 faceY−22)で bubbleTop をずらし、r が最大になる高さを使う。
-    /// 吹き出しが絵の上端より上にはみ出す高さを選んだら、窓をその分(＋4)上へ伸ばす(窓は下端固定なのでキャラは動かない)。
-    /// L(行範囲) = その行範囲で最も左にある不透明画素(α&gt;32)の x / 画像幅、窓の高さ = wh、窓の幅 = 306 − 絵幅×r + 絵幅。
-    /// 仕様書の式は吹き出しをキャラに少し潜り込ませるものだったが、吹き出しとイラストは重ねない方針のため、
-    /// 吹き出しの高さにあたる行では、キャラの左端がしっぽの先よりさらに右(すき間6)に来るよう r を決める。r は負にもなる。
+    /// L(行範囲) = その行範囲で最も左にある不透明画素(α&gt;32)の x / 画像幅、窓の幅 = 306 − 絵幅×r + 絵幅。
+    /// 吹き出しとイラストは重ねない方針のため、吹き出しの高さにあたる行では、キャラの左端がしっぽの先よりさらに右(すき間6)に来るよう r を決める。r は負にもなる。
     /// </summary>
     internal static class BubbleLayout
     {
@@ -531,15 +558,18 @@ namespace SecretaryGadget
         /// <summary>吹き出しの影(DropShadow)が下へはみ出す分。この行までキャラと重ねない</summary>
         public const double ShadowBelow = 8;
 
+        /// <summary>吹き出しの下端と窓の下端(タスクバー)のすき間</summary>
+        public const double BottomGap = 4;
+
         public static BubbleLayoutResult Compute(double displayHeight, double scale, double bubbleHeight, int pixelWidth, int pixelHeight, IReadOnlyList<int> leftmostOpaque, double? bubbleOverlap)
         {
             double h = displayHeight * scale;
             double imageWidth = pixelHeight > 0 ? h * pixelWidth / pixelHeight : h;
             double bh = bubbleHeight;
-            double wh = Math.Max(h, bh + 8);
+            double wh = Math.Max(h, bh + BottomGap * 2);
             double imageTop = wh - h;
             double faceY = imageTop + FaceRatio * h;
-            double bubbleTop = Clamp(faceY - 36, 4, wh - bh - 4);
+            double bubbleTop = wh - bh - BottomGap;
 
             double r;
             if (bubbleOverlap != null)
@@ -548,33 +578,9 @@ namespace SecretaryGadget
             }
             else
             {
-                // 吹き出し(枠・影を含む高さ)の行で最も左にある不透明画素が、しっぽの先＋すき間より右に来る位置。
-                // 肩や広がった髪が吹き出しの行に入ると絵が右へ押し出されるので、しっぽが顔を指せる範囲で
-                // 吹き出しを上下にずらし、いちばん顔に近づける高さを選ぶ(同じなら既定の高さに近い方)
+                // 吹き出し(枠・影を含む高さ)の行で最も左にある不透明画素が、しっぽの先＋すき間より右に来る位置
                 double gap = (TailWidth - TailOverlap + NoOverlapGap) / imageWidth;
-                double bubbleRows = Math.Min(0.5 + gap, LeftmostRatio(bubbleTop, bubbleTop + bh + ShadowBelow, imageTop, h, pixelWidth, pixelHeight, leftmostOpaque));
-                // 以下は絵の上端を0とした座標。上へのはみ出し(負)も候補にする
-                double faceInImage = FaceRatio * h;
-                double defaultTop = bubbleTop - imageTop;
-                double bestTop = defaultTop;
-                double highest = Math.Min(h - bh - 4, faceInImage - 22);
-                for (double top = Math.Ceiling(faceInImage - bh + 22); top <= highest; top++)
-                {
-                    double rows = Math.Min(0.5 + gap, LeftmostRatio(top, top + bh + ShadowBelow, 0, h, pixelWidth, pixelHeight, leftmostOpaque));
-                    if (rows > bubbleRows || (rows == bubbleRows && Math.Abs(top - defaultTop) < Math.Abs(bestTop - defaultTop)))
-                    {
-                        bubbleRows = rows;
-                        bestTop = top;
-                    }
-                }
-                if (bestTop != defaultTop)
-                {
-                    wh = h + Math.Max(0, 4 - bestTop);
-                    imageTop = wh - h;
-                    faceY = imageTop + faceInImage;
-                    bubbleTop = imageTop + bestTop;
-                }
-                r = bubbleRows - gap;
+                r = Math.Min(0.5 + gap, LeftmostRatio(bubbleTop, bubbleTop + bh + ShadowBelow, imageTop, h, pixelWidth, pixelHeight, leftmostOpaque)) - gap;
             }
             double tailTip = Clamp(faceY, bubbleTop + 22, bubbleTop + bh - 22);
 
