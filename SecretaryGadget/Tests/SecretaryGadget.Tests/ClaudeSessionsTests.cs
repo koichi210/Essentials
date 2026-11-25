@@ -86,6 +86,9 @@ namespace SecretaryGadget.Tests
             Assert.AreEqual(2 + NoticeTexts.SessionStatusMax + 1, rows.Count);
             Assert.AreEqual("・【実行中】会話1", rows[2].Label);
             Assert.AreEqual("・【処理完了】(無題)", rows[3].Label);
+            // 赤くするのは【実行中】だけ
+            Assert.AreEqual("【実行中】", rows[2].Alert);
+            Assert.IsNull(rows[3].Alert);
             Assert.AreEqual("ほか 2 件", rows[^1].Label);
         }
     }

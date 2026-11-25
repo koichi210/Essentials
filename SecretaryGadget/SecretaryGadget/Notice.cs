@@ -35,6 +35,9 @@ namespace SecretaryGadget
         public static BubbleMenuItem Header(string label) => new(label, null, BubbleMenuKind.Header);
 
         public static BubbleMenuItem Info(string label) => new(label, null, BubbleMenuKind.Info);
+
+        /// <summary>Label の中で赤く出す部分(最初に見つかった所だけ)。null なら全部いつもの色</summary>
+        public string? Alert { get; init; }
     }
 
     /// <summary>吹き出し1回分のお知らせ。</summary>
@@ -358,7 +361,8 @@ namespace SecretaryGadget
             foreach (ClaudeSession s in sessions.Take(SessionStatusMax))
             {
                 string title = string.IsNullOrWhiteSpace(s.Title) ? "(無題)" : s.Title;
-                rows.Add(BubbleMenuItem.Info($"・【{(s.Busy ? "実行中" : "処理完了")}】{title}"));
+                string status = s.Busy ? "【実行中】" : "【処理完了】";
+                rows.Add(BubbleMenuItem.Info($"・{status}{title}") with { Alert = s.Busy ? status : null });
             }
             if (sessions.Count > SessionStatusMax)
             {

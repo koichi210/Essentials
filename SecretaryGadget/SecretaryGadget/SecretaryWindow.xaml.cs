@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Documents;
 using System.Windows.Input;
 using System.Windows.Interop;
 using System.Windows.Media;
@@ -29,6 +30,7 @@ namespace SecretaryGadget
         private static readonly Brush _menuHover = Frozen(Color.FromRgb(0xE6, 0xEC, 0xF7));
         private static readonly Brush _menuSeparator = Frozen(Color.FromRgb(0xD5, 0xDB, 0xE6));
         private static readonly Brush _menuInfo = Frozen(Color.FromRgb(0x4A, 0x52, 0x66));
+        private static readonly Brush _menuAlert = Frozen(Color.FromRgb(0xD3, 0x2F, 0x2F));
 
         private readonly DispatcherTimer _autoHideTimer;
         private readonly DispatcherTimer _peekTimer;
@@ -333,15 +335,24 @@ namespace SecretaryGadget
                         Margin = new Thickness(0, 0, 0, 2),
                     };
                 case BubbleMenuKind.Info:
-                    return new TextBlock
+                    var info = new TextBlock
                     {
-                        Text = item.Label,
                         FontSize = 13,
                         Foreground = _menuInfo,
                         Margin = new Thickness(4, 1, 0, 1),
                         TextTrimming = TextTrimming.CharacterEllipsis,
                         ToolTip = item.Label,
                     };
+                    int at = string.IsNullOrEmpty(item.Alert) ? -1 : item.Label.IndexOf(item.Alert, StringComparison.Ordinal);
+                    if (at < 0)
+                    {
+                        info.Text = item.Label;
+                        return info;
+                    }
+                    info.Inlines.Add(new Run(item.Label[..at]));
+                    info.Inlines.Add(new Run(item.Alert) { Foreground = _menuAlert });
+                    info.Inlines.Add(new Run(item.Label[(at + item.Alert!.Length)..]));
+                    return info;
             }
             var row = new Border
             {
