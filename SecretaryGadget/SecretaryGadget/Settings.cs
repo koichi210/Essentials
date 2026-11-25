@@ -59,6 +59,9 @@ namespace SecretaryGadget
 
         public bool NotifyTeams { get; set; } = true;
 
+        /// <summary>Claude Code のフック(claude-inbox)から届いた「返事が届いた」「確認を待っている」を知らせる</summary>
+        public bool NotifyClaude { get; set; } = true;
+
         public int MeetingLeadMinutes { get; set; } = 5;
 
         public bool MeetingIncludeOrganized { get; set; } = false;

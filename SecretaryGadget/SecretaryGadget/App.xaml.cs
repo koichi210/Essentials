@@ -197,6 +197,15 @@ namespace SecretaryGadget
 
         private void StartWatchers()
         {
+            // Claude Code のフックは、この受け箱があるときだけ書く(秘書さんの無い PC に溜めない)
+            try
+            {
+                System.IO.Directory.CreateDirectory(ClaudeInbox.Dir);
+            }
+            catch (Exception ex) when (ex is System.IO.IOException or UnauthorizedAccessException)
+            {
+                Log.Write("Claude Code の受け箱を作れませんでした: " + ex.GetType().Name);
+            }
             if (!_options.HasDiag("no-outlook"))
             {
                 _outlook = new OutlookWatcher(
@@ -293,6 +302,7 @@ namespace SecretaryGadget
             }
             CheckTimers(now);
             CheckSkinRotation(now);
+            CheckClaudeInbox();
             if (_mentionCounter?.Count == 0 && _teamsSenders.Count > 0)
             {
                 _teamsSenders.Clear();
@@ -302,6 +312,48 @@ namespace SecretaryGadget
                 ShowNext(false);
             }
             UpdateTrayText();
+        }
+
+        /// <summary>
+        /// Claude Code のフックが claude-inbox に置いた知らせを読んで出す。知らせない設定でもファイルは消す(溜めない)。
+        /// 同じ会話の知らせがまだキューに残っていたら、新しいほうだけにする。
+        /// </summary>
+        private void CheckClaudeInbox()
+        {
+            IReadOnlyList<ClaudeHookEvent> events;
+            try
+            {
+                events = ClaudeInbox.Drain();
+            }
+            catch (Exception ex)
+            {
+                Log.Write("Claude Code の知らせを読めませんでした: " + ex.GetType().Name);
+                return;
+            }
+            if (!_settings.NotifyClaude)
+            {
+                return;
+            }
+            foreach (ClaudeHookEvent e in events)
+            {
+                Notice? notice = NoticeTexts.Claude(e, ClaudeSessions.TitleFor(e.SessionId, e.Cwd));
+                if (notice == null)
+                {
+                    continue;
+                }
+                LinkedListNode<Notice>? node = _queue.First;
+                while (node != null)
+                {
+                    LinkedListNode<Notice>? next = node.Next;
+                    if (node.Value.Key == notice.Key)
+                    {
+                        _queue.Remove(node);
+                    }
+                    node = next;
+                }
+                Log.Write($"Claude Code の知らせ: {e.Event} {e.NotificationType}".TrimEnd());
+                Enqueue(notice);
+            }
         }
 
         /// <summary>見張り役のスレッドから UI スレッドへ渡す。</summary>
@@ -422,9 +474,10 @@ namespace SecretaryGadget
                 int mail = _queue.Count(n => n.Kind == NoticeKind.Mail);
                 int teams = _queue.Count(n => n.Kind == NoticeKind.Teams);
                 int meeting = _queue.Count(n => n.Kind == NoticeKind.Meeting);
+                int claude = _queue.Count(n => n.Kind == NoticeKind.Claude);
                 _queue.Clear();
-                Log.Write($"お知らせを集約: メール {mail} 件・Teams {teams} 件・会議 {meeting} 件");
-                _window.ShowNotice(NoticeTexts.Pile(mail, teams, meeting), null);
+                Log.Write($"お知らせを集約: メール {mail} 件・Teams {teams} 件・会議 {meeting} 件・Claude Code {claude} 件");
+                _window.ShowNotice(NoticeTexts.Pile(mail, teams, meeting, claude), null);
                 return;
             }
             Notice notice = _queue.First!.Value;
@@ -780,6 +833,12 @@ namespace SecretaryGadget
             {
                 notice = NoticeTexts.SkinRotated(HourOf(now), _skin.Name);
             }
+            else if (_options.PreviewClaude)
+            {
+                notice = NoticeTexts.Claude(
+                    new ClaudeHookEvent("Stop", Guid.Empty.ToString(), @"D:\Sample", "吹き出しの位置を直しました。上端は頭のてっぺんにそろえ、収まらないときは下端をタスクバーにつけて上へ伸ばします。テストは全部合格です。", null),
+                    "サンプルの会話")!;
+            }
             else
             {
                 notice = NoticeTexts.Startup(now, _settings.UserName);
@@ -864,6 +923,9 @@ namespace SecretaryGadget
         /// <summary>--preview-rotate: 1時間ごとの交代のあいさつ</summary>
         public bool PreviewRotate { get; private set; }
 
+        /// <summary>--preview-claude: Claude Code の返事が届いたお知らせ</summary>
+        public bool PreviewClaude { get; private set; }
+
         /// <summary>--diag-restart-mb N</summary>
         public int? RestartMb { get; private set; }
 
@@ -922,6 +984,9 @@ namespace SecretaryGadget
                         break;
                     case "--preview-rotate":
                         o.PreviewRotate = true;
+                        break;
+                    case "--preview-claude":
+                        o.PreviewClaude = true;
                         break;
                     case "--diag-restart-mb":
                         o._diag.Add("restart-mb");

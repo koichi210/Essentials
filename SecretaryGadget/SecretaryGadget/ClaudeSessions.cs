@@ -104,6 +104,27 @@ namespace SecretaryGadget
             return null;
         }
 
+        /// <summary>
+        /// 会話の題名。自分で付けた題名→自動の題名(記録の末尾)→フォルダ名の順。どれも無ければ空。
+        /// </summary>
+        public static string TitleFor(string sessionId, string cwd, string? configDir = null)
+        {
+            try
+            {
+                string? title = FindTitle(configDir ?? ConfigDir(), sessionId);
+                if (title != null)
+                {
+                    return title;
+                }
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                // 読めなければフォルダ名で
+            }
+            string dir = (cwd ?? string.Empty).TrimEnd('\\', '/');
+            return dir.Length > 0 ? Path.GetFileName(dir) : string.Empty;
+        }
+
         /// <summary>記録の行の並びから題名を選ぶ。custom-title が最優先、次に最後の ai-title。</summary>
         public static string? TitleFromTail(string text)
         {

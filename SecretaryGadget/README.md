@@ -79,6 +79,27 @@ settings.json の主な項目: `UserName`（あいさつの呼び名）、`Outlo
 
 `CallMenu` の項目自体が無ければ `@schedule`・`@timer` の2つ、`[]` にすると選択肢を出さない。
 
+## Claude Code のお知らせ
+
+呼んだときの吹き出しの下に「セッションの状態」として、動いている Claude Code の会話を **【実行中】**（赤）／**【処理完了】** で並べる（処理完了→実行中の順に8件まで）。`~/.claude/sessions/<pid>.json`（Claude Code 自身の在席ファイル）を読むだけで、プロセスが終わった会話は出ない。
+
+Claude Code の返事が終わったとき・承認を待っているときに吹き出しで知らせるには、Claude Code のフック（`~/.claude/settings.json` の `hooks`）に次を足す。VSCode の拡張でもターミナルでも動く。フックは標準入力の JSON をそのまま `%LOCALAPPDATA%\SecGad\claude-inbox\` に置くだけで、秘書さんが3秒ごとに読んで消す（ポートも箱庭も使わない）。受け箱のフォルダは秘書さんが起動時に作り、フックはフォルダがあるときだけ書く（秘書さんの無い PC に溜めない）。
+
+```json
+"hooks": {
+  "Stop": [{ "hooks": [{ "type": "command", "shell": "bash", "timeout": 10, "async": true,
+    "command": "d=\"$LOCALAPPDATA/SecGad/claude-inbox\"; [ -d \"$d\" ] && f=\"$d/$(date +%s%N)-$$\" && cat > \"$f.tmp\" && mv \"$f.tmp\" \"$f.json\"; exit 0" }] }],
+  "Notification": [{ "matcher": "permission_prompt|elicitation_dialog|elicitation_url_dialog|agent_needs_input",
+    "hooks": [{ "type": "command", "shell": "bash", "timeout": 10, "async": true,
+    "command": "（Stop と同じ）" }] }]
+}
+```
+
+- Stop →「Claude Code の返事が届きました」＋会話の題名＋返事の冒頭（80文字）
+- Notification（承認・質問）→「Claude Code が確認を待っています」（`Claude needs your permission to use X` は「X の許可を待っています」）。1分放っておいたときの `idle_prompt` は Stop と同じことなので出さない
+- 同じ会話の知らせがまだ出ていなければ新しいほうだけにする。10分より古いもの（秘書さんが止まっていた間の分）は出さずに消す
+- おやすみ中は出さず、休憩中は件数だけ数える（メール・Teams と同じ）。「設定」→「Claude Code の返事を知らせる」でオフにできる（オフでも受け箱は空にする）
+
 ## スキン
 
 ```
@@ -102,7 +123,7 @@ settings.json の主な項目: `UserName`（あいさつの呼び名）、`Outlo
 | `--exit` | 動いている秘書さんを後片付け付きで終了 |
 | `--wait-instance` | 前の秘書さんの終了を最大30秒待ってから起動 |
 | `--skin <ID>` / `--scale <倍率>` | 設定を変えずに起動 |
-| `--render-preview <png>` | 吹き出し付きの見た目を背景 #3A6EA5 で PNG にして終了（`--preview-call` / `--preview-schedule` で見本データ） |
+| `--render-preview <png>` | 吹き出し付きの見た目を背景 #3A6EA5 で PNG にして終了（`--preview-call` / `--preview-schedule` / `--preview-claude` で見本データ） |
 | `--diag-*` | `call` / `summary` / `restart-mb N` / `no-outlook` / `no-popup` / `no-toast` / `no-mention-count` / `capture-on` / `snooze-1min` / `meeting-expiry` |
 
 ## テスト

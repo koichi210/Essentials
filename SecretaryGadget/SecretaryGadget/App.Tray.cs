@@ -194,6 +194,7 @@ namespace SecretaryGadget
             settingsMenu.DropDownItems.Add(Toggle("Outlook のメールを知らせる", () => _settings.NotifyOutlookMail, v => _settings.NotifyOutlookMail = v));
             settingsMenu.DropDownItems.Add(Toggle("会議の開始前に知らせる", () => _settings.NotifyMeetings, v => _settings.NotifyMeetings = v));
             settingsMenu.DropDownItems.Add(Toggle("Teams のメンションを知らせる", () => _settings.NotifyTeams, v => _settings.NotifyTeams = v));
+            settingsMenu.DropDownItems.Add(Toggle("Claude Code の返事を知らせる", () => _settings.NotifyClaude, v => _settings.NotifyClaude = v));
             settingsMenu.DropDownItems.Add(new Forms.ToolStripSeparator());
             settingsMenu.DropDownItems.Add(Item("呼んだときの選択肢を編集…", EditCallMenu));
             settingsMenu.DropDownItems.Add(new Forms.ToolStripSeparator());

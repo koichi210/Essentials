@@ -16,6 +16,7 @@ namespace SecretaryGadget
         Meeting,
         Schedule,
         Timer,
+        Claude,
     }
 
     /// <summary>吹き出しの下に並べる行の種類。選べるのは Action だけ(区切り線・見出し・お知らせの行は押せない)。</summary>
@@ -70,6 +71,9 @@ namespace SecretaryGadget
 
         /// <summary>本文の下に並べる選択肢(「秘書さんを呼ぶ」)。null・空なら出さない。</summary>
         public IReadOnlyList<BubbleMenuItem>? Menu { get; init; }
+
+        /// <summary>同じ Key のお知らせがキューに残っていたら、新しいほうだけにする(同じ会話の Claude Code の知らせ)。</summary>
+        public string? Key { get; init; }
 
         /// <summary>出す直前に現在時刻で作り直す(会議)。nullを返したら捨てる。</summary>
         public Func<DateTime, Notice?>? Refresh { get; init; }
@@ -305,12 +309,63 @@ namespace SecretaryGadget
         }
 
         /// <summary>キューが4件以上たまったときのまとめ。</summary>
-        public static Notice Pile(int mail, int teams, int meeting)
+        public static Notice Pile(int mail, int teams, int meeting, int claude = 0)
         {
-            string line1 = meeting > 0
-                ? $"メール {mail} 件・Teams {teams} 件・会議 {meeting} 件のお知らせがあります。"
-                : $"メール {mail} 件・Teams {teams} 件が届いています。";
-            return new Notice(NoticeKind.Greeting, "お知らせがたまっています", line1, "受信トレイ・Teams をご確認ください。");
+            var parts = new List<string> { $"メール {mail} 件", $"Teams {teams} 件" };
+            if (meeting > 0)
+            {
+                parts.Add($"会議 {meeting} 件");
+            }
+            if (claude > 0)
+            {
+                parts.Add($"Claude Code {claude} 件");
+            }
+            string line1 = meeting > 0 || claude > 0
+                ? string.Join("・", parts) + "のお知らせがあります。"
+                : string.Join("・", parts) + "が届いています。";
+            return new Notice(NoticeKind.Greeting, "お知らせがたまっています", line1, claude > 0 ? "受信トレイ・Teams・Claude Code をご確認ください。" : "受信トレイ・Teams をご確認ください。");
+        }
+
+        /// <summary>Claude Code の知らせで、返事の冒頭として出す文字数</summary>
+        public const int ClaudeSnippetLength = 80;
+
+        private static readonly Regex _permission = new Regex(@"^Claude needs your permission to use (.+)$");
+
+        /// <summary>
+        /// Claude Code のフックの知らせ。Stop は「返事を書き終えた」(返事の冒頭つき)、Notification は承認・質問を待っているときだけ
+        /// (idle_prompt は Stop と同じことを1分後にもう一度言うだけなので出さない。auth_success なども出さない)。
+        /// </summary>
+        public static Notice? Claude(ClaudeHookEvent e, string title)
+        {
+            string line1 = $"会話：{(string.IsNullOrWhiteSpace(title) ? "(無題)" : title)}";
+            string key = "claude:" + e.SessionId;
+            if (e.Event == "Stop")
+            {
+                return new Notice(NoticeKind.Claude, "Claude Code の返事が届きました", line1, Snippet(e.Message)) { Key = key };
+            }
+            if (e.Event == "Notification" && e.NotificationType is "permission_prompt" or "elicitation_dialog" or "elicitation_url_dialog" or "agent_needs_input")
+            {
+                string message = (e.Message ?? string.Empty).Trim();
+                Match m = _permission.Match(message);
+                if (m.Success)
+                {
+                    message = $"{m.Groups[1].Value} の許可を待っています";
+                }
+                return new Notice(NoticeKind.Claude, "Claude Code が確認を待っています", line1, message.Length > 0 ? Snippet(message) : null) { Key = key };
+            }
+            return null;
+        }
+
+        /// <summary>空白・改行を1つの空白にまとめ、長ければ先頭だけ「…」付きで。空なら null。</summary>
+        public static string? Snippet(string? text)
+        {
+            string s = Regex.Replace(text ?? string.Empty, @"\s+", " ").Trim();
+            if (s.Length == 0)
+            {
+                return null;
+            }
+            var chars = s.EnumerateRunes().ToList();
+            return chars.Count <= ClaudeSnippetLength ? s : string.Concat(chars.Take(ClaudeSnippetLength)) + "…";
         }
 
         public static Notice SizeChanged()
