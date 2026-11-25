@@ -2,7 +2,7 @@
 // 会話ログは記録(.jsonl)から組み立てた読むだけの xterm。話している間は、その下に
 // 返事の途中経過・ツールの承認カード・入力欄を出す(サーバが stream-json で claude を動かしている)。
 // xterm は index.html の通常の <script> で読み込む(window.Terminal / window.FitAddon.FitAddon)。
-import { addResizeHandles } from './winframe.js';
+import { addResizeHandles, keepInView } from './winframe.js';
 
 const THEME = { background: '#1b1d2a', foreground: '#e5e7eb', cursor: '#1b1d2a', selectionBackground: 'rgba(217,119,87,.35)' };
 const FONT = '"Cascadia Mono", Consolas, "BIZ UDGothic", "MS Gothic", monospace';
@@ -648,21 +648,15 @@ function openTalkWin(id, title) {
     head.addEventListener('pointermove', move);
     head.addEventListener('pointerup', up);
   });
-  addResizeHandles(el, { minW: 360, minH: 260 });
-  // 大きさは保存する(開いた直後の1回は保存しない)
-  let firstObserve = true;
-  w.ro = new ResizeObserver(() => {
-    if (firstObserve) {
-      firstObserve = false;
-      return;
-    }
+  // 大きさはつまみを離したときだけ保存する(画面に合わせて縮めたときは保存しない)
+  addResizeHandles(el, { minW: 360, minH: 260, onEnd: () => {
     try {
       localStorage.setItem(WIN_SIZE_KEY, JSON.stringify({ w: el.style.width, h: el.style.height }));
     } catch {
       // 保存できなくても動く
     }
-  });
-  w.ro.observe(el);
+  } });
+  keepInView(el);
   const old = convos.get(id);
   if (old) {
     destroyConvo(old);
@@ -674,7 +668,6 @@ function openTalkWin(id, title) {
 }
 
 function removeTalkWin(w) {
-  w.ro?.disconnect();
   if (w.convo) {
     destroyConvo(w.convo);
   }

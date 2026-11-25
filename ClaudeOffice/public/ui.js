@@ -3,7 +3,7 @@ import { projectColor, timeBand } from './world.js';
 import { deriveState, progressBadge, toolEmoji, elapsed, STATE_ORDER } from './people.js';
 import { createChat } from './chat.js';
 import { mountConvo, unmountConvo } from './talk.js';
-import { addResizeHandles } from './winframe.js';
+import { addResizeHandles, keepInView } from './winframe.js';
 
 export function esc(s) {
   return String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -578,7 +578,10 @@ export function openDetail(id) {
   windows.push(win);
   front(win);
   el.querySelector('.x').onclick = () => closeWindow(win);
-  addResizeHandles(el, { minW: 320, minH: 240 });
+  // 大きさは辺や角のつまみを離したときだけ保存する(画面に合わせて縮めたときは保存しない)
+  addResizeHandles(el, { minW: 320, minH: 240, onEnd: () => saveSize(el.style.width, el.style.height) });
+  // 保存してある大きさや位置が今の画面より大きくても、はみ出さないように収める
+  keepInView(el);
   el.addEventListener('mousedown', () => front(win));
   // 見出しドラッグで移動
   const head = el.querySelector('.head');
@@ -589,8 +592,9 @@ export function openDetail(id) {
     const sx = e.clientX - el.offsetLeft;
     const sy = e.clientY - el.offsetTop;
     const move = (ev) => {
-      el.style.left = `${Math.max(0, ev.clientX - sx)}px`;
-      el.style.top = `${Math.max(0, ev.clientY - sy)}px`;
+      // 画面の外には出さない
+      el.style.left = `${Math.max(0, Math.min(window.innerWidth - el.offsetWidth, ev.clientX - sx))}px`;
+      el.style.top = `${Math.max(0, Math.min(window.innerHeight - el.offsetHeight, ev.clientY - sy))}px`;
     };
     const up = () => {
       window.removeEventListener('mousemove', move);
@@ -599,18 +603,6 @@ export function openDetail(id) {
     window.addEventListener('mousemove', move);
     window.addEventListener('mouseup', up);
   });
-  // 大きさは style の値で保存する(offsetWidth だと枠の分だけ太っていく)
-  let firstObserve = true;
-  new ResizeObserver(() => {
-    // 開いた直後の1回は既定の大きさなので保存しない
-    if (firstObserve) {
-      firstObserve = false;
-      return;
-    }
-    if (el.style.width && el.style.height) {
-      saveSize(el.style.width, el.style.height);
-    }
-  }).observe(el);
   el.querySelector('.rest').addEventListener('dblclick', () => openInVscode(id));
   refreshWindow(win);
 }

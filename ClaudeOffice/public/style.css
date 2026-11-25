@@ -601,8 +601,9 @@ hr.sep {
   position: fixed;
   width: 520px;
   height: 720px;
-  min-width: 320px;
-  min-height: 240px;
+  /* Chrome の窓が小さいときは、はみ出さないことを優先して下限も画面に合わせる */
+  min-width: min(320px, calc(100vw - 16px));
+  min-height: min(240px, calc(100vh - 16px));
   overflow: hidden;
   display: flex;
   flex-direction: column;
