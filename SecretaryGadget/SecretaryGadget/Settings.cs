@@ -75,6 +75,9 @@ namespace SecretaryGadget
 
         public bool Paused { get; set; } = false;
 
+        /// <summary>タイマーの入力ダイアログで前回「指定時間後」を選んだか(次に開いたときの初期選択)</summary>
+        public bool TimerRelative { get; set; } = false;
+
         /// <summary>「秘書さんを呼ぶ」の吹き出しに並べる選択肢。行を足せば吹き出しの選択肢も増える。</summary>
         public List<CallMenuEntry> CallMenu { get; set; } = CallMenuEntry.Defaults();
 

@@ -42,10 +42,17 @@ namespace SecretaryGadget
         /// <summary>タイマーをセットする。入力ダイアログで時刻か何分後かを聞く。</summary>
         private void AskTimer()
         {
-            TimerEntry? entry = TimerDialog.Ask();
+            bool relative = _settings.TimerRelative;
+            TimerEntry? entry = TimerDialog.Ask(ref relative);
             if (entry == null)
             {
                 return;
+            }
+            if (relative != _settings.TimerRelative)
+            {
+                // 次に開いたときも同じ側を選んだ状態にする
+                _settings.TimerRelative = relative;
+                _settings.Save();
             }
             _timers.Add(entry);
             Log.Write($"タイマーをセット: {entry.Label}");

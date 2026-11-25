@@ -6,12 +6,15 @@ namespace SecretaryGadget
 {
     /// <summary>
     /// タイマーの入力ダイアログ。ラジオボタンで「①時刻を指定」か「②〇時間〇分後」を選び、どちらもドラムロールで値を選ぶ。
-    /// ②の初期値は 0 時間 5 分。
+    /// ②の初期値は 0 時間 5 分。ラジオの初期選択は前回セットしたときの側。
     /// </summary>
     internal static class TimerDialog
     {
-        /// <summary>OK ならセットする内容、キャンセルなら null。</summary>
-        public static TimerEntry? Ask()
+        /// <summary>
+        /// OK ならセットする内容、キャンセルなら null。relative は開いたときの選択(true=指定時間後)で、
+        /// OK のときは選ばれていた側に書き換える(キャンセルなら変えない)。
+        /// </summary>
+        public static TimerEntry? Ask(ref bool relative)
         {
             DateTime start = DateTime.Now;
             using var form = new Forms.Form
@@ -70,6 +73,11 @@ namespace SecretaryGadget
                 error.Text = string.Empty;
                 (clock ? clockHour : relHour).Focus();
             };
+            // 前回の選択を引き継ぐ。親に載せてからでないと反対側のラジオが自動で外れないので AddRange の後で
+            if (relative)
+            {
+                relativeRadio.Checked = true;
+            }
 
             TimerEntry? result = null;
             ok.Click += (_, __) =>
@@ -90,9 +98,13 @@ namespace SecretaryGadget
             form.Shown += (_, __) =>
             {
                 form.Activate();
-                clockHour.Focus();
+                (clockRadio.Checked ? clockHour : relHour).Focus();
             };
             form.ShowDialog();
+            if (result != null)
+            {
+                relative = relativeRadio.Checked;
+            }
             return result;
         }
 
