@@ -555,7 +555,24 @@ export function openDetail(id) {
   el.style.height = size ? size.h : `${Math.max(360, Math.min(720, window.innerHeight - top - 16))}px`;
   el.style.left = `${left}px`;
   el.style.top = `${top}px`;
-  el.innerHTML = '<div class="head"><span class="ttl ellipsis" style="flex:1">読み込み中…</span><button class="x" title="閉じる">✕</button></div><div class="content"><div class="info"><div class="top"></div><div class="rest"></div></div><div class="convoslot"></div><div class="chatslot"></div></div>';
+  el.innerHTML = '<div class="head"><span class="ttl ellipsis" style="flex:1">読み込み中…</span><button class="btn info-toggle"></button><button class="x" title="閉じる">✕</button></div><div class="content"><div class="info"><div class="top"></div><div class="rest"></div></div><div class="convoslot"></div><div class="chatslot"></div></div>';
+  // 上段の情報はたためる(会話ログを広く見たいとき)。どの窓でも同じ状態を使い、次に開いたときも覚えておく
+  const infoBtn = el.querySelector('.info-toggle');
+  const applyInfo = (folded) => {
+    el.classList.toggle('info-folded', folded);
+    infoBtn.textContent = folded ? 'ℹ️ ▾' : 'ℹ️ ▴';
+    infoBtn.title = folded ? '情報を広げる' : '情報をたたむ';
+  };
+  applyInfo(isFolded('info'));
+  infoBtn.onclick = () => {
+    const folded = !el.classList.contains('info-folded');
+    try {
+      localStorage.setItem(foldKey('info'), folded ? '1' : '0');
+    } catch {
+      // 保存できなくても動く
+    }
+    applyInfo(folded);
+  };
   document.getElementById('windows').appendChild(el);
   const win = { id, el, chat: null, data: null };
   windows.push(win);

@@ -636,6 +636,16 @@ hr.sep {
   padding: 8px 12px 10px;
 }
 
+.win.info-folded .info {
+  display: none;
+}
+
+.win .head .info-toggle {
+  flex: none;
+  padding: 2px 8px;
+  font-size: 0.9em;
+}
+
 .win .info {
   flex: 0 1 auto;
   max-height: 40%;
