@@ -17,10 +17,10 @@
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
-        <TextBlock Grid.Row="0" Text="タイトル"/>
+        <TextBlock Grid.Row="0" Text="タイトル（空ならリンク先から自動で付ける）"/>
         <TextBox x:Name="TitleTextBox" stw:Placeholder.Text="例: メモ帳" Grid.Row="1" Height="26" VerticalContentAlignment="Center" Margin="0,2,0,12"/>
 
-        <TextBlock Grid.Row="2" Text="リンク先（exeのフルパス / httpから始まるURL / ファイル・フォルダのパス）"/>
+        <TextBlock Grid.Row="2" Text="リンク先（exe・ファイル・フォルダのパス / URL。%USERPROFILE% なども可）"/>
         <Grid Grid.Row="3" Margin="0,2,0,0">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*"/>

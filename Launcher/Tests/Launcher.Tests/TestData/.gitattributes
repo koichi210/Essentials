@@ -1,0 +1,2 @@
+# 正解ファイルは MagicLauncher(server.js)の出力そのもの(改行 LF)。バイト単位で比べるので CRLF に変えない
+*.json -text

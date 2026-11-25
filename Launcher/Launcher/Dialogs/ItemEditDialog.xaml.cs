@@ -4,7 +4,7 @@ using Microsoft.Win32;
 namespace Launcher.Dialogs
 {
     /// <summary>
-    /// 項目（タイトル＋リンク先）の追加・編集ダイアログ
+    /// 項目（タイトル＋リンク先）の追加・編集ダイアログ。タイトルは空でもよい（MagicLauncher と同じく、リンク先から表示名を決める）
     /// </summary>
     public partial class ItemEditDialog : Window
     {
@@ -40,12 +40,6 @@ namespace Launcher.Dialogs
 
         private void OkButton_Click(object sender, RoutedEventArgs e)
         {
-            if (string.IsNullOrWhiteSpace(TitleTextBox.Text))
-            {
-                MessageBox.Show("タイトルを入力してください。", "確認", MessageBoxButton.OK, MessageBoxImage.Warning);
-                return;
-            }
-
             if (string.IsNullOrWhiteSpace(PathTextBox.Text))
             {
                 MessageBox.Show("リンク先を入力してください。", "確認", MessageBoxButton.OK, MessageBoxImage.Warning);

@@ -1,4 +1,4 @@
-﻿using System.Diagnostics;
+using System.Diagnostics;
 
 namespace Launcher.Services
 {
@@ -6,6 +6,7 @@ namespace Launcher.Services
     /// 登録されたリンクを起動する。
     /// exeのフルパス・URL・その他関連付けされたパスのいずれも
     /// UseShellExecute=trueでOS標準の方法で開く。
+    /// MagicLauncher と同じく、前後の "..." を外し %VAR% を展開してから開く。
     /// </summary>
     public static class LaunchService
     {
@@ -13,7 +14,7 @@ namespace Launcher.Services
         {
             var info = new ProcessStartInfo
             {
-                FileName = path,
+                FileName = ConfigService.ExpandEnv(ConfigService.StripQuotes(path)),
                 UseShellExecute = true,
             };
             Process.Start(info);

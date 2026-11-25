@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <!-- 画面の組み立て(ViewBuilder)がタグの色の Brush を作るため -->
+    <UseWPF>true</UseWPF>
+    <Nullable>disable</Nullable>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.11.1" />
+    <PackageReference Include="MSTest.TestAdapter" Version="3.6.4" />
+    <PackageReference Include="MSTest.TestFramework" Version="3.6.4" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\Launcher\Launcher.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- messy.json: 散らかった launcher.json(id なし・id 重複・色なし・数字だけのタグ名 など)。
+         messy.expected.json: それを MagicLauncher の server.js が何も変えずに保存したときの出力(正解) -->
+    <None Include="TestData\*.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+</Project>

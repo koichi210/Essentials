@@ -15,7 +15,7 @@
 | [FileArranger](FileArranger) | フォルダの移動や名前変更、ファイルの移動・振り分けをまとめて行う | .NET Framework |
 | [HeifToPng](HeifToPng) | iPhone などの HEIF 画像（.heic / .heif / .hif）を、フォルダごとまとめて PNG に変換する | .NET Framework 4.8 / x64 |
 | [VsCodePets](VsCodePets) | VS Code のパネルでペットが飛び回る拡張機能（vscode-pets の改造版・画像はすべてオリジナル） | VS Code 1.73 以上 |
-| [Launcher](Launcher) | よく使う exe や URL を登録して、ワンクリックで起動する | .NET 10（ランタイムが必要） |
+| [Launcher](Launcher) | よく使う exe や URL を登録して、ワンクリックで起動する（設定ファイルは MagicLauncher と共通） | .NET 10（ランタイムが必要） |
 | [MagicLauncher](MagicLauncher) | よく開く Web ページ・フォルダ・ファイルを、ブラウザの中の光る魔法陣の上に並べてクリックで開くランチャー（登録データは JSON 1 つで複数 PC 共有可） | Node.js 18 以上 |
 | [Mailer](Mailer) | 宛先・件名・本文を決めておいて、ブラウザのメール作成画面を開く | .NET Framework |
 | [Othello](Othello) | オセロ（人対人・人対COM・COM対COM） | .NET Framework |

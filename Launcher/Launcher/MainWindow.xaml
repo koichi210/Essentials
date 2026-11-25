@@ -3,8 +3,12 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="ランチャー" Height="650" Width="480"
         MinHeight="300" MinWidth="360">
+    <Window.Resources>
+        <BooleanToVisibilityConverter x:Key="BoolToVisibility"/>
+    </Window.Resources>
     <Grid Margin="8">
         <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
@@ -12,57 +16,86 @@
 
         <!-- 上部ツールバー -->
         <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,8">
-            <Button x:Name="AddSectionButton" Content="＋ セクション追加" Padding="8,4" Margin="0,0,6,0" Click="AddSectionButton_Click"/>
             <Button x:Name="ReloadButton" Content="再読み込み" Padding="8,4" Margin="0,0,6,0" Click="ReloadButton_Click"
-                    ToolTip="設定ファイル(config.json)を読み直して画面に反映する。他の方法で手動編集した内容を取り込みたい時に使う"/>
+                    ToolTip="設定ファイル(launcher.json)を読み直して画面に反映する。魔法陣ランチャーや手で編集した内容は10秒ごとにも自動で取り込む"/>
             <Button x:Name="OpenConfigButton" Content="設定ファイルを開く" Padding="8,4" Margin="0,0,6,0" Click="OpenConfigButton_Click"
-                    ToolTip="今の内容を保存してから、設定ファイル(config.json)を関連付けられたエディタ(メモ帳等)で開く。直接編集したい時用"/>
-            <Button x:Name="ChangeDataFolderButton" Content="保存先フォルダを変更..." Padding="8,4" Click="ChangeDataFolderButton_Click"
-                    ToolTip="設定ファイルの保存先フォルダを選び直す。選んだ先に既存のconfig.jsonが無ければ今のファイルを移動し、次回以降もそのフォルダを使う"/>
+                    ToolTip="設定ファイル(launcher.json)を関連付けられたエディタ(メモ帳等)で開く。直接編集したい時用"/>
+            <Button x:Name="ChangeConfigPathButton" Content="設定ファイルの場所を変更..." Padding="8,4" Click="ChangeConfigPathButton_Click"
+                    ToolTip="使う設定ファイル(launcher.json)を選び直す。魔法陣ランチャー(MagicLauncher)と共通の設定なので、向こうも同じファイルを使うようになる"/>
         </StackPanel>
 
-        <!-- 現在の保存先フォルダ表示 -->
-        <TextBlock x:Name="DataFolderText" Grid.Row="1" Margin="0,0,0,8" Foreground="#777777" TextTrimming="CharacterEllipsis"/>
+        <!-- 現在の設定ファイルの場所 -->
+        <TextBlock x:Name="ConfigPathText" Grid.Row="1" Margin="0,0,0,8" Foreground="#777777" TextTrimming="CharacterEllipsis"/>
 
-        <!-- セクション一覧 -->
-        <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto">
-            <ItemsControl x:Name="SectionsItemsControl">
+        <!-- 設定ファイルを読めないときの警告(読めるまで保存しない) -->
+        <Border x:Name="ErrorBanner" Grid.Row="2" Margin="0,0,0,8" Padding="8,4" Background="#FDECEC" BorderBrush="#E57373" BorderThickness="1" Visibility="Collapsed">
+            <TextBlock x:Name="ErrorText" Foreground="#B71C1C" TextWrapping="Wrap"/>
+        </Border>
+
+        <!-- 魔法陣 → セクション(タグ) → 項目 -->
+        <ScrollViewer Grid.Row="3" VerticalScrollBarVisibility="Auto">
+            <ItemsControl x:Name="CirclesItemsControl">
                 <ItemsControl.ItemTemplate>
                     <DataTemplate>
-                        <Expander IsExpanded="{Binding IsExpanded, Mode=TwoWay}" Margin="0,0,0,8" BorderBrush="#CCCCCC" BorderThickness="1" Padding="4">
-                            <Expander.Header>
-                                <Grid>
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="*"/>
-                                        <ColumnDefinition Width="Auto"/>
-                                        <ColumnDefinition Width="Auto"/>
-                                        <ColumnDefinition Width="Auto"/>
-                                    </Grid.ColumnDefinitions>
-                                    <TextBlock Grid.Column="0" Text="{Binding Name}" FontWeight="Bold" VerticalAlignment="Center"/>
-                                    <Button Grid.Column="1" Content="＋項目" Padding="6,2" Margin="4,0" Click="AddItemButton_Click" Tag="{Binding}"/>
-                                    <Button Grid.Column="2" Content="名前変更" Padding="6,2" Margin="4,0" Click="RenameSectionButton_Click" Tag="{Binding}"/>
-                                    <Button Grid.Column="3" Content="削除" Padding="6,2" Margin="4,0" Click="DeleteSectionButton_Click" Tag="{Binding}"/>
-                                </Grid>
-                            </Expander.Header>
+                        <StackPanel Margin="0,0,0,12">
+                            <Grid Margin="0,0,0,6">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0" FontSize="15" FontWeight="Bold" VerticalAlignment="Center" Foreground="#3A3A6A">
+                                    <Run Text="🔮"/>
+                                    <Run Text="{Binding Name, Mode=OneWay}"/>
+                                </TextBlock>
+                                <Button Grid.Column="1" Content="＋ セクション追加" Padding="6,2" Click="AddSectionButton_Click" Tag="{Binding}"
+                                        ToolTip="この魔法陣にセクション(タグ)を追加する"/>
+                            </Grid>
 
-                            <ItemsControl ItemsSource="{Binding Items}" Margin="12,6,0,0">
+                            <ItemsControl ItemsSource="{Binding Sections}">
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate>
-                                        <Grid Margin="0,0,0,4">
-                                            <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="*"/>
-                                                <ColumnDefinition Width="Auto"/>
-                                                <ColumnDefinition Width="Auto"/>
-                                            </Grid.ColumnDefinitions>
-                                            <Button Grid.Column="0" Content="{Binding Title}" HorizontalContentAlignment="Left" Padding="8,4" Click="LaunchItemButton_Click" Tag="{Binding}"
-                                                    ToolTip="{Binding Path}"/>
-                                            <Button Grid.Column="1" Content="編集" Padding="6,2" Margin="4,0" Click="EditItemButton_Click" Tag="{Binding}"/>
-                                            <Button Grid.Column="2" Content="削除" Padding="6,2" Margin="4,0" Click="DeleteItemButton_Click" Tag="{Binding}"/>
-                                        </Grid>
+                                        <Expander IsExpanded="{Binding IsExpanded, Mode=TwoWay}" Margin="0,0,0,8" BorderBrush="#CCCCCC" BorderThickness="1" Padding="4">
+                                            <Expander.Header>
+                                                <Grid>
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="Auto"/>
+                                                        <ColumnDefinition Width="*"/>
+                                                        <ColumnDefinition Width="Auto"/>
+                                                        <ColumnDefinition Width="Auto"/>
+                                                        <ColumnDefinition Width="Auto"/>
+                                                    </Grid.ColumnDefinitions>
+                                                    <Border Grid.Column="0" Width="10" Height="10" CornerRadius="5" Margin="0,0,6,0" VerticalAlignment="Center" Background="{Binding ColorBrush}"/>
+                                                    <TextBlock Grid.Column="1" Text="{Binding Name}" FontWeight="Bold" VerticalAlignment="Center"/>
+                                                    <Button Grid.Column="2" Content="＋項目" Padding="6,2" Margin="4,0" Click="AddItemButton_Click" Tag="{Binding}"/>
+                                                    <Button Grid.Column="3" Content="名前変更" Padding="6,2" Margin="4,0" Click="RenameSectionButton_Click" Tag="{Binding}"
+                                                            Visibility="{Binding CanEdit, Converter={StaticResource BoolToVisibility}}"/>
+                                                    <Button Grid.Column="4" Content="削除" Padding="6,2" Margin="4,0" Click="DeleteSectionButton_Click" Tag="{Binding}"
+                                                            Visibility="{Binding CanEdit, Converter={StaticResource BoolToVisibility}}"/>
+                                                </Grid>
+                                            </Expander.Header>
+
+                                            <ItemsControl ItemsSource="{Binding Items}" Margin="12,6,0,0">
+                                                <ItemsControl.ItemTemplate>
+                                                    <DataTemplate>
+                                                        <Grid Margin="0,0,0,4">
+                                                            <Grid.ColumnDefinitions>
+                                                                <ColumnDefinition Width="*"/>
+                                                                <ColumnDefinition Width="Auto"/>
+                                                                <ColumnDefinition Width="Auto"/>
+                                                            </Grid.ColumnDefinitions>
+                                                            <Button Grid.Column="0" Content="{Binding DisplayText}" HorizontalContentAlignment="Left" Padding="8,4" Click="LaunchItemButton_Click" Tag="{Binding}"
+                                                                    ToolTip="{Binding ToolTipText}"/>
+                                                            <Button Grid.Column="1" Content="編集" Padding="6,2" Margin="4,0" Click="EditItemButton_Click" Tag="{Binding}"/>
+                                                            <Button Grid.Column="2" Content="削除" Padding="6,2" Margin="4,0" Click="DeleteItemButton_Click" Tag="{Binding}"/>
+                                                        </Grid>
+                                                    </DataTemplate>
+                                                </ItemsControl.ItemTemplate>
+                                            </ItemsControl>
+                                        </Expander>
                                     </DataTemplate>
                                 </ItemsControl.ItemTemplate>
                             </ItemsControl>
-                        </Expander>
+                        </StackPanel>
                     </DataTemplate>
                 </ItemsControl.ItemTemplate>
             </ItemsControl>

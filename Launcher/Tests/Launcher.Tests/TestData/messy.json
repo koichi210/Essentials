@@ -1,0 +1,94 @@
+{
+  "version": 1,
+  "title": "テスト",
+  "items": [
+    {
+      "name": "メモ帳",
+      "path": "%WINDIR%\\System32\\notepad.exe",
+      "tags": [
+        "ツール"
+      ],
+      "emoji": "📝",
+      "note": "改行\nあり \"引用\" タブ\t"
+    },
+    {
+      "id": "iaaaa0001",
+      "name": "",
+      "path": "https://example.com/a?b=1#c",
+      "tags": [
+        "Web",
+        "ツール"
+      ],
+      "emoji": "🌐🎮",
+      "note": ""
+    },
+    {
+      "path": "\"C:\\Program Files\\Foo\\\"",
+      "tags": [
+        " 色なし ",
+        " 色なし ",
+        ""
+      ]
+    },
+    {
+      "id": "iaaaa0001",
+      "name": "重複id",
+      "path": "steam://rungameid/123",
+      "tags": [
+        "ゲーム"
+      ]
+    },
+    {
+      "name": "タグなし",
+      "path": "D:\\Data\\"
+    },
+    {
+      "name": "パスなし",
+      "tags": [
+        "ツール"
+      ]
+    },
+    "文字列の項目",
+    {
+      "name": "数値",
+      "path": "C:\\x",
+      "tags": [
+        1,
+        "Web"
+      ],
+      "extra": {
+        "n": 1.5,
+        "z": [],
+        "o": {},
+        "b": true,
+        "u": null,
+        "s": "\u0001 \\"
+      }
+    }
+  ],
+  "tags": {
+    "ツール": {
+      "color": "#3f7fe0"
+    },
+    "ゲーム": {
+      "circle": "Games",
+      "color": "bad"
+    },
+    "未使用": {
+      "circle": "Games"
+    },
+    "Web": {
+      "color": "#5FD0FF",
+      "circle": ""
+    }
+  },
+  "columns": 2,
+  "idle": "float",
+  "circleColors": {
+    "Games": "#19b6d2"
+  },
+  "circles": [
+    "Main",
+    "Games"
+  ]
+}
