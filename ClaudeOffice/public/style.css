@@ -128,6 +128,88 @@ textarea {
   display: none;
 }
 
+/* 右パネルをたたんだら、タイムラインは右端まで使う */
+body.side-folded #timeline {
+  right: 16px;
+}
+
+/* タイムラインの見出しは1行。狭いときは「時間プレビュー」の文字を省き、つまみも縮める */
+#timeline {
+  container-type: inline-size;
+}
+
+.tl-head {
+  flex-wrap: nowrap;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+.tl-head .dl {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+
+.tl-head .btn {
+  flex: none;
+}
+
+.tl-head .pv-label {
+  flex: none;
+  gap: 2px;
+}
+
+.tl-head .pvr {
+  flex: 0 1 140px;
+  width: 140px;
+  min-width: 40px;
+}
+
+@container (max-width: 620px) {
+  .tl-head .pv-text {
+    display: none;
+  }
+}
+
+/* 左上の HUD と右パネルを端へたたむ。たたんだら小さなつまみだけ残す */
+.panel > .unfold {
+  display: none;
+}
+
+#hud.folded,
+#side.folded {
+  width: auto;
+  padding: 6px;
+  bottom: auto;
+  overflow: visible;
+}
+
+#hud.folded > *:not(.unfold),
+#side.folded > *:not(.unfold) {
+  display: none !important;
+}
+
+#hud.folded > .unfold,
+#side.folded > .unfold {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+}
+
+.unfold .star {
+  color: var(--accent);
+}
+
+.fold-btn {
+  flex: none;
+  padding: 4px 8px;
+}
+
+#side .tabs .fold-btn {
+  flex: none;
+}
+
 .row {
   display: flex;
   align-items: center;
@@ -504,13 +586,13 @@ hr.sep {
   margin-top: 4px;
 }
 
-/* 詳細の窓・別の窓。#windows / #term-windows ごとに重なりをまとめ、別の窓は詳細の窓より手前・トーストより奥 */
+/* 詳細の窓・別の窓。#windows / #talk-windows ごとに重なりをまとめ、別の窓は詳細の窓より手前・トーストより奥 */
 #windows {
   position: relative;
   z-index: 20;
 }
 
-#term-windows {
+#talk-windows {
   position: relative;
   z-index: 25;
 }
@@ -607,7 +689,7 @@ hr.sep {
 }
 
 .convo-bar .btn,
-.term-win .head .btn {
+.talk-win .head .btn {
   padding: 2px 9px;
 }
 
@@ -621,10 +703,134 @@ hr.sep {
   border-color: var(--accent);
 }
 
+/* 会話ログ(残り全部)・返事の途中経過・承認カード・入力欄を縦に並べる */
 .convo-body {
   flex: 1;
   min-height: 80px;
+  display: flex;
+  flex-direction: column;
+}
+
+.log-wrap {
+  flex: 1;
+  min-height: 60px;
   position: relative;
+}
+
+.talk-status {
+  min-width: 0;
+  flex: 0 1 auto;
+  color: #b6bdcc;
+  font-size: 0.95em;
+}
+
+.talk-live {
+  flex: none;
+  max-height: 28%;
+  overflow: auto;
+  white-space: pre-wrap;
+  padding: 4px 10px;
+  border-top: 1px dashed rgba(255, 255, 255, 0.15);
+  color: #cfd6e4;
+}
+
+.talk-asks {
+  flex: none;
+  max-height: 50%;
+  overflow: auto;
+  padding: 6px 8px 2px;
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.ask {
+  background: rgba(217, 119, 87, 0.14);
+  border: 1px solid var(--accent);
+  border-radius: 9px;
+  padding: 6px 8px;
+  margin-bottom: 6px;
+}
+
+.ask-h {
+  margin-bottom: 4px;
+}
+
+.ask-desc {
+  color: #b6bdcc;
+}
+
+.ask-detail {
+  margin: 4px 0;
+  padding: 5px 8px;
+  max-height: 160px;
+  overflow: auto;
+  white-space: pre-wrap;
+  word-break: break-all;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 6px;
+  font: calc(12px * var(--fs)) "Cascadia Mono", Consolas, "BIZ UDGothic", monospace;
+}
+
+.ask-q {
+  margin: 4px 0 8px;
+}
+
+.ask-opts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin: 4px 0;
+}
+
+.ask-other {
+  width: 100%;
+  background: rgba(0, 0, 0, 0.25);
+  color: inherit;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 6px;
+  padding: 3px 6px;
+}
+
+.ask-btns {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.convo .ask .btn,
+.convo .talk-input .btn {
+  color: #e5e7eb;
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.16);
+}
+
+.convo .ask .btn.primary,
+.convo .ask .btn.on,
+.convo .talk-input .btn.primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+.talk-input {
+  flex: none;
+  display: flex;
+  gap: 6px;
+  align-items: flex-end;
+  padding: 6px 8px;
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.talk-input textarea {
+  flex: 1;
+  min-height: 2.6em;
+  max-height: 30vh;
+  resize: vertical;
+  background: rgba(0, 0, 0, 0.25);
+  color: #e5e7eb;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 8px;
+  padding: 5px 8px;
 }
 
 .convo-note {
@@ -638,22 +844,21 @@ hr.sep {
   display: none;
 }
 
-.term-view,
 .log-view {
   position: absolute;
   inset: 4px 2px 2px 8px;
 }
 
-.term-win {
+.talk-win {
   position: fixed;
-  width: 720px;
-  height: 440px;
+  width: 620px;
+  height: 520px;
   overflow: hidden;
   display: flex;
   flex-direction: column;
 }
 
-.term-win .head {
+.talk-win .head {
   display: flex;
   align-items: center;
   gap: 6px;
@@ -663,25 +868,12 @@ hr.sep {
   touch-action: none;
 }
 
-.term-win .head .st {
-  flex: none;
-  font-weight: 400;
-}
-
 .tw-body {
   flex: 1;
   min-height: 0;
-  position: relative;
-  margin: 0 10px;
-  background: #1b1d2a;
-  border: 2px solid var(--accent);
-  border-radius: 10px;
-  overflow: hidden;
-}
-
-.tw-keys {
-  padding: 4px 12px 8px;
-  font-size: 0.85em;
+  display: flex;
+  flex-direction: column;
+  margin: 0 10px 10px;
 }
 
 /* 辺と角のつまみ(透明)。辺は幅6px・角は12px */
@@ -755,23 +947,23 @@ hr.sep {
   cursor: nwse-resize;
 }
 
-/* 右パネルの「🖥 箱庭のターミナル」 */
-.term-box {
+/* 右パネルの「💬 箱庭で話す」 */
+.talk-box {
   padding: 0 10px 2px;
 }
 
-.term-box .h {
+.talk-box .h {
   margin-top: 4px;
 }
 
-.term-box .term-btn {
+.talk-box .talk-btn {
   display: block;
   width: 100%;
   text-align: left;
   margin: 3px 0;
 }
 
-.term-new-row select {
+.talk-new-row select {
   flex: 1;
   min-width: 0;
   background: var(--input-bg);

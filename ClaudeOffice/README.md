@@ -5,7 +5,7 @@ Claude Code の各セッションが「いま何をしているか」「過去�
 - `%USERPROFILE%\.claude` 配下の会話記録を**読み取り専用**で解析し、在席中の会話1つにつき1人を机に座らせて、状態（作業中・考え中・入力待ち・おやすみ）をアニメーションで見せます
 - 過去セッションの検索・日別タイムライン・使用率（5時間／週）の表示
 - VSCode 版 Claude Code での再開、箱庭からの会話の続きの送信
-- 詳細の窓の**会話ログ**（やりとりをターミナル風に読む）と、**箱庭のターミナル**（本物の claude を対話モードで動かして話す）
+- 詳細の窓の**会話ログ**（やりとりをターミナル風に読む）と、**箱庭で話す**（VSCode 拡張と同じやり方で claude を動かし、箱庭から話す・承認する）
 - 返事が終わったときの Windows 通知
 
 ## 動かし方
@@ -36,21 +36,24 @@ powershell -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File autostar
  "command":"curl -s -m 3 -X POST -H 'Content-Type: application/json' --data-binary @- http://127.0.0.1:8765/api/hook/stop >/dev/null 2>&1 || true"}
 ```
 
-## 会話ログと箱庭のターミナル
+## 会話ログと箱庭で話す
 
 詳細の窓は「情報（はみ出したらここだけスクロール）／会話欄／送信欄」の3段です。窓は上下左右の辺と4つの角で大きさを変えられます。
 
 - **💬 会話ログ**（読むだけ）: その会話の記録（`.jsonl`）を組み立て、時刻・`›` 依頼・`●` 返事・`⎿` ツールの形で出します。2秒ごとに続きだけ足します。巻き戻した会話は、いま続いている側の1本だけが出ます（1,500件を超える分は「古い N 件は省略」）。コマンドの本文・ツールの結果・考え中の中身は出さず、秘密はマスクします
-- **🖥 ここで話す**: どこでも開いていない会話なら、会話欄が本物のターミナルになります（サーバが [node-pty](https://github.com/microsoft/node-pty) で `claude --resume <id>` を対話モードのまま起動、画面は xterm.js）。打った発言は VSCode やターミナルで打ったのと同じ本人の発言になり、ツールの承認や `/` コマンドも使えます
-  - Enter 送信／Shift+Enter 改行／選んで Ctrl+C コピー（選んでいなければ claude の中断）／Ctrl+V 貼り付け／Esc 中断（窓は閉じない）
+- **💬 ここで話す**: どこでも開いていない会話なら、会話欄の下に入力欄が出て、箱庭から話せます。サーバが VSCode 拡張と同じやり方（`claude --input-format stream-json --output-format stream-json --permission-prompt-tool stdio`）で claude を動かし続け、JSON の行を送り合います。ネイティブ部品は要りません
+  - 発言には `origin: {kind: "human"}` を付けるので、記録では VSCode やターミナルで打ったのと同じ**本人の発言**（`turnOrigin: human`）になります
+  - 返事の途中経過は会話ログの下に流れ、書き終わると会話ログに入ります
+  - ツールの承認はカードで出ます（✅ 許可／✅ この会話中は許可／🚫 許可しない）。承認するには何をするのかが見えないといけないので、カードにはコマンドもマスクして出します。claude からの質問（AskUserQuestion）は選択肢のボタンで、計画（ExitPlanMode）は「この計画で進める」で答えます
+  - Enter 送信／Shift+Enter 改行／Esc・「⏹ 中断」でいまの返事を止める（窓は閉じない）。`/` コマンドは使えません
   - 「■ 終える」で claude を子プロセスごと止め、話した分も入った会話ログに戻ります。詳細の窓を閉じても claude は動いたままです。ページを再読み込みしても続きから使えます
-- **右パネル「🏢 在席」の上の「🖥 箱庭のターミナル」**: 動いているターミナルの一覧と、今までに使ったフォルダを選んで「＋ 新しい会話」。詳細の窓を開いていない会話は別の窓で開き（`＿` で隠す・一覧から戻す）、その会話の詳細の窓を開くと画面ごと会話欄へ移ります
-- 新しいフォルダで初めて使うと claude が「このフォルダを信頼する？」と聞きます。既定が「No, exit」なので、↓ で Yes を選んで Enter
-- **サーバを止めると、箱庭のターミナルの claude も終わります**（記録はそこまで残ります）
+- **右パネル「🏢 在席」の上の「💬 箱庭で話す」**: 話している会話の一覧（⏳ 返事中・🔐 承認待ち）と、今までに使ったフォルダを選んで「＋ 新しい会話」。詳細の窓を開いていない会話は別の窓で開き（`＿` で隠す・一覧から戻す）、その会話の詳細の窓を開くと会話欄へ移ります
+- **サーバを止めると、箱庭で話している claude も終わります**（記録はそこまで残ります）
+- 左上の HUD・右パネル・下のタイムラインは端へたためます（◀ ▶ ▾。次に開いたときも覚えています）
 
 ### 同じ会話を2か所で開かない
 
-同じ会話を2本同時に `--resume` すると記録が枝分かれするため、VSCode（ほかのターミナル）で開いている会話・箱庭から続きを送っている途中の会話は、箱庭のターミナルで開けません。逆に箱庭のターミナルで動いている間は、送信欄と「VSCode で開く」が使えません。
+同じ会話を2本同時に `--resume` すると記録が枝分かれするため、VSCode（ほかのターミナル）で開いている会話・箱庭から続きを送っている途中の会話は、箱庭で話せません。逆に箱庭で話している間は、送信欄と「VSCode で開く」が使えません。
 
 VSCode でタブを開いただけ（まだ発言していない）の会話は claude が起動しておらず見分けられないので、**VSCode で開いているタブは閉じてから使ってください**。
 
@@ -62,16 +65,13 @@ npm install はせず、取ってきたファイルを置くだけです。
 |---|---|---|
 | xterm.js 5.5.0 | `public/vendor/xterm/` | `npm pack @xterm/xterm@5.5.0` の `lib/xterm.js`・`css/xterm.css`・`LICENSE` |
 | @xterm/addon-fit 0.10.0 | `public/vendor/xterm/` | `npm pack @xterm/addon-fit@0.10.0` の `lib/addon-fit.js` |
-| node-pty 1.1.0 | `vendor-node/node-pty/` | `npm pack node-pty@1.1.0` の `package.json`・`LICENSE`・`lib/` の `*.js`（`*.test.js` 以外、`lib/shared/`・`lib/worker/` も）・`prebuilds/win32-x64/`（`*.pdb` 以外） |
-
-`lib/worker/conoutSocketWorker.js` が欠けると、claude は起動するのに出力が1文字も届きません。node-pty を読み込めないときも本体は落ちず、右パネルに理由が出て、ほかの機能は今までどおり動きます。
 
 ## 環境変数
 
 | 変数 | 既定 | 意味 |
 |---|---|---|
 | `PORT` | 8765 | 待ち受けポート |
-| `CLAUDE_OFFICE_TERM_ARGS` | なし | 箱庭のターミナルで claude に足す引数（空白区切り。試す用。例 `--model haiku`） |
+| `CLAUDE_OFFICE_TALK_ARGS` | なし | 箱庭で話すときに claude に足す引数（空白区切り。試す用。例 `--model haiku`） |
 | `HISTORY_DAYS` | 0 | 読み込む履歴の日数（0 = 全期間） |
 | `CLAUDE_CONFIG_DIR` | `%USERPROFILE%\.claude` | Claude Code の設定フォルダ |
 | `CLAUDE_OFFICE_DATA` | `%LOCALAPPDATA%\ClaudeOffice` | 要約の保存先（`archive.json`）とログ |
@@ -104,4 +104,4 @@ node --test test/server.test.js
 ## ライセンス
 
 同梱の Three.js r170（`public/vendor/`）は MIT License（`public/vendor/LICENSE`）。
-xterm.js・@xterm/addon-fit（`public/vendor/xterm/`）と node-pty（`vendor-node/node-pty/`）も MIT License（それぞれのフォルダの `LICENSE`）。
+xterm.js・@xterm/addon-fit（`public/vendor/xterm/`）も MIT License（`public/vendor/xterm/LICENSE`）。

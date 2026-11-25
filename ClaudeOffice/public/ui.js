@@ -2,7 +2,7 @@
 import { projectColor, timeBand } from './world.js';
 import { deriveState, progressBadge, toolEmoji, elapsed, STATE_ORDER } from './people.js';
 import { createChat } from './chat.js';
-import { mountConvo, unmountConvo } from './term.js';
+import { mountConvo, unmountConvo } from './talk.js';
 import { addResizeHandles } from './winframe.js';
 
 export function esc(s) {
@@ -25,6 +25,29 @@ export function dateLabel(ms) {
 export function dayKeyOf(ms) {
   const d = new Date(ms);
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+
+// パネルを端へたたむ(左上の HUD・右パネル・下のタイムライン)。状態は localStorage に残す
+function foldKey(name) {
+  return `claude-office.fold-${name}`;
+}
+
+function isFolded(name) {
+  try {
+    return localStorage.getItem(foldKey(name)) === '1';
+  } catch {
+    return false;
+  }
+}
+
+function setFolded(el, name, on, cls = 'folded') {
+  el.classList.toggle(cls, on);
+  document.body.classList.toggle(`${name}-folded`, on);
+  try {
+    localStorage.setItem(foldKey(name), on ? '1' : '0');
+  } catch {
+    // 保存できなくても動く
+  }
 }
 
 function setIfChanged(el, html) {
@@ -83,7 +106,8 @@ export function renderHUD(store, actions) {
   if (!el.__built) {
     el.__built = true;
     el.innerHTML = `
-      <div class="row"><span class="logo"><span class="star">✳</span> Claude Office</span><span class="spacer"></span><span class="conn"></span><button class="btn gear" title="設定">⚙️</button></div>
+      <button class="btn unfold" title="広げる"><span class="star">✳</span> <span class="clock-mini"></span> ▶</button>
+      <div class="row"><span class="logo"><span class="star">✳</span> Claude Office</span><span class="spacer"></span><span class="conn"></span><button class="btn gear" title="設定">⚙️</button><button class="btn fold-btn" title="左上の端へたたむ">◀</button></div>
       <div class="row"><div class="clock"></div><span class="spacer"></span><button class="btn fs-up" title="文字を大きく">A</button><button class="btn fs-down" title="文字を小さく" style="font-size:0.8em">A</button></div>
       <div class="date sub"></div>
       <div class="row chips" style="margin-top:6px;flex-wrap:wrap"></div>
@@ -93,6 +117,9 @@ export function renderHUD(store, actions) {
       const s = el.querySelector('.settings');
       s.hidden = !s.hidden;
     };
+    el.querySelector('.fold-btn').onclick = () => setFolded(el, 'hud', true);
+    el.querySelector('.unfold').onclick = () => setFolded(el, 'hud', false);
+    setFolded(el, 'hud', isFolded('hud'));
     el.querySelector('.fs-up').onclick = () => actions.fontStep(1);
     el.querySelector('.fs-down').onclick = () => actions.fontStep(-1);
     el.querySelector('.settings').addEventListener('click', (e) => {
@@ -112,6 +139,7 @@ export function renderHUD(store, actions) {
   conn.className = `conn ${store.connected ? 'ok' : 'ng'}`;
   conn.textContent = store.connected ? '● 接続中' : '● サーバ停止中';
   el.querySelector('.clock').textContent = `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
+  el.querySelector('.clock-mini').textContent = `${pad(now.getHours())}:${pad(now.getMinutes())}`;
   el.querySelector('.date').textContent = `${now.getFullYear()}/${now.getMonth() + 1}/${now.getDate()}（${WEEK[now.getDay()]}）`;
   const band = timeBand(store.viewHour);
   const live = store.state ? store.state.live : [];
@@ -246,8 +274,12 @@ export function renderSide(store, actions) {
   const el = document.getElementById('side');
   if (!el.__built) {
     el.__built = true;
-    el.innerHTML = `<div class="tabs"><button class="btn" data-tab="live">🏢 在席</button><button class="btn" data-tab="groups">🗂️ グループ</button><button class="btn" data-tab="history">📚 履歴</button></div>
-      <div class="filters" style="padding:0 10px"></div><div class="term-box"></div><div class="side-body"></div>`;
+    el.innerHTML = `<button class="btn unfold" title="広げる">◀ 🏢 <span class="live-mini"></span></button>
+      <div class="tabs"><button class="btn fold-btn" title="右の端へたたむ">▶</button><button class="btn" data-tab="live">🏢 在席</button><button class="btn" data-tab="groups">🗂️ グループ</button><button class="btn" data-tab="history">📚 履歴</button></div>
+      <div class="filters" style="padding:0 10px"></div><div class="talk-box"></div><div class="side-body"></div>`;
+    el.querySelector('.fold-btn').onclick = () => setFolded(el, 'side', true);
+    el.querySelector('.unfold').onclick = () => setFolded(el, 'side', false);
+    setFolded(el, 'side', isFolded('side'));
     el.querySelector('.tabs').onclick = (e) => {
       const b = e.target.closest('[data-tab]');
       if (b) {
@@ -285,9 +317,10 @@ export function renderSide(store, actions) {
       }
     }, true);
   }
-  el.querySelectorAll('.tabs .btn').forEach((b) => b.classList.toggle('on', b.dataset.tab === store.tab));
-  // 「🖥 箱庭のターミナル」は .side-body の差し替え範囲の外に置き、「在席」タブのときだけ見せる(中身は term.js)
-  el.querySelector('.term-box').hidden = store.tab !== 'live';
+  el.querySelectorAll('.tabs .btn[data-tab]').forEach((b) => b.classList.toggle('on', b.dataset.tab === store.tab));
+  el.querySelector('.live-mini').textContent = `${store.state ? store.state.live.length : 0}人`;
+  // 「💬 箱庭で話す」は .side-body の差し替え範囲の外に置き、「在席」タブのときだけ見せる(中身は talk.js)
+  el.querySelector('.talk-box').hidden = store.tab !== 'live';
   const filters = el.querySelector('.filters');
   if (filters.__tab !== store.tab) {
     filters.__tab = store.tab;
@@ -364,13 +397,20 @@ export function renderTimeline(store, actions) {
   const el = document.getElementById('timeline');
   if (!el.__built) {
     el.__built = true;
-    el.innerHTML = `<div class="row"><button class="btn prev">◀</button><b class="dl"></b><button class="btn next">▶</button><button class="btn today">今日</button><span class="spacer"></span>
-      <label class="row">🕰 時間プレビュー <input type="checkbox" class="pv"></label><input type="range" class="pvr" min="0" max="24" step="0.25" style="width:140px" disabled><button class="btn fold">▾</button></div>
+    // 見出しは1行に収める(狭いときは文字を省き、折り返して縦長にならないように)
+    el.innerHTML = `<div class="row tl-head"><button class="btn prev">◀</button><b class="dl"></b><button class="btn next">▶</button><button class="btn today">今日</button><span class="spacer"></span>
+      <label class="row pv-label" title="時間プレビュー">🕰<span class="pv-text"> 時間プレビュー</span> <input type="checkbox" class="pv"></label><input type="range" class="pvr" min="0" max="24" step="0.25" disabled><button class="btn fold" title="たたむ／広げる">▾</button></div>
       <div class="tl-body"></div>`;
     el.querySelector('.prev').onclick = () => actions.shiftDate(-1);
     el.querySelector('.next').onclick = () => actions.shiftDate(1);
     el.querySelector('.today').onclick = () => actions.shiftDate(0);
-    el.querySelector('.fold').onclick = () => el.classList.toggle('collapsed');
+    const foldBtn = el.querySelector('.fold');
+    const applyFold = (on) => {
+      setFolded(el, 'timeline', on, 'collapsed');
+      foldBtn.textContent = on ? '▴' : '▾';
+    };
+    foldBtn.onclick = () => applyFold(!el.classList.contains('collapsed'));
+    applyFold(isFolded('timeline'));
     const pv = el.querySelector('.pv');
     const pvr = el.querySelector('.pvr');
     pv.onchange = () => {
@@ -595,7 +635,7 @@ async function refreshWindow(win) {
     d.live && d.live.name ? `<span class="chip">🏷️ ${esc(d.live.name)}</span>` : '',
   ].join('');
   const active = (d.segments || []).reduce((a, s) => a + (s.e - s.s), 0);
-  const canOpen = !d.transcriptGone && !d.term && !(d.live && d.live.entrypoint !== 'claude-vscode');
+  const canOpen = !d.transcriptGone && !d.talk && !(d.live && d.live.entrypoint !== 'claude-vscode');
   const top = `<div class="chips">${chips}</div>
     ${d.transcriptGone ? '<div class="notice">📦 要約のみ（会話の記録は削除済みのため、再開・送信はできません）</div>' : ''}
     <div class="kv"><span class="sub">開始</span><span>${d.start ? `${dateLabel(d.start)} ${hhmm(d.start)}` : '-'}</span>

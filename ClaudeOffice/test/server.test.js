@@ -184,7 +184,68 @@ test('Host が 127.0.0.1/localhost 以外の /api/ 要求は 403', async () => {
     return res.code;
   };
   const port = Number(process.env.PORT) || 8765;
-  assert.strictEqual(await call('evil.example', '/api/terms'), 403);
+  assert.strictEqual(await call('evil.example', '/api/talks'), 403);
   assert.strictEqual(await call(`evil.example:${port}`, '/api/session/00000000-0000-0000-0000-000000000000/log'), 403);
   assert.strictEqual(await call(`localhost:${port}`, '/api/session/00000000-0000-0000-0000-000000000000/log'), 404);
+});
+
+// ---------------------------------------------------------------- 箱庭で話す(stream-json のやりとり)
+
+function fakeTalk() {
+  const written = [];
+  const events = [];
+  const res = { writableEnded: false, destroyed: false, write: (l) => events.push(JSON.parse(l)) };
+  const t = {
+    id: 'x', dir: '', child: { stdin: { writable: true, write: (l) => written.push(JSON.parse(l)) } }, clients: new Set([res]),
+    exited: false, busy: false, model: '', asks: new Map(), partial: new Map(), msgKey: 'm', err: '',
+  };
+  return { t, written, events };
+}
+
+test('箱庭で話す: 発言は本人の発言(origin human)として送る', () => {
+  const { t, written, events } = fakeTalk();
+  assert.strictEqual(s.sendTalk(t, '  '), '本文が空です');
+  assert.strictEqual(s.sendTalk(t, 'やあ'), null);
+  assert.deepStrictEqual(written[0], { type: 'user', message: { role: 'user', content: 'やあ' }, parent_tool_use_id: null, session_id: '', origin: { kind: 'human' } });
+  assert.ok(t.busy);
+  assert.strictEqual(events[0].t, 'busy');
+});
+
+test('箱庭で話す: 途中経過は全文をマスクして送り、書き終わったら消す', () => {
+  const { t, events } = fakeTalk();
+  s.talkOut(t, { type: 'stream_event', event: { type: 'message_start', message: { id: 'msg1' } } });
+  s.talkOut(t, { type: 'stream_event', event: { type: 'content_block_delta', index: 0, delta: { type: 'text_delta', text: 'token=ab' } } });
+  s.talkOut(t, { type: 'stream_event', event: { type: 'content_block_delta', index: 0, delta: { type: 'text_delta', text: 'c123 です' } } });
+  assert.deepStrictEqual(events.at(-1), { t: 'text', k: 'msg1:0', d: 'token=•••• です' });
+  s.talkOut(t, { type: 'assistant', message: { id: 'msg1', content: [{ type: 'text', text: 'token=abc123 です' }, { type: 'tool_use', name: 'Bash', input: { command: 'rm x', description: '消す' } }] } });
+  assert.strictEqual(t.partial.size, 0);
+  assert.ok(events.some((e) => e.t === 'textDone' && e.m === 'msg1'));
+  assert.ok(events.some((e) => e.t === 'tool' && e.n === 'Bash' && e.l === '消す'));
+  s.talkOut(t, { type: 'result', is_error: false });
+  assert.deepStrictEqual([t.busy, events.at(-1).t], [false, 'idle']);
+});
+
+test('箱庭で話す: 承認の問い合わせと答え(許可・この会話中は許可・拒否・質問)', () => {
+  const { t, written, events } = fakeTalk();
+  const ask = (rid, tool, input, extra = {}) => s.talkOut(t, { type: 'control_request', request_id: rid, request: { subtype: 'can_use_tool', tool_name: tool, input, tool_use_id: `tu-${rid}`, ...extra } });
+  ask('r1', 'Bash', { command: 'echo token=abc123', description: '表示' }, { permission_suggestions: [{ type: 'setMode', mode: 'acceptEdits' }] });
+  const shown = events.at(-1).ask;
+  assert.deepStrictEqual([shown.tool, shown.desc, shown.detail, shown.canAlways], ['Bash', '表示', 'echo token=••••', true]);
+  assert.strictEqual(s.answerTalk(t, { rid: 'r1', allow: true, always: true }), null);
+  assert.deepStrictEqual(written.at(-1), { type: 'control_response', response: { subtype: 'success', request_id: 'r1', response: {
+    behavior: 'allow', updatedInput: { command: 'echo token=abc123', description: '表示' }, toolUseID: 'tu-r1', updatedPermissions: [{ type: 'setMode', mode: 'acceptEdits' }] } } });
+  assert.strictEqual(s.answerTalk(t, { rid: 'r1', allow: true }), 'もう答え済みか、取り消された問い合わせです');
+  ask('r2', 'Write', { file_path: 'a.txt', content: 'x' });
+  s.answerTalk(t, { rid: 'r2', allow: false });
+  assert.strictEqual(written.at(-1).response.response.behavior, 'deny');
+  ask('r3', 'AskUserQuestion', { questions: [{ question: 'どっち？', header: '選択', options: [{ label: 'A' }, { label: 'B' }] }] });
+  assert.strictEqual(events.at(-1).ask.questions[0].options[1].label, 'B');
+  s.answerTalk(t, { rid: 'r3', allow: true, answers: { 'どっち？': 'B' } });
+  assert.deepStrictEqual(written.at(-1).response.response.updatedInput.answers, { 'どっち？': 'B' });
+  // 取り消し・扱わない問い合わせ
+  ask('r4', 'Edit', {});
+  s.talkOut(t, { type: 'control_cancel_request', request_id: 'r4' });
+  assert.ok(!t.asks.has('r4'));
+  s.talkOut(t, { type: 'control_request', request_id: 'h1', request: { subtype: 'hook_callback' } });
+  assert.strictEqual(written.at(-1).response.subtype, 'error');
 });

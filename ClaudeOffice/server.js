@@ -830,7 +830,7 @@ function sessionResponse(id) {
     events: maskedEvents(rec.events, MAX_EVENTS),
     subagents: rec.subagents.map((s) => ({ ...s, desc: mask(s.desc) })),
     live: l ? publicLive(l) : null,
-    term: termRunning(id),
+    talk: talkRunning(id),
     chatRunning: chats.has(id),
     progress: progressOf(rec, l, false),
   };
@@ -1080,8 +1080,8 @@ function openInVscode(id) {
   if (!rec.rootCwd || !fs.existsSync(rec.rootCwd)) {
     return 'フォルダがありません';
   }
-  if (termRunning(id)) {
-    return '箱庭のターミナルで開いている会話です';
+  if (talkRunning(id)) {
+    return '箱庭で話している会話です';
   }
   const l = readLive().get(id);
   if (l && l.entrypoint !== 'claude-vscode') {
@@ -1132,7 +1132,7 @@ function findClaudeExe() {
   return 'claude';
 }
 
-// node-pty は PATH を引かないので、'claude' しか見つからなければ ~/.local/bin/claude.exe をフルパスで使う
+// 'claude' しか見つからなければ ~/.local/bin/claude.exe をフルパスで使う(秘書さん等から起動されると PATH が細いことがある)
 function findClaudeExeFull() {
   const exe = findClaudeExe();
   if (exe !== 'claude') {
@@ -1163,8 +1163,8 @@ function chatPrecheck(id, text) {
   if (chats.has(id)) {
     return 'この会話には送信中です';
   }
-  if (termRunning(id)) {
-    return '箱庭のターミナルで開いている会話です';
+  if (talkRunning(id)) {
+    return '箱庭で話している会話です';
   }
   const l = readLive().get(id);
   if (l && !hasPipe(l)) {
@@ -1582,53 +1582,24 @@ function logResponse(id, n, h) {
   return {
     ok: true,
     live: l ? (l.entrypoint === 'claude-vscode' ? 'claude-vscode' : 'cli') : null,
-    term: termRunning(id),
+    talk: talkRunning(id),
     chatRunning: chats.has(id),
     ...sliceLog(logPieces(c), n, h),
   };
 }
 
-// ---------------------------------------------------------------- 箱庭のターミナル(node-pty で claude を対話モードのまま動かす)
+// ---------------------------------------------------------------- 箱庭で話す(VSCode 拡張と同じく stream-json で claude を動かし続ける)
+// 画面(ターミナル)は使わず JSON の行を送り合うので、ネイティブ部品は要らない。
+// 発言には origin:{kind:'human'} を付ける → 記録では本人の発言(turnOrigin: human)になる。
+// ツールの承認は --permission-prompt-tool stdio で control_request(can_use_tool) として届き、画面の答えを control_response で返す。
 
-const TERM_BUF_MAX = 512 * 1024;
-const TERM_KEEP_MS = 10 * 60 * 1000;
-const terms = new Map(); // id -> { id, dir, pty, buf, clients:Set, startedAt, exited, code, cols, rows }
-let ptyModule = null;
-let ptyTried = false;
-let ptyError = '';
+const TALK_KEEP_MS = 10 * 60 * 1000;
+const TALK_TEXT_MAX = 20000;
+const talks = new Map(); // id -> { id, dir, child, clients:Set, startedAt, exited, code, err, busy, model, asks:Map, partial:Map, msgKey, out, decoder }
 
-// 読み込めなくても本体は落とさず、/api/terms の ready:false と理由で画面に出す
-function ptyLib() {
-  if (!ptyTried) {
-    ptyTried = true;
-    const base = path.join(__dirname, 'vendor-node', 'node-pty');
-    try {
-      // node-pty はネイティブ部品を起動時まで読まないので、ここで揃っているかを確かめる。
-      // conoutSocketWorker.js が欠けると claude は起動するのに出力が1文字も届かない
-      const need = ['lib/worker/conoutSocketWorker.js', 'prebuilds/win32-x64/conpty.node', 'prebuilds/win32-x64/conpty_console_list.node', 'prebuilds/win32-x64/conpty/conpty.dll', 'prebuilds/win32-x64/conpty/OpenConsole.exe'];
-      const missing = need.filter((f) => !fs.existsSync(path.join(base, f)));
-      if (missing.length) {
-        throw new Error(`vendor-node/node-pty に ${missing.join('・')} がありません`);
-      }
-      ptyModule = require(base);
-      require(path.join(base, 'lib', 'utils.js')).loadNativeModule('conpty');
-    } catch (e) {
-      ptyModule = null;
-      ptyError = clip(String((e && e.message) || e), 300);
-      log('node-pty を読み込めません');
-    }
-  }
-  return ptyModule;
-}
-
-function termRunning(id) {
-  const t = terms.get(id);
+function talkRunning(id) {
+  const t = talks.get(id);
   return !!(t && !t.exited);
-}
-
-function clampInt(v, lo, hi, def) {
-  const n = Math.round(Number(v));
-  return Number.isFinite(n) ? Math.max(lo, Math.min(hi, n)) : def;
 }
 
 function dirName(dir) {
@@ -1663,31 +1634,160 @@ function usedDirs() {
   return out;
 }
 
-function termTitle(id) {
+function talkTitle(id) {
   const rec = sessions.get(id);
   return mask((rec && (rec.title || rec.firstPrompt)) || '') || '(新しい会話)';
 }
 
-function termsResponse() {
+function talksResponse() {
   scan(false);
-  const ready = !!ptyLib();
   return {
-    ready,
-    error: ready ? '' : ptyError,
-    terms: [...terms.values()].map((t) => ({
-      id: t.id, dir: t.dir, project: dirName(t.dir), title: termTitle(t.id), startedAt: t.startedAt, exited: t.exited, code: t.code,
+    talks: [...talks.values()].map((t) => ({
+      id: t.id, dir: t.dir, project: dirName(t.dir), title: talkTitle(t.id), startedAt: t.startedAt, exited: t.exited, code: t.code, busy: t.busy, asks: t.asks.size,
     })),
     dirs: usedDirs(),
   };
 }
 
-function startTerm(body) {
-  const lib = ptyLib();
-  if (!lib) {
-    return { error: `ターミナルの部品(node-pty)を読み込めなかった: ${ptyError}` };
+// 承認のときに見せる中身。承認するには何をするのかが見えないといけないので、コマンドもマスクして出す
+function askDetail(tool, input) {
+  const i = input || {};
+  const cut = (s, n) => {
+    const t = plain(String(s || ''));
+    return t.length > n ? `${t.slice(0, n)}…（長いので省略）` : t;
+  };
+  switch (tool) {
+    case 'Bash':
+    case 'PowerShell':
+      return cut(i.command, 2000);
+    case 'Write':
+      return `${cut(i.file_path, 300)}\n${cut(i.content, 600)}`;
+    case 'Edit':
+      return `${cut(i.file_path, 300)}\n- ${cut(i.old_string, 300)}\n+ ${cut(i.new_string, 300)}`;
+    case 'ExitPlanMode':
+      return cut(i.plan, 4000);
+    case 'AskUserQuestion':
+      return '';
+    default:
+      try {
+        return cut(JSON.stringify(i, null, 1), 1200);
+      } catch {
+        return '';
+      }
   }
-  const cols = clampInt(body.cols, 20, 400, 100);
-  const rows = clampInt(body.rows, 5, 200, 30);
+}
+
+function publicAsk(a) {
+  const out = {
+    rid: a.rid,
+    tool: a.tool,
+    desc: clip(mask(plain(a.description || toolLabel(a.tool, a.input))), 200),
+    detail: mask(askDetail(a.tool, a.input)),
+    canAlways: a.suggestions.length > 0,
+  };
+  if (a.tool === 'AskUserQuestion' && Array.isArray(a.input.questions)) {
+    out.questions = a.input.questions.slice(0, 4).map((q) => ({
+      question: mask(plain(q && q.question)),
+      header: mask(plain(q && q.header)),
+      multiSelect: !!(q && q.multiSelect),
+      options: (q && Array.isArray(q.options) ? q.options : []).slice(0, 6).map((o) => ({ label: mask(plain(o && o.label)), description: mask(plain(o && o.description)) })),
+    }));
+  }
+  return out;
+}
+
+function talkWrite(t, o) {
+  if (!t.exited && t.child.stdin && t.child.stdin.writable) {
+    t.child.stdin.write(`${JSON.stringify(o)}\n`);
+  }
+}
+
+function talkBroadcast(t, ev) {
+  for (const res of t.clients) {
+    writeEvent(res, ev);
+  }
+}
+
+function talkHello(t) {
+  return {
+    t: 'hello', id: t.id, dir: t.dir, model: t.model, busy: t.busy, exited: t.exited, code: t.code,
+    asks: [...t.asks.values()].map(publicAsk),
+    live: [...t.partial.entries()].map(([k, d]) => ({ k, d: mask(d) })),
+  };
+}
+
+function talkControl(t, o) {
+  const r = o.request || {};
+  if (r.subtype === 'can_use_tool') {
+    const a = {
+      rid: o.request_id, tool: String(r.tool_name || ''), input: r.input && typeof r.input === 'object' ? r.input : {}, toolUseId: r.tool_use_id,
+      description: r.description || '', suggestions: Array.isArray(r.permission_suggestions) ? r.permission_suggestions : [],
+    };
+    t.asks.set(a.rid, a);
+    talkBroadcast(t, { t: 'ask', ask: publicAsk(a) });
+    return;
+  }
+  // フックの呼び出しなどは箱庭では扱わないので、待たせないよう断る
+  talkWrite(t, { type: 'control_response', response: { subtype: 'error', request_id: o.request_id, error: 'Claude Office では扱いません' } });
+}
+
+function talkOut(t, o) {
+  switch (o.type) {
+    case 'system':
+      if (o.subtype === 'init') {
+        t.model = o.model || '';
+        talkBroadcast(t, { t: 'model', model: t.model });
+      }
+      return;
+    case 'stream_event': {
+      const ev = o.event || {};
+      if (ev.type === 'message_start') {
+        t.msgKey = (ev.message && ev.message.id) || crypto.randomUUID();
+      } else if (ev.type === 'content_block_delta' && ev.delta && ev.delta.type === 'text_delta') {
+        // 断片だと秘密をマスクしきれないので、ブロックごとに連結した全文をマスクして送る
+        const key = `${t.msgKey}:${ev.index}`;
+        const full = (t.partial.get(key) || '') + ev.delta.text;
+        t.partial.set(key, full);
+        talkBroadcast(t, { t: 'text', k: key, d: mask(full) });
+      }
+      return;
+    }
+    case 'assistant': {
+      const msg = o.message || {};
+      for (const b of Array.isArray(msg.content) ? msg.content : []) {
+        if (b && b.type === 'tool_use') {
+          talkBroadcast(t, { t: 'tool', n: b.name, l: clip(mask(plain(toolLabel(b.name, b.input))), 120) });
+        } else if (b && b.type === 'text' && msg.id) {
+          // 書き終わった文は記録(会話ログ)に出るので、途中経過は消す
+          for (const k of [...t.partial.keys()]) {
+            if (k.startsWith(`${msg.id}:`)) {
+              t.partial.delete(k);
+            }
+          }
+          talkBroadcast(t, { t: 'textDone', m: msg.id });
+        }
+      }
+      return;
+    }
+    case 'result':
+      t.busy = false;
+      t.partial.clear();
+      talkBroadcast(t, { t: 'idle', ok: !o.is_error, error: o.is_error ? clip(mask(plain(String(o.result || 'エラー'))), 200) : '' });
+      return;
+    case 'control_request':
+      talkControl(t, o);
+      return;
+    case 'control_cancel_request':
+      if (t.asks.delete(o.request_id)) {
+        talkBroadcast(t, { t: 'askDone', rid: o.request_id });
+      }
+      return;
+    default:
+      return;
+  }
+}
+
+function startTalk(body) {
   let id;
   let dir;
   let args;
@@ -1696,7 +1796,7 @@ function startTerm(body) {
     if (!UUID_RE.test(id)) {
       return { error: '会話 ID が不正です' };
     }
-    if (termRunning(id)) {
+    if (talkRunning(id)) {
       return { ok: true, id, existing: true };
     }
     scan(true);
@@ -1731,60 +1831,81 @@ function startTerm(body) {
   if (!exe) {
     return { error: 'claude.exe が見つかりません' };
   }
-  const extra = String(process.env.CLAUDE_OFFICE_TERM_ARGS || '').split(/\s+/).filter(Boolean);
+  const extra = String(process.env.CLAUDE_OFFICE_TALK_ARGS || '').split(/\s+/).filter(Boolean);
   const env = cleanEnv(['CLAUDE_CODE_', 'CLAUDE_AGENT_SDK_', 'VSCODE_', 'TERM_PROGRAM'], ['CLAUDECODE', 'CLAUDE_PID', 'CLAUDE_EFFORT', 'MCP_CONNECTION_NONBLOCKING']);
-  env.COLORTERM = 'truecolor';
-  let p;
+  const all = ['--output-format', 'stream-json', '--verbose', '--input-format', 'stream-json', '--include-partial-messages', '--permission-prompt-tool', 'stdio', ...extra, ...args];
+  let child;
   try {
-    p = lib.spawn(exe, [...extra, ...args], { name: 'xterm-256color', cols, rows, cwd: dir, env });
+    child = spawn(exe, all, { cwd: dir, env, windowsHide: true, shell: false });
   } catch (e) {
     return { error: `claude を起動できません: ${clip(String((e && e.message) || e), 200)}` };
   }
-  const t = { id, dir, pty: p, buf: '', clients: new Set(), startedAt: Date.now(), exited: false, code: null, cols, rows };
-  terms.set(id, t);
-  p.onData((d) => {
-    t.buf += d;
-    if (t.buf.length > TERM_BUF_MAX) {
-      // 開き直したときに描き直す分だけ残す
-      t.buf = t.buf.slice(-Math.floor(TERM_BUF_MAX * 0.75));
-    }
-    for (const res of t.clients) {
-      writeEvent(res, { t: 'data', d });
+  const t = {
+    id, dir, child, clients: new Set(), startedAt: Date.now(), exited: false, code: null, err: '', busy: false, model: '',
+    asks: new Map(), partial: new Map(), msgKey: 'm', out: '', decoder: new StringDecoder('utf8'),
+  };
+  talks.set(id, t);
+  child.stdout.on('data', (c) => {
+    const lines = (t.out + t.decoder.write(c)).split('\n');
+    t.out = lines.pop() || '';
+    for (const line of lines) {
+      if (!line.trim()) {
+        continue;
+      }
+      try {
+        talkOut(t, JSON.parse(line));
+      } catch {
+        // JSON でない行は飛ばす
+      }
     }
   });
-  p.onExit(({ exitCode }) => {
+  child.stderr.on('data', (c) => {
+    t.err = (t.err + c.toString('utf8')).slice(-4000);
+  });
+  const finish = (code) => {
+    if (t.exited) {
+      return;
+    }
     t.exited = true;
-    t.code = exitCode;
+    t.code = code;
+    t.busy = false;
+    t.asks.clear();
+    const err = code ? clip(mask(plain(t.err)), 300) : '';
     for (const res of t.clients) {
-      writeEvent(res, { t: 'exit', code: exitCode });
+      writeEvent(res, { t: 'exit', code, err });
       res.end();
     }
     t.clients.clear();
-    log(`箱庭のターミナル 終了 code=${exitCode}`);
+    log(`箱庭で話す 終了 code=${code}`);
     // 一覧には 10 分残してから消す
     setTimeout(() => {
-      if (terms.get(id) === t) {
-        terms.delete(id);
+      if (talks.get(id) === t) {
+        talks.delete(id);
       }
-    }, TERM_KEEP_MS).unref();
+    }, TALK_KEEP_MS).unref();
+  };
+  child.on('error', () => {
+    t.err = t.err || 'claude を起動できません';
+    finish(-1);
   });
-  log(`箱庭のターミナル 起動 (${args[0]})`);
+  child.on('exit', (code) => finish(code));
+  child.stdin.on('error', () => {
+    // 終わった直後の書き込み
+  });
+  log(`箱庭で話す 起動 (${args[0]})`);
   return { ok: true, id };
 }
 
-function streamTerm(id, req, res) {
-  const t = terms.get(id);
+function streamTalk(id, req, res) {
+  const t = talks.get(id);
   if (!t) {
     sendJson(res, 404, { error: 'not found' });
     return;
   }
   res.writeHead(200, { 'Content-Type': 'application/x-ndjson; charset=utf-8', 'Cache-Control': 'no-cache' });
-  writeEvent(res, { t: 'hello', id, dir: t.dir });
-  if (t.buf) {
-    writeEvent(res, { t: 'data', d: t.buf });
-  }
+  writeEvent(res, talkHello(t));
   if (t.exited) {
-    writeEvent(res, { t: 'exit', code: t.code });
+    writeEvent(res, { t: 'exit', code: t.code, err: t.code ? clip(mask(plain(t.err)), 300) : '' });
     res.end();
     return;
   }
@@ -1794,40 +1915,55 @@ function streamTerm(id, req, res) {
   res.on('close', drop);
 }
 
-function resizeTerm(t, body) {
-  const cols = clampInt(body.cols, 20, 400, t.cols);
-  const rows = clampInt(body.rows, 5, 200, t.rows);
-  try {
-    if (body.redraw && cols === t.cols && rows === t.rows) {
-      // 大きさが同じだと claude は描き直さないので、一度 1 桁縮めて戻す
-      t.pty.resize(cols - 1, rows);
-      setTimeout(() => {
-        if (!t.exited) {
-          try {
-            t.pty.resize(t.cols, t.rows);
-          } catch {
-            // 終わった直後
-          }
-        }
-      }, 80);
-    } else {
-      t.pty.resize(cols, rows);
-    }
-    t.cols = cols;
-    t.rows = rows;
-  } catch {
-    // 終わった直後
+function sendTalk(t, text) {
+  if (typeof text !== 'string' || !text.trim()) {
+    return '本文が空です';
   }
+  if (text.length > TALK_TEXT_MAX) {
+    return '本文が長すぎます(20,000字まで)';
+  }
+  talkWrite(t, { type: 'user', message: { role: 'user', content: text }, parent_tool_use_id: null, session_id: '', origin: { kind: 'human' } });
+  t.busy = true;
+  talkBroadcast(t, { t: 'busy' });
+  return null;
 }
 
-function killAllTerms() {
-  for (const t of terms.values()) {
-    if (!t.exited) {
-      try {
-        t.pty.kill();
-      } catch {
-        // 既に終わっている
+function answerTalk(t, body) {
+  const a = t.asks.get(String(body.rid || ''));
+  if (!a) {
+    return 'もう答え済みか、取り消された問い合わせです';
+  }
+  let response;
+  if (body.allow) {
+    let updatedInput = a.input;
+    if (a.tool === 'AskUserQuestion' && body.answers && typeof body.answers === 'object') {
+      const answers = {};
+      for (const [q, v] of Object.entries(body.answers).slice(0, 8)) {
+        answers[String(q).slice(0, 500)] = String(v).slice(0, 2000);
       }
+      updatedInput = { ...a.input, answers };
+    }
+    response = { behavior: 'allow', updatedInput, toolUseID: a.toolUseId };
+    if (body.always && a.suggestions.length) {
+      response.updatedPermissions = a.suggestions;
+    }
+  } else {
+    response = { behavior: 'deny', message: String(body.message || 'ユーザーが許可しませんでした').slice(0, 2000), toolUseID: a.toolUseId };
+  }
+  talkWrite(t, { type: 'control_response', response: { subtype: 'success', request_id: a.rid, response } });
+  t.asks.delete(a.rid);
+  talkBroadcast(t, { t: 'askDone', rid: a.rid });
+  return null;
+}
+
+function interruptTalk(t) {
+  talkWrite(t, { type: 'control_request', request_id: crypto.randomUUID(), request: { subtype: 'interrupt' } });
+}
+
+function killAllTalks() {
+  for (const t of talks.values()) {
+    if (!t.exited) {
+      killTree(t.child.pid);
     }
   }
 }
@@ -2051,8 +2187,8 @@ async function handle(req, res) {
       sendJson(res, r ? 200 : 404, r || { ok: false, error: '元の記録が無いよ（要約のみ）' });
       return;
     }
-    if (p === '/api/terms') {
-      sendJson(res, 200, termsResponse());
+    if (p === '/api/talks') {
+      sendJson(res, 200, talksResponse());
       return;
     }
     if (p === '/api/state') {
@@ -2094,20 +2230,20 @@ async function handle(req, res) {
     return;
   }
   try {
-    if (p === '/api/term/start') {
+    if (p === '/api/talk/start') {
       const body = await readBody(req, 64 * 1024);
-      const r = startTerm(body);
+      const r = startTalk(body);
       sendJson(res, r.ok ? 200 : 409, r.ok ? r : { ok: false, error: r.error });
       return;
     }
-    if ((m = /^\/api\/term\/([^/]+)\/(stream|input|resize|kill)$/.exec(p))) {
+    if ((m = /^\/api\/talk\/([^/]+)\/(stream|send|answer|interrupt|kill)$/.exec(p))) {
       const body = await readBody(req, 80 * 1024);
       const id = m[1];
       if (m[2] === 'stream') {
-        streamTerm(UUID_RE.test(id) ? id : '', req, res);
+        streamTalk(UUID_RE.test(id) ? id : '', req, res);
         return;
       }
-      const t = UUID_RE.test(id) ? terms.get(id) : null;
+      const t = UUID_RE.test(id) ? talks.get(id) : null;
       if (!t) {
         sendJson(res, 404, { ok: false, error: 'not found' });
         return;
@@ -2116,19 +2252,18 @@ async function handle(req, res) {
         sendJson(res, 409, { ok: false, error: 'もう終わっています' });
         return;
       }
-      if (m[2] === 'input') {
-        if (typeof body.d !== 'string' || body.d.length > 64 * 1024) {
-          sendJson(res, 400, { ok: false, error: 'bad input' });
-          return;
-        }
-        t.pty.write(body.d);
-      } else if (m[2] === 'resize') {
-        resizeTerm(t, body);
+      let err = null;
+      if (m[2] === 'send') {
+        err = sendTalk(t, body.text);
+      } else if (m[2] === 'answer') {
+        err = answerTalk(t, body);
+      } else if (m[2] === 'interrupt') {
+        interruptTalk(t);
       } else {
-        killTree(t.pty.pid);
-        log('箱庭のターミナル 終える');
+        killTree(t.child.pid);
+        log('箱庭で話す 終える');
       }
-      sendJson(res, 200, { ok: true });
+      sendJson(res, err ? 409 : 200, err ? { ok: false, error: err } : { ok: true });
       return;
     }
     if (p === '/api/hook/stop') {
@@ -2200,7 +2335,7 @@ async function handle(req, res) {
 
 module.exports = {
   mask, looksRandom, humanPrompt, toolLabel, endsWithQuestion, progressOf, newRecord, parseLine, normalizeNotify, inQuiet, stripJsonc, projectName, touch,
-  renderLogEntry, newLogCache, readLogInto, logPieces, sliceLog, handle,
+  renderLogEntry, newLogCache, readLogInto, logPieces, sliceLog, handle, talkOut, sendTalk, answerTalk, publicAsk,
 };
 
 if (require.main === module) {
@@ -2226,8 +2361,8 @@ if (require.main === module) {
   });
   const shutdown = () => {
     saveArchive(true);
-    // サーバを止めると箱庭のターミナルの claude も終わる(記録はそこまで残る)
-    killAllTerms();
+    // サーバを止めると箱庭で話している claude も終わる(記録はそこまで残る)
+    killAllTalks();
     process.exit(0);
   };
   process.on('SIGINT', shutdown);

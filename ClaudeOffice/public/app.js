@@ -15,7 +15,7 @@ import { createWander } from './wander.js';
 import { createAvatar } from './avatar.js';
 import { deriveState, assignSeats, elapsed } from './people.js';
 import { renderHUD, renderSide, renderTimeline, openDetail, refreshWindows, closeTopWindow, focusDetail, toast, openInVscode, esc, dayKeyOf, dateLabel, hhmm } from './ui.js';
-import { initTerms, termFontChanged } from './term.js';
+import { initTalks, talkFontChanged } from './talk.js';
 import { openNotifyDialog } from './notify.js';
 
 const FONT_STEPS = [0.9, 1, 1.1, 1.25, 1.4, 1.6];
@@ -727,7 +727,7 @@ const actions = {
     save('font-scale', String(fontScale));
     document.documentElement.style.setProperty('--fs', String(fontScale));
     resize();
-    termFontChanged();
+    talkFontChanged();
   },
   async setOption(key, value) {
     if (key === 'notify') {
@@ -928,7 +928,7 @@ async function start() {
   renderHUD(store, actions);
   await poll();
   // 会話欄・別の窓は HTML なので 3D の準備を待たない。起動・終了したら開いている詳細の窓を描き直す
-  initTerms({ toast, onChange: refreshWindows, focusDetail });
+  initTalks({ toast, onChange: refreshWindows, focusDetail });
   await buildSkin();
   pollAccount().then(() => renderHUD(store, actions));
   pollSessions();
