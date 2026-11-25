@@ -337,7 +337,7 @@ namespace SecretaryGadget
         private static DateTime HourOf(DateTime t) => new DateTime(t.Year, t.Month, t.Day, t.Hour, 0, 0, t.Kind);
 
         /// <summary>
-        /// 正時をまたいだら一覧の次のスキンへ交代する(Flush から3秒ごと)。吹き出しを出している間は引っ込むまで待つ。
+        /// 正時をまたいだら、今の秘書さん以外からランダムに選んだスキンへ交代する(Flush から3秒ごと)。吹き出しを出している間は引っ込むまで待つ。
         /// おやすみ・休憩中は絵だけ替えて、交代のあいさつは出さない。スリープ明けで何時間ぶんまたいでも交代は1回。
         /// </summary>
         private void CheckSkinRotation(DateTime now)
@@ -353,7 +353,7 @@ namespace SecretaryGadget
                 return;
             }
             _rotateHourMark = hour;
-            SkinInfo? next = SkinCatalog.Next(_skins, _skin.Id);
+            SkinInfo? next = SkinCatalog.Next(_skins, _skin.Id, Random.Shared);
             if (next == null)
             {
                 return;

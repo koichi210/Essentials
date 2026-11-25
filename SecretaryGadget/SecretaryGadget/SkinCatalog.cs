@@ -114,23 +114,18 @@ namespace SecretaryGadget
             return hit ?? (skins.Count > 0 ? skins[0] : BuiltIn);
         }
 
-        /// <summary>交代先: 一覧で今のスキンの次(最後なら先頭へ戻る)。今のスキンが一覧に無ければ先頭。2つ未満なら null(交代しない)。</summary>
-        public static SkinInfo? Next(IReadOnlyList<SkinInfo> skins, string? currentId)
+        /// <summary>
+        /// 交代先: 今のスキン以外からランダムに1つ(同じ秘書さんが続かない)。今のスキンが一覧に無ければ全体から選ぶ。
+        /// 2つ未満なら null(交代しない)。
+        /// </summary>
+        public static SkinInfo? Next(IReadOnlyList<SkinInfo> skins, string? currentId, Random random)
         {
             if (skins.Count < 2)
             {
                 return null;
             }
-            int index = -1;
-            for (int i = 0; i < skins.Count; i++)
-            {
-                if (string.Equals(skins[i].Id, currentId, StringComparison.OrdinalIgnoreCase))
-                {
-                    index = i;
-                    break;
-                }
-            }
-            return skins[(index + 1) % skins.Count];
+            List<SkinInfo> candidates = skins.Where(s => !string.Equals(s.Id, currentId, StringComparison.OrdinalIgnoreCase)).ToList();
+            return candidates[random.Next(candidates.Count)];
         }
 
         /// <summary>
