@@ -504,14 +504,23 @@ hr.sep {
   margin-top: 4px;
 }
 
-/* 詳細の窓 */
+/* 詳細の窓・別の窓。#windows / #term-windows ごとに重なりをまとめ、別の窓は詳細の窓より手前・トーストより奥 */
+#windows {
+  position: relative;
+  z-index: 20;
+}
+
+#term-windows {
+  position: relative;
+  z-index: 25;
+}
+
 .win {
   position: fixed;
-  width: 440px;
-  height: 560px;
+  width: 520px;
+  height: 720px;
   min-width: 320px;
   min-height: 240px;
-  resize: both;
   overflow: hidden;
   display: flex;
   flex-direction: column;
@@ -535,10 +544,240 @@ hr.sep {
   font-size: 1.2em;
 }
 
+/* 上: 情報(はみ出したらここだけスクロール)・中: 会話欄(残り全部)・下: 送信欄(縮めても必ず見える) */
 .win .content {
   flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding: 8px 12px 10px;
+}
+
+.win .info {
+  flex: 0 1 auto;
+  max-height: 40%;
   overflow: auto;
-  padding: 8px 12px 14px;
+}
+
+.win .convoslot {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  margin-top: 6px;
+}
+
+.win .chatslot {
+  flex: none;
+}
+
+.win .chat .out {
+  max-height: 120px;
+}
+
+/* 会話欄。枠だけスキンの色に合わせる */
+.convo {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  background: #1b1d2a;
+  color: #e5e7eb;
+  border: 2px solid var(--accent);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.convo.gone {
+  flex: none;
+}
+
+.convo.gone .convo-body {
+  display: none;
+}
+
+.convo-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  font-size: 0.9em;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.convo-bar .btn,
+.term-win .head .btn {
+  padding: 2px 9px;
+}
+
+.convo-bar .btn {
+  color: #e5e7eb;
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.16);
+}
+
+.convo-bar .btn:hover {
+  border-color: var(--accent);
+}
+
+.convo-body {
+  flex: 1;
+  min-height: 80px;
+  position: relative;
+}
+
+.convo-note {
+  padding: 3px 9px 4px;
+  font-size: 0.85em;
+  color: #b6bdcc;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.convo-note:empty {
+  display: none;
+}
+
+.term-view,
+.log-view {
+  position: absolute;
+  inset: 4px 2px 2px 8px;
+}
+
+.term-win {
+  position: fixed;
+  width: 720px;
+  height: 440px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.term-win .head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  cursor: move;
+  font-weight: 700;
+  touch-action: none;
+}
+
+.term-win .head .st {
+  flex: none;
+  font-weight: 400;
+}
+
+.tw-body {
+  flex: 1;
+  min-height: 0;
+  position: relative;
+  margin: 0 10px;
+  background: #1b1d2a;
+  border: 2px solid var(--accent);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.tw-keys {
+  padding: 4px 12px 8px;
+  font-size: 0.85em;
+}
+
+/* 辺と角のつまみ(透明)。辺は幅6px・角は12px */
+.rz {
+  position: absolute;
+  z-index: 5;
+  touch-action: none;
+}
+
+.rz-n,
+.rz-s {
+  left: 12px;
+  right: 12px;
+  height: 6px;
+  cursor: ns-resize;
+}
+
+.rz-n {
+  top: 0;
+}
+
+.rz-s {
+  bottom: 0;
+}
+
+.rz-e,
+.rz-w {
+  top: 12px;
+  bottom: 12px;
+  width: 6px;
+  cursor: ew-resize;
+}
+
+.rz-e {
+  right: 0;
+}
+
+.rz-w {
+  left: 0;
+}
+
+.rz-ne,
+.rz-nw,
+.rz-se,
+.rz-sw {
+  width: 12px;
+  height: 12px;
+}
+
+.rz-ne {
+  top: 0;
+  right: 0;
+  cursor: nesw-resize;
+}
+
+.rz-sw {
+  bottom: 0;
+  left: 0;
+  cursor: nesw-resize;
+}
+
+.rz-nw {
+  top: 0;
+  left: 0;
+  cursor: nwse-resize;
+}
+
+.rz-se {
+  bottom: 0;
+  right: 0;
+  cursor: nwse-resize;
+}
+
+/* 右パネルの「🖥 箱庭のターミナル」 */
+.term-box {
+  padding: 0 10px 2px;
+}
+
+.term-box .h {
+  margin-top: 4px;
+}
+
+.term-box .term-btn {
+  display: block;
+  width: 100%;
+  text-align: left;
+  margin: 3px 0;
+}
+
+.term-new-row select {
+  flex: 1;
+  min-width: 0;
+  background: var(--input-bg);
+  border: 1px solid var(--panel-line);
+  border-radius: 8px;
+  padding: 3px 6px;
 }
 
 .win .chips {

@@ -4,7 +4,11 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Claude Office</title>
+  <link rel="stylesheet" href="vendor/xterm/xterm.css">
   <link rel="stylesheet" href="style.css">
+  <!-- xterm は UMD 版を importmap より前に読む(window.Terminal / window.FitAddon になる) -->
+  <script src="vendor/xterm/xterm.js"></script>
+  <script src="vendor/xterm/addon-fit.js"></script>
   <script type="importmap">
     {
       "imports": {
@@ -21,6 +25,7 @@
   <section id="side" class="panel"></section>
   <section id="timeline" class="panel"></section>
   <div id="windows"></div>
+  <div id="term-windows"></div>
   <div id="toasts"></div>
   <div id="tip" hidden></div>
   <div id="loading" hidden><div>🏗️ 箱庭を準備中…</div></div>

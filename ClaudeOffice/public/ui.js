@@ -2,6 +2,8 @@
 import { projectColor, timeBand } from './world.js';
 import { deriveState, progressBadge, toolEmoji, elapsed, STATE_ORDER } from './people.js';
 import { createChat } from './chat.js';
+import { mountConvo, unmountConvo } from './term.js';
+import { addResizeHandles } from './winframe.js';
 
 export function esc(s) {
   return String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -245,7 +247,7 @@ export function renderSide(store, actions) {
   if (!el.__built) {
     el.__built = true;
     el.innerHTML = `<div class="tabs"><button class="btn" data-tab="live">🏢 在席</button><button class="btn" data-tab="groups">🗂️ グループ</button><button class="btn" data-tab="history">📚 履歴</button></div>
-      <div class="filters" style="padding:0 10px"></div><div class="side-body"></div>`;
+      <div class="filters" style="padding:0 10px"></div><div class="term-box"></div><div class="side-body"></div>`;
     el.querySelector('.tabs').onclick = (e) => {
       const b = e.target.closest('[data-tab]');
       if (b) {
@@ -284,6 +286,8 @@ export function renderSide(store, actions) {
     }, true);
   }
   el.querySelectorAll('.tabs .btn').forEach((b) => b.classList.toggle('on', b.dataset.tab === store.tab));
+  // 「🖥 箱庭のターミナル」は .side-body の差し替え範囲の外に置き、「在席」タブのときだけ見せる(中身は term.js)
+  el.querySelector('.term-box').hidden = store.tab !== 'live';
   const filters = el.querySelector('.filters');
   if (filters.__tab !== store.tab) {
     filters.__tab = store.tab;
@@ -466,40 +470,58 @@ function front(win) {
   windows.push(win);
 }
 
-export function closeTopWindow() {
-  const w = windows.pop();
-  if (w) {
-    w.el.remove();
+// 窓を閉じる経路(✕・同じ人の再選択・Esc)はすべてここを通す。会話欄の取得とターミナルの画面も片付ける(claude 自体は止めない)
+function closeWindow(win) {
+  const i = windows.indexOf(win);
+  if (i >= 0) {
+    windows.splice(i, 1);
   }
+  unmountConvo(win.id);
+  win.el.remove();
+}
+
+export function closeTopWindow() {
+  const w = windows[windows.length - 1];
+  if (w) {
+    closeWindow(w);
+  }
+}
+
+// その会話の詳細の窓が開いていれば手前に出して true
+export function focusDetail(id) {
+  const w = windows.find((x) => x.id === id);
+  if (!w) {
+    return false;
+  }
+  front(w);
+  return true;
 }
 
 export function openDetail(id) {
   const existing = windows.find((w) => w.id === id);
   if (existing) {
     // 同じものを再選択したら閉じる
-    windows.splice(windows.indexOf(existing), 1);
-    existing.el.remove();
+    closeWindow(existing);
     return;
   }
   const el = document.createElement('div');
   el.className = 'panel win';
-  const size = loadSize();
-  if (size) {
-    el.style.width = size.w;
-    el.style.height = size.h;
-  }
   const off = (cascade++ % 6) * 28;
-  el.style.left = `${360 + off}px`;
-  el.style.top = `${70 + off}px`;
-  el.innerHTML = '<div class="head"><span class="ttl ellipsis" style="flex:1">読み込み中…</span><button class="x" title="閉じる">✕</button></div><div class="content"><div class="top"></div><div class="chatslot"></div><div class="rest"></div></div>';
+  const left = 360 + off;
+  const top = 70 + off;
+  // 会話欄が入るので既定は 幅520・高さ720(保存済みの大きさがあればそちら)
+  const size = loadSize();
+  el.style.width = size ? size.w : `${Math.min(520, window.innerWidth - left - 8)}px`;
+  el.style.height = size ? size.h : `${Math.max(360, Math.min(720, window.innerHeight - top - 16))}px`;
+  el.style.left = `${left}px`;
+  el.style.top = `${top}px`;
+  el.innerHTML = '<div class="head"><span class="ttl ellipsis" style="flex:1">読み込み中…</span><button class="x" title="閉じる">✕</button></div><div class="content"><div class="info"><div class="top"></div><div class="rest"></div></div><div class="convoslot"></div><div class="chatslot"></div></div>';
   document.getElementById('windows').appendChild(el);
   const win = { id, el, chat: null, data: null };
   windows.push(win);
   front(win);
-  el.querySelector('.x').onclick = () => {
-    windows.splice(windows.indexOf(win), 1);
-    el.remove();
-  };
+  el.querySelector('.x').onclick = () => closeWindow(win);
+  addResizeHandles(el, { minW: 320, minH: 240 });
   el.addEventListener('mousedown', () => front(win));
   // 見出しドラッグで移動
   const head = el.querySelector('.head');
@@ -521,7 +543,13 @@ export function openDetail(id) {
     window.addEventListener('mouseup', up);
   });
   // 大きさは style の値で保存する(offsetWidth だと枠の分だけ太っていく)
+  let firstObserve = true;
   new ResizeObserver(() => {
+    // 開いた直後の1回は既定の大きさなので保存しない
+    if (firstObserve) {
+      firstObserve = false;
+      return;
+    }
     if (el.style.width && el.style.height) {
       saveSize(el.style.width, el.style.height);
     }
@@ -548,6 +576,9 @@ async function refreshWindow(win) {
   } catch {
     return;
   }
+  if (!windows.includes(win)) {
+    return; // 取得中に閉じられた
+  }
   win.data = d;
   const now = Date.now();
   const st = deriveState(d, now);
@@ -564,7 +595,7 @@ async function refreshWindow(win) {
     d.live && d.live.name ? `<span class="chip">🏷️ ${esc(d.live.name)}</span>` : '',
   ].join('');
   const active = (d.segments || []).reduce((a, s) => a + (s.e - s.s), 0);
-  const canOpen = !d.transcriptGone && !(d.live && d.live.entrypoint !== 'claude-vscode');
+  const canOpen = !d.transcriptGone && !d.term && !(d.live && d.live.entrypoint !== 'claude-vscode');
   const top = `<div class="chips">${chips}</div>
     ${d.transcriptGone ? '<div class="notice">📦 要約のみ（会話の記録は削除済みのため、再開・送信はできません）</div>' : ''}
     <div class="kv"><span class="sub">開始</span><span>${d.start ? `${dateLabel(d.start)} ${hhmm(d.start)}` : '-'}</span>
@@ -583,16 +614,13 @@ async function refreshWindow(win) {
     win.el.querySelector('.chatslot').appendChild(win.chat.el);
   }
   win.chat.update(d);
+  // 会話欄は innerHTML の差し替え範囲(.top/.rest)の外。xterm が消えないよう要素ごとは作り直さない
+  mountConvo(win.el.querySelector('.convoslot'), d);
   const tools = Object.entries(d.tools || {}).sort((a, b) => b[1] - a[1]).slice(0, 8);
   const max = tools.length ? tools[0][1] : 1;
-  const acts = [...(d.events || [])].reverse().slice(0, 200).map((e) => {
-    const em = e.k === 'prompt' ? '🙋' : e.k === 'reply' ? '💬' : toolEmoji(e.n);
-    const text = e.k === 'tool' ? `${e.n}${e.l ? `: ${e.l}` : ''}` : e.l;
-    return `<div class="act"><span class="tm">${e.t ? hhmm(e.t) : ''}</span><span>${em}</span><span class="ellipsis">${esc(text)}</span></div>`;
-  }).join('');
+  // ⛺ アクティビティは会話ログと重なるので出さない
   const rest = `<div class="h">🙋 最初と最後の依頼</div><div class="notice" style="background:var(--chip-bg)">${esc(d.firstPrompt || '-')}</div>${d.lastPrompt && d.lastPrompt !== d.firstPrompt ? `<div class="notice" style="background:var(--chip-bg)">${esc(d.lastPrompt)}</div>` : ''}
     <div class="h">🛠️ よく使ったツール</div><div class="bars">${tools.map(([n, v]) => `<div class="bar"><span>${toolEmoji(n)} ${esc(n)}</span><i style="width:${(160 * v) / max}px"></i><span class="sub">${v}</span></div>`).join('') || '<div class="sub">なし</div>'}</div>
-    <div class="h">🐣 サブエージェント</div>${(d.subagents || []).map((s) => `<div class="act"><span class="tm">${hhmm(s.start)}</span><span>${s.active ? '🟢' : '⚪'}</span><span class="ellipsis">${esc(s.type)}: ${esc(s.desc)}</span></div>`).join('') || '<div class="sub">なし</div>'}
-    <div class="h">⛺ アクティビティ</div>${acts || '<div class="sub">なし</div>'}`;
+    <div class="h">🐣 サブエージェント</div>${(d.subagents || []).map((s) => `<div class="act"><span class="tm">${hhmm(s.start)}</span><span>${s.active ? '🟢' : '⚪'}</span><span class="ellipsis">${esc(s.type)}: ${esc(s.desc)}</span></div>`).join('') || '<div class="sub">なし</div>'}`;
   setIfChanged(win.el.querySelector('.rest'), rest);
 }

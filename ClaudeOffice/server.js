@@ -9,6 +9,7 @@ const os = require('os');
 const net = require('net');
 const https = require('https');
 const crypto = require('crypto');
+const { StringDecoder } = require('string_decoder');
 const { spawn, execFileSync } = require('child_process');
 
 const PORT = Number(process.env.PORT) || 8765;
@@ -20,6 +21,7 @@ const PUBLIC_DIR = path.join(__dirname, 'public');
 const NOTIFY_FILE = path.join(__dirname, 'notify.json');
 const ARCHIVE_FILE = path.join(DATA_DIR, 'archive.json');
 const ALLOWED_ORIGINS = new Set([`http://127.0.0.1:${PORT}`, `http://localhost:${PORT}`]);
+const ALLOWED_HOSTS = new Set([`127.0.0.1:${PORT}`, `localhost:${PORT}`]);
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const MAX_EVENTS = 400;
 const ARCHIVE_EVENTS = 200;
@@ -828,6 +830,7 @@ function sessionResponse(id) {
     events: maskedEvents(rec.events, MAX_EVENTS),
     subagents: rec.subagents.map((s) => ({ ...s, desc: mask(s.desc) })),
     live: l ? publicLive(l) : null,
+    term: termRunning(id),
     chatRunning: chats.has(id),
     progress: progressOf(rec, l, false),
   };
@@ -1077,6 +1080,9 @@ function openInVscode(id) {
   if (!rec.rootCwd || !fs.existsSync(rec.rootCwd)) {
     return 'フォルダがありません';
   }
+  if (termRunning(id)) {
+    return '箱庭のターミナルで開いている会話です';
+  }
   const l = readLive().get(id);
   if (l && l.entrypoint !== 'claude-vscode') {
     return 'ターミナルで開いている会話です';
@@ -1094,6 +1100,15 @@ function openInVscode(id) {
 // ---------------------------------------------------------------- 会話の続きを送る
 
 const chats = new Map(); // id -> { stop() }
+
+// claude がツールで起動した子プロセスも残さないよう、プロセス名ではなく PID の木ごと止める
+function killTree(pid) {
+  try {
+    execFileSync('taskkill', ['/PID', String(pid), '/T', '/F'], { windowsHide: true, stdio: 'ignore' });
+  } catch {
+    // 既に終わっている
+  }
+}
 
 function findClaudeExe() {
   const ext = path.join(os.homedir(), '.vscode', 'extensions');
@@ -1117,6 +1132,16 @@ function findClaudeExe() {
   return 'claude';
 }
 
+// node-pty は PATH を引かないので、'claude' しか見つからなければ ~/.local/bin/claude.exe をフルパスで使う
+function findClaudeExeFull() {
+  const exe = findClaudeExe();
+  if (exe !== 'claude') {
+    return exe;
+  }
+  const local = path.join(os.homedir(), '.local', 'bin', 'claude.exe');
+  return fs.existsSync(local) ? local : null;
+}
+
 function chatPrecheck(id, text) {
   scan(true);
   const rec = sessions.get(id);
@@ -1137,6 +1162,9 @@ function chatPrecheck(id, text) {
   }
   if (chats.has(id)) {
     return 'この会話には送信中です';
+  }
+  if (termRunning(id)) {
+    return '箱庭のターミナルで開いている会話です';
   }
   const l = readLive().get(id);
   if (l && !hasPipe(l)) {
@@ -1172,13 +1200,7 @@ function chatResume(id, text, res) {
     res.end();
     log(`続きを送る(resume) 終了 ok=${ok}`);
   };
-  const kill = () => {
-    try {
-      execFileSync('taskkill', ['/PID', String(child.pid), '/T', '/F'], { windowsHide: true, stdio: 'ignore' });
-    } catch {
-      // 既に終わっている
-    }
-  };
+  const kill = () => killTree(child.pid);
   const timer = setTimeout(() => {
     kill();
     finish(false, { error: '30分で打ち切りました' });
@@ -1328,6 +1350,486 @@ function chatPipe(id, text, res) {
       finish(false, { error: '30分で打ち切りました' });
     }
   }, 500);
+}
+
+// ---------------------------------------------------------------- 会話ログ(記録をターミナル風の文字列にする)
+
+const ANSI = {
+  accent: '\x1b[38;2;217;119;87m', cyan: '\x1b[38;2;125;211;252m', green: '\x1b[38;2;134;239;172m', gray: '\x1b[38;2;156;163;175m',
+  dim: '\x1b[2m', bold: '\x1b[1m', reset: '\x1b[0m',
+};
+const LOG_BODY_MAX = 20000;
+const LOG_MAX_PIECES = 1500;
+const LOG_CACHE_IDLE_MS = 10 * 60 * 1000;
+
+// 記録の中の制御文字(ESC など)はそのまま流すと画面を壊すので外す。改行とタブだけ残す
+function plain(text) {
+  return String(text || '').replace(/\r\n?/g, '\n').replace(/[\x00-\x08\x0b-\x1f\x7f-\x9f]/g, '');
+}
+
+// 本文は 20,000 字で切ってマスクし、2行目以降は2字下げる
+function logBody(text) {
+  let t = plain(text).trim();
+  if (t.length > LOG_BODY_MAX) {
+    t = `${t.slice(0, LOG_BODY_MAX)}…（長いので省略）`;
+  }
+  return mask(t).replace(/\n/g, '\n  ');
+}
+
+function logTime(o) {
+  const t = o.timestamp ? Date.parse(o.timestamp) : 0;
+  if (!t) {
+    return '--:--';
+  }
+  const d = new Date(t);
+  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+}
+
+function renderLogUser(o) {
+  const { accent, cyan, gray, dim, bold, reset } = ANSI;
+  if (o.isCompactSummary) {
+    return `\n${dim}── 会話が長くなったので要約して続けたよ ──${reset}\n\n`;
+  }
+  const content = o.message && o.message.content;
+  if (o.isMeta || (Array.isArray(content) && content.some((b) => b && b.type === 'tool_result'))) {
+    return null;
+  }
+  const kind = (o.origin && o.origin.kind) || o.turnOrigin || '';
+  if (kind === 'task-notification' || kind === 'task_notification') {
+    return `${dim}🔔 裏の作業から知らせが届いたよ${reset}\n`;
+  }
+  let text = '';
+  if (Array.isArray(content)) {
+    text = content.map((b) => {
+      if (b && b.type === 'text') {
+        return b.text || '';
+      }
+      return b && b.type === 'image' ? '[画像]' : '';
+    }).filter(Boolean).join('\n');
+  } else if (typeof content === 'string') {
+    text = content;
+  }
+  // VSCode が添える開いているファイル等のタグは本人の発言ではないので外してから判定する(humanPrompt と同じ)
+  text = text.replace(/<system-reminder>[\s\S]*?<\/system-reminder>/g, '').replace(/<ide_[a-z_]*>[\s\S]*?<\/ide_[a-z_]*>/g, '').trim();
+  if (!text) {
+    return null;
+  }
+  if (text.startsWith('[Request interrupted by user')) {
+    return `${dim}■ 中断したよ${reset}\n`;
+  }
+  if (text.startsWith('<')) {
+    const cmd = /<command-name>([\s\S]*?)<\/command-name>/.exec(text);
+    if (!cmd || !cmd[1].trim()) {
+      return null;
+    }
+    return `${gray}› /${plain(cmd[1]).trim().replace(/^\/+/, '')}${reset}\n`;
+  }
+  const peer = kind === 'peer' ? `${cyan}📨 別のセッションから${reset} ` : '';
+  return `\n${dim}${logTime(o)}${reset} ${peer}${accent}${bold}›${reset} ${bold}${logBody(text)}${reset}\n`;
+}
+
+function renderLogAssistant(o) {
+  const { cyan, green, gray, dim, reset } = ANSI;
+  const content = o.message && o.message.content;
+  if (!Array.isArray(content)) {
+    return null;
+  }
+  let out = '';
+  for (const b of content) {
+    if (!b) {
+      continue;
+    }
+    if (b.type === 'text' && b.text && b.text.trim()) {
+      out += `\n${green}●${reset} ${logBody(b.text)}\n`;
+    } else if (b.type === 'tool_use') {
+      // コマンド本文・結果は出さない。説明は toolLabel() の1行(120字まで)だけ
+      const desc = clip(mask(plain(toolLabel(b.name, b.input))), 120);
+      out += `${dim}⎿${reset} ${cyan}${plain(b.name)}${reset}${desc ? ` ${gray}${desc}${reset}` : ''}\n`;
+    }
+  }
+  return out || null;
+}
+
+// 記録1行の描き方。出さない行は null
+function renderLogEntry(o) {
+  if (!o || typeof o !== 'object') {
+    return null;
+  }
+  if (o.type === 'user') {
+    return renderLogUser(o);
+  }
+  if (o.type === 'assistant') {
+    return renderLogAssistant(o);
+  }
+  return null;
+}
+
+const logCache = new Map(); // id -> newLogCache()
+
+function newLogCache(file) {
+  return { file, offset: 0, rest: '', decoder: new StringDecoder('utf8'), nodes: new Map(), last: null, pieces: null, usedAt: Date.now() };
+}
+
+// 追記分だけ読んで uuid の木に足す。マルチバイトの途中切れは decoder、改行なしの断片は rest に持ち越す
+function readLogInto(c) {
+  let st;
+  try {
+    st = fs.statSync(c.file);
+  } catch {
+    return false;
+  }
+  if (st.size < c.offset) {
+    Object.assign(c, newLogCache(c.file));
+  }
+  if (st.size === c.offset) {
+    return false;
+  }
+  const fd = fs.openSync(c.file, 'r');
+  try {
+    const chunk = Buffer.alloc(Math.min(4 * 1024 * 1024, st.size - c.offset));
+    while (c.offset < st.size) {
+      const n = fs.readSync(fd, chunk, 0, Math.min(chunk.length, st.size - c.offset), c.offset);
+      if (n <= 0) {
+        break;
+      }
+      c.offset += n;
+      const lines = (c.rest + c.decoder.write(chunk.subarray(0, n))).split('\n');
+      c.rest = lines.pop() || '';
+      for (const line of lines) {
+        addLogLine(c, line);
+      }
+    }
+  } finally {
+    fs.closeSync(fd);
+  }
+  c.pieces = null;
+  return true;
+}
+
+function addLogLine(c, line) {
+  if (!line.trim()) {
+    return;
+  }
+  let o;
+  try {
+    o = JSON.parse(line);
+  } catch {
+    return; // 壊れた行は飛ばす
+  }
+  if (!o || !o.uuid || o.isSidechain) {
+    return;
+  }
+  c.nodes.set(o.uuid, { parent: o.parentUuid || o.logicalParentUuid || null, s: renderLogEntry(o) });
+  if (o.type === 'user' || o.type === 'assistant') {
+    c.last = o.uuid;
+  }
+}
+
+// 最後の発言から親をたどって、いま続いている1本だけを古い順に。要約の境目は logicalParentUuid でつながる
+function logPieces(c) {
+  if (c.pieces) {
+    return c.pieces;
+  }
+  const out = [];
+  const seen = new Set();
+  let u = c.last;
+  while (u && !seen.has(u)) {
+    seen.add(u);
+    const node = c.nodes.get(u);
+    if (!node) {
+      break;
+    }
+    if (node.s !== null) {
+      out.push({ u, s: node.s });
+    }
+    u = node.parent;
+  }
+  out.reverse();
+  c.pieces = out;
+  return out;
+}
+
+// 画面が持っている件数 n と最後の uuid h が今の道と合えば差分だけ、合わなければ最後の 1500 件を描き直し
+function sliceLog(pieces, n, h) {
+  const total = pieces.length;
+  if (n > 0 && n <= total && pieces[n - 1].u === h) {
+    return { total, reset: false, pieces: pieces.slice(n) };
+  }
+  const skipped = Math.max(0, total - LOG_MAX_PIECES);
+  return { total, reset: true, skipped, pieces: pieces.slice(skipped) };
+}
+
+function logResponse(id, n, h) {
+  scan(false);
+  const rec = sessions.get(id);
+  if (!rec || rec.transcriptGone || !rec.file) {
+    return null;
+  }
+  const now = Date.now();
+  for (const [k, v] of logCache) {
+    if (now - v.usedAt > LOG_CACHE_IDLE_MS) {
+      logCache.delete(k);
+    }
+  }
+  let c = logCache.get(id);
+  if (!c || c.file !== rec.file) {
+    c = newLogCache(rec.file);
+    logCache.set(id, c);
+  }
+  c.usedAt = now;
+  readLogInto(c);
+  const l = readLive().get(id);
+  return {
+    ok: true,
+    live: l ? (l.entrypoint === 'claude-vscode' ? 'claude-vscode' : 'cli') : null,
+    term: termRunning(id),
+    chatRunning: chats.has(id),
+    ...sliceLog(logPieces(c), n, h),
+  };
+}
+
+// ---------------------------------------------------------------- 箱庭のターミナル(node-pty で claude を対話モードのまま動かす)
+
+const TERM_BUF_MAX = 512 * 1024;
+const TERM_KEEP_MS = 10 * 60 * 1000;
+const terms = new Map(); // id -> { id, dir, pty, buf, clients:Set, startedAt, exited, code, cols, rows }
+let ptyModule = null;
+let ptyTried = false;
+let ptyError = '';
+
+// 読み込めなくても本体は落とさず、/api/terms の ready:false と理由で画面に出す
+function ptyLib() {
+  if (!ptyTried) {
+    ptyTried = true;
+    const base = path.join(__dirname, 'vendor-node', 'node-pty');
+    try {
+      // node-pty はネイティブ部品を起動時まで読まないので、ここで揃っているかを確かめる。
+      // conoutSocketWorker.js が欠けると claude は起動するのに出力が1文字も届かない
+      const need = ['lib/worker/conoutSocketWorker.js', 'prebuilds/win32-x64/conpty.node', 'prebuilds/win32-x64/conpty_console_list.node', 'prebuilds/win32-x64/conpty/conpty.dll', 'prebuilds/win32-x64/conpty/OpenConsole.exe'];
+      const missing = need.filter((f) => !fs.existsSync(path.join(base, f)));
+      if (missing.length) {
+        throw new Error(`vendor-node/node-pty に ${missing.join('・')} がありません`);
+      }
+      ptyModule = require(base);
+      require(path.join(base, 'lib', 'utils.js')).loadNativeModule('conpty');
+    } catch (e) {
+      ptyModule = null;
+      ptyError = clip(String((e && e.message) || e), 300);
+      log('node-pty を読み込めません');
+    }
+  }
+  return ptyModule;
+}
+
+function termRunning(id) {
+  const t = terms.get(id);
+  return !!(t && !t.exited);
+}
+
+function clampInt(v, lo, hi, def) {
+  const n = Math.round(Number(v));
+  return Number.isFinite(n) ? Math.max(lo, Math.min(hi, n)) : def;
+}
+
+function dirName(dir) {
+  return path.basename(String(dir).replace(/[\\/]+$/, '')) || dir;
+}
+
+// 今までに使ったフォルダ: rootCwd||cwd を大文字小文字無視でまとめ、最後に使った順・実在するものだけ 40 件
+function usedDirs() {
+  const map = new Map();
+  for (const r of sessions.values()) {
+    const dir = r.rootCwd || r.cwd;
+    if (!dir) {
+      continue;
+    }
+    const key = dir.replace(/[\\/]+$/, '').toLowerCase();
+    const cur = map.get(key);
+    if (!cur) {
+      map.set(key, { dir, project: dirName(dir), last: r.end || 0 });
+    } else if ((r.end || 0) > cur.last) {
+      cur.last = r.end;
+    }
+  }
+  const out = [];
+  for (const d of [...map.values()].sort((a, b) => b.last - a.last)) {
+    if (out.length >= 40) {
+      break;
+    }
+    if (fs.existsSync(d.dir)) {
+      out.push(d);
+    }
+  }
+  return out;
+}
+
+function termTitle(id) {
+  const rec = sessions.get(id);
+  return mask((rec && (rec.title || rec.firstPrompt)) || '') || '(新しい会話)';
+}
+
+function termsResponse() {
+  scan(false);
+  const ready = !!ptyLib();
+  return {
+    ready,
+    error: ready ? '' : ptyError,
+    terms: [...terms.values()].map((t) => ({
+      id: t.id, dir: t.dir, project: dirName(t.dir), title: termTitle(t.id), startedAt: t.startedAt, exited: t.exited, code: t.code,
+    })),
+    dirs: usedDirs(),
+  };
+}
+
+function startTerm(body) {
+  const lib = ptyLib();
+  if (!lib) {
+    return { error: `ターミナルの部品(node-pty)を読み込めなかった: ${ptyError}` };
+  }
+  const cols = clampInt(body.cols, 20, 400, 100);
+  const rows = clampInt(body.rows, 5, 200, 30);
+  let id;
+  let dir;
+  let args;
+  if (body.sessionId !== undefined) {
+    id = String(body.sessionId);
+    if (!UUID_RE.test(id)) {
+      return { error: '会話 ID が不正です' };
+    }
+    if (termRunning(id)) {
+      return { ok: true, id, existing: true };
+    }
+    scan(true);
+    const rec = sessions.get(id);
+    if (!rec || rec.transcriptGone) {
+      return { error: '元の記録が無い会話は開けないよ（要約のみ）' };
+    }
+    dir = rec.rootCwd || rec.cwd;
+    if (!dir || !fs.existsSync(dir)) {
+      return { error: 'フォルダがありません' };
+    }
+    if (readLive().get(id)) {
+      return { error: 'VSCode（またはほかのターミナル）で開いている会話だよ。同時に開くと記録が枝分かれしちゃうから、そっちを閉じてから開いてね' };
+    }
+    if (chats.has(id)) {
+      return { error: '詳細の窓から送った返事を作ってる途中だよ' };
+    }
+    args = ['--resume', id];
+  } else {
+    scan(false);
+    const want = typeof body.cwd === 'string' ? body.cwd : '';
+    const hit = want ? usedDirs().find((d) => norm(d.dir) === norm(want)) : null;
+    if (!hit) {
+      return { error: '今までに使ったフォルダではありません' };
+    }
+    dir = hit.dir;
+    // 最初の発言の前から会話と結びつくよう、ID はこちらで決めて渡す
+    id = crypto.randomUUID();
+    args = ['--session-id', id];
+  }
+  const exe = findClaudeExeFull();
+  if (!exe) {
+    return { error: 'claude.exe が見つかりません' };
+  }
+  const extra = String(process.env.CLAUDE_OFFICE_TERM_ARGS || '').split(/\s+/).filter(Boolean);
+  const env = cleanEnv(['CLAUDE_CODE_', 'CLAUDE_AGENT_SDK_', 'VSCODE_', 'TERM_PROGRAM'], ['CLAUDECODE', 'CLAUDE_PID', 'CLAUDE_EFFORT', 'MCP_CONNECTION_NONBLOCKING']);
+  env.COLORTERM = 'truecolor';
+  let p;
+  try {
+    p = lib.spawn(exe, [...extra, ...args], { name: 'xterm-256color', cols, rows, cwd: dir, env });
+  } catch (e) {
+    return { error: `claude を起動できません: ${clip(String((e && e.message) || e), 200)}` };
+  }
+  const t = { id, dir, pty: p, buf: '', clients: new Set(), startedAt: Date.now(), exited: false, code: null, cols, rows };
+  terms.set(id, t);
+  p.onData((d) => {
+    t.buf += d;
+    if (t.buf.length > TERM_BUF_MAX) {
+      // 開き直したときに描き直す分だけ残す
+      t.buf = t.buf.slice(-Math.floor(TERM_BUF_MAX * 0.75));
+    }
+    for (const res of t.clients) {
+      writeEvent(res, { t: 'data', d });
+    }
+  });
+  p.onExit(({ exitCode }) => {
+    t.exited = true;
+    t.code = exitCode;
+    for (const res of t.clients) {
+      writeEvent(res, { t: 'exit', code: exitCode });
+      res.end();
+    }
+    t.clients.clear();
+    log(`箱庭のターミナル 終了 code=${exitCode}`);
+    // 一覧には 10 分残してから消す
+    setTimeout(() => {
+      if (terms.get(id) === t) {
+        terms.delete(id);
+      }
+    }, TERM_KEEP_MS).unref();
+  });
+  log(`箱庭のターミナル 起動 (${args[0]})`);
+  return { ok: true, id };
+}
+
+function streamTerm(id, req, res) {
+  const t = terms.get(id);
+  if (!t) {
+    sendJson(res, 404, { error: 'not found' });
+    return;
+  }
+  res.writeHead(200, { 'Content-Type': 'application/x-ndjson; charset=utf-8', 'Cache-Control': 'no-cache' });
+  writeEvent(res, { t: 'hello', id, dir: t.dir });
+  if (t.buf) {
+    writeEvent(res, { t: 'data', d: t.buf });
+  }
+  if (t.exited) {
+    writeEvent(res, { t: 'exit', code: t.code });
+    res.end();
+    return;
+  }
+  t.clients.add(res);
+  const drop = () => t.clients.delete(res);
+  req.on('close', drop);
+  res.on('close', drop);
+}
+
+function resizeTerm(t, body) {
+  const cols = clampInt(body.cols, 20, 400, t.cols);
+  const rows = clampInt(body.rows, 5, 200, t.rows);
+  try {
+    if (body.redraw && cols === t.cols && rows === t.rows) {
+      // 大きさが同じだと claude は描き直さないので、一度 1 桁縮めて戻す
+      t.pty.resize(cols - 1, rows);
+      setTimeout(() => {
+        if (!t.exited) {
+          try {
+            t.pty.resize(t.cols, t.rows);
+          } catch {
+            // 終わった直後
+          }
+        }
+      }, 80);
+    } else {
+      t.pty.resize(cols, rows);
+    }
+    t.cols = cols;
+    t.rows = rows;
+  } catch {
+    // 終わった直後
+  }
+}
+
+function killAllTerms() {
+  for (const t of terms.values()) {
+    if (!t.exited) {
+      try {
+        t.pty.kill();
+      } catch {
+        // 既に終わっている
+      }
+    }
+  }
 }
 
 // ---------------------------------------------------------------- 通知(notify.json と WinRT トースト)
@@ -1535,7 +2037,24 @@ function readBody(req, limit) {
 async function handle(req, res) {
   const url = new URL(req.url, `http://${HOST}:${PORT}`);
   const p = url.pathname;
+  // ターミナルは「claude にキーを送る口」なので、ほかのドメインを 127.0.0.1 に向け直した要求(DNS リバインディング)は受けない
+  if (p.startsWith('/api/') && !ALLOWED_HOSTS.has(String(req.headers.host || '').toLowerCase())) {
+    sendJson(res, 403, { error: 'forbidden host' });
+    return;
+  }
+  let m;
   if (req.method === 'GET') {
+    // /log は /api/session/ の前で判定する(後ろだと ID に /log が付いた扱いで 404 になる)
+    if ((m = /^\/api\/session\/([^/]+)\/log$/.exec(p))) {
+      const n = Math.max(0, Math.floor(Number(url.searchParams.get('n')) || 0));
+      const r = UUID_RE.test(m[1]) ? logResponse(m[1], n, url.searchParams.get('h') || '') : null;
+      sendJson(res, r ? 200 : 404, r || { ok: false, error: '元の記録が無いよ（要約のみ）' });
+      return;
+    }
+    if (p === '/api/terms') {
+      sendJson(res, 200, termsResponse());
+      return;
+    }
     if (p === '/api/state') {
       sendJson(res, 200, stateResponse(url.searchParams.get('date'), url.searchParams.get('archive') === '1'));
       return;
@@ -1574,8 +2093,44 @@ async function handle(req, res) {
     sendJson(res, 403, { error: 'forbidden' });
     return;
   }
-  let m;
   try {
+    if (p === '/api/term/start') {
+      const body = await readBody(req, 64 * 1024);
+      const r = startTerm(body);
+      sendJson(res, r.ok ? 200 : 409, r.ok ? r : { ok: false, error: r.error });
+      return;
+    }
+    if ((m = /^\/api\/term\/([^/]+)\/(stream|input|resize|kill)$/.exec(p))) {
+      const body = await readBody(req, 80 * 1024);
+      const id = m[1];
+      if (m[2] === 'stream') {
+        streamTerm(UUID_RE.test(id) ? id : '', req, res);
+        return;
+      }
+      const t = UUID_RE.test(id) ? terms.get(id) : null;
+      if (!t) {
+        sendJson(res, 404, { ok: false, error: 'not found' });
+        return;
+      }
+      if (t.exited) {
+        sendJson(res, 409, { ok: false, error: 'もう終わっています' });
+        return;
+      }
+      if (m[2] === 'input') {
+        if (typeof body.d !== 'string' || body.d.length > 64 * 1024) {
+          sendJson(res, 400, { ok: false, error: 'bad input' });
+          return;
+        }
+        t.pty.write(body.d);
+      } else if (m[2] === 'resize') {
+        resizeTerm(t, body);
+      } else {
+        killTree(t.pty.pid);
+        log('箱庭のターミナル 終える');
+      }
+      sendJson(res, 200, { ok: true });
+      return;
+    }
     if (p === '/api/hook/stop') {
       const body = await readBody(req, 4 * 1024 * 1024);
       sendJson(res, 200, { ok: true });
@@ -1643,7 +2198,10 @@ async function handle(req, res) {
 
 // ---------------------------------------------------------------- 起動
 
-module.exports = { mask, looksRandom, humanPrompt, toolLabel, endsWithQuestion, progressOf, newRecord, parseLine, normalizeNotify, inQuiet, stripJsonc, projectName, touch };
+module.exports = {
+  mask, looksRandom, humanPrompt, toolLabel, endsWithQuestion, progressOf, newRecord, parseLine, normalizeNotify, inQuiet, stripJsonc, projectName, touch,
+  renderLogEntry, newLogCache, readLogInto, logPieces, sliceLog, handle,
+};
 
 if (require.main === module) {
   loadArchive();
@@ -1668,6 +2226,8 @@ if (require.main === module) {
   });
   const shutdown = () => {
     saveArchive(true);
+    // サーバを止めると箱庭のターミナルの claude も終わる(記録はそこまで残る)
+    killAllTerms();
     process.exit(0);
   };
   process.on('SIGINT', shutdown);

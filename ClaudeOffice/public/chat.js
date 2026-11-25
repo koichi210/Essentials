@@ -113,9 +113,10 @@ export function createChat(id) {
       data = d;
       const warn = el.querySelector('.warn-area');
       let html = '';
-      if (d.transcriptGone) {
+      // 箱庭のターミナルで動いている間は、話すのはターミナルで(送信欄は隠す)
+      el.hidden = !!(d.transcriptGone || d.term);
+      if (d.transcriptGone || d.term) {
         html = '';
-        el.hidden = true;
       } else if (d.live) {
         // 常時表示だと窓が狭くなるので、説明は入力欄のツールチップに回す
         html = '';
