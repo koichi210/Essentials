@@ -695,6 +695,21 @@ function endTalk(id) {
   postJson(`/api/talk/${id}/kill`, {});
 }
 
+// 下の送信欄から、どこでも開いていない会話へ送るとき: 箱庭で claude を動かし始めて、その最初の発言として送る
+// (本人の発言として届き、ツールの承認も会話欄のカードで出る)
+export async function talkFromChat(id, text) {
+  const started = await startTalk({ sessionId: id });
+  if (!started) {
+    return false;
+  }
+  const j = await postJson(`/api/talk/${id}/send`, { text });
+  if (!j) {
+    return false;
+  }
+  showTalk(id, '');
+  return true;
+}
+
 // 詳細の窓が開いていればその会話欄、無ければ別の窓で見せる
 export function showTalk(id, title) {
   if (opts.focusDetail(id)) {

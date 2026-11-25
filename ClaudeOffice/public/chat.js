@@ -1,5 +1,8 @@
-// 詳細の窓の「続きを送る」欄。応答は NDJSON の逐次ストリーム
+// 詳細の窓の下の送信欄。
+// - どこでも開いていない会話: 箱庭で claude を動かし始めて送る(本人の発言として届く。以降は会話欄で話す)
+// - VSCode 等で開いている会話: その claude の受信口へ送る(「別のセッションから」として届く)。応答は NDJSON の逐次ストリーム
 import { toolEmoji } from './people.js';
+import { talkFromChat } from './talk.js';
 
 // ブラウザ全体で同時に送れるのは1会話だけ
 let busy = false;
@@ -33,6 +36,19 @@ export function createChat(id) {
     }
     if (busy) {
       status.textContent = '⚠️ 別の会話へ送信中です';
+      return;
+    }
+    if (data && !data.live) {
+      setRunning(true);
+      ta.value = '';
+      out.textContent = '';
+      status.textContent = '⏳ 箱庭で話し始めています…';
+      const ok = await talkFromChat(id, text);
+      status.textContent = ok ? '' : '❌ 送れませんでした';
+      if (!ok) {
+        ta.value = text; // 送れなかった文は戻す
+      }
+      setRunning(false);
       return;
     }
     setRunning(true);
@@ -118,12 +134,13 @@ export function createChat(id) {
       if (d.transcriptGone || d.talk) {
         html = '';
       } else if (d.live) {
-        // 常時表示だと窓が狭くなるので、説明は入力欄のツールチップに回す
-        html = '';
+        // 本人の発言にはならないことを、送る前に分かるようにする
+        html = '<div class="notice">🔁 VSCode（ほかのターミナル）で開いている会話へは「別のセッションから」として届くよ。push など本人の承認が要る頼みは VSCode で。VSCode のタブを閉じれば、箱庭から本人として話せるよ</div>';
       } else {
-        html = '<div class="notice warn">⚠️ 閉じた会話を再開して送ります。ツールは確認なしで実行されます。</div>';
+        html = '<div class="notice">💬 送ると箱庭で話し始めるよ（本人の発言として届いて、ツールの承認は会話欄のカードで出るよ）</div>';
       }
-      ta.title = d.live ? '開いている会話へは「@dashboard からのメッセージ」として届きます。本人の承認の代わりにはなりません。' : '';
+      ta.placeholder = d.live ? '🔁 別のセッションとして送る（Ctrl+Enter）' : '💬 本人として送る（Ctrl+Enter）';
+      ta.title = '';
       if (warn.__html !== html) {
         warn.__html = html;
         warn.innerHTML = html;

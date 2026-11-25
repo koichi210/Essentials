@@ -1167,7 +1167,11 @@ function chatPrecheck(id, text) {
     return '箱庭で話している会話です';
   }
   const l = readLive().get(id);
-  if (l && !hasPipe(l)) {
+  if (!l) {
+    // どこでも開いていない会話は、箱庭で claude を動かして本人の発言として送る(画面が /api/talk を使う)
+    return 'どこでも開いていない会話は「💬 ここで話す」で送ってね';
+  }
+  if (!hasPipe(l)) {
     return '開いている会話ですが受信口がありません';
   }
   return null;
@@ -1177,78 +1181,6 @@ function writeEvent(res, ev) {
   if (!res.writableEnded && !res.destroyed) {
     res.write(`${JSON.stringify(ev)}\n`);
   }
-}
-
-// 閉じた会話: claude -p --resume で続きを送り、stream-json をブロックごとに全文マスクして流す
-function chatResume(id, text, res) {
-  const rec = sessions.get(id);
-  const started = Date.now();
-  const env = cleanEnv(['CLAUDE_CODE_', 'CLAUDE_AGENT_SDK_'], ['CLAUDECODE', 'CLAUDE_PID', 'CLAUDE_EFFORT']);
-  const args = ['-p', '--resume', id, '--output-format', 'stream-json', '--verbose', '--include-partial-messages', '--permission-mode', 'bypassPermissions'];
-  const child = spawn(findClaudeExe(), args, { cwd: rec.rootCwd, env, windowsHide: true, shell: false });
-  let done = false;
-  const blocks = new Map();
-  let buf = '';
-  const finish = (ok, extra) => {
-    if (done) {
-      return;
-    }
-    done = true;
-    clearTimeout(timer);
-    chats.delete(id);
-    writeEvent(res, { t: 'done', ok, ms: Date.now() - started, ...extra });
-    res.end();
-    log(`続きを送る(resume) 終了 ok=${ok}`);
-  };
-  const kill = () => killTree(child.pid);
-  const timer = setTimeout(() => {
-    kill();
-    finish(false, { error: '30分で打ち切りました' });
-  }, 30 * 60 * 1000);
-  chats.set(id, {
-    stop: () => {
-      kill();
-      finish(false, { stopped: true });
-    },
-  });
-  child.stdout.on('data', (c) => {
-    buf += c.toString('utf8');
-    const lines = buf.split('\n');
-    buf = lines.pop() || '';
-    for (const line of lines) {
-      let o;
-      try {
-        o = JSON.parse(line);
-      } catch {
-        continue;
-      }
-      if (o.type === 'system' && o.subtype === 'init') {
-        writeEvent(res, { t: 'start', model: o.model || '' });
-      } else if (o.type === 'stream_event' && o.event) {
-        const ev = o.event;
-        if (ev.type === 'content_block_start' && ev.content_block && ev.content_block.type === 'tool_use') {
-          writeEvent(res, { t: 'tool', n: ev.content_block.name, l: '' });
-        } else if (ev.type === 'content_block_delta' && ev.delta && ev.delta.type === 'text_delta') {
-          // 断片だと秘密をマスクしきれないので、ブロックごとに連結した全文をマスクして送る
-          const key = `${o.message_id || o.uuid || 'm'}:${ev.index}`;
-          const full = (blocks.get(key) || '') + ev.delta.text;
-          blocks.set(key, full);
-          writeEvent(res, { t: 'text', k: key, d: mask(full) });
-        }
-      } else if (o.type === 'assistant' && o.message && Array.isArray(o.message.content)) {
-        for (const b of o.message.content) {
-          if (b.type === 'tool_use') {
-            writeEvent(res, { t: 'tool', n: b.name, l: mask(clip(toolLabel(b.name, b.input), 80)) });
-          }
-        }
-      } else if (o.type === 'result') {
-        finish(!o.is_error, o.is_error ? { error: clip(mask(String(o.result || 'エラー')), 200) } : {});
-      }
-    }
-  });
-  child.on('error', () => finish(false, { error: 'claude を起動できません' }));
-  child.on('exit', (code) => finish(code === 0, code === 0 ? {} : { error: `終了コード ${code}` }));
-  child.stdin.end(text, 'utf8');
 }
 
 // 開いている会話: 名前付きパイプ(受信口)へ auth と user を書き、transcript の増分から返事を流す
@@ -2298,13 +2230,8 @@ async function handle(req, res) {
         return;
       }
       res.writeHead(200, { 'Content-Type': 'application/x-ndjson; charset=utf-8', 'Cache-Control': 'no-cache' });
-      // ページを閉じても送信は止めない
-      const l = readLive().get(id);
-      if (l) {
-        chatPipe(id, body.text, res);
-      } else {
-        chatResume(id, body.text, res);
-      }
+      // 開いている会話の受信口へ(別のセッションからの発言として届く)。ページを閉じても送信は止めない
+      chatPipe(id, body.text, res);
       return;
     }
     if (p === '/api/notify-settings') {
