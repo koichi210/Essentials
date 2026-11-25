@@ -534,10 +534,14 @@ namespace SecretaryGadget
         double Overlap);
 
     /// <summary>
-    /// 配置計算。吹き出しは下端を窓の下端(＝タスクバーのすぐ上)に固定し、中身が増えたら上へ伸ばす。
-    /// h = DisplayHeight×scale、吹き出しを幅300で Measure → bh、wh = max(h, bh+8)(窓は下端固定なので、背の高い吹き出しは窓ごと上へ伸びる)、
-    /// imageTop = wh−h、bubbleTop = wh−bh−4、faceY = imageTop + 0.23h、tailTip = clamp(faceY, bubbleTop+22, bubbleTop+bh−22)
-    /// (吹き出しが顔の高さまで届けばしっぽは顔を指し、届かなければ吹き出しの上の方から出る)、
+    /// 配置計算。吹き出しの位置は次の決まり:
+    /// ① 上端は秘書さんの頭のてっぺん(絵の中で最初に不透明な画素がある行。上の透明な余白は飛ばす)。下に余白ができてもよい。
+    /// ② 頭から下へ置くとタスクバー(窓の下端−4)に収まらないときは、下端をタスクバーのすぐ上に固定して、頭より上へはみ出させる
+    ///    (絵より背が高ければ窓ごと上へ伸ばす。窓は下端固定なのでキャラは動かない)。
+    /// ③ よって「頭より上に出ているのに、タスクバーとの間に隙間がある」ことは起きない。
+    /// h = DisplayHeight×scale、吹き出しを幅300で Measure → bh、headY = 頭のてっぺん(絵の上端から、4 以上)、
+    /// 収まる(headY+bh+4 ≤ h)なら wh = h・bubbleTop = headY、収まらなければ wh = max(h, bh+8)・bubbleTop = wh−bh−4。
+    /// imageTop = wh−h、faceY = imageTop + 0.23h、tailTip = clamp(faceY, bubbleTop+22, bubbleTop+bh−22)、
     /// 重なり率 r = skin.BubbleOverlap ?? min(0.5, L(吹き出しの行＋影) − (しっぽの張り出し14 + すき間6)/絵幅)、
     /// L(行範囲) = その行範囲で最も左にある不透明画素(α&gt;32)の x / 画像幅、窓の幅 = 306 − 絵幅×r + 絵幅。
     /// 吹き出しとイラストは重ねない方針のため、吹き出しの高さにあたる行では、キャラの左端がしっぽの先よりさらに右(すき間6)に来るよう r を決める。r は負にもなる。
@@ -566,10 +570,23 @@ namespace SecretaryGadget
             double h = displayHeight * scale;
             double imageWidth = pixelHeight > 0 ? h * pixelWidth / pixelHeight : h;
             double bh = bubbleHeight;
-            double wh = Math.Max(h, bh + BottomGap * 2);
+            double headY = Math.Max(BottomGap, TopmostRatio(pixelWidth, pixelHeight, leftmostOpaque) * h);
+            double wh;
+            double bubbleTop;
+            if (headY + bh + BottomGap <= h)
+            {
+                // ① 頭のてっぺんから下へ置いて収まる
+                wh = h;
+                bubbleTop = headY;
+            }
+            else
+            {
+                // ② 収まらないので、下端をタスクバーのすぐ上にそろえて頭より上へ伸ばす
+                wh = Math.Max(h, bh + BottomGap * 2);
+                bubbleTop = wh - bh - BottomGap;
+            }
             double imageTop = wh - h;
             double faceY = imageTop + FaceRatio * h;
-            double bubbleTop = wh - bh - BottomGap;
 
             double r;
             if (bubbleOverlap != null)
@@ -588,6 +605,20 @@ namespace SecretaryGadget
             double imageLeft = bubbleRight - imageWidth * r;
             double windowWidth = imageLeft + imageWidth;
             return new BubbleLayoutResult(windowWidth, wh, imageLeft, imageTop, imageWidth, h, bubbleTop, tailTip, r);
+        }
+
+        /// <summary>最初に不透明な画素がある行 / 画像の高さ(頭のてっぺん)。不透明な行が無ければ 0。</summary>
+        private static double TopmostRatio(int pixelWidth, int pixelHeight, IReadOnlyList<int> leftmostOpaque)
+        {
+            int rows = Math.Min(pixelHeight, leftmostOpaque.Count);
+            for (int y = 0; y < rows; y++)
+            {
+                if (leftmostOpaque[y] < pixelWidth)
+                {
+                    return pixelHeight > 0 ? (double)y / pixelHeight : 0;
+                }
+            }
+            return 0;
         }
 
         /// <summary>窓座標 y0〜y1 の行範囲で、最も左にある不透明画素の x / 画像幅。範囲に不透明画素が無ければ 1。</summary>
