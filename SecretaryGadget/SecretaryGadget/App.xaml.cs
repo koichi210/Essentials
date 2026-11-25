@@ -549,27 +549,27 @@ namespace SecretaryGadget
             }
         }
 
-        /// <summary>「秘書さんを呼ぶ」の吹き出しに、settings.json の CallMenu の選択肢と、その下に Claude Code の入力待ちの会話の一覧を付ける。</summary>
-        private Notice WithCallMenu(Notice notice, IReadOnlyList<WaitingSession>? waiting = null)
+        /// <summary>「秘書さんを呼ぶ」の吹き出しに、settings.json の CallMenu の選択肢と、その下に Claude Code の会話の状態(実行中／処理完了)の一覧を付ける。</summary>
+        private Notice WithCallMenu(Notice notice, IReadOnlyList<ClaudeSession>? sessions = null)
         {
             var menu = _settings.CallMenu.Select(e => new BubbleMenuItem(e.Label, () => RunCallMenuEntry(e))).ToList();
-            menu.AddRange(NoticeTexts.WaitingSessionsMenu(waiting ?? ReadWaitingSessions()));
+            menu.AddRange(NoticeTexts.SessionStatusMenu(sessions ?? ReadClaudeSessions()));
             return new Notice(notice.Kind, notice.Headline, notice.Line1, notice.Line2, notice.Line3)
             {
                 Menu = menu,
             };
         }
 
-        private static IReadOnlyList<WaitingSession> ReadWaitingSessions()
+        private static IReadOnlyList<ClaudeSession> ReadClaudeSessions()
         {
             try
             {
-                return ClaudeSessions.ReadWaiting();
+                return ClaudeSessions.ReadSessions();
             }
             catch (Exception ex)
             {
-                Log.Write("入力待ちの会話を読めませんでした: " + ex.GetType().Name);
-                return Array.Empty<WaitingSession>();
+                Log.Write("Claude Code の会話を読めませんでした: " + ex.GetType().Name);
+                return Array.Empty<ClaudeSession>();
             }
         }
 

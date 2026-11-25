@@ -340,28 +340,29 @@ namespace SecretaryGadget
             return new Notice(NoticeKind.Greeting, "担当を交代しました", $"本日からは{skinName}がお知らせを担当します。", "よろしくお願いいたします。");
         }
 
-        /// <summary>呼んだときの吹き出しに出す「入力待ちセッション」の行数の上限(超えた分は「ほか N 件」)</summary>
-        public const int WaitingSessionsMax = 8;
+        /// <summary>呼んだときの吹き出しに出す「セッションの状態」の行数の上限(超えた分は「ほか N 件」)</summary>
+        public const int SessionStatusMax = 8;
 
         /// <summary>
-        /// 呼んだときの吹き出しの選択肢の下に付ける、Claude Code の入力待ちの会話の一覧(区切り線・見出し・1件1行。押せない行)。
-        /// 待っている時間の長い順。無いときも見出しは出して「ありません」と書く。
+        /// 呼んだときの吹き出しの選択肢の下に付ける、Claude Code の会話と状態(実行中／処理完了)の一覧(区切り線・見出し・1件1行。押せない行)。
+        /// 並びは渡された順。題名が長いと右が切れるので、状態は行の頭に書く。無いときも見出しは出して「ありません」と書く。
         /// </summary>
-        public static IReadOnlyList<BubbleMenuItem> WaitingSessionsMenu(IReadOnlyList<WaitingSession> waiting)
+        public static IReadOnlyList<BubbleMenuItem> SessionStatusMenu(IReadOnlyList<ClaudeSession> sessions)
         {
-            var rows = new List<BubbleMenuItem> { BubbleMenuItem.Separator(), BubbleMenuItem.Header("入力待ちセッション") };
-            if (waiting.Count == 0)
+            var rows = new List<BubbleMenuItem> { BubbleMenuItem.Separator(), BubbleMenuItem.Header("セッションの状態") };
+            if (sessions.Count == 0)
             {
                 rows.Add(BubbleMenuItem.Info("・いまはありません"));
                 return rows;
             }
-            foreach (WaitingSession w in waiting.Take(WaitingSessionsMax))
+            foreach (ClaudeSession s in sessions.Take(SessionStatusMax))
             {
-                rows.Add(BubbleMenuItem.Info("・" + (string.IsNullOrWhiteSpace(w.Title) ? "(無題)" : w.Title)));
+                string title = string.IsNullOrWhiteSpace(s.Title) ? "(無題)" : s.Title;
+                rows.Add(BubbleMenuItem.Info($"・【{(s.Busy ? "実行中" : "処理完了")}】{title}"));
             }
-            if (waiting.Count > WaitingSessionsMax)
+            if (sessions.Count > SessionStatusMax)
             {
-                rows.Add(BubbleMenuItem.Info($"ほか {waiting.Count - WaitingSessionsMax} 件"));
+                rows.Add(BubbleMenuItem.Info($"ほか {sessions.Count - SessionStatusMax} 件"));
             }
             return rows;
         }

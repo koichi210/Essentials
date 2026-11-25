@@ -5,7 +5,7 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 namespace SecretaryGadget.Tests
 {
-    /// <summary>Claude Code の入力待ちの会話(箱庭の「入力待ち」と同じ判定)と、呼んだときの吹き出しの一覧。</summary>
+    /// <summary>Claude Code の会話の状態(実行中／処理完了)と、呼んだときの吹き出しの一覧。</summary>
     [TestClass]
     public class ClaudeSessionsTests
     {
@@ -19,20 +19,22 @@ namespace SecretaryGadget.Tests
         }
 
         [TestMethod]
-        public void ParseLive_WaitingRules()
+        public void ParseLive_StatusRules()
         {
             Func<int, bool> alive = pid => pid != 99;
-            WaitingSession? s = ClaudeSessions.ParseLive(Live("a", 1, "idle", _now.AddMinutes(-5)), _now, alive);
+            ClaudeSession? s = ClaudeSessions.ParseLive(Live("a", 1, "idle", _now.AddMinutes(-5)), _now, alive);
             Assert.IsNotNull(s);
             Assert.AreEqual("a", s!.SessionId);
             Assert.AreEqual("Sample", s.Project);
             Assert.AreEqual("sample-01", s.Title);
-            // 作業中・終わったプロセス・30分を超えた idle(おやすみ)は入力待ちではない
-            Assert.IsNull(ClaudeSessions.ParseLive(Live("b", 1, "busy", _now.AddMinutes(-5)), _now, alive));
+            Assert.IsFalse(s.Busy);
+            // busy は実行中
+            Assert.IsTrue(ClaudeSessions.ParseLive(Live("b", 1, "busy", _now.AddMinutes(-5)), _now, alive)!.Busy);
+            // 終わったプロセスは出さない
             Assert.IsNull(ClaudeSessions.ParseLive(Live("c", 99, "idle", _now.AddMinutes(-5)), _now, alive));
-            Assert.IsNull(ClaudeSessions.ParseLive(Live("d", 1, "idle", _now.AddMinutes(-30)), _now, alive));
-            // idle 以外(承認待ちなど)は時間が経っても入力待ち
-            Assert.IsNotNull(ClaudeSessions.ParseLive(Live("e", 1, "waiting", _now.AddHours(-2)), _now, alive));
+            // 長く放っておいた idle も、承認待ちなど busy 以外も処理完了
+            Assert.IsFalse(ClaudeSessions.ParseLive(Live("d", 1, "idle", _now.AddHours(-3)), _now, alive)!.Busy);
+            Assert.IsFalse(ClaudeSessions.ParseLive(Live("e", 1, "waiting", _now.AddHours(-2)), _now, alive)!.Busy);
         }
 
         [TestMethod]
@@ -45,7 +47,7 @@ namespace SecretaryGadget.Tests
         }
 
         [TestMethod]
-        public void ReadWaiting_ReadsSessionsAndTitles_LongestWaitingFirst()
+        public void ReadSessions_ReadsSessionsAndTitles_DoneFirstThenRunning()
         {
             string dir = Path.Combine(Path.GetTempPath(), "sg-claude-" + Guid.NewGuid().ToString("N"));
             try
@@ -58,8 +60,9 @@ namespace SecretaryGadget.Tests
                 File.WriteAllText(Path.Combine(dir, "sessions", "400.json"), "{書き込み途中");
                 File.WriteAllText(Path.Combine(dir, "sessions", "note.json"), Live("x", 1, "idle", _now));
                 File.WriteAllText(Path.Combine(dir, "projects", "D--GitHub", "s2.jsonl"), "{\"type\":\"ai-title\",\"aiTitle\":\"箱庭の改修\"}\n");
-                var list = ClaudeSessions.ReadWaiting(dir, _now, _ => true);
-                CollectionAssert.AreEqual(new[] { "s2", "s1" }, list.Select(s => s.SessionId).ToArray());
+                var list = ClaudeSessions.ReadSessions(dir, _now, _ => true);
+                CollectionAssert.AreEqual(new[] { "s2", "s1", "s3" }, list.Select(s => s.SessionId).ToArray());
+                Assert.IsTrue(list[2].Busy);
                 Assert.AreEqual("箱庭の改修", list[0].Title);
                 Assert.AreEqual("sample-01", list[1].Title);
             }
@@ -70,19 +73,19 @@ namespace SecretaryGadget.Tests
         }
 
         [TestMethod]
-        public void WaitingSessionsMenu_SeparatorHeaderAndRows()
+        public void SessionStatusMenu_SeparatorHeaderAndRows()
         {
-            var none = NoticeTexts.WaitingSessionsMenu(Array.Empty<WaitingSession>());
+            var none = NoticeTexts.SessionStatusMenu(Array.Empty<ClaudeSession>());
             CollectionAssert.AreEqual(new[] { BubbleMenuKind.Separator, BubbleMenuKind.Header, BubbleMenuKind.Info }, none.Select(r => r.Kind).ToArray());
-            Assert.AreEqual("入力待ちセッション", none[1].Label);
+            Assert.AreEqual("セッションの状態", none[1].Label);
             Assert.AreEqual("・いまはありません", none[2].Label);
             Assert.IsTrue(none.All(r => r.Run == null));
 
-            var many = Enumerable.Range(1, 10).Select(i => new WaitingSession($"id{i}", i == 2 ? " " : $"会話{i}", "P", _now)).ToList();
-            var rows = NoticeTexts.WaitingSessionsMenu(many);
-            Assert.AreEqual(2 + NoticeTexts.WaitingSessionsMax + 1, rows.Count);
-            Assert.AreEqual("・会話1", rows[2].Label);
-            Assert.AreEqual("・(無題)", rows[3].Label);
+            var many = Enumerable.Range(1, 10).Select(i => new ClaudeSession($"id{i}", i == 2 ? " " : $"会話{i}", "P", _now, i == 1)).ToList();
+            var rows = NoticeTexts.SessionStatusMenu(many);
+            Assert.AreEqual(2 + NoticeTexts.SessionStatusMax + 1, rows.Count);
+            Assert.AreEqual("・【実行中】会話1", rows[2].Label);
+            Assert.AreEqual("・【処理完了】(無題)", rows[3].Label);
             Assert.AreEqual("ほか 2 件", rows[^1].Label);
         }
     }

@@ -8,18 +8,16 @@ using System.Text.Json;
 
 namespace SecretaryGadget
 {
-    /// <summary>入力待ちの Claude Code の会話1件。</summary>
-    internal sealed record WaitingSession(string SessionId, string Title, string Project, DateTime Since);
+    /// <summary>動いている Claude Code の会話1件。Busy=返事を作っている途中(実行中)、false=返事を書き終えて次を待っている(処理完了)。</summary>
+    internal sealed record ClaudeSession(string SessionId, string Title, string Project, DateTime Since, bool Busy);
 
     /// <summary>
-    /// Claude Code の入力待ちの会話を数える。Claude Code 自身の在席ファイル(~/.claude/sessions/&lt;pid&gt;.json)を読むだけで、
-    /// 外のツール(箱庭など)には頼らない。判定は箱庭の「入力待ち」と同じ:
-    /// プロセスが生きていて、状態が busy でなく、idle が 30 分を超えたもの(おやすみ)は除く。
+    /// Claude Code の動いている会話と、その状態(実行中／処理完了)を読む。Claude Code 自身の在席ファイル(~/.claude/sessions/&lt;pid&gt;.json)を
+    /// 読むだけで、外のツール(箱庭など)には頼らない。プロセスが生きていれば1件。状態が busy なら実行中、それ以外は処理完了。
+    /// 箱庭は idle が 30 分を超えると「おやすみ」と分けるが、次を待っていることに変わりはないので、ここでは時間で分けない。
     /// </summary>
     internal static class ClaudeSessions
     {
-        public static readonly TimeSpan SleepAfter = TimeSpan.FromMinutes(30);
-
         /// <summary>会話記録の末尾から題名を探す範囲。題名(ai-title)は何度も書き直されるので末尾にある</summary>
         private const int TitleTailBytes = 2 * 1024 * 1024;
 
@@ -30,13 +28,13 @@ namespace SecretaryGadget
             return !string.IsNullOrWhiteSpace(env) ? env : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".claude");
         }
 
-        /// <summary>入力待ちの会話を、待っている時間の長い順に返す。読めないファイルは飛ばす。</summary>
-        public static IReadOnlyList<WaitingSession> ReadWaiting(string? configDir = null, DateTime? now = null, Func<int, bool>? isAlive = null)
+        /// <summary>動いている会話を、処理完了(待たせている時間の長い順)→実行中(長く動いている順)で返す。読めないファイルは飛ばす。</summary>
+        public static IReadOnlyList<ClaudeSession> ReadSessions(string? configDir = null, DateTime? now = null, Func<int, bool>? isAlive = null)
         {
             string dir = configDir ?? ConfigDir();
             DateTime at = now ?? DateTime.Now;
             isAlive ??= IsAlive;
-            var list = new List<WaitingSession>();
+            var list = new List<ClaudeSession>();
             string sessionsDir = Path.Combine(dir, "sessions");
             if (!Directory.Exists(sessionsDir))
             {
@@ -50,7 +48,7 @@ namespace SecretaryGadget
                 }
                 try
                 {
-                    WaitingSession? s = ParseLive(File.ReadAllText(file, Encoding.UTF8), at, isAlive);
+                    ClaudeSession? s = ParseLive(File.ReadAllText(file, Encoding.UTF8), at, isAlive);
                     if (s != null)
                     {
                         list.Add(s with { Title = FindTitle(dir, s.SessionId) ?? s.Title });
@@ -61,14 +59,13 @@ namespace SecretaryGadget
                     // 書き込み途中などは次に呼んだとき
                 }
             }
-            return list.OrderBy(s => s.Since).ToList();
+            return list.OrderBy(s => s.Busy).ThenBy(s => s.Since).ToList();
         }
 
         /// <summary>
-        /// 在席ファイル1つを読み、入力待ちなら返す(題名はまだ在席ファイルの名前)。
-        /// 生きていない・busy・30分を超えた idle(おやすみ)は null。
+        /// 在席ファイル1つを読み、プロセスが生きていれば返す(題名はまだ在席ファイルの名前)。生きていなければ null。
         /// </summary>
-        public static WaitingSession? ParseLive(string json, DateTime now, Func<int, bool> isAlive)
+        public static ClaudeSession? ParseLive(string json, DateTime now, Func<int, bool> isAlive)
         {
             using JsonDocument doc = JsonDocument.Parse(json);
             JsonElement root = doc.RootElement;
@@ -77,21 +74,13 @@ namespace SecretaryGadget
             {
                 return null;
             }
-            string status = Str(root, "status") ?? "idle";
-            if (status == "busy")
-            {
-                return null;
-            }
+            bool busy = Str(root, "status") == "busy";
             long sinceMs = Num(root, "statusUpdatedAt") ?? Num(root, "updatedAt") ?? Num(root, "startedAt") ?? 0;
             DateTime since = sinceMs > 0 ? DateTimeOffset.FromUnixTimeMilliseconds(sinceMs).LocalDateTime : now;
-            if (status == "idle" && now - since >= SleepAfter)
-            {
-                return null;
-            }
             string cwd = (Str(root, "cwd") ?? string.Empty).TrimEnd('\\', '/');
             string project = cwd.Length > 0 ? Path.GetFileName(cwd) : string.Empty;
             string name = Str(root, "name") ?? string.Empty;
-            return new WaitingSession(id, name.Length > 0 ? name : project, project, since);
+            return new ClaudeSession(id, name.Length > 0 ? name : project, project, since, busy);
         }
 
         /// <summary>
