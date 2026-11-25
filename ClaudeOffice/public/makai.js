@@ -1,26 +1,26 @@
 // 魔界スキン: 赤い月と夕焼け色の空。黒い島を溶岩のひびが走り、黒い尖塔が囲む。
 // 館は黒い壁に魔王軍の旗とステンドグラス、奥に魔王の玉座、長い晩餐テーブル。外に魔界の門と墓場
 import * as THREE from 'three';
-import { ROOM, island, clouds, lampLight, wallClock, calendar, archiveShelf, whiteboard, makeBird, propLabel, sparkles, staticCanvasTexture, SHELF_POS, BOARD_POS } from './world.js';
+import { ROOM, island, clouds, lampLight, wallClock, calendar, archiveShelf, whiteboard, makeBird, sparkles, staticCanvasTexture, SHELF_POS, BOARD_POS } from './world.js';
 import { stainedGlass } from './tavern.js';
 
 // 空のキーフレーム(上・中・下・太陽色・太陽の強さ・半球光・ランプ・雲・星)。昼は赤紫〜橙、夜は暗い赤紫
 export const MAKAI_KEYS = [
-  ['#12061c', '#3a0c34', '#6a1a30', '#ff9ab0', 0.4, 0.55, 1.0, '#3a1028', 1.0],
-  ['#14081e', '#3e0e36', '#701c32', '#ff9ab0', 0.4, 0.55, 1.0, '#3e122a', 0.9],
+  ['#12061c', '#3a0c34', '#6a1a30', '#ff9ab0', 0.4, 0.8, 1.0, '#3a1028', 1.0],
+  ['#14081e', '#3e0e36', '#701c32', '#ff9ab0', 0.4, 0.8, 1.0, '#3e122a', 0.9],
   ['#3a0c44', '#a02450', '#ec6a3a', '#ff8a5a', 0.6, 0.6, 0.8, '#8a2a44', 0.3],
   ['#5a1658', '#c22c56', '#f27a40', '#ffa070', 0.85, 0.7, 0.6, '#a03a4c', 0.0],
   ['#641a5e', '#c8305a', '#f4823e', '#ffb088', 1.0, 0.8, 0.5, '#a8404e', 0.0],
   ['#641a5e', '#c42e58', '#f27c3e', '#ffa880', 0.95, 0.78, 0.5, '#a43e4e', 0.0],
   ['#541654', '#c02a50', '#f06a36', '#ff8a52', 0.85, 0.7, 0.7, '#9a3448', 0.0],
   ['#36103e', '#962248', '#de5034', '#ff7a4a', 0.7, 0.6, 0.9, '#7a2840', 0.2],
-  ['#1c0a28', '#4e1238', '#8a2234', '#ff9ab0', 0.45, 0.55, 1.0, '#401430', 0.8],
-  ['#12061c', '#3a0c34', '#6a1a30', '#ff9ab0', 0.4, 0.55, 1.0, '#3a1028', 1.0],
+  ['#1c0a28', '#4e1238', '#8a2234', '#ff9ab0', 0.45, 0.8, 1.0, '#401430', 0.8],
+  ['#12061c', '#3a0c34', '#6a1a30', '#ff9ab0', 0.4, 0.8, 1.0, '#3a1028', 1.0],
 ];
 
 const BONE = '#e8dfc8';
-const IRON = '#2a2630';
-const WALL = '#2a2030';
+const IRON = '#3a3442';
+const WALL = '#4a3a5c';
 
 // ドクロ(頭蓋・あご・眼窩・鼻)。eyes=true で眼窩が赤く光る
 export function skull(kit, parent, x, y, z, s = 1, rotY = 0, eyes = false) {
@@ -55,7 +55,7 @@ function lavaGround() {
     c.fillRect(0, 0, N, N);
     return { cv, c };
   };
-  const albedo = make('#1d1922');
+  const albedo = make('#2e2632');
   const glow = make('#000000');
   // ざらつき
   for (let i = 0; i < 900; i++) {
@@ -136,9 +136,9 @@ function gridFloor(R) {
   cv.width = w * ppu;
   cv.height = d * ppu;
   const c = cv.getContext('2d');
-  c.fillStyle = '#17121c';
+  c.fillStyle = '#2e2438';
   c.fillRect(0, 0, cv.width, cv.height);
-  c.strokeStyle = '#3a2c52';
+  c.strokeStyle = '#5a4678';
   c.lineWidth = 2;
   for (let x = 0; x <= w; x++) {
     c.beginPath();
@@ -279,7 +279,7 @@ export function buildMakai(ctx) {
   };
 
   // ---- 島: 黒い岩肌に溶岩のひび、光る縁、手前に溶岩の滝
-  island(kit, root, 40, 34, { shape: 'round', topMat: lavaGround(), edge: '#1a1418', soil: '#241a20', rock: '#2e2228' });
+  island(kit, root, 40, 34, { shape: 'round', topMat: lavaGround(), edge: '#2a2028', soil: '#36262e', rock: '#44323a' });
   const rimMat = new THREE.MeshBasicMaterial({ color: new THREE.Color('#ff6a1a').multiplyScalar(1.5), toneMapped: false });
   const rim = new THREE.Mesh(new THREE.CylinderGeometry(1, 1, 0.1, 96, 1, true), rimMat);
   rim.scale.set(20.03, 1, 17.03);
@@ -312,7 +312,7 @@ export function buildMakai(ctx) {
   root.add(room);
   const cx = (R.x0 + R.x1) / 2;
   const cz = (R.z0 + R.z1) / 2;
-  kit.box(room, R.x1 - R.x0 + 0.4, 0.14, R.z1 - R.z0 + 0.4, '#0e0a12', cx - 0.2, 0.07, cz - 0.2);
+  kit.box(room, R.x1 - R.x0 + 0.4, 0.14, R.z1 - R.z0 + 0.4, '#1e1628', cx - 0.2, 0.07, cz - 0.2);
   const floor = new THREE.Mesh(new THREE.PlaneGeometry(R.x1 - R.x0, R.z1 - R.z0), kit.mat('#ffffff', { map: gridFloor(R) }));
   floor.rotation.x = -Math.PI / 2;
   floor.position.set(cx, 0.142, cz);
@@ -321,8 +321,8 @@ export function buildMakai(ctx) {
   // 壁(黒)と柱、上の縁の紫の光
   kit.box(room, R.x1 - R.x0 + 0.4, 5.2, 0.4, WALL, cx - 0.2, 2.6, R.z0 - 0.2);
   kit.box(room, 0.4, 5.2, R.z1 - R.z0, WALL, R.x0 - 0.2, 2.6, cz);
-  kit.box(room, R.x1 - R.x0 + 0.6, 0.3, 0.6, '#16101a', cx - 0.3, 5.3, R.z0 - 0.2);
-  kit.box(room, 0.6, 0.3, R.z1 - R.z0 + 0.1, '#16101a', R.x0 - 0.2, 5.3, cz);
+  kit.box(room, R.x1 - R.x0 + 0.6, 0.3, 0.6, '#2a1e36', cx - 0.3, 5.3, R.z0 - 0.2);
+  kit.box(room, 0.6, 0.3, R.z1 - R.z0 + 0.1, '#2a1e36', R.x0 - 0.2, 5.3, cz);
   const edgeMat = new THREE.MeshBasicMaterial({ color: new THREE.Color('#b05aff').multiplyScalar(1.2), toneMapped: false });
   const e1 = new THREE.Mesh(kit.geom('box', R.x1 - R.x0 + 0.6, 0.05, 0.05), edgeMat);
   e1.position.set(cx - 0.3, 5.47, R.z0 + 0.1);
@@ -331,10 +331,10 @@ export function buildMakai(ctx) {
   e2.position.set(R.x0 + 0.1, 5.47, cz);
   room.add(e2);
   for (const x of [R.x0 + 0.15, -7.0, -4.0, 0.3, 4.0, R.x1 - 0.15]) {
-    kit.box(room, 0.3, 5.2, 0.2, '#352a3c', x, 2.6, R.z0 + 0.1);
+    kit.box(room, 0.3, 5.2, 0.2, '#5e4a70', x, 2.6, R.z0 + 0.1);
   }
   for (const z of [R.z0 + 0.15, -3.6, R.z1 - 0.15]) {
-    kit.box(room, 0.2, 5.2, 0.3, '#352a3c', R.x0 + 0.1, 2.6, z);
+    kit.box(room, 0.2, 5.2, 0.3, '#5e4a70', R.x0 + 0.1, 2.6, z);
   }
   // ステンドグラス・旗・時計・カレンダー
   const glass = ['#7a2ad8', '#c42a8a', '#e8443a', '#f39c34', '#3a4ad8', '#5a1ab0'];
@@ -354,14 +354,14 @@ export function buildMakai(ctx) {
   // 魔王の玉座(段の上、角飾りつき)と、そこから伸びる赤い絨毯
   const th = new THREE.Group();
   th.position.set(-5.6, 0, R.z0 + 1.1);
-  kit.box(th, 3.4, 0.25, 1.9, '#2e2436', 0, 0.27, 0);
+  kit.box(th, 3.4, 0.25, 1.9, '#5a4870', 0, 0.27, 0);
   kit.box(th, 2.6, 0.25, 1.4, '#3a2e44', 0, 0.52, -0.1);
-  kit.box(th, 1.3, 0.5, 0.9, '#2a1a20', 0, 0.9, -0.05);
+  kit.box(th, 1.3, 0.5, 0.9, '#8a2a3c', 0, 0.9, -0.05);
   kit.box(th, 1.1, 0.12, 0.8, '#a01a2c', 0, 1.2, 0);
-  kit.box(th, 1.5, 3.4, 0.25, '#1e141e', 0, 2.3, -0.5);
+  kit.box(th, 1.5, 3.4, 0.25, '#4a2e3e', 0, 2.3, -0.5);
   kit.box(th, 1.1, 2.8, 0.05, '#a01a2c', 0, 2.3, -0.36);
   for (const s of [-1, 1]) {
-    kit.box(th, 0.2, 0.6, 0.9, '#1e141e', s * 0.7, 1.35, -0.05);
+    kit.box(th, 0.2, 0.6, 0.9, '#4a2e3e', s * 0.7, 1.35, -0.05);
     // 角: 外へ張り出してから上へ反る(円錐を3つつなぐ)
     [[0.17, 0.5, 0.95, 4.05, -1.1], [0.12, 0.45, 1.25, 4.4, -0.5], [0.07, 0.4, 1.35, 4.8, 0.1]].forEach(([r, h, x, y, rz]) => {
       const seg = new THREE.Mesh(kit.geom('cone', r, h, 8), kit.mat('#efe6d0'));
@@ -372,18 +372,17 @@ export function buildMakai(ctx) {
   }
   skull(kit, th, 0, 4.15, -0.4, 0.8, 0, true);
   room.add(th);
-  propLabel(ctx, room, '👑 魔王の玉座', -5.6, 5.4, R.z0 + 1.0);
   kit.box(room, 1.6, 0.02, 9.6, '#8a1424', -5.6, 0.152, -3.4);
   kit.box(room, 1.8, 0.015, 9.6, '#c8a040', -5.6, 0.148, -3.4);
   // 晩餐テーブルと椅子。席の前に魔眼の水晶(状態で色が変わる)
   ctx.glows = [];
   for (const t of TABLES) {
-    kit.box(room, 8.6, 0.12, 1.4, '#2e1c22', t.x, 1.0, t.z);
+    kit.box(room, 8.6, 0.12, 1.4, '#6a3440', t.x, 1.0, t.z);
     kit.box(room, 8.8, 0.02, 0.8, '#9a1a2c', t.x, 1.07, t.z);
     kit.box(room, 8.8, 0.025, 0.86, '#c8a040', t.x, 1.065, t.z);
     for (const dx of [-4.0, 4.0]) {
       for (const dz of [-0.5, 0.5]) {
-        kit.box(room, 0.14, 0.95, 0.14, '#1a1016', t.x + dx, 0.5, t.z + dz);
+        kit.box(room, 0.14, 0.95, 0.14, '#3e2430', t.x + dx, 0.5, t.z + dz);
       }
     }
     for (const dx of [-1.3, 1.3]) {
@@ -396,16 +395,16 @@ export function buildMakai(ctx) {
     const ch = new THREE.Group();
     ch.position.set(s.x, 0, s.z);
     ch.rotation.y = s.rot;
-    kit.box(ch, 0.8, 0.1, 0.75, '#1e141e', 0, 0.58, 0);
+    kit.box(ch, 0.8, 0.1, 0.75, '#4a2e3e', 0, 0.58, 0);
     kit.box(ch, 0.7, 0.06, 0.65, '#8a1a2c', 0, 0.65, 0);
-    kit.box(ch, 0.8, 1.6, 0.1, '#1e141e', 0, 1.3, -0.38);
+    kit.box(ch, 0.8, 1.6, 0.1, '#4a2e3e', 0, 1.3, -0.38);
     kit.box(ch, 0.6, 1.1, 0.04, '#8a1a2c', 0, 1.35, -0.32);
-    const tip = new THREE.Mesh(kit.geom('cone', 0.09, 0.3, 4), kit.mat('#1e141e'));
+    const tip = new THREE.Mesh(kit.geom('cone', 0.09, 0.3, 4), kit.mat('#4a2e3e'));
     for (const lx of [-0.36, 0.36]) {
       const k = tip.clone();
       k.position.set(lx, 2.2, -0.38);
       ch.add(k);
-      kit.box(ch, 0.07, 0.56, 0.07, '#1e141e', lx, 0.28, 0.3);
+      kit.box(ch, 0.07, 0.56, 0.07, '#4a2e3e', lx, 0.28, 0.3);
     }
     room.add(ch);
     const ox = s.x;
@@ -425,15 +424,14 @@ export function buildMakai(ctx) {
   // 闇の魔水晶(右奥)
   const crystal = new THREE.Group();
   crystal.position.set(4.4, 0, -7.2);
-  kit.cyl(crystal, 0.55, 0.7, 0.3, '#2e2436', 0, 0.15, 0, 8);
-  kit.cyl(crystal, 0.2, 0.3, 1.0, '#2e2436', 0, 0.8, 0, 8);
+  kit.cyl(crystal, 0.55, 0.7, 0.3, '#5a4870', 0, 0.15, 0, 8);
+  kit.cyl(crystal, 0.2, 0.3, 1.0, '#5a4870', 0, 0.8, 0, 8);
   kit.cyl(crystal, 0.45, 0.25, 0.2, '#b8902a', 0, 1.35, 0, 8);
   const gem = new THREE.Mesh(kit.geom('oct', 0.55, 0), new THREE.MeshStandardMaterial({ color: '#c86aff', emissive: '#9a2aff', emissiveIntensity: 1.4, flatShading: true, roughness: 0.2 }));
   gem.scale.y = 1.9;
   gem.position.y = 2.6;
   crystal.add(gem);
   room.add(crystal);
-  propLabel(ctx, room, '💎 闇の魔水晶', 4.4, 4.4, -7.2);
   const gemLight = lampLight(room, lights, 4.4, 2.6, -6.4, '#c070ff', 10, 6);
   // 背の高い燭台(四隅)
   for (const [lx, lz] of [[-11.0, -9.0], [-11.0, 2.3], [2.0, -9.0], [1.6, 2.3]]) {
@@ -445,12 +443,11 @@ export function buildMakai(ctx) {
       candle(room, lx + Math.cos(a) * 0.15, 2.66, lz + Math.sin(a) * 0.15, 0.22);
     }
   }
-  const hall = lampLight(room, lights, -5.6, 3.6, -3.0, '#ffb070', 16, 6);
+  const hall = lampLight(room, lights, -5.6, 3.6, -3.0, '#ffb070', 18, 9);
+  lampLight(room, lights, 1.0, 3.6, -3.4, '#ff9a6a', 14, 6);
   // 禁書庫(アーカイブ)・魔王軍の掲示板
-  ctx.shelf = archiveShelf(kit, room, '#2a1a30');
-  propLabel(ctx, room, '📕 禁書庫', SHELF_POS.x + 0.3, 4.9, SHELF_POS.z);
-  ctx.board = whiteboard(kit, room, '#2a1a30', '#e8dcc8');
-  propLabel(ctx, room, '📜 魔王軍の掲示板', BOARD_POS.x + 0.3, 4.3, BOARD_POS.z);
+  ctx.shelf = archiveShelf(kit, room, '#4e3456');
+  ctx.board = whiteboard(kit, room, '#4e3456', '#e8dcc8');
 
   // ---- 外: 黒い尖塔・枯れ木・墓場・魔界の門・溶岩の池と橋・骨
   const spireMat = kit.mat('#141018', { flatShading: true });
@@ -503,7 +500,6 @@ export function buildMakai(ctx) {
   ringG.position.set(0, 1.65, 0);
   gate.add(ringG);
   root.add(gate);
-  propLabel(ctx, gate, '🌀 魔界の門', 0, 4.4, 0);
   // 溶岩の池と、渡した木の橋
   const pool = new THREE.Mesh(new THREE.CircleGeometry(1, 40), new THREE.MeshBasicMaterial({ color: new THREE.Color('#ffb040').multiplyScalar(1.3), toneMapped: false }));
   pool.rotation.x = -Math.PI / 2;
@@ -579,6 +575,8 @@ export function buildMakai(ctx) {
   ctx.cloudsObj = clouds(kit, root, '#5a1a30', 3);
   ctx.keys = MAKAI_KEYS;
   ctx.hemi = { sky: '#ffb8d0', ground: '#7a3a70', boost: 2.1 };
+  // 暗い雰囲気は残しつつ、部屋の中の物の形が分かるところまで光を足す
+  ctx.lightBoost = { hemi: 1.3, sun: 1.3 };
   ctx.sky = { aurora: 0, crack: 0, moon2: false, moonColor: '#ffc0a0', big: { x: 0.7, y: 0.8, r: 0.13, color: '#ff6a3a', always: true } };
   ctx.panel = 'makai';
   ctx.update = (t) => {

@@ -1,7 +1,7 @@
 // 異世界スキン「冒険者の酒場」: 夕暮れのラベンダー色の空と淡い大きな月。木組みの壁にステンドグラス、
 // 赤い丸ラグの上の丸テーブル、光る酒瓶の棚。外はストーンサークルと水晶玉、錬金釜、パステルの木々
 import * as THREE from 'three';
-import { ROOM, island, clouds, tree, pine, lampLight, wallClock, calendar, archiveShelf, whiteboard, propLabel, sparkles, staticCanvasTexture, SHELF_POS, BOARD_POS } from './world.js';
+import { ROOM, island, clouds, tree, pine, lampLight, wallClock, calendar, archiveShelf, whiteboard, sparkles, staticCanvasTexture, SHELF_POS, BOARD_POS } from './world.js';
 
 // 空のキーフレーム(上・中・下・太陽色・太陽の強さ・半球光・ランプ・雲・星)。昼もラベンダー寄り
 export const ISEKAI_KEYS = [
@@ -308,7 +308,6 @@ export function buildTavern(ctx) {
       room.add(n);
     }
   });
-  propLabel(ctx, room, '🍷 酒場カウンター', 4.5, 4.4, R.z0 + 0.4);
   kit.box(room, 3.6, 1.15, 0.9, '#4a2c1c', 4.2, 0.6, -6.4);
   kit.box(room, 3.8, 0.1, 1.05, '#8a5634', 4.2, 1.22, -6.4);
   kit.box(room, 3.6, 0.1, 0.05, '#c9a24a', 4.2, 0.95, -5.93);
@@ -330,9 +329,7 @@ export function buildTavern(ctx) {
   }
   // 魔導書庫(アーカイブ)・クエストボード
   ctx.shelf = archiveShelf(kit, room, '#3e2416');
-  propLabel(ctx, room, '📖 魔導書庫', SHELF_POS.x + 0.3, 4.9, SHELF_POS.z);
   ctx.board = whiteboard(kit, room, '#5e3a24', '#f1e4c4');
-  propLabel(ctx, room, '📜 クエストボード', BOARD_POS.x + 0.3, 4.3, BOARD_POS.z);
   // ろうそくのシャンデリア
   const chand = new THREE.Group();
   chand.position.set(-4.6, 4.3, -3.6);
@@ -387,7 +384,6 @@ export function buildTavern(ctx) {
     return { b, ph: i * 0.7, x: Math.cos(i * 2) * 0.3, z: Math.sin(i * 2) * 0.3 };
   });
   root.add(pot);
-  propLabel(ctx, root, '🧪 錬金釜', 3.4, 2.1, 6.2);
   // ストーンサークル(光るルーンと魔法陣)
   const sc = { x: -9.5, z: 8.0 };
   const seal = magicCircle(3.4, '#6ff0ff', 0.7);

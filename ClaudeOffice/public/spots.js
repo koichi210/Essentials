@@ -2,7 +2,7 @@
 // ctx.spot = { kind, x, z, rot, makeProp?, update(t, busy) }。x,z は立つ位置で、rot はそのとき向く角度。
 // 置いた家具は ctx.nav に足して、歩く経路がよけるようにする
 import * as THREE from 'three';
-import { lampLight, propLabel } from './world.js';
+import { lampLight } from './world.js';
 import { magicCircle } from './tavern.js';
 
 const FACE_PLUS_X = Math.PI / 2;
@@ -64,7 +64,6 @@ function tank(ctx) {
     food.push({ m, ph: i * 0.37 });
   }
   ctx.nav.rects.push([4.6, 5.8, -5.9, -3.2]);
-  propLabel(ctx, g, '🐠 金魚の水槽', 0, 2.5, 0);
   let w = 0;
   return {
     kind: 'feed',
@@ -148,7 +147,6 @@ function cauldron(ctx) {
     bubbles.push({ b, ph: i * 0.37, x: Math.cos(i * 2.4) * 0.35, z: Math.sin(i * 2.4) * 0.35 });
   }
   lampLight(g, lights, 0, 1.8, 0.4, '#6aff8a', 8, 5);
-  propLabel(ctx, g, '🧪 魔女の大釜', 0, 2.6, 0);
   ctx.nav.circles.push([3.4, -0.6, 0.9]);
   const cup = () => {
     const m = new THREE.Group();

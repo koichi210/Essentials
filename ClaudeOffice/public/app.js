@@ -309,14 +309,12 @@ function addNpc(skin) {
   avatar.root.position.set(...def.pos);
   avatar.root.rotation.y = def.rot;
   ctx.root.add(avatar.root);
-  const tag = label('nametag', avatar.root, -0.15);
-  tag.element.innerHTML = `<span class="dot" style="background:${def.color}"></span>${def.name}`;
-  ctx.npc = { avatar, tag };
+  // 名札は出さない(家具の名札と同じく、見ればわかるので)
+  ctx.npc = { avatar };
 }
 
 function removeNpc() {
   if (ctx && ctx.npc) {
-    ctx.npc.tag.element.remove();
     ctx.npc.avatar.root.parent?.remove(ctx.npc.avatar.root);
     ctx.npc.avatar.dispose();
     ctx.npc = null;
@@ -329,7 +327,6 @@ async function buildSkin() {
   clearAvatars();
   if (ctx) {
     removeNpc();
-    ctx.labels?.forEach((l) => l.element.remove());
     scene.remove(ctx.root);
     ctx.kit.dispose();
     disposeTree(ctx.root);

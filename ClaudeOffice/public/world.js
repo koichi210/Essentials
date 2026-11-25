@@ -1,6 +1,5 @@
 // 島・空・時刻・本棚・ホワイトボードなど全スキン共通の部品と、既定の教室スキン
 import * as THREE from 'three';
-import { CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
 
 export const PROJECT_COLORS = ['#e07a5f', '#3d85c6', '#81b29a', '#e9b44c', '#9c6ade', '#e56b9f', '#2bb3a6', '#f4a261', '#6a994e', '#5c7aea'];
 
@@ -346,18 +345,6 @@ export function pine(kit, parent, x, z, s = 1, leaf = '#2f6b4f') {
     c.castShadow = true;
     parent.add(c);
   });
-}
-
-// 物の名札(「アーカイブ」「コーヒー」など)。スキンを作り直すときに消せるよう ctx.labels に入れる
-export function propLabel(ctx, parent, text, x, y, z) {
-  const el = document.createElement('div');
-  el.className = 'prop-label';
-  el.textContent = text;
-  const o = new CSS2DObject(el);
-  o.position.set(x, y, z);
-  parent.add(o);
-  (ctx.labels ||= []).push(o);
-  return o;
 }
 
 // 一度 GPU へ送ったら描き直さない絵(床・溶岩・魔法陣・旗など)。送ったあと Canvas を 1×1 に縮めて、
@@ -772,7 +759,6 @@ export function buildClassroom(ctx) {
   for (const mz of [0.0, 0.25]) {
     kit.cyl(room, 0.07, 0.06, 0.13, '#ffffff', 4.9, 1.27, mz, 8);
   }
-  propLabel(ctx, room, '☕ コーヒー', 5.2, 2.6, 0.2);
   // 観葉植物
   plant(kit, room, 5.0, 0.14, 2.3, 1.5);
   plant(kit, room, -10.9, 0.14, 2.4, 1.3);
@@ -786,7 +772,6 @@ export function buildClassroom(ctx) {
     lampLight(room, lights, lx, 2.6, lz, '#ffd59a', 9, 4);
   }
   ctx.shelf = archiveShelf(kit, room, '#5e3d25');
-  propLabel(ctx, room, '📚 アーカイブ', SHELF_POS.x + 0.3, 4.9, SHELF_POS.z);
   ctx.board = whiteboard(kit, room, '#d4d8de');
   // ---- 外: 木・池・飛び石・ベンチ・街灯・花
   for (const [tx, tz, s] of [[-15, -12, 1.2], [9, -11.5, 1.1], [13, -5, 1.3], [-15, 7, 1], [12, 9, 1.2], [14, 2, 0.9], [-10, 11, 1], [-15.5, -3, 0.9], [4, 12, 0.85]]) {
