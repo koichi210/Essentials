@@ -31,6 +31,18 @@ namespace SecretaryGadget.Tests
         }
 
         [DataTestMethod]
+        [DataRow(15, "15時になりました。")]
+        [DataRow(0, "0時になりました。")]
+        public void SkinRotated_StartsWithTheHourThenKeepsTheHandover(int hour, string expectedLine1)
+        {
+            Notice n = NoticeTexts.SkinRotated(_day.AddHours(hour), "テストの秘書さん");
+            Assert.AreEqual("交代の時間です", n.Headline);
+            Assert.AreEqual(expectedLine1, n.Line1);
+            Assert.AreEqual("ここからはテストの秘書さんがお知らせを担当します。", n.Line2);
+            Assert.AreEqual("よろしくお願いいたします。", n.Line3);
+        }
+
+        [DataTestMethod]
         [DataRow("山田 太郎 (営業部)", "山田 太郎")]
         [DataRow("山田 太郎（営業部）", "山田 太郎")]
         [DataRow("山田 太郎 (営業部) (外部)", "山田 太郎")]

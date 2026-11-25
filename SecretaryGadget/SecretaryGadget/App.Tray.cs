@@ -366,7 +366,7 @@ namespace SecretaryGadget
             Log.Write("1時間ごとの交代: " + next.Id);
             if (!_settings.Paused && !_onBreak)
             {
-                Enqueue(NoticeTexts.SkinRotated(next.Name));
+                Enqueue(NoticeTexts.SkinRotated(hour, next.Name));
             }
         }
 

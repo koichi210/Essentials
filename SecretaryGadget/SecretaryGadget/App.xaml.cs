@@ -761,6 +761,10 @@ namespace SecretaryGadget
                     .ToList();
                 notice = NoticeTexts.Schedule(now, meetings);
             }
+            else if (_options.PreviewRotate)
+            {
+                notice = NoticeTexts.SkinRotated(HourOf(now), _skin.Name);
+            }
             else
             {
                 notice = NoticeTexts.Startup(now, _settings.UserName);
@@ -842,6 +846,9 @@ namespace SecretaryGadget
 
         public bool PreviewSchedule { get; private set; }
 
+        /// <summary>--preview-rotate: 1時間ごとの交代のあいさつ</summary>
+        public bool PreviewRotate { get; private set; }
+
         /// <summary>--diag-restart-mb N</summary>
         public int? RestartMb { get; private set; }
 
@@ -897,6 +904,9 @@ namespace SecretaryGadget
                         break;
                     case "--preview-schedule":
                         o.PreviewSchedule = true;
+                        break;
+                    case "--preview-rotate":
+                        o.PreviewRotate = true;
                         break;
                     case "--diag-restart-mb":
                         o._diag.Add("restart-mb");

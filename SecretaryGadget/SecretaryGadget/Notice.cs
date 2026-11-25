@@ -329,9 +329,10 @@ namespace SecretaryGadget
             return new Notice(NoticeKind.Greeting, "選択肢を変えました", count == 0 ? "呼んだときの選択肢は出さないようにしました。" : $"呼んだときの選択肢を {count} 個にしました。", "次に呼んだときから変わります。");
         }
 
-        public static Notice SkinRotated(string skinName)
+        /// <summary>1時間ごとの交代のあいさつ。hour は交代した正時(時だけ使う)。</summary>
+        public static Notice SkinRotated(DateTime hour, string skinName)
         {
-            return new Notice(NoticeKind.Greeting, "交代の時間です", $"ここからは{skinName}がお知らせを担当します。", "よろしくお願いいたします。");
+            return new Notice(NoticeKind.Greeting, "交代の時間です", $"{hour.Hour}時になりました。", $"ここからは{skinName}がお知らせを担当します。", "よろしくお願いいたします。");
         }
 
         public static Notice BreakStarted(DateTime resumeAt)
