@@ -84,6 +84,7 @@ button, input, textarea { font: inherit; color: inherit; }
 .ml-btn:hover { border-color: #6fb4ff; box-shadow: 0 0 10px rgba(63, 127, 224, 0.45); }
 .ml-btn.primary { background: linear-gradient(#3f7fe0, #2a5fc0); border-color: #5f9cff; }
 .ml-btn.danger { border-color: rgba(255, 107, 125, 0.6); color: #ffb3bd; }
+.ml-btn.danger.armed { background: #c8364a; border-color: #ff6b7d; color: #fff; font-weight: 600; }
 .ml-btn.on { background: #2a5fc0; border-color: #8fc4ff; box-shadow: 0 0 12px rgba(95, 168, 255, 0.6); }
 .ml-btn:disabled { opacity: .45; cursor: default; box-shadow: none; }
 

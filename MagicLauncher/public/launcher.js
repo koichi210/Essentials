@@ -388,6 +388,7 @@
     $('f-note').value = it ? (it.note || '') : '';
     $('f-tag').value = '';
     $('f-delete').hidden = !it;
+    armDelete(false);
     onPathChange();
     renderTagBox();
     showModal('item');
@@ -451,8 +452,15 @@
   }
   function deleteItem() {
     if (!D.item) return;
-    if (!confirm('「' + D.item.name + '」を削除しますか？')) return;
+    // 1回目の押下でボタンが「リンクを削除します」に変わり、もう一度押すと削除する
+    const btn = $('f-delete');
+    if (!btn.classList.contains('armed')) { armDelete(true); return; }
     mutate('/api/item/delete', { id: D.item.id }, '削除しました: ' + D.item.name).then(() => hideModal()).catch(() => {});
+  }
+  function armDelete(on) {
+    const btn = $('f-delete');
+    btn.classList.toggle('armed', on);
+    btn.textContent = on ? 'リンクを削除します' : '削除';
   }
   function bindItemDialog() {
     $('ml-item-form').addEventListener('submit', (e) => { e.preventDefault(); saveItem(); });
