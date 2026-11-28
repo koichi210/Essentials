@@ -28,6 +28,7 @@
   const JUNC_CLEAR = 3.9; // 円の中心を分岐点からこれより近づけない(円の半径＋名前の札＋分岐点の輪＋タグ名の札が重ならない)
   const OCTI_DIRS =[[1, 0], [0, 1], [1, 1], [1, -1]]; // 八方向の直線の向き(逆向きは同じ直線)
   const FLOAT_SCALE = 0.3; // 漂うときの大きさの揺れ幅(×0.7〜×1.3)
+  const IDLE_ZOOM = 2.2; // 待機で動き出すとき、全体表示の何倍まで引くか（魔法陣の並びが画面の半分弱になるくらい）
   const ORBIT_SCALE = 0.5; // 反時計回りのときの大きさの揺れ幅(×0.5〜×1.5。ぶつかる・はみ出すときはもっと縮む)
   const FRAME_SPIN = 0.05; // 外枠の記号の輪が時計回りに回る速さ(rad/秒。約 2 分で 1 周)
   const CIRCLE_GAP = 1.6; // 魔法陣どうしの間隔
@@ -735,7 +736,8 @@
       m.renderOrder = 1;
       m.position.z = -0.01;
       C.group.add(m);
-      const tr = { mesh: m, tag: meta.tag, item: meta.item || null, k: 0, pts };
+      // items: この線の先にある円（枝は木なので、根元の線ほど多い）。null は中心→分岐点の幹
+      const tr = { mesh: m, tag: meta.tag, items: meta.items || null, k: 0, pts };
       C.traces.push(tr);
       return tr;
     }
@@ -829,6 +831,267 @@
       return best;
     }
 
+    // ---------------------------------------------------------------- 枝（タグの分岐点 → ノード → 小さい円）
+    // 先に骨組みを決めてから線を引く（ぶつかってから避けるのではなく）:
+    //  1) タグの小さい円を中心から見た角度の順に並べ、隣どうし GROUP_MAX 個までのまとまりに分ける（1 個だけのまとまりは分岐点から直接）
+    //  2) まとまりごとに、分岐点とその円たちのあいだの空いている所にノードを置く
+    //  3) 分岐点 → ノード、ノード → 小さい円 を、八方向の直線で、曲がらないか 1 回だけカクンと曲がる線で結ぶ
+    // 線どうしの交差・並走(2 重)・ほかの円や分岐点やノードの上を通る・中心の魔法陣を横切る形は「だめ」として数え、
+    // まとまりの分け方・ノードの置き場所・曲がり方の中から、だめがいちばん少なく短い組み合わせを使う。名前の札の上を通る線は少しだけ避ける
+    const LINES4 = [[1, 0], [0, 1], [Math.SQRT1_2, Math.SQRT1_2], [Math.SQRT1_2, -Math.SQRT1_2]]; // 八方向の直線の向き(逆向きは同じ直線)
+    const GROUP_MAX = 4; // 1 つのノードにつなぐ小さい円の数の上限
+    const LINE_GAP = 0.35; // 線どうしをこれより近づけない（並んで走る＝2 重に見える）
+    const peq = (a, b) => Math.abs(a[0] - b[0]) < 1e-6 && Math.abs(a[1] - b[1]) < 1e-6;
+    const dist2 = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1]);
+    function segCross(a, b, c, d) {
+      const o = (p, q, r) => (q[0] - p[0]) * (r[1] - p[1]) - (q[1] - p[1]) * (r[0] - p[0]);
+      const d1 = o(c, d, a), d2 = o(c, d, b), d3 = o(a, b, c), d4 = o(a, b, d);
+      return ((d1 > 0 && d2 < 0) || (d1 < 0 && d2 > 0)) && ((d3 > 0 && d4 < 0) || (d3 < 0 && d4 > 0));
+    }
+    function segSegDist(a, b, c, d) {
+      if (segCross(a, b, c, d)) return 0;
+      return Math.min(segDist(a, c, d), segDist(b, c, d), segDist(c, a, b), segDist(d, a, b));
+    }
+    // 線分 p-q が箱 { cx, cy, hw, hh } を通るか
+    function segHitsBox(p, q, bx) {
+      let t0 = 0, t1 = 1;
+      const dx = q[0] - p[0], dy = q[1] - p[1];
+      const ck = (pp, qq) => {
+        if (Math.abs(pp) < 1e-12) return qq >= 0;
+        const r = qq / pp;
+        if (pp < 0) { if (r > t1) return false; if (r > t0) t0 = r; } else { if (r < t0) return false; if (r < t1) t1 = r; }
+        return true;
+      };
+      return ck(-dx, p[0] - (bx.cx - bx.hw)) && ck(dx, bx.cx + bx.hw - p[0]) && ck(-dy, p[1] - (bx.cy - bx.hh)) && ck(dy, bx.cy + bx.hh - p[1]);
+    }
+    // 名前の札のだいたいの広さ（ワールド単位。文字の大きさは寄り具合で変わるので目安）
+    function textW(s) { let w = 0; for (const ch of String(s || '')) w += ch.charCodeAt(0) > 0xff ? 0.42 : 0.24; return w; }
+    function nameBox(it, P, R) {
+      return { it, cx: P[0], cy: P[1] - R - 0.45 - 0.35, hw: Math.min(3.6, (textW(it.name) + (it.emoji ? 0.5 : 0)) / 2 + 0.35), hh: 0.35 };
+    }
+    function boxCircleDist(bx, P) {
+      const dx = Math.max(0, Math.abs(P[0] - bx.cx) - bx.hw), dy = Math.max(0, Math.abs(P[1] - bx.cy) - bx.hh);
+      return Math.hypot(dx, dy);
+    }
+    // 2 点が八方向の直線 1 本で結べるか
+    function aligned(a, b) {
+      const ax = Math.abs(b[0] - a[0]), ay = Math.abs(b[1] - a[1]);
+      return ax < 1e-6 || ay < 1e-6 || Math.abs(ax - ay) < 1e-6;
+    }
+    // A → P の線の候補: 八方向に合えば直線。合わなければ 1 回だけ曲がる 4 通り（斜め→まっすぐ・まっすぐ→斜め・横→縦・縦→横）
+    function bendRoutes(A, P, R) {
+      if (aligned(A, P)) return [[A, P]];
+      const dx = P[0] - A[0], dy = P[1] - A[1];
+      const sx = Math.sign(dx), sy = Math.sign(dy), m = Math.min(Math.abs(dx), Math.abs(dy));
+      const out = [];
+      [[A[0] + sx * m, A[1] + sy * m], [P[0] - sx * m, P[1] - sy * m], [P[0], A[1]], [A[0], P[1]]].forEach((B) => {
+        if (dist2(A, B) >= 0.6 && dist2(B, P) >= R + 0.6) out.push([A, B, P]); // 曲がり角は出口から離し、円のふちより外で曲がる
+      });
+      return out.length ? out : [[A, P]];
+    }
+
+    // 1 つの魔法陣の中の、全部のタグの枝を決める
+    function routeTrees(tags, juncs, itemPos, hubName, frameR) {
+      const segs = []; // 置き終わった線 { a, b }
+      const circs = [], boxes = [], juncList = [], nodes = [];
+      tags.forEach((tv) => {
+        const { mid, J } = juncs.get(tv);
+        segs.push({ a: [Math.cos(mid) * HUB_R, Math.sin(mid) * HUB_R], b: J }); // 幹（中心→分岐点）
+        juncList.push(J);
+        boxes.push({ cx: J[0], cy: J[1] - 0.85, hw: textW(tv.label) / 2 + 0.35, hh: 0.35 });
+        tv.items.forEach((it) => {
+          const o = itemPos.get(it);
+          circs.push({ it, P: o.P, R: o.R });
+          boxes.push(nameBox(it, o.P, o.R));
+        });
+      });
+      boxes.push({ hub: true, cx: 0, cy: -HUB_R - 0.35 - 0.75, hw: Math.max(1.2, textW(hubName) * 0.85 + 0.3), hh: 0.75 }); // 中心の名前と件数
+      const polyLen = (pts) => { let l = 0; for (let i = 0; i + 1 < pts.length; i++) l += dist2(pts[i], pts[i + 1]); return l; };
+
+      // 線 1 本を調べる。target はこの線が着く小さい円（ノードへ行く線は null）
+      function check(pts, target, local) {
+        let v = 0, soft = 0;
+        const why = [];
+        const no = (w) => { v++; why.push(w); };
+        const A = pts[0], Z = pts[pts.length - 1];
+        for (let i = 1; i + 1 < pts.length; i++) if (Math.hypot(pts[i][0], pts[i][1]) < HUB_CLEAR) no('bend-hub');
+        for (let i = 0; i + 1 < pts.length; i++) {
+          const p = pts[i], q = pts[i + 1];
+          if (segDist([0, 0], p, q) < HUB_R * 1.5) no('cross-hub'); // 中心の魔法陣（まわりの記号の輪まで）を横切らない
+          const test = (s) => {
+            if (i === 0 && (peq(s.a, A) || peq(s.b, A))) {
+              // 同じ点から出る線: 同じ向きに出ると重なる
+              const o = peq(s.a, A) ? s.b : s.a;
+              const ox = o[0] - A[0], oy = o[1] - A[1], qx = q[0] - A[0], qy = q[1] - A[1];
+              if ((ox * qx + oy * qy) / (Math.hypot(ox, oy) * Math.hypot(qx, qy) || 1) > 0.995) no('same-dir');
+              return;
+            }
+            if (segSegDist(p, q, s.a, s.b) < LINE_GAP) no('line');
+          };
+          segs.forEach(test);
+          local.forEach(test);
+          circs.forEach((o) => {
+            if (target && o.it === target.it) { if (i + 2 < pts.length && segDist(o.P, p, q) < o.R + 0.4) no('own-circle'); } // 自分の円の上を通ってから戻る
+            else if (segDist(o.P, p, q) < o.R + 0.45) no('circle:' + o.it.name);
+          });
+          juncList.forEach((jq) => { if (!(i === 0 && peq(jq, A)) && segDist(jq, p, q) < 0.7) no('junc'); });
+          nodes.forEach((n) => { if (!(i === 0 && peq(n, A)) && !(i + 2 === pts.length && peq(n, Z)) && segDist(n, p, q) < 0.6) no('node'); });
+          boxes.forEach((bx) => { if (!(target && bx.it === target.it) && segHitsBox(p, q, bx)) soft += bx.hub ? 6 : 1.5; });
+        }
+        if (!aligned(pts[0], pts[1]) || !aligned(pts[pts.length - 2], Z)) soft += 3; // 八方向に合わない（ほかに道が無いときの最後の手）
+        return { v, soft, why, cost: v * 1000 + polyLen(pts) + (pts.length - 2) * 0.8 + soft };
+      }
+
+      // A → P のいちばん良い線を選び、local に足す
+      function pick(A, P, R, target, local, acc) {
+        let best = null;
+        bendRoutes(A, P, R).forEach((pts) => { const r = check(pts, target, local); if (!best || r.cost < best.r.cost) best = { pts, r }; });
+        for (let i = 0; i + 1 < best.pts.length; i++) local.push({ a: best.pts[i], b: best.pts[i + 1] });
+        acc.v += best.r.v;
+        acc.cost += best.r.cost;
+        if (best.r.v && target) acc.bad.push([target.it, best.r.why]);
+        return best.pts;
+      }
+
+      // まとまり group を、ノード N 経由（N = null なら分岐点から直接）でつなぐ線と点数
+      function connect(J, group, N) {
+        const local = [], lines = [];
+        const acc = { v: 0, cost: 0, bad: [] };
+        if (!N) {
+          group.forEach((L) => lines.push({ pts: pick(J, L.P, L.R, L, local, acc), items: [L.it], leaf: L.it }));
+        } else {
+          const jn = pick(J, N, 0, null, local, acc);
+          if (acc.v) acc.bad.push([group[0].it, ['to-node']]);
+          lines.push({ pts: jn, items: group.map((L) => L.it) });
+          group.slice().sort((a, b) => dist2(N, a.P) - dist2(N, b.P)).forEach((L) => {
+            lines.push({ pts: pick(N, L.P, L.R, L, local, acc), items: [L.it], leaf: L.it, via: jn });
+          });
+          acc.cost += 1;
+        }
+        return { acc, lines, local, N };
+      }
+
+      // ノードの置き場所の候補: 分岐点・小さい円から八方向に伸ばした直線どうしの交点（そこに置くと線がまっすぐになる）と、
+      // 分岐点からまとまりへ 6 割ほど進んだあたりの格子点。円・名前の札・ほかのノードや分岐点の近く、中心の魔法陣の上、外枠の外は除く
+      function nodeCands(J, group) {
+        const c = [0, 0];
+        group.forEach((L) => { c[0] += L.P[0] / group.length; c[1] += L.P[1] / group.length; });
+        const ideal = [J[0] + (c[0] - J[0]) * 0.6, J[1] + (c[1] - J[1]) * 0.6];
+        const anchors = [J].concat(group.map((L) => L.P));
+        const raw = [];
+        for (let i = 0; i < anchors.length; i++) {
+          for (let j = i + 1; j < anchors.length; j++) {
+            const a = anchors[i], b = anchors[j];
+            for (const u of LINES4) {
+              for (const w of LINES4) {
+                const det = u[0] * w[1] - u[1] * w[0];
+                if (Math.abs(det) < 1e-9) continue;
+                const rx = b[0] - a[0], ry = b[1] - a[1];
+                const s = (rx * w[1] - ry * w[0]) / det;
+                raw.push([a[0] + s * u[0], a[1] + s * u[1]]);
+              }
+            }
+          }
+        }
+        for (let gx = -2; gx <= 2; gx++) for (let gy = -2; gy <= 2; gy++) raw.push([ideal[0] + gx, ideal[1] + gy]);
+        const dJC = dist2(J, c);
+        const ok = raw.filter((X) => {
+          const r = Math.hypot(X[0], X[1]);
+          if (r < HUB_CLEAR + 0.8 || r > frameR - 1.5) return false;
+          if (dist2(X, J) < 1.8 || dist2(X, c) > dJC + 0.5) return false;
+          if (circs.some((o) => dist2(X, o.P) < o.R + 1.2)) return false;
+          if (boxes.some((bx) => boxCircleDist(bx, X) < 0.4)) return false;
+          if (nodes.some((n) => dist2(X, n) < 1.6) || juncList.some((q) => dist2(X, q) < 1.8)) return false;
+          return true;
+        });
+        ok.forEach((X) => { X.h = dist2(X, ideal) - 0.7 * anchors.filter((a) => aligned(a, X)).length; });
+        ok.sort((a, b) => a.h - b.h);
+        return ok.slice(0, 16);
+      }
+
+      // 1 つのまとまりの、いちばん良いつなぎ方（ノードの場所）
+      function bestConnect(J, group) {
+        if (group.length === 1) return connect(J, group, null);
+        let best = null;
+        nodeCands(J, group).forEach((N) => {
+          const r = connect(J, group, N);
+          if (!best || r.acc.cost < best.acc.cost) best = r;
+        });
+        return best || connect(J, group, null); // ノードを置ける所が無いときは分岐点から直接
+      }
+
+      // まとまりの分け方の候補（角度の順に隣どうし）
+      function partitions(list) {
+        const n = list.length, out = [];
+        if (n <= 3) out.push(list.map((L) => [L])); // 少ないときは全部分岐点から直接も試す
+        const gMin = Math.max(1, Math.ceil(n / GROUP_MAX));
+        for (let g = gMin; g <= Math.min(n, gMin + 2); g++) {
+          const base = Math.floor(n / g), rem = n % g;
+          [false, true].forEach((late) => {
+            if (late && !rem) return;
+            const parts = [];
+            let k = 0;
+            for (let i = 0; i < g; i++) {
+              const sz = base + ((late ? i >= g - rem : i < rem) ? 1 : 0);
+              parts.push(list.slice(k, k + sz));
+              k += sz;
+            }
+            out.push(parts);
+          });
+        }
+        return out;
+      }
+
+      const trees = new Map();
+      const bad = [];
+      let viol = 0, total = 0;
+      tags.forEach((tv) => {
+        const { mid, J } = juncs.get(tv);
+        const list = tv.items.map((it) => {
+          const o = itemPos.get(it);
+          let ang = Math.atan2(o.P[1], o.P[0]) - mid;
+          ang = Math.atan2(Math.sin(ang), Math.cos(ang));
+          return { it, P: o.P, R: o.R, ang };
+        }).sort((a, b) => b.ang - a.ang);
+        // 分け方ごとに試し（試した線・ノードは戻す）、いちばん良い分け方で本決まり
+        const tryParts = (parts, commit) => {
+          const s0 = segs.length, n0 = nodes.length;
+          const res = [];
+          let v = 0, cost = 0;
+          parts.forEach((group) => {
+            const r = bestConnect(J, group);
+            r.local.forEach((s) => segs.push(s));
+            if (r.N) nodes.push(r.N);
+            v += r.acc.v; cost += r.acc.cost;
+            res.push(r);
+          });
+          if (!commit) { segs.length = s0; nodes.length = n0; }
+          return { v, cost: v * 1000 + cost, res };
+        };
+        let bestParts = null, bestCost = Infinity;
+        partitions(list).forEach((parts) => { const r = tryParts(parts, false); if (r.cost < bestCost) { bestCost = r.cost; bestParts = parts; } });
+        const done = bestParts ? tryParts(bestParts, true) : { v: 0, cost: 0, res: [] };
+        viol += done.v;
+        total += done.cost;
+        // 描く形にまとめる: 線（その先にある円つき）・ノード・円ごとの分岐点からの道
+        const tree = { edges: [], nodes: [], routes: new Map(), leafEdge: new Map() };
+        done.res.forEach((r) => {
+          r.acc.bad.forEach(([it, why]) => { bad.push(it); it._routeWhy = why; });
+          if (r.N) tree.nodes.push({ pos: r.N });
+          r.lines.forEach((ln) => {
+            const E = { pts: ln.pts, items: ln.items };
+            tree.edges.push(E);
+            if (ln.leaf) {
+              tree.leafEdge.set(ln.leaf, E);
+              tree.routes.set(ln.leaf, ln.via ? ln.via.concat(ln.pts.slice(1)) : ln.pts);
+            }
+          });
+        });
+        trees.set(tv, tree);
+      });
+      return { trees, viol, bad, score: viol * 1000 + total };
+    }
+
     function buildCircle(cv, many) {
       const g = new T.Group();
       board.add(g);
@@ -898,7 +1161,7 @@
           const r = M.rng(it.id + '#place');
           const a = start - (i + 0.5 + (r() - 0.5) * 0.45) * unit;
           const dist = ring0 + ((i + phase) % rings) * RING_STEP + (r() - 0.5) * 0.7;
-          itemPos.set(it, { a, dist, straightFirst: r() < 0.5 });
+          itemPos.set(it, { a, dist, R: 0.85 + M.rng(it.id + '-size')() * 0.3 });
         });
       });
       // 分岐点(とその下のタグ名の札)に円や名前の札が重ならないよう、近すぎる円は同じ向きのまま外へ離す
@@ -913,9 +1176,66 @@
         });
         o.P = [Math.cos(o.a) * o.dist, Math.sin(o.a) * o.dist];
       });
+      const routeT0 = performance.now();
+      let routed = routeTrees(tags, juncs, itemPos, cv.name, frameR);
+      // どう引いても線が交わる・円を通る円は、置き場所を少しずらして引き直す（いちばんきれいになる所へ）
+      const minGapTo = (it, P) => {
+        let m = Infinity;
+        itemPos.forEach((o, other) => { if (other !== it) m = Math.min(m, Math.hypot(o.P[0] - P[0], o.P[1] - P[1])); });
+        return m;
+      };
+      for (let pass = 0; pass < 2 && routed.viol > 0; pass++) {
+        routed.bad.slice().forEach((it) => {
+          const o = itemPos.get(it), orig = o.P;
+          let bestP = orig;
+          [-0.8, -0.4, 0, 0.4, 0.8].forEach((da) => [-2.6, -1.3, 0, 1.3, 2.6].forEach((dd) => {
+            if (!da && !dd) return;
+            const a = o.a + da * unit, dist = o.dist + dd;
+            if (dist < ring0 - 0.4 || dist > frameR - 1.8) return;
+            const P = [Math.cos(a) * dist, Math.sin(a) * dist];
+            if (minGapTo(it, P) < 2.8) return;
+            // ほかの円の名前の札と、この円・この円の札が重ならない
+            const myBox = nameBox(it, P, o.R);
+            let hit = false;
+            itemPos.forEach((q, other) => {
+              if (other === it) return;
+              if (boxCircleDist(nameBox(other, q.P, q.R), P) < o.R + 0.3 || boxCircleDist(myBox, q.P) < q.R + 0.3) hit = true;
+            });
+            if (hit) return;
+            let nearJ = false;
+            juncs.forEach(({ J }) => { if (Math.hypot(J[0] - P[0], J[1] - P[1]) < JUNC_CLEAR) nearJ = true; });
+            if (nearJ) return;
+            o.P = P;
+            const r = routeTrees(tags, juncs, itemPos, cv.name, frameR);
+            if (r.score < routed.score) { routed = r; bestP = P; }
+          }));
+          o.P = bestP;
+        });
+      }
+      C.routeViolations = routed.viol;
+      C.routeMs = Math.round(performance.now() - routeT0);
+      C.routeBad = routed.bad.map((it) => it.name + '[' + (it._routeWhy || []).join(' ') + ']');
       tags.forEach((tv) => {
         const { mid, J } = juncs.get(tv);
         const tcol = new T.Color(tv.color);
+        const tree = routed.trees.get(tv);
+        // 枝は 1 本ずつ 1 回だけ描く（重なる道は 1 本にまとめてあるので、2 重にならない）
+        const edgeTrace = new Map();
+        tree.edges.forEach((E) => {
+          edgeTrace.set(E, addTrace(C, E.pts.map((p) => v3(p[0], p[1])), tcol, 0.5, 0.06, { tag: tv.name, items: E.items }));
+        });
+        // 枝が分かれる所のノード
+        tree.nodes.forEach((N) => {
+          if (N.root) return;
+          const nd = new T.Group();
+          nd.add(M.ring(0.24, 0.045, tcol, 0.9), M.disc(0.07, '#ffffff', 0.85));
+          nd.position.set(N.pos[0], N.pos[1], 0.02);
+          order(nd, 3);
+          g.add(nd);
+          const nOcc = occluder(0.27);
+          nOcc.position.set(N.pos[0], N.pos[1], 0.01);
+          g.add(nOcc);
+        });
         const trunkPts = [v3(Math.cos(mid) * HUB_R, Math.sin(mid) * HUB_R), v3(J[0], J[1])];
         const trunk = addTrace(C, trunkPts, tcol, 0.55, 0.075, { tag: tv.name }); // 幹（中心→分岐点）
         const junction = new T.Group();
@@ -938,8 +1258,7 @@
         tagByName[tv.name] = tn;
 
         tv.items.forEach((it, i) => {
-          const { dist, P, straightFirst } = itemPos.get(it);
-          const R = 0.85 + M.rng(it.id + '-size')() * 0.3;
+          const { dist, P, R } = itemPos.get(it);
           const s = M.sigil(it.id, { radius: R, color: tcol, lite: many });
           s.position.set(P[0], P[1], 0.02);
           order(s, 3);
@@ -949,10 +1268,8 @@
           const halo = M.glow(tcol, R * 4.2, 0);
           halo.position.set(P[0], P[1], -0.05);
           g.add(halo);
-          const avoid = [];
-          itemPos.forEach((o, other) => { if (other !== it) avoid.push(o.P); });
-          const route = branchRoute(J, P, straightFirst, avoid).map((p) => v3(p[0], p[1])); // 枝: 八方向の折れ線（曲がる順は項目ごとの乱数）
-          const branch = addTrace(C, route, tcol, 0.5, 0.06, { tag: tv.name, item: it.id });
+          const route = tree.routes.get(it).map((p) => v3(p[0], p[1])); // 分岐点 → ノード → この円 までの道（光の粒が流れる）
+          const branch = edgeTrace.get(tree.leafEdge.get(it));
           const path = new M.Path([trunkPts[0]].concat(route));
           const stream = C.flow.add(path, tcol, { count: many ? 1 : 2, speed: 2.4 + M.rng(it.id + '-sp')(), size: 0.42 });
           const hot = C.flow.add(path, '#ffffff', { count: 3, speed: 5.5, size: 0.5, on: false });
@@ -1462,7 +1779,7 @@
       if (idle.mode === 'orbit') {
         let Rdisk = 0;
         circles.forEach((C) => { Rdisk = Math.max(Rdisk, C.base.length() + C.ext); });
-        idle.Rview = Math.max(Math.min(hh.halfW, hh.halfHa) / 1.04, Rdisk * 1.06);
+        idle.Rview = Math.max(Math.min(hh.halfW, hh.halfHa) * IDLE_ZOOM / 1.04, Rdisk * 1.06);
         let kmax = Infinity;
         circles.forEach((C) => { const d = C.base.length(); if (d > 0.01) kmax = Math.min(kmax, (idle.Rview - C.ext) / d); });
         idle.kmax = Math.max(1, isFinite(kmax) ? kmax : 1);
@@ -1472,19 +1789,22 @@
         circles.forEach((C) => {
           if (C.orb) return;
           const ua = Math.random() * Math.PI * 2;
-          C.orb = { x: C.base.x, y: C.base.y, want: 1, ux: Math.cos(ua), uy: Math.sin(ua),
+          C.orb = { want: 1, ux: Math.cos(ua), uy: Math.sin(ua),
             p1: rnd(9, 15), f1: rnd(0, 7), p2: rnd(4.5, 7.5), f2: rnd(0, 7),
-            pk: rnd(13, 23), fk: rnd(0, 7), pa: rnd(16, 28), fa: rnd(0, 7) };
+            pk: rnd(13, 23), fk: rnd(0, 7) };
         });
       } else {
-        idle.view = hh.h;
-        idle.rect = { cx: hh.h.target.x, cy: hh.h.target.y, hw: hh.halfW, hh: hh.halfHa };
+        // 動き出すときは全体表示より IDLE_ZOOM 倍まで引き、広くなった画面の中を漂う
+        const cx = (layoutBox.minX + layoutBox.maxX) / 2, cy = (layoutBox.minY + layoutBox.maxY) / 2;
+        const hw = hh.halfW * IDLE_ZOOM, hy = hh.halfHa * IDLE_ZOOM;
+        idle.view = fitBox({ minX: cx - hw, maxX: cx + hw, minY: cy - hy, maxY: cy + hy }, 1.0);
+        idle.rect = { cx, cy, hw, hh: hy };
         // 向き・曲がり方のクセ・速さは動き出すたびに本物の乱数で決める（名前から決まる乱数だと、毎回同じ軌道をなぞってしまう）。
         // 漂っている途中で呼ばれた（窓の大きさが変わった等）ときは、今の向き・クセのまま続ける
         circles.forEach((C) => {
           if (!C.fl) C.fl = { x: C.base.x, y: C.base.y, a: Math.random() * Math.PI * 2, seed: Math.random() * 100, sp: 0.8 + Math.random() * 0.4 };
         });
-        idle.speed = 0.07 * Math.min(hh.halfW, hh.halfHa);
+        idle.speed = 0.07 * Math.min(hh.halfW, hh.halfHa) * Math.sqrt(IDLE_ZOOM); // 広くなった分、少しだけ速く
       }
     }
     function startIdle() {
@@ -1521,54 +1841,33 @@
       idle.applied = true;
       if (idle.on) {
         if (idle.mode === 'orbit') {
-          // 全体は中心まわりに反時計回り（1 周 90 秒）。その上で魔法陣ごとにバラバラ（周期も位相も別々）に、
-          // 大きく・小さく（×0.5〜×1.5）なり、外へ離れたり中へ寄ったり、横へずれたりする。
-          // ぶつかりそうなら押し合い、窓の円からはみ出すなら内へ戻し、それでも入らなければ縮む
+          // ① 全体は中心まわりに反時計回り（1 周 90 秒）
+          // ② 魔法陣ごとに一定の周期（周期・位相は魔法陣ごとに別）で、画面の中央からまっすぐ離れたり近づいたりする。
+          //    大きさも魔法陣ごとのリズムで大きく・小さく（×0.5〜×1.5）なる
+          // ③ ほかの魔法陣とぶつかりそう・窓の円からはみ出しそうなときは、大きさを縮めてよける。
+          //    中心がほかの魔法陣に押されて動くことはない（押し合うと動きがぎくしゃくする）
           idle.theta = (idle.t * Math.PI * 2 / 90) % (Math.PI * 2);
           const t = idle.t, TAU = Math.PI * 2;
-          const follow = 1 - Math.exp(-dt * 1.2);
-          const kHi = Math.max(idle.kmax, 1.3);
+          const kHi = Math.max(1.15, Math.min(idle.kmax, 2.2)); // 引いて広くなった所まで離れる（離れすぎない）
           circles.forEach((C) => {
             const o = C.orb;
             const wave = Math.sin(t * TAU / o.p1 + o.f1) * 0.65 + Math.sin(t * TAU / o.p2 + o.f2) * 0.35; // -1〜1
             o.want = 1 + ORBIT_SCALE * wave;
             const s = (1 - Math.cos(t * TAU / o.pk + o.fk)) / 2; // 0〜1
-            const k = 0.8 + (kHi - 0.8) * s;
-            const side = Math.sin(t * TAU / o.pa + o.fa) * C.ext * 0.6; // 中心から見て横へずれる量
+            const k = 0.9 + (kHi - 0.9) * s;
             const d = C.base.length();
             let ux = o.ux, uy = o.uy;
             if (d > 0.01) { ux = C.base.x / d; uy = C.base.y / d; }
-            const tx = ux * d * k - uy * side + (d > 0.01 ? 0 : ux * C.ext * 0.25 * s);
-            const ty = uy * d * k + ux * side + (d > 0.01 ? 0 : uy * C.ext * 0.25 * s);
-            o.x += (tx - o.x) * follow;
-            o.y += (ty - o.y) * follow;
+            const off = d > 0.01 ? 0 : C.ext * 0.2 * s; // 真ん中の魔法陣は自分の向きへ少し出たり戻ったり
+            C.ip.set(ux * (d * k + off), uy * (d * k + off)); // 画面の中央からまっすぐ離れる・近づくだけ
           });
-          for (let it = 0; it < 4; it++) {
-            for (let i = 0; i < circles.length; i++) {
-              for (let j = i + 1; j < circles.length; j++) {
-                const A = circles[i].orb, B = circles[j].orb;
-                const need = circles[i].ext * A.want + circles[j].ext * B.want + 0.4;
-                let dx = B.x - A.x, dy = B.y - A.y, dd = Math.hypot(dx, dy);
-                if (dd >= need) continue;
-                if (dd < 1e-4) { dx = 1; dy = 0; dd = 1; }
-                const push = (need - dd) / 2;
-                A.x -= dx / dd * push; A.y -= dy / dd * push;
-                B.x += dx / dd * push; B.y += dy / dd * push;
-              }
-            }
-            circles.forEach((C) => {
-              const o = C.orb, room = idle.Rview - C.ext * o.want, len = Math.hypot(o.x, o.y);
-              if (len > Math.max(0, room)) { const f = Math.max(0, room) / (len || 1); o.x *= f; o.y *= f; }
-            });
-          }
-          circles.forEach((C) => { C.ip.set(C.orb.x, C.orb.y); });
           circles.forEach((C) => {
             let sc = Math.min(C.orb.want, (idle.Rview - C.ip.length()) / C.ext);
             circles.forEach((D2) => {
-              // 押し合っても窓の円に収まらず近すぎるときは、2 つとも同じ割合で縮める（足して隙間 0.4 に収まる）
+              // 近づきすぎたら、2 つとも同じ割合で縮める（足して隙間 0.4 に収まる）
               if (D2 !== C) sc = Math.min(sc, C.orb.want * (C.ip.distanceTo(D2.ip) - 0.4) / (C.ext * C.orb.want + D2.ext * D2.orb.want));
             });
-            C.isc = Math.max(0.35, sc);
+            C.isc = Math.max(0.2, sc);
           });
         } else {
           // 画面いっぱいを不規則に漂い、大きさも魔法陣ごとに不規則に大きく・小さくなる（窓からははみ出さない）
@@ -1753,8 +2052,9 @@
         if (op !== n.nameLabel.op) { n.nameLabel.op = op; n.nameLabel.el.style.opacity = op; }
       });
       circles.forEach((C) => C.traces.forEach((tr) => {
-        const hot = (hover && (tr.item === hover.it.id || (!tr.item && tr.tag === hover.tag.name))) || (hoverTag && tr.tag === hoverTag.tag.name);
-        const dim = active && !(tr.item ? S.match[tr.item] : S.tagMatch[tr.tag]);
+        const its = tr.items;
+        const hot = (hover && (its ? its.indexOf(hover.it.id) >= 0 : tr.tag === hover.tag.name)) || (hoverTag && tr.tag === hoverTag.tag.name);
+        const dim = active && !(its ? its.some((id) => S.match[id]) : S.tagMatch[tr.tag]);
         const target = (hot ? 1 : (hover ? 0.3 : 0.5)) * (dim ? 0.22 : 1);
         tr.k = M.damp(tr.k, target, 8, dt);
         tr.mesh.material.opacity = tr.k * traceIn;
@@ -1802,7 +2102,7 @@
         tags: tagNodes.map((tn) => Object.assign({ name: tn.tag.name }, screenOf(tn))),
         hubs: circles.map((C) => Object.assign({ name: C.name }, screenOf(C.hubRef))),
         carry: carry ? { k: carry.k, held: carry.held, anim: !!carry.anim, src: carry.src.type } : null }),
-      debug: () => ({ circles: circles.map((C) => ({ name: C.name, x: C.group.position.x, y: C.group.position.y, sc: C.sc, frameR: C.frameR })),
+      debug: () => ({ circles: circles.map((C) => ({ name: C.name, x: C.group.position.x, y: C.group.position.y, sc: C.sc, frameR: C.frameR, routeViolations: C.routeViolations, routeBad: C.routeBad, routeMs: C.routeMs })),
         nodes: nodes.length, tags: tagNodes.length, secLines: secLines.length, idle: { on: idle.on, blend: idle.blend, mode: idle.mode, theta: board.rotation.z },
         why: { mouseOut, outFor: performance.now() - mouseOutAt, keyAgo: performance.now() - lastKey, press: !!press, drag: !!drag, filter: filterActive(), modal: S.modal },
         camera: camera.position.toArray(), far: lastFar, fs: lastFs }),
