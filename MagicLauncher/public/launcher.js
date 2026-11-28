@@ -1469,9 +1469,10 @@
       } else {
         idle.view = hh.h;
         idle.rect = { cx: hh.h.target.x, cy: hh.h.target.y, hw: hh.halfW, hh: hh.halfHa };
-        circles.forEach((C, i) => {
-          if (!C.fl) C.fl = { x: C.base.x, y: C.base.y, a: M.rng(C.name + '#dir')() * Math.PI * 2 };
-          C.fl.seed = i * 1.7 + C.seed * 10;
+        // 向き・曲がり方のクセ・速さは動き出すたびに本物の乱数で決める（名前から決まる乱数だと、毎回同じ軌道をなぞってしまう）。
+        // 漂っている途中で呼ばれた（窓の大きさが変わった等）ときは、今の向き・クセのまま続ける
+        circles.forEach((C) => {
+          if (!C.fl) C.fl = { x: C.base.x, y: C.base.y, a: Math.random() * Math.PI * 2, seed: Math.random() * 100, sp: 0.8 + Math.random() * 0.4 };
         });
         idle.speed = 0.07 * Math.min(hh.halfW, hh.halfHa);
       }
@@ -1531,8 +1532,8 @@
           circles.forEach((C) => {
             const f = C.fl;
             f.a += (Math.sin(idle.t * 0.37 + f.seed) * 0.6 + Math.sin(idle.t * 0.13 + f.seed * 3) * 0.4) * dt * 0.9;
-            f.x += Math.cos(f.a) * idle.speed * dt;
-            f.y += Math.sin(f.a) * idle.speed * dt;
+            f.x += Math.cos(f.a) * idle.speed * f.sp * dt;
+            f.y += Math.sin(f.a) * idle.speed * f.sp * dt;
             const wave = Math.sin(idle.t * 0.29 + f.seed * 1.3) * 0.6 + Math.sin(idle.t * 0.47 + f.seed * 2.9) * 0.4; // -1〜1
             C.isc = Math.min(1 + FLOAT_SCALE * wave, Math.min(r.hw, r.hh) / C.ext);
             const e = C.ext * C.isc;
