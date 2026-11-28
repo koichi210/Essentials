@@ -89,21 +89,18 @@ button, input, textarea { font: inherit; color: inherit; }
 .ml-btn:disabled { opacity: .45; cursor: default; box-shadow: none; }
 
 .ml-lite {
-  display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 8px 0 10px;
+  display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 12px;
   border-radius: 16px; border: 1px solid var(--line); background: rgba(14, 32, 70, 0.85); cursor: pointer;
+  transition: background .15s, border-color .15s, box-shadow .15s, color .15s;
 }
+.ml-lite:hover { border-color: #6fb4ff; box-shadow: 0 0 10px rgba(63, 127, 224, 0.45); }
 .ml-lite-leaf { filter: grayscale(1) brightness(1.3); }
-.ml-lite-knob {
-  width: 30px; height: 16px; border-radius: 8px; background: #33415e; position: relative; transition: background .2s;
+/* オンのときはボタン全体を明るく灯す（つまみは置かない） */
+.ml-lite[aria-checked="true"] {
+  background: linear-gradient(#8ff0c4, #3ccf8e); border-color: #b8ffdc; color: #06281a; font-weight: 600;
+  box-shadow: 0 0 14px rgba(60, 207, 142, 0.7);
 }
-.ml-lite-knob::after {
-  content: ""; position: absolute; left: 2px; top: 2px; width: 12px; height: 12px; border-radius: 6px;
-  background: #dfe8f7; transition: left .2s;
-}
-.ml-lite[aria-checked="true"] { border-color: rgba(60, 207, 142, 0.7); }
 .ml-lite[aria-checked="true"] .ml-lite-leaf { filter: none; }
-.ml-lite[aria-checked="true"] .ml-lite-knob { background: var(--ok); }
-.ml-lite[aria-checked="true"] .ml-lite-knob::after { left: 16px; }
 
 /* 凡例（タグの列） */
 .ml-legend {

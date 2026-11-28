@@ -1771,7 +1771,6 @@
     $('ml-stage').hidden = true;
     $('ml-listview').hidden = false;
     $('ml-list-btn').disabled = true;
-    $('ml-home').textContent = '⟲ 先頭へ';
     if (reason) toast(reason, true);
     renderLists();
   }
@@ -1813,8 +1812,6 @@
     // document で受けるので、上の各所の右クリック処理が先に動く
     document.addEventListener('contextmenu', (e) => e.preventDefault());
 
-    $('ml-add').addEventListener('click', () => newItem(S.tags));
-    $('ml-home').addEventListener('click', () => { if (scene3d) scene3d.home(); else window.scrollTo({ top: 0, behavior: 'smooth' }); });
     $('ml-list-btn').addEventListener('click', () => {
       const p = $('ml-listpanel');
       p.classList.toggle('open');
