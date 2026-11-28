@@ -327,7 +327,7 @@
   function listHtml() {
     const v = S.view;
     if (!v) return '';
-    if (!v.total) return '<div class="ml-empty">まだ登録がありません。「＋ 追加」から登録してください。</div>';
+    if (!v.total) return '<div class="ml-empty">まだ登録がありません。何もない所を右クリックして登録してください。</div>';
     const active = filterActive();
     let html = '';
     v.circles.forEach((c) => {
@@ -1076,7 +1076,7 @@
         const total = C.view.items.length;
         const n = C.view.items.filter((it) => S.match[it.id]).length;
         let sub;
-        if (!S.view.total) sub = '＋ 追加 から登録';
+        if (!S.view.total) sub = '右クリックで登録';
         else if (active) sub = n + ' / ' + total + ' 件';
         else sub = total + ' 件';
         C.hubLabel.el.innerHTML = '<b>' + esc(C.name) + '</b><span>' + esc(sub) + '</span>';
