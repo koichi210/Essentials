@@ -861,10 +861,29 @@ function updateTime(t) {
 }
 
 let prevT = 0;
+// 描く回数の上限。設定の fps(60/30)が上限で、操作していないときは控えめにする(見た目・機能は同じで、動きの細かさだけ):
+//  - ほかのアプリを使っている(窓にフォーカスが無い)= 横で眺めているときは 20 回/秒
+//  - フォーカスはあるが 3 秒操作が無いときは 30 回/秒
+//  - マウス・ホイール・キー操作の直後と、人へ寄っていくカメラの移動中は設定どおり
+const FPS_AWAY = 20, FPS_CALM = 30;
+let lastInput = -1e9;
+for (const ev of ['pointermove', 'pointerdown', 'pointerup', 'wheel', 'keydown']) {
+  window.addEventListener(ev, () => { lastInput = performance.now(); }, { capture: true, passive: true });
+}
+function fpsCap() {
+  const max = store.options.fps === '30' ? 30 : 60;
+  if (focus) {
+    return max;
+  }
+  if (!document.hasFocus()) {
+    return Math.min(max, FPS_AWAY);
+  }
+  return performance.now() - lastInput > 3000 ? Math.min(max, FPS_CALM) : max;
+}
 function frame() {
   requestAnimationFrame(frame);
   const t = clock.getElapsedTime();
-  const minDt = store.options.fps === '30' ? 1 / 31 : 1 / 61;
+  const minDt = 1 / (fpsCap() + 1);
   if (t - lastFrame < minDt) {
     return;
   }
