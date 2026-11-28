@@ -386,14 +386,97 @@
     return out.copy(this.pts[this.pts.length - 1]);
   };
 
-  // 光の粒の流れ。add(path, color, { count, speed, size }) で流れを足し、update(dt) で動かす
-  function Flow(scene) { this.scene = scene; this.streams = []; }
+  // 光の玉(glow と同じ見た目)をまとめて 1 回で描く入れ物。Sprite を 1 個ずつ置くと、数が多いとき毎フレームの準備が重い。
+  // add() が返す物は Sprite と同じ書き方(position / scale / material.opacity / visible)で動かせ、update() で描く内容へ写す
+  function SpriteBatch(parent) { this.parent = parent; this.items = []; this.mesh = null; this.dirty = false; }
+  SpriteBatch.prototype.add = function (col, size, opacity) {
+    var it = { position: new T.Vector3(), scale: new T.Vector3(size, size, 1), color: color(col), visible: true,
+      material: { opacity: opacity == null ? 0.6 : opacity }, userData: {} };
+    this.items.push(it);
+    this.dirty = true;
+    return it;
+  };
+  SpriteBatch.prototype.clear = function () { this.items = []; this.dirty = true; };
+  SpriteBatch.prototype.build = function () {
+    if (this.mesh) { this.parent.remove(this.mesh); this.mesh.geometry.dispose(); this.mesh.material.dispose(); this.mesh = null; }
+    var n = this.items.length;
+    if (!n) return;
+    var g = new T.InstancedBufferGeometry();
+    g.setAttribute('position', new T.BufferAttribute(new Float32Array([-0.5, -0.5, 0, 0.5, -0.5, 0, 0.5, 0.5, 0, -0.5, 0.5, 0]), 3));
+    g.setAttribute('uv', new T.BufferAttribute(new Float32Array([0, 0, 1, 0, 1, 1, 0, 1]), 2));
+    g.setIndex([0, 1, 2, 0, 2, 3]);
+    this.aOff = new T.InstancedBufferAttribute(new Float32Array(n * 3), 3).setUsage(T.DynamicDrawUsage);
+    this.aSize = new T.InstancedBufferAttribute(new Float32Array(n), 1).setUsage(T.DynamicDrawUsage);
+    this.aCol = new T.InstancedBufferAttribute(new Float32Array(n * 4), 4).setUsage(T.DynamicDrawUsage);
+    g.setAttribute('iOff', this.aOff);
+    g.setAttribute('iSize', this.aSize);
+    g.setAttribute('iCol', this.aCol);
+    g.instanceCount = n;
+    // SpriteMaterial と同じ計算: 色 × 濃さ × テクスチャ、加算合成。親の拡大縮小も Sprite と同じように効かせる
+    var m = new T.ShaderMaterial({
+      uniforms: { map: { value: glowTexture() } },
+      vertexShader: [
+        'attribute vec3 iOff; attribute float iSize; attribute vec4 iCol;',
+        'varying vec2 vUv; varying vec4 vCol;',
+        'void main() {',
+        '  vUv = uv; vCol = iCol;',
+        '  vec4 mv = modelViewMatrix * vec4(iOff, 1.0);',
+        '  float sx = length(vec3(modelMatrix[0].x, modelMatrix[0].y, modelMatrix[0].z));',
+        '  mv.xy += position.xy * iSize * sx;',
+        '  gl_Position = projectionMatrix * mv;',
+        '}'].join('\n'),
+      fragmentShader: [
+        'uniform sampler2D map; varying vec2 vUv; varying vec4 vCol;',
+        'void main() { gl_FragColor = vCol * texture2D(map, vUv); }'].join('\n'),
+      transparent: true, depthWrite: false, blending: T.AdditiveBlending,
+    });
+    this.mesh = new T.Mesh(g, m);
+    this.mesh.frustumCulled = false; // 位置は 1 個ずつ違うので、形の外接球では判定できない
+    this.parent.add(this.mesh);
+  };
+  SpriteBatch.prototype.update = function () {
+    if (this.dirty) { this.build(); this.dirty = false; }
+    if (!this.mesh) return;
+    var o = this.aOff.array, z = this.aSize.array, c = this.aCol.array;
+    for (var i = 0; i < this.items.length; i++) {
+      var it = this.items[i];
+      o[i * 3] = it.position.x; o[i * 3 + 1] = it.position.y; o[i * 3 + 2] = it.position.z;
+      z[i] = it.scale.x;
+      c[i * 4] = it.color.r; c[i * 4 + 1] = it.color.g; c[i * 4 + 2] = it.color.b;
+      c[i * 4 + 3] = it.visible ? it.material.opacity : 0;
+    }
+    this.aOff.needsUpdate = this.aSize.needsUpdate = this.aCol.needsUpdate = true;
+  };
+
+  // 動かない円盤(下の線を隠す円など)を 1 つの形にまとめる。discs: [[x, y, r], ...]
+  function mergedDiscs(discs, seg) {
+    seg = seg || 40;
+    var pos = new Float32Array(discs.length * (seg + 1) * 3), idx = [];
+    discs.forEach(function (d, k) {
+      var b = k * (seg + 1);
+      pos[b * 3] = d[0]; pos[b * 3 + 1] = d[1];
+      for (var i = 0; i < seg; i++) {
+        var a = i / seg * Math.PI * 2, v = (b + 1 + i) * 3;
+        pos[v] = d[0] + Math.cos(a) * d[2]; pos[v + 1] = d[1] + Math.sin(a) * d[2];
+        idx.push(b, b + 1 + i, b + 1 + (i + 1) % seg);
+      }
+    });
+    var g = new T.BufferGeometry();
+    g.setAttribute('position', new T.BufferAttribute(pos, 3));
+    g.setIndex(idx);
+    return g;
+  }
+
+  // 光の粒の流れ。add(path, color, { count, speed, size }) で流れを足し、update(dt) で動かす。
+  // batch(SpriteBatch)を渡すと、粒をそこへまとめて描く
+  function Flow(scene, batch) { this.scene = scene; this.batch = batch || null; this.streams = []; }
   Flow.prototype.add = function (path, col, o) {
     o = o || {};
     var n = o.count || 3, list = [];
     for (var i = 0; i < n; i++) {
-      var s = glow(col, o.size || 0.35, 0.95);
-      this.scene.add(s);
+      var s;
+      if (this.batch) s = this.batch.add(col, o.size || 0.35, 0.95);
+      else { s = glow(col, o.size || 0.35, 0.95); this.scene.add(s); }
       list.push({ s: s, u: i / n });
     }
     var st = { path: path, list: list, speed: (o.speed || 1.6) / Math.max(path.length, 0.01), on: o.on !== false, k: o.on === false ? 0 : 1 };
@@ -414,7 +497,8 @@
   };
   Flow.prototype.clear = function () {
     var sc = this.scene;
-    this.streams.forEach(function (st) { st.list.forEach(function (p) { sc.remove(p.s); p.s.material.dispose(); }); });
+    if (this.batch) this.batch.clear();
+    else this.streams.forEach(function (st) { st.list.forEach(function (p) { sc.remove(p.s); p.s.material.dispose(); }); });
     this.streams = [];
   };
 
@@ -515,6 +599,6 @@
     glowTexture: glowTexture, glyphRingTexture: glyphRingTexture,
     ring: ring, disc: disc, bar: bar, unitCircle: unitCircle, isShared: isShared, glow: glow, sigil: sigil, crystal: crystal,
     setOpacity: setOpacity, tickSpin: tickSpin, stars: stars, smoke: smoke,
-    octi: octi, ribbon: ribbon, Path: Path, Flow: Flow, Labels: Labels, stage: stage, leaveTo: leaveTo,
+    octi: octi, ribbon: ribbon, Path: Path, Flow: Flow, SpriteBatch: SpriteBatch, mergedDiscs: mergedDiscs, Labels: Labels, stage: stage, leaveTo: leaveTo,
   };
 })();

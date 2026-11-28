@@ -686,6 +686,10 @@
     let starField = null;
 
     const board = new T.Group();
+    // 場面・盤・魔法陣ごとの入れ物は、動かしたときだけ updateMatrix() で位置を計算し直す（毎フレームの計算を省く。
+    // 入れ物が動かなければ、中の動かない部品＝still() したものは位置の計算をまったくしない）
+    scene.matrixAutoUpdate = false;
+    board.matrixAutoUpdate = false;
     scene.add(board);
     const labelsRoot = el('div', 'ml-labels');
     root.appendChild(labelsRoot);
@@ -705,24 +709,36 @@
 
     function v3(x, y) { return new T.Vector3(x, y, 0); }
     function order(obj, n) { obj.traverse((o) => { o.renderOrder = n; }); }
+    // 組み立てたあと位置・向き・大きさが変わらない部品の印。組み立ての最後に still() で位置の計算を 1 回だけにする
+    // （three.js は毎フレーム全部品の位置を計算し直すので、数百個あると重い）
+    function fixed(o) { o.userData.still = true; return o; }
+    function still(root) {
+      root.traverse((o) => {
+        if (!o.userData.still) return;
+        o.traverse((c) => { c.matrixAutoUpdate = false; c.updateMatrix(); });
+      });
+    }
     // 下を隠す円と当たり判定の円は、大きさ 1 の形と材質を全部で共有して scale で合わせる（数百個あるので）
     const occMat = new T.MeshBasicMaterial({ color: '#030814', transparent: true, opacity: 1, depthWrite: false });
     const hitMat = new T.MeshBasicMaterial({ visible: false });
     occMat.userData.shared = hitMat.userData.shared = true;
-    function occluder(r) {
-      const m = new T.Mesh(M.unitCircle(40), occMat);
-      m.scale.set(r, r, 1);
+    // 下を隠す円は、魔法陣ごとに 1 つの形へまとめて 1 回で描く（buildCircle の最後に occluders()）
+    function occlude(C, x, y, r) { C.occ.push([x, y, r]); }
+    function occluders(C) {
+      const m = fixed(new T.Mesh(M.mergedDiscs(C.occ, 40), occMat));
+      m.position.z = 0.01;
       m.renderOrder = 2;
-      return m;
+      C.group.add(m);
     }
     function hitMesh(r, ref) {
       const m = new T.Mesh(M.unitCircle(24), hitMat);
       m.scale.set(r, r, 1);
       m.userData.ref = ref;
+      m.visible = false; // 描かない（当たり判定の Raycaster は visible を見ないので、クリック・ホバーはそのまま効く）
       hitList.push(m);
-      return m;
+      return fixed(m);
     }
-    function anchor(g, x, y) { const o = new T.Object3D(); o.position.set(x, y, 0.1); g.add(o); return o; }
+    function anchor(g, x, y) { const o = fixed(new T.Object3D()); o.position.set(x, y, 0.1); g.add(o); return o; }
     function addLabel(e, anc, opts) {
       e._mlRef = opts.ref;
       labelsRoot.appendChild(e);
@@ -732,7 +748,7 @@
       return l;
     }
     function addTrace(C, pts, col, op, w, meta) {
-      const m = M.ribbon(pts, w, col, op);
+      const m = fixed(M.ribbon(pts, w, col, op));
       m.renderOrder = 1;
       m.position.z = -0.01;
       C.group.add(m);
@@ -1094,6 +1110,7 @@
 
     function buildCircle(cv, many) {
       const g = new T.Group();
+      g.matrixAutoUpdate = false; // 動かしたら updateMatrix()
       board.add(g);
       const tags = cv.tags;
       let total = 0;
@@ -1108,8 +1125,9 @@
       const col = new T.Color(cv.color);
       const centerCol = col.clone().lerp(WHITE, 0.3 + M.rng(cv.name + '#center')() * 0.3); // 中心は外枠色を白へ 30〜60% 寄せる
 
+      const sprites = new M.SpriteBatch(g); // 光のにじみと流れる光の粒は、魔法陣ごとに 1 回でまとめて描く
       const C = { view: cv, name: cv.name, group: g, frameR, ext: frameR + 0.5, color: cv.color, nodes: [], tagNodes: [], traces: [],
-        base: new T.Vector2(), flow: new M.Flow(g), seed: M.rng(cv.name + '#idle')(), fl: null, sc: 1, ip: new T.Vector2(), isc: 1 };
+        base: new T.Vector2(), sprites, flow: new M.Flow(g, sprites), occ: [], seed: M.rng(cv.name + '#idle')(), fl: null, sc: 1, ip: new T.Vector2(), isc: 1 };
 
       // 外枠: 記号の輪のテクスチャ＋二重円
       const frame = new T.Group();
@@ -1128,7 +1146,7 @@
       C.hub.position.z = 0.02;
       order(C.hub, 3);
       g.add(C.hub);
-      g.add(occluder(HUB_R * 1.02));
+      occlude(C, 0, 0, HUB_R * 1.02);
       C.hubGlyph = new T.Mesh(new T.PlaneGeometry(HUB_R * 3.1, HUB_R * 3.1), new T.MeshBasicMaterial({
         map: hubTex, color: '#bcdcff', transparent: true, opacity: 0.5, depthWrite: false, blending: T.AdditiveBlending,
       }));
@@ -1227,25 +1245,21 @@
         // 枝が分かれる所のノード
         tree.nodes.forEach((N) => {
           if (N.root) return;
-          const nd = new T.Group();
+          const nd = fixed(new T.Group());
           nd.add(M.ring(0.24, 0.045, tcol, 0.9), M.disc(0.07, '#ffffff', 0.85));
           nd.position.set(N.pos[0], N.pos[1], 0.02);
           order(nd, 3);
           g.add(nd);
-          const nOcc = occluder(0.27);
-          nOcc.position.set(N.pos[0], N.pos[1], 0.01);
-          g.add(nOcc);
+          occlude(C, N.pos[0], N.pos[1], 0.27);
         });
         const trunkPts = [v3(Math.cos(mid) * HUB_R, Math.sin(mid) * HUB_R), v3(J[0], J[1])];
         const trunk = addTrace(C, trunkPts, tcol, 0.55, 0.075, { tag: tv.name }); // 幹（中心→分岐点）
         const junction = new T.Group();
-        junction.add(M.ring(0.36, 0.06, tcol, 0.95), M.ring(0.2, 0.04, tcol, 0.7), M.disc(0.09, '#ffffff', 0.9));
+        junction.add(fixed(M.ring(0.36, 0.06, tcol, 0.95)), fixed(M.ring(0.2, 0.04, tcol, 0.7)), fixed(M.disc(0.09, '#ffffff', 0.9)));
         junction.position.set(J[0], J[1], 0.02);
         order(junction, 3);
         g.add(junction);
-        const jOcc = occluder(0.4);
-        jOcc.position.set(J[0], J[1], 0.01);
-        g.add(jOcc);
+        occlude(C, J[0], J[1], 0.4);
         const tn = { type: 'tag', tag: tv, circle: C, pos: J, junction, trunk, dim: 1 };
         const jHit = hitMesh(0.6, tn);
         jHit.position.set(J[0], J[1], 0.05);
@@ -1262,12 +1276,10 @@
           const s = M.sigil(it.id, { radius: R, color: tcol, lite: many });
           s.position.set(P[0], P[1], 0.02);
           order(s, 3);
-          const occ = occluder(R * 1.02);
-          occ.position.set(P[0], P[1], 0.01);
-          g.add(occ, s);
-          const halo = M.glow(tcol, R * 4.2, 0);
+          occlude(C, P[0], P[1], R * 1.02);
+          g.add(s);
+          const halo = C.sprites.add(tcol, R * 4.2, 0); // ホバーで光るにじみ（まとめて描く）
           halo.position.set(P[0], P[1], -0.05);
-          g.add(halo);
           const route = tree.routes.get(it).map((p) => v3(p[0], p[1])); // 分岐点 → ノード → この円 までの道（光の粒が流れる）
           const branch = edgeTrace.get(tree.leafEdge.get(it));
           const path = new M.Path([trunkPts[0]].concat(route));
@@ -1291,6 +1303,7 @@
 
       const hl = setC(el('div', 'ml-hub'), cv.color);
       C.hubLabel = addLabel(hl, anchor(g, 0, -HUB_R - 0.35), { ref: C.hubRef, kind: 'hub', fixed: true, circle: C });
+      occluders(C);
       return C;
     }
 
@@ -1323,6 +1336,7 @@
         const r = Math.floor(i / cols), k = i % cols;
         C.base.set(xs[k] - W / 2, -(ys[r] - H / 2));
         C.group.position.set(C.base.x, C.base.y, 0);
+        C.group.updateMatrix();
         C.ip.copy(C.base);
       });
       layoutBox = { minX: -W / 2, maxX: W / 2, minY: -H / 2, maxY: H / 2 };
@@ -1373,6 +1387,7 @@
       view.circles.forEach((cv) => circles.push(buildCircle(cv, many)));
       layoutGrid();
       buildSecondary();
+      still(board);
       rebuildStars();
       updateHubLabels();
       updateTagLabels();
@@ -1832,8 +1847,9 @@
       const b = M.ease(idle.blend);
       if (idle.blend <= 0) {
         if (idle.applied) {
-          circles.forEach((C) => { C.group.position.set(C.base.x, C.base.y, 0); C.group.scale.setScalar(1); C.sc = 1; });
+          circles.forEach((C) => { C.group.position.set(C.base.x, C.base.y, 0); C.group.scale.setScalar(1); C.sc = 1; C.group.updateMatrix(); });
           board.rotation.z = 0;
+          board.updateMatrix();
           idle.applied = false;
         }
         return;
@@ -1893,10 +1909,12 @@
       let th = idle.theta;
       if (th > Math.PI) th -= Math.PI * 2;
       board.rotation.z = th * b;
+      board.updateMatrix();
       circles.forEach((C) => {
         C.group.position.set(C.base.x + (C.ip.x - C.base.x) * b, C.base.y + (C.ip.y - C.base.y) * b, 0);
         C.sc = 1 + (C.isc - 1) * b;
         C.group.scale.setScalar(C.sc);
+        C.group.updateMatrix();
       });
     }
 
@@ -1983,8 +2001,26 @@
     }
     sizeBackground();
     let frameErrors = 0;
-    function frame() {
+    // 何も操作していない間は描く回数を減らす（見た目はゆっくり回る輪と光の粒だけなので 30 回/秒で十分なめらか）。
+    // マウス・ホイール・キー・ドラッグ・カメラの移動・現れる途中・待機の動き出し/戻りの間は、画面の速さいっぱいで描く。
+    // 窓にフォーカスが無い（ほかのアプリを使っている）ときは、さらに 20 回/秒
+    const FPS_CALM = 30, FPS_AWAY = 20;
+    let lastInput = -1e9, lastDraw = -1e9, drawnFrames = 0;
+    ['pointermove', 'pointerdown', 'pointerup', 'wheel', 'keydown'].forEach((ev) =>
+      window.addEventListener(ev, () => { lastInput = performance.now(); }, { capture: true, passive: true }));
+    function busy(now) {
+      return !!(fly || drag || press) || now - lastInput < 1500 || time - appearStart < 2.5 ||
+        (idle.blend > 0 && idle.blend < 1);
+    }
+    function frame(ts) {
       requestAnimationFrame(frame); // 1 フレームで例外が出ても、次のフレームは描く（固まらない）
+      const now = performance.now();
+      if (!busy(now)) {
+        const fps = document.hasFocus() ? FPS_CALM : FPS_AWAY;
+        if (ts - lastDraw < 1000 / fps - 2) return; // 間引く（経過時間は次に描くときにまとめて進む）
+      }
+      lastDraw = ts;
+      drawnFrames++;
       try {
         frameBody();
       } catch (e) {
@@ -1993,7 +2029,7 @@
     }
     function frameBody() {
       const raw = clock.getDelta();
-      const dt = Math.min(raw, 0.05);
+      const dt = Math.min(raw, 0.07); // 間引いた 20 回/秒(0.05 秒)でも遅くならない上限。タブを戻したときの大ジャンプは防ぐ
       time += raw;
       const now = performance.now();
       if (st.size()) {
@@ -2067,7 +2103,7 @@
         sl.mesh.material.opacity = sl.k;
         sl.mesh.visible = sl.k > 0.01;
       });
-      circles.forEach((C) => C.flow.update(dt));
+      circles.forEach((C) => { C.flow.update(dt); C.sprites.update(); });
 
       if (fly) {
         fly.t += Math.min(raw, 0.3) / fly.dur;
@@ -2102,7 +2138,7 @@
         tags: tagNodes.map((tn) => Object.assign({ name: tn.tag.name }, screenOf(tn))),
         hubs: circles.map((C) => Object.assign({ name: C.name }, screenOf(C.hubRef))),
         carry: carry ? { k: carry.k, held: carry.held, anim: !!carry.anim, src: carry.src.type } : null }),
-      debug: () => ({ circles: circles.map((C) => ({ name: C.name, x: C.group.position.x, y: C.group.position.y, sc: C.sc, frameR: C.frameR, routeViolations: C.routeViolations, routeBad: C.routeBad, routeMs: C.routeMs })),
+      debug: () => ({ drawn: drawnFrames, circles: circles.map((C) => ({ name: C.name, x: C.group.position.x, y: C.group.position.y, sc: C.sc, frameR: C.frameR, routeViolations: C.routeViolations, routeBad: C.routeBad, routeMs: C.routeMs })),
         nodes: nodes.length, tags: tagNodes.length, secLines: secLines.length, idle: { on: idle.on, blend: idle.blend, mode: idle.mode, theta: board.rotation.z },
         why: { mouseOut, outFor: performance.now() - mouseOutAt, keyAgo: performance.now() - lastKey, press: !!press, drag: !!drag, filter: filterActive(), modal: S.modal },
         camera: camera.position.toArray(), far: lastFar, fs: lastFs }),
