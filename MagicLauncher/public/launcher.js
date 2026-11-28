@@ -28,6 +28,7 @@
   const JUNC_CLEAR = 3.9; // 円の中心を分岐点からこれより近づけない(円の半径＋名前の札＋分岐点の輪＋タグ名の札が重ならない)
   const OCTI_DIRS =[[1, 0], [0, 1], [1, 1], [1, -1]]; // 八方向の直線の向き(逆向きは同じ直線)
   const FLOAT_SCALE = 0.3; // 漂うときの大きさの揺れ幅(×0.7〜×1.3)
+  const ORBIT_SCALE = 0.5; // 反時計回りのときの大きさの揺れ幅(×0.5〜×1.5。ぶつかる・はみ出すときはもっと縮む)
   const FRAME_SPIN = 0.05; // 外枠の記号の輪が時計回りに回る速さ(rad/秒。約 2 分で 1 周)
   const CIRCLE_GAP = 1.6; // 魔法陣どうしの間隔
   const LITE_ITEMS = 48; // これを超えたら目盛りを省き、光の粒を 1 本 1 粒にする
@@ -1466,6 +1467,15 @@
         circles.forEach((C) => { const d = C.base.length(); if (d > 0.01) kmax = Math.min(kmax, (idle.Rview - C.ext) / d); });
         idle.kmax = Math.max(1, isFinite(kmax) ? kmax : 1);
         idle.view = fitBox({ minX: -idle.Rview, maxX: idle.Rview, minY: -idle.Rview, maxY: idle.Rview }, 1.0);
+        // 魔法陣ごとの周期・位相は動き出すたびに本物の乱数で決める（ほかの魔法陣と揃わないように）
+        const rnd = (a, b) => a + Math.random() * (b - a);
+        circles.forEach((C) => {
+          if (C.orb) return;
+          const ua = Math.random() * Math.PI * 2;
+          C.orb = { x: C.base.x, y: C.base.y, want: 1, ux: Math.cos(ua), uy: Math.sin(ua),
+            p1: rnd(9, 15), f1: rnd(0, 7), p2: rnd(4.5, 7.5), f2: rnd(0, 7),
+            pk: rnd(13, 23), fk: rnd(0, 7), pa: rnd(16, 28), fa: rnd(0, 7) };
+        });
       } else {
         idle.view = hh.h;
         idle.rect = { cx: hh.h.target.x, cy: hh.h.target.y, hw: hh.halfW, hh: hh.halfHa };
@@ -1482,7 +1492,7 @@
       if (idle.blend <= 0) {
         idle.saved = { pos: camera.position.clone(), target: controls.target.clone(), atHome };
         idle.t = 0;
-        circles.forEach((C) => { C.fl = null; });
+        circles.forEach((C) => { C.fl = null; C.orb = null; });
       }
       initIdleLayout();
       flyTo(idle.view, 1.0);
@@ -1511,19 +1521,54 @@
       idle.applied = true;
       if (idle.on) {
         if (idle.mode === 'orbit') {
-          // 全体の中心まわりに反時計回り（1 周 90 秒）＋ 20 秒で 1 往復、外へ離れてまたくっつく
+          // 全体は中心まわりに反時計回り（1 周 90 秒）。その上で魔法陣ごとにバラバラ（周期も位相も別々）に、
+          // 大きく・小さく（×0.5〜×1.5）なり、外へ離れたり中へ寄ったり、横へずれたりする。
+          // ぶつかりそうなら押し合い、窓の円からはみ出すなら内へ戻し、それでも入らなければ縮む
           idle.theta = (idle.t * Math.PI * 2 / 90) % (Math.PI * 2);
-          const s = (1 - Math.cos(idle.t * Math.PI * 2 / 20)) / 2;
-          const k = 1 + (idle.kmax - 1) * s;
-          circles.forEach((C) => { C.ip.set(C.base.x * k, C.base.y * k); });
+          const t = idle.t, TAU = Math.PI * 2;
+          const follow = 1 - Math.exp(-dt * 1.2);
+          const kHi = Math.max(idle.kmax, 1.3);
           circles.forEach((C) => {
-            // 離れた隙間に合わせて不規則に拡大（最大 ×1.2・ぶつからない・はみ出さない）
-            let sc = 1 + 0.2 * s * (0.35 + 0.65 * C.seed);
-            sc = Math.min(sc, (idle.Rview - C.ip.length()) / C.ext);
-            circles.forEach((D2) => {
-              if (D2 !== C) sc = Math.min(sc, (C.ip.distanceTo(D2.ip) - 0.4) / (C.ext + D2.ext));
+            const o = C.orb;
+            const wave = Math.sin(t * TAU / o.p1 + o.f1) * 0.65 + Math.sin(t * TAU / o.p2 + o.f2) * 0.35; // -1〜1
+            o.want = 1 + ORBIT_SCALE * wave;
+            const s = (1 - Math.cos(t * TAU / o.pk + o.fk)) / 2; // 0〜1
+            const k = 0.8 + (kHi - 0.8) * s;
+            const side = Math.sin(t * TAU / o.pa + o.fa) * C.ext * 0.6; // 中心から見て横へずれる量
+            const d = C.base.length();
+            let ux = o.ux, uy = o.uy;
+            if (d > 0.01) { ux = C.base.x / d; uy = C.base.y / d; }
+            const tx = ux * d * k - uy * side + (d > 0.01 ? 0 : ux * C.ext * 0.25 * s);
+            const ty = uy * d * k + ux * side + (d > 0.01 ? 0 : uy * C.ext * 0.25 * s);
+            o.x += (tx - o.x) * follow;
+            o.y += (ty - o.y) * follow;
+          });
+          for (let it = 0; it < 4; it++) {
+            for (let i = 0; i < circles.length; i++) {
+              for (let j = i + 1; j < circles.length; j++) {
+                const A = circles[i].orb, B = circles[j].orb;
+                const need = circles[i].ext * A.want + circles[j].ext * B.want + 0.4;
+                let dx = B.x - A.x, dy = B.y - A.y, dd = Math.hypot(dx, dy);
+                if (dd >= need) continue;
+                if (dd < 1e-4) { dx = 1; dy = 0; dd = 1; }
+                const push = (need - dd) / 2;
+                A.x -= dx / dd * push; A.y -= dy / dd * push;
+                B.x += dx / dd * push; B.y += dy / dd * push;
+              }
+            }
+            circles.forEach((C) => {
+              const o = C.orb, room = idle.Rview - C.ext * o.want, len = Math.hypot(o.x, o.y);
+              if (len > Math.max(0, room)) { const f = Math.max(0, room) / (len || 1); o.x *= f; o.y *= f; }
             });
-            C.isc = Math.max(1, sc);
+          }
+          circles.forEach((C) => { C.ip.set(C.orb.x, C.orb.y); });
+          circles.forEach((C) => {
+            let sc = Math.min(C.orb.want, (idle.Rview - C.ip.length()) / C.ext);
+            circles.forEach((D2) => {
+              // 押し合っても窓の円に収まらず近すぎるときは、2 つとも同じ割合で縮める（足して隙間 0.4 に収まる）
+              if (D2 !== C) sc = Math.min(sc, C.orb.want * (C.ip.distanceTo(D2.ip) - 0.4) / (C.ext * C.orb.want + D2.ext * D2.orb.want));
+            });
+            C.isc = Math.max(0.35, sc);
           });
         } else {
           // 画面いっぱいを不規則に漂い、大きさも魔法陣ごとに不規則に大きく・小さくなる（窓からははみ出さない）
